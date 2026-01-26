@@ -8,7 +8,7 @@
 		{ href: '/', label: 'home', external: false, icon: Home },
 		{ href: '/about', label: 'about', external: false, icon: Origami },
 		{ href: '/scraps', label: 'scraps', external: false, icon: Recycle },
-		{ href: 'https://google.com', label: 'submit', external: true, icon: LogIn }
+		{ href: 'https://forms.hackclub.com/t/58ZE2tdz5bus', label: 'submit', external: true, icon: LogIn }
 	];
 
 	function toggleMenu() {
