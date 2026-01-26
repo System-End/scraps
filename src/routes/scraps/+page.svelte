@@ -114,7 +114,7 @@
 			>
 				{#each row1Items as item (item.id)}
 					<div
-						class="flex-shrink-0 w-[260px] p-4 bg-white border-2 border-dashed border-black rounded-lg transition-all duration-300 hover:border-solid"
+						class="shrink-0 w-65 p-4 bg-white border-2 border-dashed border-black rounded-lg transition-all duration-300 hover:border-solid"
 						role="listitem"
 					>
 						<img src={item.image} alt={item.title} class="w-full h-32 object-contain mb-3" />
@@ -141,7 +141,7 @@
 			>
 				{#each row2Items as item (item.id)}
 					<div
-						class="flex-shrink-0 w-[260px] p-4 bg-white border-2 border-dashed border-black rounded-lg transition-all duration-300 hover:border-solid"
+						class="shrink-0 w-65 p-4 bg-white border-2 border-dashed border-black rounded-lg transition-all duration-300 hover:border-solid"
 						role="listitem"
 					>
 						<img src={item.image} alt={item.title} class="w-full h-32 object-contain mb-3" />
