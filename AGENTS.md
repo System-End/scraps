@@ -1,20 +1,21 @@
 # AGENTS.md
 
-## Commands
-- `bun dev` - Start development server
-- `bun run build` - Build for production
-- `bun run check` - TypeScript/Svelte type checking
-- `bun run lint` - Run Prettier + ESLint
-- `bun run format` - Auto-format with Prettier
-
 ## Architecture
-- **Framework**: SvelteKit 2 with Svelte 5, TypeScript, Tailwind CSS v4
-- **Structure**: `src/routes/` for pages, `src/lib/` for shared code (import via `$lib/`)
-- **Styling**: Tailwind CSS with `@tailwindcss/typography`, styles in `src/routes/layout.css`
+- **frontend/**: SvelteKit 2 + Svelte 5 app with Tailwind CSS v4, static adapter, better-auth
+- **backend/**: Bun + Elysia API server with Drizzle ORM + PostgreSQL
+
+## Commands
+| Task | Frontend (`cd frontend`) | Backend (`cd backend`) |
+|------|--------------------------|------------------------|
+| Dev | `bun run dev` | `bun --watch src/index.ts` |
+| Build | `bun run build` | `bun build src/index.ts --target bun --outdir ./dist` |
+| Lint | `bun run lint` | — |
+| Format | `bun run format` | — |
+| Typecheck | `bun run check` | — |
+| Test | — | `bun test` (single: `bun test <file>`) |
 
 ## Code Style
-- Use tabs for indentation, single quotes, no trailing commas
-- 100 char line width
-- TypeScript strict mode; avoid `any` and `@ts-ignore`
-- Svelte 5 runes syntax (`$state`, `$derived`, `$effect`)
-- Import shared code from `$lib/`; place reusable components in `src/lib/`
+- Use tabs, single quotes, no trailing commas (Prettier configured in frontend)
+- Frontend: Svelte 5 runes, TypeScript strict, Lucide icons
+- Backend: Drizzle schemas in `schemas/`, snake_case for DB columns, camelCase in TS
+- No comments unless complex; no `// @ts-expect-error` or `as any`
