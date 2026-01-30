@@ -14,7 +14,7 @@ news.get("/latest", async () => {
     return {
         id: 1,
         date: "jan 21, 2026",
-        content: "remember to stay drafty!"
+        content: "remember to stay scrappy!"
     }
 })
 

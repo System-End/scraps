@@ -21,18 +21,21 @@
 	}
 
 	let {
-		project = $bindable<Project | null>(null),
+		open,
 		onClose,
-		onSave
+		onCreated
 	}: {
-		project: Project | null
+		open: boolean
 		onClose: () => void
-		onSave: (project: Project) => void
+		onCreated: (project: Project) => void
 	} = $props()
 
-	let editedProject = $state<Project | null>(null)
+	let name = $state('')
+	let description = $state('')
+	let imageUrl = $state<string | null>(null)
 	let imagePreview = $state<string | null>(null)
 	let uploadingImage = $state(false)
+	let selectedHackatimeProject = $state<HackatimeProject | null>(null)
 	let hackatimeProjects = $state<HackatimeProject[]>([])
 	let loadingProjects = $state(false)
 	let showDropdown = $state(false)
@@ -57,10 +60,7 @@
 	}
 
 	$effect(() => {
-		if (project) {
-			editedProject = { ...project }
-			imagePreview = project.image
-			error = null
+		if (open) {
 			fetchHackatimeProjects()
 		}
 	})
@@ -68,7 +68,7 @@
 	async function handleImageUpload(event: Event) {
 		const input = event.target as HTMLInputElement
 		const file = input.files?.[0]
-		if (!file || !editedProject) return
+		if (!file) return
 
 		if (file.size > 5 * 1024 * 1024) {
 			error = 'Image must be less than 5MB'
@@ -94,91 +94,100 @@
 				throw new Error(data.error)
 			}
 
-			if (editedProject) {
-				editedProject.image = data.url
-			}
+			imageUrl = data.url
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to upload image'
-			imagePreview = editedProject?.image || null
+			imagePreview = null
 		} finally {
 			uploadingImage = false
 		}
 	}
 
 	function removeImage() {
-		if (editedProject) {
-			editedProject.image = null
-		}
+		imageUrl = null
 		imagePreview = null
 	}
 
-	function selectHackatimeProject(hp: HackatimeProject) {
-		if (editedProject) {
-			editedProject.hackatimeProject = hp.name
-			editedProject.hours = hp.hours
-			if (hp.repoUrl && !editedProject.githubUrl) {
-				editedProject.githubUrl = hp.repoUrl
-			}
-		}
+	function selectProject(project: HackatimeProject) {
+		selectedHackatimeProject = project
 		showDropdown = false
 	}
 
-	async function handleSave() {
-		if (!editedProject) return
+	function resetForm() {
+		name = ''
+		description = ''
+		imageUrl = null
+		imagePreview = null
+		selectedHackatimeProject = null
+		showDropdown = false
+		error = null
+	}
+
+	async function handleSubmit() {
+		if (!name.trim() || !description.trim()) {
+			error = 'Name and description are required'
+			return
+		}
 
 		loading = true
 		error = null
 
 		try {
-			const response = await fetch(`${API_URL}/projects/${editedProject.id}`, {
-				method: 'PUT',
+			const response = await fetch(`${API_URL}/projects`, {
+				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
 				credentials: 'include',
 				body: JSON.stringify({
-					name: editedProject.name,
-					description: editedProject.description,
-					image: editedProject.image,
-					githubUrl: editedProject.githubUrl,
-					hackatimeProject: editedProject.hackatimeProject,
-					hours: editedProject.hours
+					name,
+					description,
+					image: imageUrl || null,
+					githubUrl: selectedHackatimeProject?.repoUrl || null,
+					hackatimeProject: selectedHackatimeProject?.name || null,
+					hours: selectedHackatimeProject?.hours || 0
 				})
 			})
 
 			if (!response.ok) {
 				const data = await response.json().catch(() => ({}))
-				throw new Error(data.message || 'Failed to save project')
+				throw new Error(data.message || 'Failed to create project')
 			}
 
-			const updatedProject = await response.json()
-			onSave(updatedProject)
+			const newProject = await response.json()
+			resetForm()
+			onCreated(newProject)
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to save project'
+			error = e instanceof Error ? e.message : 'Failed to create project'
 		} finally {
 			loading = false
 		}
 	}
 
+	function handleClose() {
+		resetForm()
+		onClose()
+	}
+
 	function handleBackdropClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) {
-			onClose()
+			handleClose()
 		}
 	}
 </script>
 
-{#if project && editedProject}
+{#if open}
 	<div
 		class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
 		onclick={handleBackdropClick}
-		onkeydown={(e) => e.key === 'Escape' && onClose()}
+		onkeydown={(e) => e.key === 'Escape' && handleClose()}
 		role="dialog"
 		tabindex="-1"
 	>
 		<div class="bg-white rounded-2xl w-full max-w-lg p-6 border-4 border-black max-h-[90vh] overflow-y-auto">
 			<div class="flex items-center justify-between mb-6">
-				<h2 class="text-2xl font-bold">edit project</h2>
-				<button onclick={onClose} class="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+				<h2 class="text-2xl font-bold">new project</h2>
+				<button onclick={handleClose} class="p-1 hover:bg-gray-100 rounded-lg transition-colors">
 					<X size={24} />
 				</button>
 			</div>
@@ -192,7 +201,7 @@
 			<div class="space-y-4">
 				<!-- Image Upload -->
 				<div>
-					<label class="block text-sm font-bold mb-1">image</label>
+					<label class="block text-sm font-bold mb-1">image <span class="font-normal text-gray-500">(optional)</span></label>
 					{#if imagePreview}
 						<div class="relative w-full h-40 border-2 border-black rounded-lg overflow-hidden">
 							<img src={imagePreview} alt="Preview" class="w-full h-full object-contain bg-gray-100" />
@@ -219,40 +228,32 @@
 					{/if}
 				</div>
 
+				<!-- Required fields -->
 				<div>
-					<label for="name" class="block text-sm font-bold mb-1">name</label>
+					<label for="name" class="block text-sm font-bold mb-1">name <span class="text-red-500">*</span></label>
 					<input
 						id="name"
 						type="text"
-						bind:value={editedProject.name}
+						bind:value={name}
+						required
 						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
 					/>
 				</div>
 
 				<div>
-					<label for="description" class="block text-sm font-bold mb-1">description</label>
+					<label for="description" class="block text-sm font-bold mb-1">description <span class="text-red-500">*</span></label>
 					<textarea
 						id="description"
-						bind:value={editedProject.description}
+						bind:value={description}
 						rows="3"
+						required
 						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed resize-none"
 					></textarea>
 				</div>
 
+				<!-- Optional Hackatime Project Dropdown -->
 				<div>
-					<label for="githubUrl" class="block text-sm font-bold mb-1">github url</label>
-					<input
-						id="githubUrl"
-						type="url"
-						bind:value={editedProject.githubUrl}
-						placeholder="https://github.com/user/repo"
-						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
-					/>
-				</div>
-
-				<!-- Hackatime Project Dropdown -->
-				<div>
-					<label class="block text-sm font-bold mb-1">hackatime project</label>
+					<label class="block text-sm font-bold mb-1">hackatime project <span class="font-normal text-gray-500">(optional)</span></label>
 					<div class="relative">
 						<button
 							type="button"
@@ -261,8 +262,8 @@
 						>
 							{#if loadingProjects}
 								<span class="text-gray-500">loading projects...</span>
-							{:else if editedProject.hackatimeProject}
-								<span>{editedProject.hackatimeProject} <span class="text-gray-500">({editedProject.hours}h)</span></span>
+							{:else if selectedHackatimeProject}
+								<span>{selectedHackatimeProject.name} <span class="text-gray-500">({selectedHackatimeProject.hours}h)</span></span>
 							{:else}
 								<span class="text-gray-500">select a project</span>
 							{/if}
@@ -276,43 +277,45 @@
 								{:else}
 									<button
 										type="button"
-										onclick={() => { if (editedProject) { editedProject.hackatimeProject = null; editedProject.hours = 0; } showDropdown = false }}
+										onclick={() => { selectedHackatimeProject = null; showDropdown = false }}
 										class="w-full px-4 py-2 text-left hover:bg-gray-100 text-gray-500"
 									>
 										none
 									</button>
-									{#each hackatimeProjects as hp}
+									{#each hackatimeProjects as project}
 										<button
 											type="button"
-											onclick={() => selectHackatimeProject(hp)}
+											onclick={() => selectProject(project)}
 											class="w-full px-4 py-2 text-left hover:bg-gray-100 flex justify-between items-center"
 										>
-											<span class="font-medium">{hp.name}</span>
-											<span class="text-gray-500 text-sm">{hp.hours}h</span>
+											<span class="font-medium">{project.name}</span>
+											<span class="text-gray-500 text-sm">{project.hours}h</span>
 										</button>
 									{/each}
 								{/if}
 							</div>
 						{/if}
 					</div>
+					{#if selectedHackatimeProject?.repoUrl}
+						<p class="text-xs text-gray-500 mt-1">github: {selectedHackatimeProject.repoUrl}</p>
+					{/if}
 				</div>
-
 			</div>
 
 			<div class="flex gap-3 mt-6">
 				<button
-					onclick={onClose}
+					onclick={handleClose}
 					disabled={loading}
 					class="flex-1 px-4 py-2 border-2 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 disabled:opacity-50"
 				>
 					cancel
 				</button>
 				<button
-					onclick={handleSave}
+					onclick={handleSubmit}
 					disabled={loading}
 					class="flex-1 px-4 py-2 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50"
 				>
-					{loading ? 'saving...' : 'save'}
+					{loading ? 'creating...' : 'create'}
 				</button>
 			</div>
 		</div>

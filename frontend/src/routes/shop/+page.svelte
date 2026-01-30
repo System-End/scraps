@@ -1,48 +1,38 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import DashboardNavbar from '$lib/components/DashboardNavbar.svelte'
-	import WishlistAvatars from '$lib/components/WishlistAvatars.svelte'
-
-	interface WishlistUser {
-		id: number
-		name: string
-		avatar: string
-	}
+	import HeartButton from '$lib/components/HeartButton.svelte'
+	import { API_URL } from '$lib/config'
+	import { getUser } from '$lib/auth-client'
 
 	interface ShopItem {
 		id: number
 		name: string
 		description: string
 		image: string
-		chance: number
+		price: number
 		category: string
-		wishlistUsers: WishlistUser[]
+		count: number
+		heartCount: number
+		userHearted: boolean
+	}
+
+	interface User {
+		id: number
+		username: string
+		email: string
+		avatar: string | null
+		slackId: string | null
+		scraps: number
 	}
 
 	let items = $state<ShopItem[]>([])
-	let screws = $state(42)
 	let selectedCategory = $state('all')
+	let loading = $state(true)
+	let user = $state<User | null>(null)
+	let screws = $derived(user?.scraps ?? 0)
 
-	const dummyUsers: WishlistUser[] = [
-		{ id: 1, name: 'zrl', avatar: 'https://avatars.githubusercontent.com/u/1234567?v=4' },
-		{ id: 2, name: 'msw', avatar: 'https://avatars.githubusercontent.com/u/2345678?v=4' },
-		{ id: 3, name: 'belle', avatar: 'https://avatars.githubusercontent.com/u/3456789?v=4' },
-		{ id: 4, name: 'sam', avatar: 'https://avatars.githubusercontent.com/u/4567890?v=4' },
-		{ id: 5, name: 'orpheus', avatar: 'https://avatars.githubusercontent.com/u/5678901?v=4' }
-	]
-
-	const dummyItems: ShopItem[] = [
-		{ id: 1, name: 'esp32', description: 'a tiny microcontroller', image: '/hero.png', chance: 15, category: 'hardware', wishlistUsers: dummyUsers.slice(0, 4) },
-		{ id: 2, name: 'arduino nano', description: 'compact arduino board', image: '/hero.png', chance: 10, category: 'hardware', wishlistUsers: dummyUsers.slice(1, 3) },
-		{ id: 3, name: 'breadboard', description: 'for prototyping', image: '/hero.png', chance: 20, category: 'hardware', wishlistUsers: [] },
-		{ id: 4, name: 'resistor pack', description: 'assorted resistors', image: '/hero.png', chance: 25, category: 'hardware', wishlistUsers: dummyUsers.slice(0, 1) },
-		{ id: 5, name: 'vermont fudge', description: 'delicious!', image: '/hero.png', chance: 5, category: 'food', wishlistUsers: dummyUsers },
-		{ id: 6, name: 'rare sticker', description: 'limited edition', image: '/hero.png', chance: 8, category: 'sticker', wishlistUsers: dummyUsers.slice(2, 5) },
-		{ id: 7, name: 'postcard', description: 'from hq', image: '/hero.png', chance: 12, category: 'misc', wishlistUsers: dummyUsers.slice(0, 2) },
-		{ id: 8, name: 'sensor kit', description: 'various sensors', image: '/hero.png', chance: 5, category: 'hardware', wishlistUsers: [] }
-	]
-
-	const categories = ['all', 'hardware', 'sticker', 'food', 'misc']
+	let categories = $derived(['all', ...new Set(items.map((item) => item.category))])
 
 	let filteredItems = $derived(
 		selectedCategory === 'all'
@@ -51,15 +41,42 @@
 	)
 
 	onMount(async () => {
-		// TODO: Replace with actual API call to /api/items
-		// const response = await fetch('/api/items')
-		// items = await response.json()
-		items = dummyItems
+		user = await getUser()
+		try {
+			const response = await fetch(`${API_URL}/shop/items`, {
+				credentials: 'include'
+			})
+			if (response.ok) {
+				items = await response.json()
+			}
+		} catch (error) {
+			console.error('Failed to fetch shop items:', error)
+		} finally {
+			loading = false
+		}
 	})
 
-	function addToWishlist(itemId: number) {
-		// TODO: Call API to add item to user's wishlist
-		console.log('Adding to wishlist:', itemId)
+	async function toggleHeart(itemId: number) {
+		try {
+			const response = await fetch(`${API_URL}/shop/items/${itemId}/heart`, {
+				method: 'POST',
+				credentials: 'include'
+			})
+			if (response.ok) {
+				items = items.map((item) => {
+					if (item.id === itemId) {
+						return {
+							...item,
+							userHearted: !item.userHearted,
+							heartCount: item.userHearted ? item.heartCount - 1 : item.heartCount + 1
+						}
+					}
+					return item
+				})
+			}
+		} catch (error) {
+			console.error('Failed to toggle heart:', error)
+		}
 	}
 </script>
 
@@ -67,7 +84,7 @@
 	<title>shop | scraps</title>
 </svelte:head>
 
-<DashboardNavbar {screws} />
+<DashboardNavbar {screws} {user} />
 
 <div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">
 	<h1 class="text-4xl md:text-6xl font-bold mb-4">shop</h1>
@@ -87,26 +104,37 @@
 		{/each}
 	</div>
 
-	<!-- Items Grid -->
-	<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-		{#each filteredItems as item (item.id)}
-			<div
-				class="border-4 border-black rounded-2xl p-4 hover:border-dashed transition-all"
-			>
-				<img src={item.image} alt={item.name} class="w-full h-32 object-contain mb-4" />
-				<h3 class="font-bold text-xl mb-1">{item.name}</h3>
-				<p class="text-sm text-gray-600 mb-2">{item.description}</p>
-				<div class="flex items-center justify-between mb-3">
-					<span class="text-sm font-bold">{item.chance}% chance</span>
-					<span class="text-xs px-2 py-1 bg-gray-100 rounded-full">{item.category}</span>
+	<!-- Loading State -->
+	{#if loading}
+		<div class="text-center py-12">
+			<p class="text-gray-600">Loading items...</p>
+		</div>
+	{:else if items.length === 0}
+		<div class="text-center py-12">
+			<p class="text-gray-600">No items available</p>
+		</div>
+	{:else}
+		<!-- Items Grid -->
+		<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+			{#each filteredItems as item (item.id)}
+				<div class="border-4 border-black rounded-2xl p-4 hover:border-dashed transition-all">
+					<img src={item.image} alt={item.name} class="w-full h-32 object-contain mb-4" />
+					<h3 class="font-bold text-xl mb-1">{item.name}</h3>
+					<p class="text-sm text-gray-600 mb-2">{item.description}</p>
+					<div class="flex items-center justify-between mb-3">
+						<span class="text-sm font-bold">{item.price} screws</span>
+						<span class="text-xs px-2 py-1 bg-gray-100 rounded-full">{item.category}</span>
+					</div>
+					<div class="flex items-center justify-between">
+						<span class="text-xs text-gray-500">{item.count} left</span>
+						<HeartButton
+							count={item.heartCount}
+							hearted={item.userHearted}
+							onclick={() => toggleHeart(item.id)}
+						/>
+					</div>
 				</div>
-				<div class="flex items-center justify-between">
-					<WishlistAvatars
-						users={item.wishlistUsers}
-						onWishlist={() => addToWishlist(item.id)}
-					/>
-				</div>
-			</div>
-		{/each}
-	</div>
+			{/each}
+		</div>
+	{/if}
 </div>

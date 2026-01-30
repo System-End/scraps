@@ -1,7 +1,7 @@
 # AGENTS.md
 
 ## Architecture
-- **frontend/**: SvelteKit 2 + Svelte 5 app with Tailwind CSS v4, static adapter, better-auth
+- **frontend/**: SvelteKit 2 + Svelte 5 app with Tailwind CSS v4, static adapter
 - **backend/**: Bun + Elysia API server with Drizzle ORM + PostgreSQL
 
 ## Commands
@@ -19,3 +19,49 @@
 - Frontend: Svelte 5 runes, TypeScript strict, Lucide icons
 - Backend: Drizzle schemas in `schemas/`, snake_case for DB columns, camelCase in TS
 - No comments unless complex; no `// @ts-expect-error` or `as any`
+
+## UI Style Guide
+
+### Buttons
+All buttons should follow these patterns:
+
+**Primary Button (filled)**
+```html
+class="px-4 py-2 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50"
+```
+
+**Secondary Button (outlined)**
+```html
+class="px-4 py-2 border-2 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 disabled:opacity-50"
+```
+
+**Toggle/Filter Button (selected state)**
+```html
+class="px-4 py-2 border-2 border-black rounded-full font-bold transition-all duration-200 {isSelected
+    ? 'bg-black text-white'
+    : 'hover:border-dashed'}"
+```
+
+### Cards & Containers
+```html
+class="border-4 border-black rounded-2xl p-6 hover:border-dashed transition-all"
+```
+
+### Inputs
+```html
+class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+```
+
+### Modals
+```html
+class="bg-white rounded-2xl w-full max-w-lg p-6 border-4 border-black max-h-[90vh] overflow-y-auto"
+```
+
+### Key Patterns
+- **Border style**: `border-2` for buttons/inputs, `border-4` for cards/containers
+- **Rounding**: `rounded-full` for buttons, `rounded-2xl` for cards, `rounded-lg` for inputs
+- **Hover state**: `hover:border-dashed` for outlined elements
+- **Focus state**: `focus:border-dashed` for inputs
+- **Selected state**: `bg-black text-white` (filled)
+- **Animation**: Always include `transition-all duration-200`
+- **Colors**: Black borders, white backgrounds, no colors except for errors (red)

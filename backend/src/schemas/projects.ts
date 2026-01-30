@@ -1,22 +1,22 @@
-import { integer, pgTable, varchar } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp, real } from 'drizzle-orm/pg-core'
+import { usersTable } from './users'
 
-import { usersTable } from "./users";
-
-export const projectsTable = pgTable("projects", {
+export const projectsTable = pgTable('projects', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   userId: integer('user_id').notNull().references(() => usersTable.id),
 
   name: varchar().notNull(),
   description: varchar().notNull(),
   
-  imageUrl: varchar().notNull(),
-  githubUrl: varchar().notNull(),
+  // Optional fields (required for submission but not creation)
+  image: text(),
+  githubUrl: varchar('github_url'),
+  hackatimeProject: varchar('hackatime_project'),
+  hours: real().default(0),
 
-    
-  hours: integer().notNull(),
-
-  hackatimeUrl: varchar().notNull()
-});
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+})
 
 // last ship date
 // what we can improve

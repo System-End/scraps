@@ -1,9 +1,24 @@
 <script lang="ts">
+	import { onMount } from 'svelte'
 	import { Flame, ArrowRight } from '@lucide/svelte'
 	import DashboardNavbar from '$lib/components/DashboardNavbar.svelte'
-	
+	import { getUser } from '$lib/auth-client'
 
-	let screws = $state(42)
+	interface User {
+		id: number
+		username: string
+		email: string
+		avatar: string | null
+		slackId: string | null
+		scraps: number
+	}
+
+	let user = $state<User | null>(null)
+	let screws = $derived(user?.scraps ?? 0)
+
+	onMount(async () => {
+		user = await getUser()
+	})
 
 	interface RefineRecipe {
 		id: number
@@ -54,11 +69,11 @@
 	<title>refinery | scraps</title>
 </svelte:head>
 
-<DashboardNavbar {screws} />
+<DashboardNavbar {screws} {user} />
 
 <div class="pt-24 px-6 md:px-12 max-w-4xl mx-auto pb-24">
 	<div class="flex items-center gap-4 mb-4">
-		<Flame size={48} />
+		<!-- <Flame size={48} /> -->
 		<h1 class="text-4xl md:text-6xl font-bold">refinery</h1>
 	</div>
 	<p class="text-lg text-gray-600 mb-8">upgrade and combine your scraps</p>

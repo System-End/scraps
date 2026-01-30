@@ -1,19 +1,23 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
+	import { goto } from '$app/navigation'
 	import { FilePlus2, Pencil } from '@lucide/svelte'
 	import DashboardNavbar from '$lib/components/DashboardNavbar.svelte'
 	import ProjectModal from '$lib/components/ProjectModal.svelte'
-	
+	import CreateProjectModal from '$lib/components/CreateProjectModal.svelte'
+	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte'
+	import { getUser } from '$lib/auth-client'
+	import { API_URL } from '$lib/config'
 
 	interface Project {
 		id: number
-		userId: number
+		userId: string
 		name: string
 		description: string
-		imageUrl: string
-		githubUrl: string
+		image: string | null
+		githubUrl: string | null
+		hackatimeProject: string | null
 		hours: number
-		hackatimeUrl: string
 	}
 
 	interface NewsItem {
@@ -22,56 +26,56 @@
 		content: string
 	}
 
+	interface User {
+		id: number
+		username: string
+		email: string
+		avatar: string
+		slackId: string
+		scraps: number
+	}
+
+	let user = $state<User | null>(null)
 	let projects = $state<Project[]>([])
 	let latestNews = $state<NewsItem | null>(null)
 	let selectedProject = $state<Project | null>(null)
-	let screws = $state(42)
-
-	const dummyProjects: Project[] = [
-		{
-			id: 1,
-			userId: 1,
-			name: 'Blueprint',
-			description: 'A hackathon project for AMD',
-			imageUrl: '/hero.png',
-			githubUrl: 'https://github.com/hackclub/blueprint',
-			hours: 24,
-			hackatimeUrl: 'https://hackatime.hackclub.com/projects/blueprint'
-		},
-		{
-			id: 2,
-			userId: 1,
-			name: 'Flavortown',
-			description: 'A food discovery app',
-			imageUrl: '/hero.png',
-			githubUrl: 'https://github.com/hackclub/flavortown',
-			hours: 18,
-			hackatimeUrl: 'https://hackatime.hackclub.com/projects/flavortown'
-		}
-	]
-
-	const dummyLatestNews: NewsItem = {
-		id: 1,
-		date: 'jan 21, 2026',
-		content: 'remember to stay drafty!'
-	}
+	let showCreateModal = $state(false)
+	let screws = $derived(user?.scraps ?? 0)
 
 	onMount(async () => {
-		// TODO: Replace with actual API call to /api/projects
-		// const response = await fetch('/api/projects', {
-		//   headers: { 'Authorization': `Bearer ${userToken}` }
-		// })
-		// projects = await response.json()
-		projects = dummyProjects
+		const userData = await getUser()
+		if (!userData) {
+			goto('/')
+			return
+		}
+		user = userData
 
-		// TODO: Replace with actual API call to /api/news/latest
-		// const newsResponse = await fetch('/api/news/latest')
-		// latestNews = await newsResponse.json()
-		latestNews = dummyLatestNews
+		// Fetch user's projects
+		try {
+			const projectsResponse = await fetch(`${API_URL}/projects`, {
+				credentials: 'include'
+			})
+			if (projectsResponse.ok) {
+				const data = await projectsResponse.json()
+				if (Array.isArray(data)) {
+					projects = data
+				}
+			}
+		} catch (e) {
+			console.error('Failed to fetch projects:', e)
+		}
 
-		// TODO: Fetch user's screw count
-		// const userResponse = await fetch('/api/user')
-		// screws = (await userResponse.json()).screws
+		// Fetch latest news
+		try {
+			const newsResponse = await fetch(`${API_URL}/news/latest`, {
+				credentials: 'include'
+			})
+			if (newsResponse.ok) {
+				latestNews = await newsResponse.json()
+			}
+		} catch (e) {
+			console.error('Failed to fetch news:', e)
+		}
 	})
 
 	function openEditModal(project: Project) {
@@ -82,19 +86,18 @@
 		selectedProject = null
 	}
 
-	function handleSaveProject(updatedProject: Project) {
-		// TODO: Call API to update project
-		// await fetch(`/api/projects/${updatedProject.id}`, {
-		//   method: 'PUT',
-		//   body: JSON.stringify(updatedProject)
-		// })
+	async function handleSaveProject(updatedProject: Project) {
 		projects = projects.map((p) => (p.id === updatedProject.id ? updatedProject : p))
 		closeModal()
 	}
 
 	function createNewProject() {
-		// TODO: Navigate to project creation or open modal
-		console.log('Create new project')
+		showCreateModal = true
+	}
+
+	function handleProjectCreated(newProject: Project) {
+		projects = [...projects, newProject]
+		showCreateModal = false
 	}
 </script>
 
@@ -102,29 +105,42 @@
 	<title>dashboard | scraps</title>
 </svelte:head>
 
-<DashboardNavbar {screws} />
+<DashboardNavbar {screws} {user} />
 
 <div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">
+	<!-- Greeting -->
+	{#if user}
+		<h1 class="text-4xl md:text-5xl font-bold mb-8">hello, {user.username || 'friend'}</h1>
+	{/if}
+
 	<!-- Projects Section -->
 	<div class="mb-12">
 		<div class="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
 			{#each projects as project (project.id)}
 				<button
 					onclick={() => openEditModal(project)}
-					class="shrink-0 w-80 h-64 rounded-2xl border-4 border-black overflow-hidden relative group bg-[#1a365d] cursor-pointer transition-all hover:border-dashed"
+					class="shrink-0 w-80 h-64 rounded-2xl border-4 border-black overflow-hidden relative group bg-white cursor-pointer transition-all hover:border-dashed flex flex-col"
 				>
-					<div class="absolute inset-0 flex items-center justify-center p-6">
-						<img
-							src={project.imageUrl}
-							alt={project.name}
-							class="max-w-full max-h-full object-contain"
-						/>
+					<div class="flex-1 flex items-center justify-center p-6 overflow-hidden">
+						{#if project.image}
+							<img
+								src={project.image}
+								alt={project.name}
+								class="max-w-full max-h-full object-contain"
+							/>
+						{:else}
+							<ProjectPlaceholder seed={project.id} />
+						{/if}
+					</div>
+					<div class="px-4 py-3 border-t-2 border-black bg-white flex items-center justify-between">
+						<span class="font-bold text-lg truncate">{project.name}</span>
+						<span class="text-gray-500 text-sm shrink-0">{project.hours}h</span>
 					</div>
 					<div
-						class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 border-2 border-dashed border-black/50 rounded-full bg-white/90 opacity-0 group-hover:opacity-100 transition-opacity"
+						class="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 border-2 border-dashed border-black/50 rounded-full bg-white/90 opacity-0 group-hover:opacity-100 transition-opacity"
 					>
 						<Pencil size={16} />
-						<span class="font-bold">edit draft</span>
+						<span class="font-bold">edit project</span>
 					</div>
 				</button>
 			{/each}
@@ -132,10 +148,10 @@
 			<!-- New Draft Card -->
 			<button
 				onclick={createNewProject}
-				class="shrink-0 w-80 h-64 rounded-2xl border-4 border-black flex flex-col items-center justify-center gap-4 cursor-pointer transition-all hover:border-dashed bg-white"
+				class="shrink-0 w-80 h-64 rounded-2xl border-4 border-black flex flex-col items-center justify-center gap-4 cursor-pointer transition-all  border-dashed hover:border-solid bg-white"
 			>
 				<FilePlus2 size={64} strokeWidth={1.5} />
-				<span class="text-2xl font-bold">new draft</span>
+				<span class="text-2xl font-bold">new project</span>
 			</button>
 		</div>
 	</div>
@@ -168,6 +184,7 @@
 </div>
 
 <ProjectModal project={selectedProject} onClose={closeModal} onSave={handleSaveProject} />
+<CreateProjectModal open={showCreateModal} onClose={() => showCreateModal = false} onCreated={handleProjectCreated} />
 
 <style>
 	.scrollbar-hide {

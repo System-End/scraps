@@ -1,12 +1,25 @@
-import { integer, pgTable, varchar } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp } from 'drizzle-orm/pg-core'
 
-export const usersTable = pgTable("users", {
+export const usersTable = pgTable('users', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
 
-  avatar: varchar().notNull(),
-  username: varchar().notNull(),
-  email: varchar().notNull().unique(),
+  // OIDC identifiers
+  sub: varchar().notNull().unique(),
+  slackId: varchar('slack_id'),
+  
+  // Profile info (from Slack)
+  username: varchar(),
+  email: varchar().notNull(),
+  avatar: varchar(),
 
-  accessToken: varchar().notNull(),
-  refreshToken: varchar().notNull()
-});
+  // OAuth tokens
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+
+  // scraps info
+  scraps: integer().notNull().default(0),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+})

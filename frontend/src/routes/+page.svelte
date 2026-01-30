@@ -1,6 +1,14 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import Superscript from '$lib/components/Superscript.svelte';
+	import { onMount } from 'svelte'
+	import { LogIn } from '@lucide/svelte'
+	import Superscript from '$lib/components/Superscript.svelte'
+	import { login } from '$lib/auth-client'
+
+	let email = $state('')
+
+	function handleLogin() {
+		login()
+	}
 
 	interface ScrapItem {
 		id: string;
@@ -94,7 +102,7 @@
 </script>
 
 <!-- Hero Section -->
-<div class="h-dvh w-full overflow-hidden flex flex-col">
+<div id="home" class="h-dvh w-full overflow-hidden flex flex-col">
 	<div class="w-full h-full md:h-full md:absolute md:inset-0 flex items-center justify-center">
 		<img
 			src="/hero.png"
@@ -108,14 +116,31 @@
 		<p class="text-lg md:text-xl mb-1">
 			<strong>ys:</strong> any project<Superscript number={1} tooltip="silly, nonsensical, or fun" />
 		</p>
-		<p class="text-lg md:text-xl mb-4">
+		<p class="text-lg md:text-xl mb-6">
 			<strong>ws:</strong> a chance to win somthing amazing<Superscript number={2} tooltip="(including rare stickers)" />
 		</p>
+
+		<!-- Auth Section -->
+		<div class="flex flex-col sm:flex-row gap-3">
+			<input
+				type="email"
+				bind:value={email}
+				placeholder="your@email.com"
+				class="flex-1 px-4 py-3 border-4 border-black rounded-full focus:outline-none focus:border-dashed"
+			/>
+			<button
+				onclick={handleLogin}
+				class="flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all"
+			>
+				<LogIn size={18} />
+				<span>sign up / login</span>
+			</button>
+		</div>
 	</div>
 </div>
 
 <!-- Scraps Section -->
-<div class="min-h-dvh flex flex-col overflow-hidden">
+<div id="scraps" class="min-h-dvh flex flex-col overflow-hidden">
 	<div class="px-6 md:px-12 pt-24 pb-8">
 		<div class="max-w-3xl mx-auto">
 			<h2 class="text-4xl md:text-6xl font-bold mb-2">scrapss</h2>
@@ -181,7 +206,7 @@
 </div>
 
 <!-- About Section -->
-<div class="min-h-dvh pt-24 px-6 md:px-12 max-w-3xl mx-auto pb-24">
+<div id="about" class="min-h-dvh pt-24 px-6 md:px-12 max-w-3xl mx-auto pb-24">
 	<h2 class="text-4xl md:text-6xl font-bold mb-8">about scraps</h2>
 
 	<div class="prose prose-lg">

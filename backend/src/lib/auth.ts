@@ -1,0 +1,209 @@
+import { eq, and, gt } from "drizzle-orm"
+import { db } from "../db"
+import { usersTable } from "../schemas/users"
+import { sessionsTable } from "../schemas/sessions"
+import { getSlackProfile, getAvatarUrl } from "./slack"
+
+const HACKCLUB_AUTH_URL = "https://auth.hackclub.com"
+const CLIENT_ID = process.env.HCAUTH_CLIENT_ID!
+const CLIENT_SECRET = process.env.HCAUTH_CLIENT_SECRET!
+const REDIRECT_URI = process.env.HCAUTH_REDIRECT_URI || "http://localhost:3000/api/auth/callback"
+
+interface OIDCTokenResponse {
+    access_token: string
+    token_type: string
+    id_token: string
+    refresh_token?: string
+}
+
+interface HackClubIdentity {
+    id: string
+    ysws_eligible?: boolean
+    verification_status?: string
+    primary_email?: string
+    slack_id?: string
+}
+
+interface HackClubMeResponse {
+    identity: HackClubIdentity
+    scopes: string[]
+}
+
+export function getAuthorizationUrl(): string {
+    const params = new URLSearchParams({
+        client_id: CLIENT_ID,
+        redirect_uri: REDIRECT_URI,
+        response_type: "code",
+        scope: "openid profile email slack_id verification_status"
+    })
+    return `${HACKCLUB_AUTH_URL}/oauth/authorize?${params.toString()}`
+}
+
+export async function exchangeCodeForTokens(code: string): Promise<OIDCTokenResponse | null> {
+    try {
+        const body = new URLSearchParams({
+            client_id: CLIENT_ID,
+            client_secret: CLIENT_SECRET,
+            redirect_uri: REDIRECT_URI,
+            code,
+            grant_type: "authorization_code"
+        })
+
+        const response = await fetch(`${HACKCLUB_AUTH_URL}/oauth/token`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body.toString()
+        })
+
+        if (!response.ok) {
+            console.error("Token exchange failed:", await response.text())
+            return null
+        }
+
+        return await response.json()
+    } catch (error) {
+        console.error("Token exchange error:", error)
+        return null
+    }
+}
+
+export async function fetchUserIdentity(accessToken: string): Promise<HackClubMeResponse | null> {
+    try {
+        const response = await fetch(`${HACKCLUB_AUTH_URL}/api/v1/me`, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`
+            }
+        })
+
+        if (!response.ok) {
+            console.error("[AUTH] Failed to fetch user identity:", await response.text())
+            return null
+        }
+
+        return await response.json()
+    } catch (error) {
+        console.error("[AUTH] Error fetching user identity:", error)
+        return null
+    }
+}
+
+export async function createOrUpdateUser(identity: HackClubIdentity, tokens: OIDCTokenResponse) {
+    if (!identity.ysws_eligible) {
+        throw new Error("not-eligible")
+    }
+
+    let username: string | null = null
+    let avatarUrl: string | null = null
+
+    if (identity.slack_id && process.env.SLACK_BOT_TOKEN) {
+        const slackProfile = await getSlackProfile(identity.slack_id, process.env.SLACK_BOT_TOKEN)
+        if (slackProfile) {
+            username = slackProfile.display_name || slackProfile.real_name || null
+            avatarUrl = getAvatarUrl(slackProfile)
+            console.log("[AUTH] Slack profile fetched:", { username, avatarUrl })
+        }
+    }
+
+    const existingUser = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.sub, identity.id))
+        .limit(1)
+
+    if (existingUser.length > 0) {
+        const updated = await db
+            .update(usersTable)
+            .set({
+                username,
+                email: identity.primary_email || existingUser[0].email,
+                slackId: identity.slack_id,
+                avatar: avatarUrl || existingUser[0].avatar,
+                accessToken: tokens.access_token,
+                refreshToken: tokens.refresh_token,
+                idToken: tokens.id_token,
+                updatedAt: new Date()
+            })
+            .where(eq(usersTable.sub, identity.id))
+            .returning()
+        return updated[0]
+    } else {
+        console.log("[AUTH] New user signup:", {
+            id: identity.id,
+            username,
+            email: identity.primary_email,
+            slackId: identity.slack_id
+        })
+        const newUser = await db
+            .insert(usersTable)
+            .values({
+                sub: identity.id,
+                slackId: identity.slack_id,
+                username,
+                email: identity.primary_email || "",
+                avatar: avatarUrl,
+                accessToken: tokens.access_token,
+                refreshToken: tokens.refresh_token,
+                idToken: tokens.id_token
+            })
+            .returning()
+        return newUser[0]
+    }
+}
+
+export async function createSession(userId: number): Promise<string> {
+    const token = crypto.randomUUID()
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    
+    await db.insert(sessionsTable).values({
+        token,
+        userId,
+        expiresAt
+    })
+    
+    return token
+}
+
+export async function getSessionUserId(token: string): Promise<number | null> {
+    const session = await db
+        .select()
+        .from(sessionsTable)
+        .where(and(
+            eq(sessionsTable.token, token),
+            gt(sessionsTable.expiresAt, new Date())
+        ))
+        .limit(1)
+    
+    if (!session[0]) return null
+    return session[0].userId
+}
+
+export async function deleteSession(token: string): Promise<void> {
+    await db.delete(sessionsTable).where(eq(sessionsTable.token, token))
+}
+
+export async function getUserFromSession(headers: Record<string, string | undefined>) {
+    const cookie = headers.cookie || ""
+    const match = cookie.match(/session=([^;]+)/)
+    if (!match) return null
+
+    const userId = await getSessionUserId(match[1])
+    if (!userId) return null
+
+    const user = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.id, userId))
+        .limit(1)
+
+    return user[0] || null
+}
+
+export async function checkUserEligibility(accessToken: string): Promise<{ yswsEligible: boolean; verificationStatus: string } | null> {
+    const identity = await fetchUserIdentity(accessToken)
+    if (!identity) return null
+
+    return {
+        yswsEligible: identity.identity.ysws_eligible ?? false,
+        verificationStatus: identity.identity.verification_status ?? 'unknown'
+    }
+}
