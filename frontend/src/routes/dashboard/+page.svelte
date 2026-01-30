@@ -3,7 +3,7 @@
 	import { FilePlus2, Pencil } from '@lucide/svelte'
 	import DashboardNavbar from '$lib/components/DashboardNavbar.svelte'
 	import ProjectModal from '$lib/components/ProjectModal.svelte'
-	import RandomPhrase from '$lib/components/RandomPhrase.svelte'
+	
 
 	interface Project {
 		id: number
@@ -23,7 +23,7 @@
 	}
 
 	let projects = $state<Project[]>([])
-	let news = $state<NewsItem[]>([])
+	let latestNews = $state<NewsItem | null>(null)
 	let selectedProject = $state<Project | null>(null)
 	let screws = $state(42)
 
@@ -50,18 +50,11 @@
 		}
 	]
 
-	const dummyNews: NewsItem[] = [
-		{
-			id: 1,
-			date: 'jan 21, 2026',
-			content: 'remember to stay drafty!'
-		},
-		{
-			id: 2,
-			date: 'jan 15, 2026',
-			content: 'new items added to the shop!'
-		}
-	]
+	const dummyLatestNews: NewsItem = {
+		id: 1,
+		date: 'jan 21, 2026',
+		content: 'remember to stay drafty!'
+	}
 
 	onMount(async () => {
 		// TODO: Replace with actual API call to /api/projects
@@ -71,10 +64,10 @@
 		// projects = await response.json()
 		projects = dummyProjects
 
-		// TODO: Replace with actual API call to /api/news
-		// const newsResponse = await fetch('/api/news')
-		// news = await newsResponse.json()
-		news = dummyNews
+		// TODO: Replace with actual API call to /api/news/latest
+		// const newsResponse = await fetch('/api/news/latest')
+		// latestNews = await newsResponse.json()
+		latestNews = dummyLatestNews
 
 		// TODO: Fetch user's screw count
 		// const userResponse = await fetch('/api/user')
@@ -148,38 +141,30 @@
 	</div>
 
 	<!-- News Section -->
-	<div class="mb-16">
-		{#each news as item (item.id)}
-			<div class="border-4 border-black rounded-2xl p-8 text-center mb-4">
-				<p class="text-lg font-bold mb-2">{item.date}</p>
-				<p class="text-2xl md:text-3xl font-bold">{item.content}</p>
+	{#if latestNews}
+		<div class="mb-16">
+			<div class="border-4 border-black rounded-2xl p-8 text-center">
+				<p class="text-lg font-bold mb-2">{latestNews.date}</p>
+				<p class="text-2xl md:text-3xl font-bold">{latestNews.content}</p>
 			</div>
-		{/each}
-	</div>
+		</div>
+	{/if}
 
 	<!-- Shop Sections -->
 	<div class="mb-16">
 		<h2 class="text-4xl font-bold mb-6">shop</h2>
 		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-			<div class="border-4 border-black rounded-2xl p-6">
+			<a href="/shop" class="border-4 border-black rounded-2xl p-6 hover:border-dashed transition-all">
 				<h3 class="text-2xl font-bold mb-2">items</h3>
 				<p class="text-gray-600">browse available scraps</p>
-			</div>
-			<div class="border-4 border-black rounded-2xl p-6">
+			</a>
+			<a href="/refinery" class="border-4 border-black rounded-2xl p-6 hover:border-dashed transition-all">
 				<h3 class="text-2xl font-bold mb-2">refinery</h3>
 				<p class="text-gray-600">upgrade your scraps</p>
-			</div>
+			</a>
 		</div>
 	</div>
 
-	<!-- Footer Branding -->
-	<div class="mt-16">
-		<h1 class="text-6xl md:text-8xl font-bold mb-2">scraps</h1>
-		<p class="text-xl md:text-2xl mb-4">
-			<RandomPhrase />
-		</p>
-		<p class="text-sm text-gray-600">made with &lt;3 by hack club</p>
-	</div>
 </div>
 
 <ProjectModal project={selectedProject} onClose={closeModal} onSave={handleSaveProject} />

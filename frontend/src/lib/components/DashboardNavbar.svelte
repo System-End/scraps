@@ -1,55 +1,77 @@
 <script lang="ts">
-	import { LayoutDashboard, Trophy, Store, Nut } from '@lucide/svelte'
+	import { page } from '$app/state'
+	import { LayoutDashboard, Trophy, Store, Flame, Send, Spool } from '@lucide/svelte'
 
 	let { screws = 0 }: { screws?: number } = $props()
 
-	let activeTab = $state('dashboard')
+	let currentPath = $derived(page.url.pathname)
 </script>
 
 <nav
-	class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 md:w-3/4 md:mx-auto md:left-1/2 md:-translate-x-1/2"
+	class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-white/90 backdrop-blur-sm"
 >
 	<a href="/">
 		<img src="/flag-standalone-bw.png" alt="Hack Club" class="h-8 md:h-10" />
 	</a>
 
 	<div class="flex items-center gap-2">
-		<button
-			onclick={() => (activeTab = 'dashboard')}
-			class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 {activeTab ===
-			'dashboard'
+		<a
+			href="/dashboard"
+			class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 {currentPath ===
+			'/dashboard'
 				? 'bg-black text-white border-black'
 				: 'border-black hover:border-dashed'}"
 		>
 			<LayoutDashboard size={18} />
 			<span class="text-lg font-bold">dashboard</span>
-		</button>
+		</a>
 
-		<button
-			onclick={() => (activeTab = 'leaderboard')}
-			class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 {activeTab ===
-			'leaderboard'
+		<a
+			href="/leaderboard"
+			class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 {currentPath ===
+			'/leaderboard'
 				? 'bg-black text-white border-black'
 				: 'border-black hover:border-dashed'}"
 		>
 			<Trophy size={18} />
 			<span class="text-lg font-bold">leaderboard</span>
-		</button>
+		</a>
 
-		<button
-			onclick={() => (activeTab = 'shop')}
-			class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 {activeTab ===
-			'shop'
+		<a
+			href="/shop"
+			class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 {currentPath ===
+			'/shop'
 				? 'bg-black text-white border-black'
 				: 'border-black hover:border-dashed'}"
 		>
 			<Store size={18} />
 			<span class="text-lg font-bold">shop</span>
-		</button>
+		</a>
+
+		<a
+			href="/refinery"
+			class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 {currentPath ===
+			'/refinery'
+				? 'bg-black text-white border-black'
+				: 'border-black hover:border-dashed'}"
+		>
+			<Flame size={18} />
+			<span class="text-lg font-bold">refinery</span>
+		</a>
+
+		<a
+			href="https://forms.hackclub.com/t/58ZE2tdz5bus"
+			target="_blank"
+			rel="noopener noreferrer"
+			class="flex items-center gap-2 px-6 py-2 border-4 border-black rounded-full transition-all duration-300 hover:border-dashed"
+		>
+			<Send size={18} />
+			<span class="text-lg font-bold">submit</span>
+		</a>
 	</div>
 
-	<div class="flex items-center gap-2">
-		<Nut size={24} />
-		<span class="text-xl font-bold">{screws}</span>
+	<div class="flex items-center gap-2 px-6 py-2 border-4 border-black rounded-full">
+		<Spool size={20} />
+		<span class="text-lg font-bold">{screws}</span>
 	</div>
 </nav>

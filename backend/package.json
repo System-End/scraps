@@ -1,28 +1,21 @@
 {
-  "name": "backend",
-  "module": "index.ts",
-  "type": "module",
-  "private": true,
+  "name": "app",
+  "version": "1.0.50",
   "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "build": "bun build src/index.ts --target bun --outdir ./dist",
-    "start": "NODE_ENV=production bun dist/index.js",
-    "test": "bun test"
-  },
-  "devDependencies": {
-    "@types/bun": "^1.3.8",
-    "@types/pg": "^8.16.0",
-    "drizzle-kit": "^0.31.8",
-    "tsx": "^4.21.0"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "bun run --watch src/index.ts"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
-    "elysia": "^1.4.22",
-    "pg": "^8.17.2",
-    "redis": "^5.10.0"
-  }
+    "elysia": "latest",
+    "pg": "^8.17.2"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.16.0",
+    "bun-types": "latest",
+    "drizzle-kit": "^0.31.8",
+    "tsx": "^4.21.0"
+  },
+  "module": "src/index.js"
 }

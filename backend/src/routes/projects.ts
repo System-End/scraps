@@ -1,8 +1,8 @@
-import { Elysia } from "elysia";
+import { Elysia } from "elysia"
 
 const projects = new Elysia({
     prefix: "/projects"
-});
+})
 
 // GET /projects - Get all projects for the authenticated user
 projects.get("/", async ({ headers }) => {
@@ -34,7 +34,7 @@ projects.get("/", async ({ headers }) => {
             hackatimeUrl: "https://hackatime.hackclub.com/projects/flavortown"
         }
     ]
-});
+})
 
 // PUT /projects/:id - Update a project
 projects.put("/:id", async ({ params, body }) => {
@@ -43,7 +43,7 @@ projects.put("/:id", async ({ params, body }) => {
     // return project
 
     return { success: true, ...body }
-});
+})
 
 // POST /projects - Create a new project
 projects.post("/", async ({ body }) => {
@@ -52,6 +52,6 @@ projects.post("/", async ({ body }) => {
     // return project
 
     return { success: true, id: Date.now(), ...body }
-});
+})
 
-export default projects;
+export default projects
