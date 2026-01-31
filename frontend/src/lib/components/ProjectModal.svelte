@@ -11,6 +11,7 @@
 		githubUrl: string | null
 		hackatimeProject: string | null
 		hours: number
+		status: string
 	}
 
 	interface HackatimeProject {

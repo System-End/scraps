@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import { Flame, ArrowRight } from '@lucide/svelte'
-	import DashboardNavbar from '$lib/components/DashboardNavbar.svelte'
 	import { getUser } from '$lib/auth-client'
 
 	interface User {
@@ -11,6 +10,7 @@
 		avatar: string | null
 		slackId: string | null
 		scraps: number
+		role: string
 	}
 
 	let user = $state<User | null>(null)
@@ -68,8 +68,6 @@
 <svelte:head>
 	<title>refinery | scraps</title>
 </svelte:head>
-
-<DashboardNavbar {screws} {user} />
 
 <div class="pt-24 px-6 md:px-12 max-w-4xl mx-auto pb-24">
 	<div class="flex items-center gap-4 mb-4">

@@ -13,6 +13,8 @@ export const projectsTable = pgTable('projects', {
   githubUrl: varchar('github_url'),
   hackatimeProject: varchar('hackatime_project'),
   hours: real().default(0),
+  hoursOverride: real('hours_override'),
+  status: varchar().notNull().default('in_progress'),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()

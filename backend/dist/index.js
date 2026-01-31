@@ -28248,14 +28248,15 @@ var usersTable = pgTable("users", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   sub: varchar().notNull().unique(),
   slackId: varchar("slack_id"),
-  name: varchar(),
-  email: varchar().notNull(),
+  username: varchar(),
+  email: varchar(),
   avatar: varchar(),
-  yswsEligible: boolean("ysws_eligible").default(false),
-  verificationStatus: varchar("verification_status"),
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   idToken: text("id_token"),
+  scraps: integer().notNull().default(0),
+  role: varchar().notNull().default("member"),
+  internalNotes: text("internal_notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
@@ -28266,10 +28267,1809 @@ var projectsTable = pgTable("projects", {
   userId: integer("user_id").notNull().references(() => usersTable.id),
   name: varchar().notNull(),
   description: varchar().notNull(),
-  imageUrl: varchar().notNull(),
-  githubUrl: varchar().notNull(),
-  hours: integer().notNull(),
-  hackatimeUrl: varchar().notNull()
+  image: text(),
+  githubUrl: varchar("github_url"),
+  hackatimeProject: varchar("hackatime_project"),
+  hours: real().default(0),
+  hoursOverride: real("hours_override"),
+  status: varchar().notNull().default("in_progress"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+// src/schemas/reviews.ts
+var reviewsTable = pgTable("reviews", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  projectId: integer("project_id").notNull().references(() => projectsTable.id),
+  reviewerId: integer("reviewer_id").notNull().references(() => usersTable.id),
+  action: varchar().notNull(),
+  feedbackForAuthor: text("feedback_for_author").notNull(),
+  internalJustification: text("internal_justification"),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
+// node_modules/oauth4webapi/build/index.js
+var USER_AGENT;
+if (typeof navigator === "undefined" || !navigator.userAgent?.startsWith?.("Mozilla/5.0 ")) {
+  const NAME = "oauth4webapi";
+  const VERSION = "v3.8.3";
+  USER_AGENT = `${NAME}/${VERSION}`;
+}
+function looseInstanceOf(input, expected) {
+  if (input == null) {
+    return false;
+  }
+  try {
+    return input instanceof expected || Object.getPrototypeOf(input)[Symbol.toStringTag] === expected.prototype[Symbol.toStringTag];
+  } catch {
+    return false;
+  }
+}
+var ERR_INVALID_ARG_VALUE = "ERR_INVALID_ARG_VALUE";
+var ERR_INVALID_ARG_TYPE = "ERR_INVALID_ARG_TYPE";
+function CodedTypeError(message, code, cause) {
+  const err = new TypeError(message, { cause });
+  Object.assign(err, { code });
+  return err;
+}
+var allowInsecureRequests = Symbol();
+var clockSkew = Symbol();
+var clockTolerance = Symbol();
+var customFetch = Symbol();
+var modifyAssertion = Symbol();
+var jweDecrypt = Symbol();
+var jwksCache = Symbol();
+var encoder2 = new TextEncoder;
+var decoder = new TextDecoder;
+function buf(input) {
+  if (typeof input === "string") {
+    return encoder2.encode(input);
+  }
+  return decoder.decode(input);
+}
+var encodeBase64Url;
+if (Uint8Array.prototype.toBase64) {
+  encodeBase64Url = (input) => {
+    if (input instanceof ArrayBuffer) {
+      input = new Uint8Array(input);
+    }
+    return input.toBase64({ alphabet: "base64url", omitPadding: true });
+  };
+} else {
+  const CHUNK_SIZE = 32768;
+  encodeBase64Url = (input) => {
+    if (input instanceof ArrayBuffer) {
+      input = new Uint8Array(input);
+    }
+    const arr = [];
+    for (let i = 0;i < input.byteLength; i += CHUNK_SIZE) {
+      arr.push(String.fromCharCode.apply(null, input.subarray(i, i + CHUNK_SIZE)));
+    }
+    return btoa(arr.join("")).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  };
+}
+var decodeBase64Url;
+if (Uint8Array.fromBase64) {
+  decodeBase64Url = (input) => {
+    try {
+      return Uint8Array.fromBase64(input, { alphabet: "base64url" });
+    } catch (cause) {
+      throw CodedTypeError("The input to be decoded is not correctly encoded.", ERR_INVALID_ARG_VALUE, cause);
+    }
+  };
+} else {
+  decodeBase64Url = (input) => {
+    try {
+      const binary = atob(input.replace(/-/g, "+").replace(/_/g, "/").replace(/\s/g, ""));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0;i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
+    } catch (cause) {
+      throw CodedTypeError("The input to be decoded is not correctly encoded.", ERR_INVALID_ARG_VALUE, cause);
+    }
+  };
+}
+function b64u(input) {
+  if (typeof input === "string") {
+    return decodeBase64Url(input);
+  }
+  return encodeBase64Url(input);
+}
+
+class UnsupportedOperationError extends Error {
+  code;
+  constructor(message, options) {
+    super(message, options);
+    this.name = this.constructor.name;
+    this.code = UNSUPPORTED_OPERATION;
+    Error.captureStackTrace?.(this, this.constructor);
+  }
+}
+
+class OperationProcessingError extends Error {
+  code;
+  constructor(message, options) {
+    super(message, options);
+    this.name = this.constructor.name;
+    if (options?.code) {
+      this.code = options?.code;
+    }
+    Error.captureStackTrace?.(this, this.constructor);
+  }
+}
+function OPE(message, code, cause) {
+  return new OperationProcessingError(message, { code, cause });
+}
+async function calculateJwkThumbprint(jwk) {
+  let components;
+  switch (jwk.kty) {
+    case "EC":
+      components = {
+        crv: jwk.crv,
+        kty: jwk.kty,
+        x: jwk.x,
+        y: jwk.y
+      };
+      break;
+    case "OKP":
+      components = {
+        crv: jwk.crv,
+        kty: jwk.kty,
+        x: jwk.x
+      };
+      break;
+    case "AKP":
+      components = {
+        alg: jwk.alg,
+        kty: jwk.kty,
+        pub: jwk.pub
+      };
+      break;
+    case "RSA":
+      components = {
+        e: jwk.e,
+        kty: jwk.kty,
+        n: jwk.n
+      };
+      break;
+    default:
+      throw new UnsupportedOperationError("unsupported JWK key type", { cause: jwk });
+  }
+  return b64u(await crypto.subtle.digest("SHA-256", buf(JSON.stringify(components))));
+}
+function assertCryptoKey(key, it) {
+  if (!(key instanceof CryptoKey)) {
+    throw CodedTypeError(`${it} must be a CryptoKey`, ERR_INVALID_ARG_TYPE);
+  }
+}
+function assertPrivateKey(key, it) {
+  assertCryptoKey(key, it);
+  if (key.type !== "private") {
+    throw CodedTypeError(`${it} must be a private CryptoKey`, ERR_INVALID_ARG_VALUE);
+  }
+}
+function assertPublicKey(key, it) {
+  assertCryptoKey(key, it);
+  if (key.type !== "public") {
+    throw CodedTypeError(`${it} must be a public CryptoKey`, ERR_INVALID_ARG_VALUE);
+  }
+}
+function isJsonObject(input) {
+  if (input === null || typeof input !== "object" || Array.isArray(input)) {
+    return false;
+  }
+  return true;
+}
+function prepareHeaders(input) {
+  if (looseInstanceOf(input, Headers)) {
+    input = Object.fromEntries(input.entries());
+  }
+  const headers = new Headers(input ?? {});
+  if (USER_AGENT && !headers.has("user-agent")) {
+    headers.set("user-agent", USER_AGENT);
+  }
+  if (headers.has("authorization")) {
+    throw CodedTypeError('"options.headers" must not include the "authorization" header name', ERR_INVALID_ARG_VALUE);
+  }
+  return headers;
+}
+function signal(url, value) {
+  if (value !== undefined) {
+    if (typeof value === "function") {
+      value = value(url.href);
+    }
+    if (!(value instanceof AbortSignal)) {
+      throw CodedTypeError('"options.signal" must return or be an instance of AbortSignal', ERR_INVALID_ARG_TYPE);
+    }
+    return value;
+  }
+  return;
+}
+function replaceDoubleSlash(pathname) {
+  if (pathname.includes("//")) {
+    return pathname.replace("//", "/");
+  }
+  return pathname;
+}
+function prependWellKnown(url, wellKnown, allowTerminatingSlash = false) {
+  if (url.pathname === "/") {
+    url.pathname = wellKnown;
+  } else {
+    url.pathname = replaceDoubleSlash(`${wellKnown}/${allowTerminatingSlash ? url.pathname : url.pathname.replace(/(\/)$/, "")}`);
+  }
+  return url;
+}
+function appendWellKnown(url, wellKnown) {
+  url.pathname = replaceDoubleSlash(`${url.pathname}/${wellKnown}`);
+  return url;
+}
+async function performDiscovery(input, urlName, transform2, options) {
+  if (!(input instanceof URL)) {
+    throw CodedTypeError(`"${urlName}" must be an instance of URL`, ERR_INVALID_ARG_TYPE);
+  }
+  checkProtocol(input, options?.[allowInsecureRequests] !== true);
+  const url = transform2(new URL(input.href));
+  const headers = prepareHeaders(options?.headers);
+  headers.set("accept", "application/json");
+  return (options?.[customFetch] || fetch)(url.href, {
+    body: undefined,
+    headers: Object.fromEntries(headers.entries()),
+    method: "GET",
+    redirect: "manual",
+    signal: signal(url, options?.signal)
+  });
+}
+async function discoveryRequest(issuerIdentifier, options) {
+  return performDiscovery(issuerIdentifier, "issuerIdentifier", (url) => {
+    switch (options?.algorithm) {
+      case undefined:
+      case "oidc":
+        appendWellKnown(url, ".well-known/openid-configuration");
+        break;
+      case "oauth2":
+        prependWellKnown(url, ".well-known/oauth-authorization-server");
+        break;
+      default:
+        throw CodedTypeError('"options.algorithm" must be "oidc" (default), or "oauth2"', ERR_INVALID_ARG_VALUE);
+    }
+    return url;
+  }, options);
+}
+function assertNumber(input, allow0, it, code, cause) {
+  try {
+    if (typeof input !== "number" || !Number.isFinite(input)) {
+      throw CodedTypeError(`${it} must be a number`, ERR_INVALID_ARG_TYPE, cause);
+    }
+    if (input > 0)
+      return;
+    if (allow0) {
+      if (input !== 0) {
+        throw CodedTypeError(`${it} must be a non-negative number`, ERR_INVALID_ARG_VALUE, cause);
+      }
+      return;
+    }
+    throw CodedTypeError(`${it} must be a positive number`, ERR_INVALID_ARG_VALUE, cause);
+  } catch (err) {
+    if (code) {
+      throw OPE(err.message, code, cause);
+    }
+    throw err;
+  }
+}
+function assertString(input, it, code, cause) {
+  try {
+    if (typeof input !== "string") {
+      throw CodedTypeError(`${it} must be a string`, ERR_INVALID_ARG_TYPE, cause);
+    }
+    if (input.length === 0) {
+      throw CodedTypeError(`${it} must not be empty`, ERR_INVALID_ARG_VALUE, cause);
+    }
+  } catch (err) {
+    if (code) {
+      throw OPE(err.message, code, cause);
+    }
+    throw err;
+  }
+}
+async function processDiscoveryResponse(expectedIssuerIdentifier, response) {
+  const expected = expectedIssuerIdentifier;
+  if (!(expected instanceof URL) && expected !== _nodiscoverycheck) {
+    throw CodedTypeError('"expectedIssuerIdentifier" must be an instance of URL', ERR_INVALID_ARG_TYPE);
+  }
+  if (!looseInstanceOf(response, Response)) {
+    throw CodedTypeError('"response" must be an instance of Response', ERR_INVALID_ARG_TYPE);
+  }
+  if (response.status !== 200) {
+    throw OPE('"response" is not a conform Authorization Server Metadata response (unexpected HTTP status code)', RESPONSE_IS_NOT_CONFORM, response);
+  }
+  assertReadableResponse(response);
+  const json2 = await getResponseJsonBody(response);
+  assertString(json2.issuer, '"response" body "issuer" property', INVALID_RESPONSE, { body: json2 });
+  if (expected !== _nodiscoverycheck && new URL(json2.issuer).href !== expected.href) {
+    throw OPE('"response" body "issuer" property does not match the expected value', JSON_ATTRIBUTE_COMPARISON, { expected: expected.href, body: json2, attribute: "issuer" });
+  }
+  return json2;
+}
+function assertApplicationJson(response) {
+  assertContentType(response, "application/json");
+}
+function notJson(response, ...types3) {
+  let msg = '"response" content-type must be ';
+  if (types3.length > 2) {
+    const last = types3.pop();
+    msg += `${types3.join(", ")}, or ${last}`;
+  } else if (types3.length === 2) {
+    msg += `${types3[0]} or ${types3[1]}`;
+  } else {
+    msg += types3[0];
+  }
+  return OPE(msg, RESPONSE_IS_NOT_JSON, response);
+}
+function assertContentType(response, contentType) {
+  if (getContentType(response) !== contentType) {
+    throw notJson(response, contentType);
+  }
+}
+function randomBytes() {
+  return b64u(crypto.getRandomValues(new Uint8Array(32)));
+}
+function generateRandomCodeVerifier() {
+  return randomBytes();
+}
+function generateRandomState() {
+  return randomBytes();
+}
+async function calculatePKCECodeChallenge(codeVerifier) {
+  assertString(codeVerifier, "codeVerifier");
+  return b64u(await crypto.subtle.digest("SHA-256", buf(codeVerifier)));
+}
+function psAlg(key) {
+  switch (key.algorithm.hash.name) {
+    case "SHA-256":
+      return "PS256";
+    case "SHA-384":
+      return "PS384";
+    case "SHA-512":
+      return "PS512";
+    default:
+      throw new UnsupportedOperationError("unsupported RsaHashedKeyAlgorithm hash name", {
+        cause: key
+      });
+  }
+}
+function rsAlg(key) {
+  switch (key.algorithm.hash.name) {
+    case "SHA-256":
+      return "RS256";
+    case "SHA-384":
+      return "RS384";
+    case "SHA-512":
+      return "RS512";
+    default:
+      throw new UnsupportedOperationError("unsupported RsaHashedKeyAlgorithm hash name", {
+        cause: key
+      });
+  }
+}
+function esAlg(key) {
+  switch (key.algorithm.namedCurve) {
+    case "P-256":
+      return "ES256";
+    case "P-384":
+      return "ES384";
+    case "P-521":
+      return "ES512";
+    default:
+      throw new UnsupportedOperationError("unsupported EcKeyAlgorithm namedCurve", { cause: key });
+  }
+}
+function keyToJws(key) {
+  switch (key.algorithm.name) {
+    case "RSA-PSS":
+      return psAlg(key);
+    case "RSASSA-PKCS1-v1_5":
+      return rsAlg(key);
+    case "ECDSA":
+      return esAlg(key);
+    case "Ed25519":
+    case "ML-DSA-44":
+    case "ML-DSA-65":
+    case "ML-DSA-87":
+      return key.algorithm.name;
+    case "EdDSA":
+      return "Ed25519";
+    default:
+      throw new UnsupportedOperationError("unsupported CryptoKey algorithm name", { cause: key });
+  }
+}
+function getClockSkew(client) {
+  const skew = client?.[clockSkew];
+  return typeof skew === "number" && Number.isFinite(skew) ? skew : 0;
+}
+function getClockTolerance(client) {
+  const tolerance = client?.[clockTolerance];
+  return typeof tolerance === "number" && Number.isFinite(tolerance) && Math.sign(tolerance) !== -1 ? tolerance : 30;
+}
+function epochTime() {
+  return Math.floor(Date.now() / 1000);
+}
+function assertAs(as) {
+  if (typeof as !== "object" || as === null) {
+    throw CodedTypeError('"as" must be an object', ERR_INVALID_ARG_TYPE);
+  }
+  assertString(as.issuer, '"as.issuer"');
+}
+function assertClient(client) {
+  if (typeof client !== "object" || client === null) {
+    throw CodedTypeError('"client" must be an object', ERR_INVALID_ARG_TYPE);
+  }
+  assertString(client.client_id, '"client.client_id"');
+}
+function ClientSecretPost(clientSecret) {
+  assertString(clientSecret, '"clientSecret"');
+  return (_as, client, body, _headers) => {
+    body.set("client_id", client.client_id);
+    body.set("client_secret", clientSecret);
+  };
+}
+function None() {
+  return (_as, client, body, _headers) => {
+    body.set("client_id", client.client_id);
+  };
+}
+async function signJwt(header, payload, key) {
+  if (!key.usages.includes("sign")) {
+    throw CodedTypeError('CryptoKey instances used for signing assertions must include "sign" in their "usages"', ERR_INVALID_ARG_VALUE);
+  }
+  const input = `${b64u(buf(JSON.stringify(header)))}.${b64u(buf(JSON.stringify(payload)))}`;
+  const signature = b64u(await crypto.subtle.sign(keyToSubtle(key), key, buf(input)));
+  return `${input}.${signature}`;
+}
+var jwkCache;
+async function getSetPublicJwkCache(key, alg) {
+  const { kty, e, n, x, y, crv, pub } = await crypto.subtle.exportKey("jwk", key);
+  const jwk = { kty, e, n, x, y, crv, pub };
+  if (kty === "AKP")
+    jwk.alg = alg;
+  jwkCache.set(key, jwk);
+  return jwk;
+}
+async function publicJwk(key, alg) {
+  jwkCache ||= new WeakMap;
+  return jwkCache.get(key) || getSetPublicJwkCache(key, alg);
+}
+var URLParse = URL.parse ? (url, base) => URL.parse(url, base) : (url, base) => {
+  try {
+    return new URL(url, base);
+  } catch {
+    return null;
+  }
+};
+function checkProtocol(url, enforceHttps) {
+  if (enforceHttps && url.protocol !== "https:") {
+    throw OPE("only requests to HTTPS are allowed", HTTP_REQUEST_FORBIDDEN, url);
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw OPE("only HTTP and HTTPS requests are allowed", REQUEST_PROTOCOL_FORBIDDEN, url);
+  }
+}
+function validateEndpoint(value, endpoint, useMtlsAlias, enforceHttps) {
+  let url;
+  if (typeof value !== "string" || !(url = URLParse(value))) {
+    throw OPE(`authorization server metadata does not contain a valid ${useMtlsAlias ? `"as.mtls_endpoint_aliases.${endpoint}"` : `"as.${endpoint}"`}`, value === undefined ? MISSING_SERVER_METADATA : INVALID_SERVER_METADATA, { attribute: useMtlsAlias ? `mtls_endpoint_aliases.${endpoint}` : endpoint });
+  }
+  checkProtocol(url, enforceHttps);
+  return url;
+}
+function resolveEndpoint(as, endpoint, useMtlsAlias, enforceHttps) {
+  if (useMtlsAlias && as.mtls_endpoint_aliases && endpoint in as.mtls_endpoint_aliases) {
+    return validateEndpoint(as.mtls_endpoint_aliases[endpoint], endpoint, useMtlsAlias, enforceHttps);
+  }
+  return validateEndpoint(as[endpoint], endpoint, useMtlsAlias, enforceHttps);
+}
+class DPoPHandler {
+  #header;
+  #privateKey;
+  #publicKey;
+  #clockSkew;
+  #modifyAssertion;
+  #map;
+  #jkt;
+  constructor(client, keyPair, options) {
+    assertPrivateKey(keyPair?.privateKey, '"DPoP.privateKey"');
+    assertPublicKey(keyPair?.publicKey, '"DPoP.publicKey"');
+    if (!keyPair.publicKey.extractable) {
+      throw CodedTypeError('"DPoP.publicKey.extractable" must be true', ERR_INVALID_ARG_VALUE);
+    }
+    this.#modifyAssertion = options?.[modifyAssertion];
+    this.#clockSkew = getClockSkew(client);
+    this.#privateKey = keyPair.privateKey;
+    this.#publicKey = keyPair.publicKey;
+    branded.add(this);
+  }
+  #get(key) {
+    this.#map ||= new Map;
+    let item = this.#map.get(key);
+    if (item) {
+      this.#map.delete(key);
+      this.#map.set(key, item);
+    }
+    return item;
+  }
+  #set(key, val) {
+    this.#map ||= new Map;
+    this.#map.delete(key);
+    if (this.#map.size === 100) {
+      this.#map.delete(this.#map.keys().next().value);
+    }
+    this.#map.set(key, val);
+  }
+  async calculateThumbprint() {
+    if (!this.#jkt) {
+      const jwk = await crypto.subtle.exportKey("jwk", this.#publicKey);
+      this.#jkt ||= await calculateJwkThumbprint(jwk);
+    }
+    return this.#jkt;
+  }
+  async addProof(url, headers, htm, accessToken) {
+    const alg = keyToJws(this.#privateKey);
+    this.#header ||= {
+      alg,
+      typ: "dpop+jwt",
+      jwk: await publicJwk(this.#publicKey, alg)
+    };
+    const nonce = this.#get(url.origin);
+    const now = epochTime() + this.#clockSkew;
+    const payload = {
+      iat: now,
+      jti: randomBytes(),
+      htm,
+      nonce,
+      htu: `${url.origin}${url.pathname}`,
+      ath: accessToken ? b64u(await crypto.subtle.digest("SHA-256", buf(accessToken))) : undefined
+    };
+    this.#modifyAssertion?.(this.#header, payload);
+    headers.set("dpop", await signJwt(this.#header, payload, this.#privateKey));
+  }
+  cacheNonce(response, url) {
+    try {
+      const nonce = response.headers.get("dpop-nonce");
+      if (nonce) {
+        this.#set(url.origin, nonce);
+      }
+    } catch {}
+  }
+}
+function isDPoPNonceError(err) {
+  if (err instanceof WWWAuthenticateChallengeError) {
+    const { 0: challenge, length } = err.cause;
+    return length === 1 && challenge.scheme === "dpop" && challenge.parameters.error === "use_dpop_nonce";
+  }
+  if (err instanceof ResponseBodyError) {
+    return err.error === "use_dpop_nonce";
+  }
+  return false;
+}
+class ResponseBodyError extends Error {
+  cause;
+  code;
+  error;
+  status;
+  error_description;
+  response;
+  constructor(message, options) {
+    super(message, options);
+    this.name = this.constructor.name;
+    this.code = RESPONSE_BODY_ERROR;
+    this.cause = options.cause;
+    this.error = options.cause.error;
+    this.status = options.response.status;
+    this.error_description = options.cause.error_description;
+    Object.defineProperty(this, "response", { enumerable: false, value: options.response });
+    Error.captureStackTrace?.(this, this.constructor);
+  }
+}
+
+class AuthorizationResponseError extends Error {
+  cause;
+  code;
+  error;
+  error_description;
+  constructor(message, options) {
+    super(message, options);
+    this.name = this.constructor.name;
+    this.code = AUTHORIZATION_RESPONSE_ERROR;
+    this.cause = options.cause;
+    this.error = options.cause.get("error");
+    this.error_description = options.cause.get("error_description") ?? undefined;
+    Error.captureStackTrace?.(this, this.constructor);
+  }
+}
+
+class WWWAuthenticateChallengeError extends Error {
+  cause;
+  code;
+  response;
+  status;
+  constructor(message, options) {
+    super(message, options);
+    this.name = this.constructor.name;
+    this.code = WWW_AUTHENTICATE_CHALLENGE;
+    this.cause = options.cause;
+    this.status = options.response.status;
+    this.response = options.response;
+    Object.defineProperty(this, "response", { enumerable: false });
+    Error.captureStackTrace?.(this, this.constructor);
+  }
+}
+var tokenMatch = "[a-zA-Z0-9!#$%&\\'\\*\\+\\-\\.\\^_`\\|~]+";
+var token68Match = "[a-zA-Z0-9\\-\\._\\~\\+\\/]+={0,2}";
+var quotedMatch = '"((?:[^"\\\\]|\\\\[\\s\\S])*)"';
+var quotedParamMatcher = "(" + tokenMatch + ")\\s*=\\s*" + quotedMatch;
+var paramMatcher = "(" + tokenMatch + ")\\s*=\\s*(" + tokenMatch + ")";
+var schemeRE = new RegExp("^[,\\s]*(" + tokenMatch + ")");
+var quotedParamRE = new RegExp("^[,\\s]*" + quotedParamMatcher + "[,\\s]*(.*)");
+var unquotedParamRE = new RegExp("^[,\\s]*" + paramMatcher + "[,\\s]*(.*)");
+var token68ParamRE = new RegExp("^(" + token68Match + ")(?:$|[,\\s])(.*)");
+function parseWwwAuthenticateChallenges(response) {
+  if (!looseInstanceOf(response, Response)) {
+    throw CodedTypeError('"response" must be an instance of Response', ERR_INVALID_ARG_TYPE);
+  }
+  const header = response.headers.get("www-authenticate");
+  if (header === null) {
+    return;
+  }
+  const challenges = [];
+  let rest = header;
+  while (rest) {
+    let match = rest.match(schemeRE);
+    const scheme = match?.["1"].toLowerCase();
+    if (!scheme) {
+      return;
+    }
+    const afterScheme = rest.substring(match[0].length);
+    if (afterScheme && !afterScheme.match(/^[\s,]/)) {
+      return;
+    }
+    const spaceMatch = afterScheme.match(/^\s+(.*)$/);
+    const hasParameters = !!spaceMatch;
+    rest = spaceMatch ? spaceMatch[1] : undefined;
+    const parameters = {};
+    let token68;
+    if (hasParameters) {
+      while (rest) {
+        let key;
+        let value;
+        if (match = rest.match(quotedParamRE)) {
+          [, key, value, rest] = match;
+          if (value.includes("\\")) {
+            try {
+              value = JSON.parse(`"${value}"`);
+            } catch {}
+          }
+          parameters[key.toLowerCase()] = value;
+          continue;
+        }
+        if (match = rest.match(unquotedParamRE)) {
+          [, key, value, rest] = match;
+          parameters[key.toLowerCase()] = value;
+          continue;
+        }
+        if (match = rest.match(token68ParamRE)) {
+          if (Object.keys(parameters).length) {
+            break;
+          }
+          [, token68, rest] = match;
+          break;
+        }
+        return;
+      }
+    } else {
+      rest = afterScheme || undefined;
+    }
+    const challenge = { scheme, parameters };
+    if (token68) {
+      challenge.token68 = token68;
+    }
+    challenges.push(challenge);
+  }
+  if (!challenges.length) {
+    return;
+  }
+  return challenges;
+}
+async function parseOAuthResponseErrorBody(response) {
+  if (response.status > 399 && response.status < 500) {
+    assertReadableResponse(response);
+    assertApplicationJson(response);
+    try {
+      const json2 = await response.clone().json();
+      if (isJsonObject(json2) && typeof json2.error === "string" && json2.error.length) {
+        return json2;
+      }
+    } catch {}
+  }
+  return;
+}
+async function checkOAuthBodyError(response, expected, label) {
+  if (response.status !== expected) {
+    checkAuthenticationChallenges(response);
+    let err;
+    if (err = await parseOAuthResponseErrorBody(response)) {
+      await response.body?.cancel();
+      throw new ResponseBodyError("server responded with an error in the response body", {
+        cause: err,
+        response
+      });
+    }
+    throw OPE(`"response" is not a conform ${label} response (unexpected HTTP status code)`, RESPONSE_IS_NOT_CONFORM, response);
+  }
+}
+function assertDPoP(option) {
+  if (!branded.has(option)) {
+    throw CodedTypeError('"options.DPoP" is not a valid DPoPHandle', ERR_INVALID_ARG_VALUE);
+  }
+}
+async function resourceRequest(accessToken, method, url, headers, body, options) {
+  assertString(accessToken, '"accessToken"');
+  if (!(url instanceof URL)) {
+    throw CodedTypeError('"url" must be an instance of URL', ERR_INVALID_ARG_TYPE);
+  }
+  checkProtocol(url, options?.[allowInsecureRequests] !== true);
+  headers = prepareHeaders(headers);
+  if (options?.DPoP) {
+    assertDPoP(options.DPoP);
+    await options.DPoP.addProof(url, headers, method.toUpperCase(), accessToken);
+  }
+  headers.set("authorization", `${headers.has("dpop") ? "DPoP" : "Bearer"} ${accessToken}`);
+  const response = await (options?.[customFetch] || fetch)(url.href, {
+    body,
+    headers: Object.fromEntries(headers.entries()),
+    method,
+    redirect: "manual",
+    signal: signal(url, options?.signal)
+  });
+  options?.DPoP?.cacheNonce(response, url);
+  return response;
+}
+async function protectedResourceRequest(accessToken, method, url, headers, body, options) {
+  const response = await resourceRequest(accessToken, method, url, headers, body, options);
+  checkAuthenticationChallenges(response);
+  return response;
+}
+var skipSubjectCheck = Symbol();
+function getContentType(input) {
+  return input.headers.get("content-type")?.split(";")[0];
+}
+async function authenticatedRequest(as, client, clientAuthentication, url, body, headers, options) {
+  await clientAuthentication(as, client, body, headers);
+  headers.set("content-type", "application/x-www-form-urlencoded;charset=UTF-8");
+  return (options?.[customFetch] || fetch)(url.href, {
+    body,
+    headers: Object.fromEntries(headers.entries()),
+    method: "POST",
+    redirect: "manual",
+    signal: signal(url, options?.signal)
+  });
+}
+async function tokenEndpointRequest(as, client, clientAuthentication, grantType, parameters, options) {
+  const url = resolveEndpoint(as, "token_endpoint", client.use_mtls_endpoint_aliases, options?.[allowInsecureRequests] !== true);
+  parameters.set("grant_type", grantType);
+  const headers = prepareHeaders(options?.headers);
+  headers.set("accept", "application/json");
+  if (options?.DPoP !== undefined) {
+    assertDPoP(options.DPoP);
+    await options.DPoP.addProof(url, headers, "POST");
+  }
+  const response = await authenticatedRequest(as, client, clientAuthentication, url, parameters, headers, options);
+  options?.DPoP?.cacheNonce(response, url);
+  return response;
+}
+var idTokenClaims = new WeakMap;
+var jwtRefs = new WeakMap;
+function getValidatedIdTokenClaims(ref) {
+  if (!ref.id_token) {
+    return;
+  }
+  const claims = idTokenClaims.get(ref);
+  if (!claims) {
+    throw CodedTypeError('"ref" was already garbage collected or did not resolve from the proper sources', ERR_INVALID_ARG_VALUE);
+  }
+  return claims;
+}
+async function processGenericAccessTokenResponse(as, client, response, additionalRequiredIdTokenClaims, decryptFn, recognizedTokenTypes) {
+  assertAs(as);
+  assertClient(client);
+  if (!looseInstanceOf(response, Response)) {
+    throw CodedTypeError('"response" must be an instance of Response', ERR_INVALID_ARG_TYPE);
+  }
+  await checkOAuthBodyError(response, 200, "Token Endpoint");
+  assertReadableResponse(response);
+  const json2 = await getResponseJsonBody(response);
+  assertString(json2.access_token, '"response" body "access_token" property', INVALID_RESPONSE, {
+    body: json2
+  });
+  assertString(json2.token_type, '"response" body "token_type" property', INVALID_RESPONSE, {
+    body: json2
+  });
+  json2.token_type = json2.token_type.toLowerCase();
+  if (json2.expires_in !== undefined) {
+    let expiresIn = typeof json2.expires_in !== "number" ? parseFloat(json2.expires_in) : json2.expires_in;
+    assertNumber(expiresIn, true, '"response" body "expires_in" property', INVALID_RESPONSE, {
+      body: json2
+    });
+    json2.expires_in = expiresIn;
+  }
+  if (json2.refresh_token !== undefined) {
+    assertString(json2.refresh_token, '"response" body "refresh_token" property', INVALID_RESPONSE, {
+      body: json2
+    });
+  }
+  if (json2.scope !== undefined && typeof json2.scope !== "string") {
+    throw OPE('"response" body "scope" property must be a string', INVALID_RESPONSE, { body: json2 });
+  }
+  if (json2.id_token !== undefined) {
+    assertString(json2.id_token, '"response" body "id_token" property', INVALID_RESPONSE, {
+      body: json2
+    });
+    const requiredClaims = ["aud", "exp", "iat", "iss", "sub"];
+    if (client.require_auth_time === true) {
+      requiredClaims.push("auth_time");
+    }
+    if (client.default_max_age !== undefined) {
+      assertNumber(client.default_max_age, true, '"client.default_max_age"');
+      requiredClaims.push("auth_time");
+    }
+    if (additionalRequiredIdTokenClaims?.length) {
+      requiredClaims.push(...additionalRequiredIdTokenClaims);
+    }
+    const { claims, jwt } = await validateJwt(json2.id_token, checkSigningAlgorithm.bind(undefined, client.id_token_signed_response_alg, as.id_token_signing_alg_values_supported, "RS256"), getClockSkew(client), getClockTolerance(client), decryptFn).then(validatePresence.bind(undefined, requiredClaims)).then(validateIssuer.bind(undefined, as)).then(validateAudience.bind(undefined, client.client_id));
+    if (Array.isArray(claims.aud) && claims.aud.length !== 1) {
+      if (claims.azp === undefined) {
+        throw OPE('ID Token "aud" (audience) claim includes additional untrusted audiences', JWT_CLAIM_COMPARISON, { claims, claim: "aud" });
+      }
+      if (claims.azp !== client.client_id) {
+        throw OPE('unexpected ID Token "azp" (authorized party) claim value', JWT_CLAIM_COMPARISON, { expected: client.client_id, claims, claim: "azp" });
+      }
+    }
+    if (claims.auth_time !== undefined) {
+      assertNumber(claims.auth_time, true, 'ID Token "auth_time" (authentication time)', INVALID_RESPONSE, { claims });
+    }
+    jwtRefs.set(response, jwt);
+    idTokenClaims.set(json2, claims);
+  }
+  if (recognizedTokenTypes?.[json2.token_type] !== undefined) {
+    recognizedTokenTypes[json2.token_type](response, json2);
+  } else if (json2.token_type !== "dpop" && json2.token_type !== "bearer") {
+    throw new UnsupportedOperationError("unsupported `token_type` value", { cause: { body: json2 } });
+  }
+  return json2;
+}
+function checkAuthenticationChallenges(response) {
+  let challenges;
+  if (challenges = parseWwwAuthenticateChallenges(response)) {
+    throw new WWWAuthenticateChallengeError("server responded with a challenge in the WWW-Authenticate HTTP Header", { cause: challenges, response });
+  }
+}
+function validateAudience(expected, result) {
+  if (Array.isArray(result.claims.aud)) {
+    if (!result.claims.aud.includes(expected)) {
+      throw OPE('unexpected JWT "aud" (audience) claim value', JWT_CLAIM_COMPARISON, {
+        expected,
+        claims: result.claims,
+        claim: "aud"
+      });
+    }
+  } else if (result.claims.aud !== expected) {
+    throw OPE('unexpected JWT "aud" (audience) claim value', JWT_CLAIM_COMPARISON, {
+      expected,
+      claims: result.claims,
+      claim: "aud"
+    });
+  }
+  return result;
+}
+function validateIssuer(as, result) {
+  const expected = as[_expectedIssuer]?.(result) ?? as.issuer;
+  if (result.claims.iss !== expected) {
+    throw OPE('unexpected JWT "iss" (issuer) claim value', JWT_CLAIM_COMPARISON, {
+      expected,
+      claims: result.claims,
+      claim: "iss"
+    });
+  }
+  return result;
+}
+var branded = new WeakSet;
+function brand(searchParams) {
+  branded.add(searchParams);
+  return searchParams;
+}
+var nopkce = Symbol();
+async function authorizationCodeGrantRequest(as, client, clientAuthentication, callbackParameters, redirectUri, codeVerifier, options) {
+  assertAs(as);
+  assertClient(client);
+  if (!branded.has(callbackParameters)) {
+    throw CodedTypeError('"callbackParameters" must be an instance of URLSearchParams obtained from "validateAuthResponse()", or "validateJwtAuthResponse()', ERR_INVALID_ARG_VALUE);
+  }
+  assertString(redirectUri, '"redirectUri"');
+  const code = getURLSearchParameter(callbackParameters, "code");
+  if (!code) {
+    throw OPE('no authorization code in "callbackParameters"', INVALID_RESPONSE);
+  }
+  const parameters = new URLSearchParams(options?.additionalParameters);
+  parameters.set("redirect_uri", redirectUri);
+  parameters.set("code", code);
+  if (codeVerifier !== nopkce) {
+    assertString(codeVerifier, '"codeVerifier"');
+    parameters.set("code_verifier", codeVerifier);
+  }
+  return tokenEndpointRequest(as, client, clientAuthentication, "authorization_code", parameters, options);
+}
+var jwtClaimNames = {
+  aud: "audience",
+  c_hash: "code hash",
+  client_id: "client id",
+  exp: "expiration time",
+  iat: "issued at",
+  iss: "issuer",
+  jti: "jwt id",
+  nonce: "nonce",
+  s_hash: "state hash",
+  sub: "subject",
+  ath: "access token hash",
+  htm: "http method",
+  htu: "http uri",
+  cnf: "confirmation",
+  auth_time: "authentication time"
+};
+function validatePresence(required, result) {
+  for (const claim of required) {
+    if (result.claims[claim] === undefined) {
+      throw OPE(`JWT "${claim}" (${jwtClaimNames[claim]}) claim missing`, INVALID_RESPONSE, {
+        claims: result.claims
+      });
+    }
+  }
+  return result;
+}
+var expectNoNonce = Symbol();
+var skipAuthTimeCheck = Symbol();
+async function processAuthorizationCodeResponse(as, client, response, options) {
+  if (typeof options?.expectedNonce === "string" || typeof options?.maxAge === "number" || options?.requireIdToken) {
+    return processAuthorizationCodeOpenIDResponse(as, client, response, options.expectedNonce, options.maxAge, options[jweDecrypt], options.recognizedTokenTypes);
+  }
+  return processAuthorizationCodeOAuth2Response(as, client, response, options?.[jweDecrypt], options?.recognizedTokenTypes);
+}
+async function processAuthorizationCodeOpenIDResponse(as, client, response, expectedNonce, maxAge, decryptFn, recognizedTokenTypes) {
+  const additionalRequiredClaims = [];
+  switch (expectedNonce) {
+    case undefined:
+      expectedNonce = expectNoNonce;
+      break;
+    case expectNoNonce:
+      break;
+    default:
+      assertString(expectedNonce, '"expectedNonce" argument');
+      additionalRequiredClaims.push("nonce");
+  }
+  maxAge ??= client.default_max_age;
+  switch (maxAge) {
+    case undefined:
+      maxAge = skipAuthTimeCheck;
+      break;
+    case skipAuthTimeCheck:
+      break;
+    default:
+      assertNumber(maxAge, true, '"maxAge" argument');
+      additionalRequiredClaims.push("auth_time");
+  }
+  const result = await processGenericAccessTokenResponse(as, client, response, additionalRequiredClaims, decryptFn, recognizedTokenTypes);
+  assertString(result.id_token, '"response" body "id_token" property', INVALID_RESPONSE, {
+    body: result
+  });
+  const claims = getValidatedIdTokenClaims(result);
+  if (maxAge !== skipAuthTimeCheck) {
+    const now = epochTime() + getClockSkew(client);
+    const tolerance = getClockTolerance(client);
+    if (claims.auth_time + maxAge < now - tolerance) {
+      throw OPE("too much time has elapsed since the last End-User authentication", JWT_TIMESTAMP_CHECK, { claims, now, tolerance, claim: "auth_time" });
+    }
+  }
+  if (expectedNonce === expectNoNonce) {
+    if (claims.nonce !== undefined) {
+      throw OPE('unexpected ID Token "nonce" claim value', JWT_CLAIM_COMPARISON, {
+        expected: undefined,
+        claims,
+        claim: "nonce"
+      });
+    }
+  } else if (claims.nonce !== expectedNonce) {
+    throw OPE('unexpected ID Token "nonce" claim value', JWT_CLAIM_COMPARISON, {
+      expected: expectedNonce,
+      claims,
+      claim: "nonce"
+    });
+  }
+  return result;
+}
+async function processAuthorizationCodeOAuth2Response(as, client, response, decryptFn, recognizedTokenTypes) {
+  const result = await processGenericAccessTokenResponse(as, client, response, undefined, decryptFn, recognizedTokenTypes);
+  const claims = getValidatedIdTokenClaims(result);
+  if (claims) {
+    if (client.default_max_age !== undefined) {
+      assertNumber(client.default_max_age, true, '"client.default_max_age"');
+      const now = epochTime() + getClockSkew(client);
+      const tolerance = getClockTolerance(client);
+      if (claims.auth_time + client.default_max_age < now - tolerance) {
+        throw OPE("too much time has elapsed since the last End-User authentication", JWT_TIMESTAMP_CHECK, { claims, now, tolerance, claim: "auth_time" });
+      }
+    }
+    if (claims.nonce !== undefined) {
+      throw OPE('unexpected ID Token "nonce" claim value', JWT_CLAIM_COMPARISON, {
+        expected: undefined,
+        claims,
+        claim: "nonce"
+      });
+    }
+  }
+  return result;
+}
+var WWW_AUTHENTICATE_CHALLENGE = "OAUTH_WWW_AUTHENTICATE_CHALLENGE";
+var RESPONSE_BODY_ERROR = "OAUTH_RESPONSE_BODY_ERROR";
+var UNSUPPORTED_OPERATION = "OAUTH_UNSUPPORTED_OPERATION";
+var AUTHORIZATION_RESPONSE_ERROR = "OAUTH_AUTHORIZATION_RESPONSE_ERROR";
+var PARSE_ERROR = "OAUTH_PARSE_ERROR";
+var INVALID_RESPONSE = "OAUTH_INVALID_RESPONSE";
+var RESPONSE_IS_NOT_JSON = "OAUTH_RESPONSE_IS_NOT_JSON";
+var RESPONSE_IS_NOT_CONFORM = "OAUTH_RESPONSE_IS_NOT_CONFORM";
+var HTTP_REQUEST_FORBIDDEN = "OAUTH_HTTP_REQUEST_FORBIDDEN";
+var REQUEST_PROTOCOL_FORBIDDEN = "OAUTH_REQUEST_PROTOCOL_FORBIDDEN";
+var JWT_TIMESTAMP_CHECK = "OAUTH_JWT_TIMESTAMP_CHECK_FAILED";
+var JWT_CLAIM_COMPARISON = "OAUTH_JWT_CLAIM_COMPARISON_FAILED";
+var JSON_ATTRIBUTE_COMPARISON = "OAUTH_JSON_ATTRIBUTE_COMPARISON_FAILED";
+var MISSING_SERVER_METADATA = "OAUTH_MISSING_SERVER_METADATA";
+var INVALID_SERVER_METADATA = "OAUTH_INVALID_SERVER_METADATA";
+function assertReadableResponse(response) {
+  if (response.bodyUsed) {
+    throw CodedTypeError('"response" body has been used already', ERR_INVALID_ARG_VALUE);
+  }
+}
+function checkRsaKeyAlgorithm(key) {
+  const { algorithm } = key;
+  if (typeof algorithm.modulusLength !== "number" || algorithm.modulusLength < 2048) {
+    throw new UnsupportedOperationError(`unsupported ${algorithm.name} modulusLength`, {
+      cause: key
+    });
+  }
+}
+function ecdsaHashName(key) {
+  const { algorithm } = key;
+  switch (algorithm.namedCurve) {
+    case "P-256":
+      return "SHA-256";
+    case "P-384":
+      return "SHA-384";
+    case "P-521":
+      return "SHA-512";
+    default:
+      throw new UnsupportedOperationError("unsupported ECDSA namedCurve", { cause: key });
+  }
+}
+function keyToSubtle(key) {
+  switch (key.algorithm.name) {
+    case "ECDSA":
+      return {
+        name: key.algorithm.name,
+        hash: ecdsaHashName(key)
+      };
+    case "RSA-PSS": {
+      checkRsaKeyAlgorithm(key);
+      switch (key.algorithm.hash.name) {
+        case "SHA-256":
+        case "SHA-384":
+        case "SHA-512":
+          return {
+            name: key.algorithm.name,
+            saltLength: parseInt(key.algorithm.hash.name.slice(-3), 10) >> 3
+          };
+        default:
+          throw new UnsupportedOperationError("unsupported RSA-PSS hash name", { cause: key });
+      }
+    }
+    case "RSASSA-PKCS1-v1_5":
+      checkRsaKeyAlgorithm(key);
+      return key.algorithm.name;
+    case "ML-DSA-44":
+    case "ML-DSA-65":
+    case "ML-DSA-87":
+    case "Ed25519":
+      return key.algorithm.name;
+  }
+  throw new UnsupportedOperationError("unsupported CryptoKey algorithm name", { cause: key });
+}
+async function validateJwt(jws, checkAlg, clockSkew2, clockTolerance2, decryptJwt) {
+  let { 0: protectedHeader, 1: payload, length } = jws.split(".");
+  if (length === 5) {
+    if (decryptJwt !== undefined) {
+      jws = await decryptJwt(jws);
+      ({ 0: protectedHeader, 1: payload, length } = jws.split("."));
+    } else {
+      throw new UnsupportedOperationError("JWE decryption is not configured", { cause: jws });
+    }
+  }
+  if (length !== 3) {
+    throw OPE("Invalid JWT", INVALID_RESPONSE, jws);
+  }
+  let header;
+  try {
+    header = JSON.parse(buf(b64u(protectedHeader)));
+  } catch (cause) {
+    throw OPE("failed to parse JWT Header body as base64url encoded JSON", PARSE_ERROR, cause);
+  }
+  if (!isJsonObject(header)) {
+    throw OPE("JWT Header must be a top level object", INVALID_RESPONSE, jws);
+  }
+  checkAlg(header);
+  if (header.crit !== undefined) {
+    throw new UnsupportedOperationError('no JWT "crit" header parameter extensions are supported', {
+      cause: { header }
+    });
+  }
+  let claims;
+  try {
+    claims = JSON.parse(buf(b64u(payload)));
+  } catch (cause) {
+    throw OPE("failed to parse JWT Payload body as base64url encoded JSON", PARSE_ERROR, cause);
+  }
+  if (!isJsonObject(claims)) {
+    throw OPE("JWT Payload must be a top level object", INVALID_RESPONSE, jws);
+  }
+  const now = epochTime() + clockSkew2;
+  if (claims.exp !== undefined) {
+    if (typeof claims.exp !== "number") {
+      throw OPE('unexpected JWT "exp" (expiration time) claim type', INVALID_RESPONSE, { claims });
+    }
+    if (claims.exp <= now - clockTolerance2) {
+      throw OPE('unexpected JWT "exp" (expiration time) claim value, expiration is past current timestamp', JWT_TIMESTAMP_CHECK, { claims, now, tolerance: clockTolerance2, claim: "exp" });
+    }
+  }
+  if (claims.iat !== undefined) {
+    if (typeof claims.iat !== "number") {
+      throw OPE('unexpected JWT "iat" (issued at) claim type', INVALID_RESPONSE, { claims });
+    }
+  }
+  if (claims.iss !== undefined) {
+    if (typeof claims.iss !== "string") {
+      throw OPE('unexpected JWT "iss" (issuer) claim type', INVALID_RESPONSE, { claims });
+    }
+  }
+  if (claims.nbf !== undefined) {
+    if (typeof claims.nbf !== "number") {
+      throw OPE('unexpected JWT "nbf" (not before) claim type', INVALID_RESPONSE, { claims });
+    }
+    if (claims.nbf > now + clockTolerance2) {
+      throw OPE('unexpected JWT "nbf" (not before) claim value', JWT_TIMESTAMP_CHECK, {
+        claims,
+        now,
+        tolerance: clockTolerance2,
+        claim: "nbf"
+      });
+    }
+  }
+  if (claims.aud !== undefined) {
+    if (typeof claims.aud !== "string" && !Array.isArray(claims.aud)) {
+      throw OPE('unexpected JWT "aud" (audience) claim type', INVALID_RESPONSE, { claims });
+    }
+  }
+  return { header, claims, jwt: jws };
+}
+async function consumeStream(request) {
+  if (request.bodyUsed) {
+    throw CodedTypeError("form_post Request instances must contain a readable body", ERR_INVALID_ARG_VALUE, { cause: request });
+  }
+  return request.text();
+}
+async function formPostResponse(request) {
+  if (request.method !== "POST") {
+    throw CodedTypeError("form_post responses are expected to use the POST method", ERR_INVALID_ARG_VALUE, { cause: request });
+  }
+  if (getContentType(request) !== "application/x-www-form-urlencoded") {
+    throw CodedTypeError("form_post responses are expected to use the application/x-www-form-urlencoded content-type", ERR_INVALID_ARG_VALUE, { cause: request });
+  }
+  return consumeStream(request);
+}
+function checkSigningAlgorithm(client, issuer, fallback, header) {
+  if (client !== undefined) {
+    if (typeof client === "string" ? header.alg !== client : !client.includes(header.alg)) {
+      throw OPE('unexpected JWT "alg" header parameter', INVALID_RESPONSE, {
+        header,
+        expected: client,
+        reason: "client configuration"
+      });
+    }
+    return;
+  }
+  if (Array.isArray(issuer)) {
+    if (!issuer.includes(header.alg)) {
+      throw OPE('unexpected JWT "alg" header parameter', INVALID_RESPONSE, {
+        header,
+        expected: issuer,
+        reason: "authorization server metadata"
+      });
+    }
+    return;
+  }
+  if (fallback !== undefined) {
+    if (typeof fallback === "string" ? header.alg !== fallback : typeof fallback === "function" ? !fallback(header.alg) : !fallback.includes(header.alg)) {
+      throw OPE('unexpected JWT "alg" header parameter', INVALID_RESPONSE, {
+        header,
+        expected: fallback,
+        reason: "default value"
+      });
+    }
+    return;
+  }
+  throw OPE('missing client or server configuration to verify used JWT "alg" header parameter', undefined, { client, issuer, fallback });
+}
+function getURLSearchParameter(parameters, name) {
+  const { 0: value, length } = parameters.getAll(name);
+  if (length > 1) {
+    throw OPE(`"${name}" parameter must be provided only once`, INVALID_RESPONSE);
+  }
+  return value;
+}
+var skipStateCheck = Symbol();
+var expectNoState = Symbol();
+function validateAuthResponse(as, client, parameters, expectedState) {
+  assertAs(as);
+  assertClient(client);
+  if (parameters instanceof URL) {
+    parameters = parameters.searchParams;
+  }
+  if (!(parameters instanceof URLSearchParams)) {
+    throw CodedTypeError('"parameters" must be an instance of URLSearchParams, or URL', ERR_INVALID_ARG_TYPE);
+  }
+  if (getURLSearchParameter(parameters, "response")) {
+    throw OPE('"parameters" contains a JARM response, use validateJwtAuthResponse() instead of validateAuthResponse()', INVALID_RESPONSE, { parameters });
+  }
+  const iss = getURLSearchParameter(parameters, "iss");
+  const state = getURLSearchParameter(parameters, "state");
+  if (!iss && as.authorization_response_iss_parameter_supported) {
+    throw OPE('response parameter "iss" (issuer) missing', INVALID_RESPONSE, { parameters });
+  }
+  if (iss && iss !== as.issuer) {
+    throw OPE('unexpected "iss" (issuer) response parameter value', INVALID_RESPONSE, {
+      expected: as.issuer,
+      parameters
+    });
+  }
+  switch (expectedState) {
+    case undefined:
+    case expectNoState:
+      if (state !== undefined) {
+        throw OPE('unexpected "state" response parameter encountered', INVALID_RESPONSE, {
+          expected: undefined,
+          parameters
+        });
+      }
+      break;
+    case skipStateCheck:
+      break;
+    default:
+      assertString(expectedState, '"expectedState" argument');
+      if (state !== expectedState) {
+        throw OPE(state === undefined ? 'response parameter "state" missing' : 'unexpected "state" response parameter value', INVALID_RESPONSE, { expected: expectedState, parameters });
+      }
+  }
+  const error = getURLSearchParameter(parameters, "error");
+  if (error) {
+    throw new AuthorizationResponseError("authorization response from the server is an error", {
+      cause: parameters
+    });
+  }
+  const id_token = getURLSearchParameter(parameters, "id_token");
+  const token = getURLSearchParameter(parameters, "token");
+  if (id_token !== undefined || token !== undefined) {
+    throw new UnsupportedOperationError("implicit and hybrid flows are not supported");
+  }
+  return brand(new URLSearchParams(parameters));
+}
+async function getResponseJsonBody(response, check2 = assertApplicationJson) {
+  let json2;
+  try {
+    json2 = await response.json();
+  } catch (cause) {
+    check2(response);
+    throw OPE('failed to parse "response" body as JSON', PARSE_ERROR, cause);
+  }
+  if (!isJsonObject(json2)) {
+    throw OPE('"response" body must be a top level object', INVALID_RESPONSE, { body: json2 });
+  }
+  return json2;
+}
+var _nodiscoverycheck = Symbol();
+var _expectedIssuer = Symbol();
+
+// node_modules/openid-client/build/index.js
+var headers;
+var USER_AGENT2;
+if (typeof navigator === "undefined" || !navigator.userAgent?.startsWith?.("Mozilla/5.0 ")) {
+  const NAME = "openid-client";
+  const VERSION = "v6.8.1";
+  USER_AGENT2 = `${NAME}/${VERSION}`;
+  headers = { "user-agent": USER_AGENT2 };
+}
+var int = (config) => {
+  return props.get(config);
+};
+var props;
+var tbi;
+function ClientSecretPost2(clientSecret) {
+  if (clientSecret !== undefined) {
+    return ClientSecretPost(clientSecret);
+  }
+  tbi ||= new WeakMap;
+  return (as, client, body, headers2) => {
+    let auth;
+    if (!(auth = tbi.get(client))) {
+      assertString2(client.client_secret, '"metadata.client_secret"');
+      auth = ClientSecretPost(client.client_secret);
+      tbi.set(client, auth);
+    }
+    return auth(as, client, body, headers2);
+  };
+}
+function assertString2(input, it) {
+  if (typeof input !== "string") {
+    throw CodedTypeError2(`${it} must be a string`, ERR_INVALID_ARG_TYPE2);
+  }
+  if (input.length === 0) {
+    throw CodedTypeError2(`${it} must not be empty`, ERR_INVALID_ARG_VALUE2);
+  }
+}
+function None2() {
+  return None();
+}
+var customFetch2 = customFetch;
+var ERR_INVALID_ARG_VALUE2 = "ERR_INVALID_ARG_VALUE";
+var ERR_INVALID_ARG_TYPE2 = "ERR_INVALID_ARG_TYPE";
+function CodedTypeError2(message, code, cause) {
+  const err = new TypeError(message, { cause });
+  Object.assign(err, { code });
+  return err;
+}
+function calculatePKCECodeChallenge2(codeVerifier) {
+  return calculatePKCECodeChallenge(codeVerifier);
+}
+function randomPKCECodeVerifier() {
+  return generateRandomCodeVerifier();
+}
+function randomState() {
+  return generateRandomState();
+}
+
+class ClientError extends Error {
+  code;
+  constructor(message, options) {
+    super(message, options);
+    this.name = this.constructor.name;
+    this.code = options?.code;
+    Error.captureStackTrace?.(this, this.constructor);
+  }
+}
+var decoder2 = new TextDecoder;
+function e(msg, cause, code) {
+  return new ClientError(msg, { cause, code });
+}
+function errorHandler(err) {
+  if (err instanceof TypeError || err instanceof ClientError || err instanceof ResponseBodyError || err instanceof AuthorizationResponseError || err instanceof WWWAuthenticateChallengeError) {
+    throw err;
+  }
+  if (err instanceof OperationProcessingError) {
+    switch (err.code) {
+      case HTTP_REQUEST_FORBIDDEN:
+        throw e("only requests to HTTPS are allowed", err, err.code);
+      case REQUEST_PROTOCOL_FORBIDDEN:
+        throw e("only requests to HTTP or HTTPS are allowed", err, err.code);
+      case RESPONSE_IS_NOT_CONFORM:
+        throw e("unexpected HTTP response status code", err.cause, err.code);
+      case RESPONSE_IS_NOT_JSON:
+        throw e("unexpected response content-type", err.cause, err.code);
+      case PARSE_ERROR:
+        throw e("parsing error occured", err, err.code);
+      case INVALID_RESPONSE:
+        throw e("invalid response encountered", err, err.code);
+      case JWT_CLAIM_COMPARISON:
+        throw e("unexpected JWT claim value encountered", err, err.code);
+      case JSON_ATTRIBUTE_COMPARISON:
+        throw e("unexpected JSON attribute value encountered", err, err.code);
+      case JWT_TIMESTAMP_CHECK:
+        throw e("JWT timestamp claim value failed validation", err, err.code);
+      default:
+        throw e(err.message, err, err.code);
+    }
+  }
+  if (err instanceof UnsupportedOperationError) {
+    throw e("unsupported operation", err, err.code);
+  }
+  if (err instanceof DOMException) {
+    switch (err.name) {
+      case "OperationError":
+        throw e("runtime operation error", err, UNSUPPORTED_OPERATION);
+      case "NotSupportedError":
+        throw e("runtime unsupported operation", err, UNSUPPORTED_OPERATION);
+      case "TimeoutError":
+        throw e("operation timed out", err, "OAUTH_TIMEOUT");
+      case "AbortError":
+        throw e("operation aborted", err, "OAUTH_ABORT");
+    }
+  }
+  throw new ClientError("something went wrong", { cause: err });
+}
+function handleEntraId(server, as, options) {
+  if (server.origin === "https://login.microsoftonline.com" && (!options?.algorithm || options.algorithm === "oidc")) {
+    as[kEntraId] = true;
+    return true;
+  }
+  return false;
+}
+function handleB2Clogin(server, options) {
+  if (server.hostname.endsWith(".b2clogin.com") && (!options?.algorithm || options.algorithm === "oidc")) {
+    return true;
+  }
+  return false;
+}
+async function discovery(server, clientId, metadata, clientAuthentication, options) {
+  const as = await performDiscovery2(server, options);
+  const instance = new Configuration(as, clientId, metadata, clientAuthentication);
+  let internals = int(instance);
+  if (options?.[customFetch2]) {
+    internals.fetch = options[customFetch2];
+  }
+  if (options?.timeout) {
+    internals.timeout = options.timeout;
+  }
+  if (options?.execute) {
+    for (const extension of options.execute) {
+      extension(instance);
+    }
+  }
+  return instance;
+}
+async function performDiscovery2(server, options) {
+  if (!(server instanceof URL)) {
+    throw CodedTypeError2('"server" must be an instance of URL', ERR_INVALID_ARG_TYPE2);
+  }
+  const resolve = !server.href.includes("/.well-known/");
+  const timeout = options?.timeout ?? 30;
+  const signal2 = AbortSignal.timeout(timeout * 1000);
+  const as = await (resolve ? discoveryRequest(server, {
+    algorithm: options?.algorithm,
+    [customFetch]: options?.[customFetch2],
+    [allowInsecureRequests]: options?.execute?.includes(allowInsecureRequests2),
+    signal: signal2,
+    headers: new Headers(headers)
+  }) : (options?.[customFetch2] || fetch)((() => {
+    checkProtocol(server, options?.execute?.includes(allowInsecureRequests2) ? false : true);
+    return server.href;
+  })(), {
+    headers: Object.fromEntries(new Headers({ accept: "application/json", ...headers }).entries()),
+    body: undefined,
+    method: "GET",
+    redirect: "manual",
+    signal: signal2
+  })).then((response) => processDiscoveryResponse(_nodiscoverycheck, response)).catch(errorHandler);
+  if (resolve && new URL(as.issuer).href !== server.href) {
+    handleEntraId(server, as, options) || handleB2Clogin(server, options) || (() => {
+      throw new ClientError("discovered metadata issuer does not match the expected issuer", {
+        code: JSON_ATTRIBUTE_COMPARISON,
+        cause: {
+          expected: server.href,
+          body: as,
+          attribute: "issuer"
+        }
+      });
+    })();
+  }
+  return as;
+}
+function getServerHelpers(metadata) {
+  return {
+    supportsPKCE: {
+      __proto__: null,
+      value(method = "S256") {
+        return metadata.code_challenge_methods_supported?.includes(method) === true;
+      }
+    }
+  };
+}
+function addServerHelpers(metadata) {
+  Object.defineProperties(metadata, getServerHelpers(metadata));
+}
+var kEntraId = Symbol();
+
+class Configuration {
+  constructor(server, clientId, metadata, clientAuthentication) {
+    if (typeof clientId !== "string" || !clientId.length) {
+      throw CodedTypeError2('"clientId" must be a non-empty string', ERR_INVALID_ARG_TYPE2);
+    }
+    if (typeof metadata === "string") {
+      metadata = { client_secret: metadata };
+    }
+    if (metadata?.client_id !== undefined && clientId !== metadata.client_id) {
+      throw CodedTypeError2('"clientId" and "metadata.client_id" must be the same', ERR_INVALID_ARG_VALUE2);
+    }
+    const client = {
+      ...structuredClone(metadata),
+      client_id: clientId
+    };
+    client[clockSkew] = metadata?.[clockSkew] ?? 0;
+    client[clockTolerance] = metadata?.[clockTolerance] ?? 30;
+    let auth;
+    if (clientAuthentication) {
+      auth = clientAuthentication;
+    } else {
+      if (typeof client.client_secret === "string" && client.client_secret.length) {
+        auth = ClientSecretPost2(client.client_secret);
+      } else {
+        auth = None2();
+      }
+    }
+    let c = Object.freeze(client);
+    const clone2 = structuredClone(server);
+    if (kEntraId in server) {
+      clone2[_expectedIssuer] = ({ claims: { tid } }) => server.issuer.replace("{tenantid}", tid);
+    }
+    let as = Object.freeze(clone2);
+    props ||= new WeakMap;
+    props.set(this, {
+      __proto__: null,
+      as,
+      c,
+      auth,
+      tlsOnly: true,
+      jwksCache: {}
+    });
+  }
+  serverMetadata() {
+    const metadata = structuredClone(int(this).as);
+    addServerHelpers(metadata);
+    return metadata;
+  }
+  clientMetadata() {
+    const metadata = structuredClone(int(this).c);
+    return metadata;
+  }
+  get timeout() {
+    return int(this).timeout;
+  }
+  set timeout(value) {
+    int(this).timeout = value;
+  }
+  get [customFetch2]() {
+    return int(this).fetch;
+  }
+  set [customFetch2](value) {
+    int(this).fetch = value;
+  }
+}
+Object.freeze(Configuration.prototype);
+function getHelpers(response) {
+  let exp = undefined;
+  if (response.expires_in !== undefined) {
+    const now = new Date;
+    now.setSeconds(now.getSeconds() + response.expires_in);
+    exp = now.getTime();
+  }
+  return {
+    expiresIn: {
+      __proto__: null,
+      value() {
+        if (exp) {
+          const now = Date.now();
+          if (exp > now) {
+            return Math.floor((exp - now) / 1000);
+          }
+          return 0;
+        }
+        return;
+      }
+    },
+    claims: {
+      __proto__: null,
+      value() {
+        try {
+          return getValidatedIdTokenClaims(this);
+        } catch {
+          return;
+        }
+      }
+    }
+  };
+}
+function addHelpers(response) {
+  Object.defineProperties(response, getHelpers(response));
+}
+function allowInsecureRequests2(config) {
+  int(config).tlsOnly = false;
+}
+function stripParams(url) {
+  url = new URL(url);
+  url.search = "";
+  url.hash = "";
+  return url.href;
+}
+function webInstanceOf(input, toStringTag) {
+  try {
+    return Object.getPrototypeOf(input)[Symbol.toStringTag] === toStringTag;
+  } catch {
+    return false;
+  }
+}
+async function authorizationCodeGrant(config, currentUrl, checks, tokenEndpointParameters, options) {
+  checkConfig(config);
+  if (options?.flag !== retry && !(currentUrl instanceof URL) && !webInstanceOf(currentUrl, "Request")) {
+    throw CodedTypeError2('"currentUrl" must be an instance of URL, or Request', ERR_INVALID_ARG_TYPE2);
+  }
+  let authResponse;
+  let redirectUri;
+  const { as, c, auth, fetch: fetch2, tlsOnly, jarm, hybrid, nonRepudiation, timeout, decrypt, implicit } = int(config);
+  if (options?.flag === retry) {
+    authResponse = options.authResponse;
+    redirectUri = options.redirectUri;
+  } else {
+    if (!(currentUrl instanceof URL)) {
+      const request = currentUrl;
+      currentUrl = new URL(currentUrl.url);
+      switch (request.method) {
+        case "GET":
+          break;
+        case "POST":
+          const params = new URLSearchParams(await formPostResponse(request));
+          if (hybrid) {
+            currentUrl.hash = params.toString();
+          } else {
+            for (const [k2, v] of params.entries()) {
+              currentUrl.searchParams.append(k2, v);
+            }
+          }
+          break;
+        default:
+          throw CodedTypeError2("unexpected Request HTTP method", ERR_INVALID_ARG_VALUE2);
+      }
+    }
+    redirectUri = stripParams(currentUrl);
+    switch (true) {
+      case !!jarm:
+        authResponse = await jarm(currentUrl, checks?.expectedState);
+        break;
+      case !!hybrid:
+        authResponse = await hybrid(currentUrl, checks?.expectedNonce, checks?.expectedState, checks?.maxAge);
+        break;
+      case !!implicit:
+        throw new TypeError("authorizationCodeGrant() cannot be used by response_type=id_token clients");
+      default:
+        try {
+          authResponse = validateAuthResponse(as, c, currentUrl.searchParams, checks?.expectedState);
+        } catch (err) {
+          errorHandler(err);
+        }
+    }
+  }
+  const response = await authorizationCodeGrantRequest(as, c, auth, authResponse, redirectUri, checks?.pkceCodeVerifier || nopkce, {
+    additionalParameters: tokenEndpointParameters,
+    [customFetch]: fetch2,
+    [allowInsecureRequests]: !tlsOnly,
+    DPoP: options?.DPoP,
+    headers: new Headers(headers),
+    signal: signal2(timeout)
+  }).catch(errorHandler);
+  if (typeof checks?.expectedNonce === "string" || typeof checks?.maxAge === "number") {
+    checks.idTokenExpected = true;
+  }
+  const p = processAuthorizationCodeResponse(as, c, response, {
+    expectedNonce: checks?.expectedNonce,
+    maxAge: checks?.maxAge,
+    requireIdToken: checks?.idTokenExpected,
+    [jweDecrypt]: decrypt
+  });
+  let result;
+  try {
+    result = await p;
+  } catch (err) {
+    if (retryable(err, options)) {
+      return authorizationCodeGrant(config, undefined, checks, tokenEndpointParameters, {
+        ...options,
+        flag: retry,
+        authResponse,
+        redirectUri
+      });
+    }
+    errorHandler(err);
+  }
+  result.id_token && await nonRepudiation?.(response);
+  addHelpers(result);
+  return result;
+}
+function buildAuthorizationUrl(config, parameters) {
+  checkConfig(config);
+  const { as, c, tlsOnly, hybrid, jarm, implicit } = int(config);
+  const authorizationEndpoint = resolveEndpoint(as, "authorization_endpoint", false, tlsOnly);
+  parameters = new URLSearchParams(parameters);
+  if (!parameters.has("client_id")) {
+    parameters.set("client_id", c.client_id);
+  }
+  if (!parameters.has("request_uri") && !parameters.has("request")) {
+    if (!parameters.has("response_type")) {
+      parameters.set("response_type", hybrid ? "code id_token" : implicit ? "id_token" : "code");
+    }
+    if (implicit && !parameters.has("nonce")) {
+      throw CodedTypeError2("response_type=id_token clients must provide a nonce parameter in their authorization request parameters", ERR_INVALID_ARG_VALUE2);
+    }
+    if (jarm) {
+      parameters.set("response_mode", "jwt");
+    }
+  }
+  for (const [k2, v] of parameters.entries()) {
+    authorizationEndpoint.searchParams.append(k2, v);
+  }
+  return authorizationEndpoint;
+}
+function checkConfig(input) {
+  if (!(input instanceof Configuration)) {
+    throw CodedTypeError2('"config" must be an instance of Configuration', ERR_INVALID_ARG_TYPE2);
+  }
+  if (Object.getPrototypeOf(input) !== Configuration.prototype) {
+    throw CodedTypeError2("subclassing Configuration is not allowed", ERR_INVALID_ARG_VALUE2);
+  }
+}
+function signal2(timeout) {
+  return timeout ? AbortSignal.timeout(timeout * 1000) : undefined;
+}
+function retryable(err, options) {
+  if (options?.DPoP && options.flag !== retry) {
+    return isDPoPNonceError(err);
+  }
+  return false;
+}
+var retry = Symbol();
+async function fetchProtectedResource(config, accessToken, url, method, body, headers2, options) {
+  checkConfig(config);
+  headers2 ||= new Headers;
+  if (!headers2.has("user-agent")) {
+    headers2.set("user-agent", USER_AGENT2);
+  }
+  const { fetch: fetch2, tlsOnly, timeout } = int(config);
+  const exec = protectedResourceRequest(accessToken, method, url, headers2, body, {
+    [customFetch]: fetch2,
+    [allowInsecureRequests]: !tlsOnly,
+    DPoP: options?.DPoP,
+    signal: signal2(timeout)
+  });
+  let result;
+  try {
+    result = await exec;
+  } catch (err) {
+    if (retryable(err, options)) {
+      return fetchProtectedResource(config, accessToken, url, method, body, headers2, {
+        ...options,
+        flag: retry
+      });
+    }
+    errorHandler(err);
+  }
+  return result;
+}
+
+// src/schemas/sessions.ts
+var sessionsTable = pgTable("sessions", {
+  token: varchar().primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
 // src/lib/slack.ts
@@ -28297,55 +30097,91 @@ function getAvatarUrl(profile) {
 }
 
 // src/lib/auth.ts
-var HACKCLUB_AUTH_URL = "https://auth.hackclub.com";
+var HACKCLUB_AUTH_URL = new URL("https://auth.hackclub.com");
 var CLIENT_ID = process.env.HCAUTH_CLIENT_ID;
 var CLIENT_SECRET = process.env.HCAUTH_CLIENT_SECRET;
 var REDIRECT_URI = process.env.HCAUTH_REDIRECT_URI || "http://localhost:3000/api/auth/callback";
-function getAuthorizationUrl() {
-  const params = new URLSearchParams({
-    client_id: CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
-    response_type: "code",
-    scope: "openid profile email slack_id verification_status"
-  });
-  return `${HACKCLUB_AUTH_URL}/oauth/authorize?${params.toString()}`;
+var oidcConfig = null;
+var pkceStore = new Map;
+async function getOIDCConfig() {
+  if (oidcConfig)
+    return oidcConfig;
+  oidcConfig = await discovery(HACKCLUB_AUTH_URL, CLIENT_ID, CLIENT_SECRET);
+  return oidcConfig;
 }
-async function exchangeCodeForTokens(code) {
+async function getAuthorizationUrl() {
+  const config = await getOIDCConfig();
+  const codeVerifier = randomPKCECodeVerifier();
+  const codeChallenge = await calculatePKCECodeChallenge2(codeVerifier);
+  const state = randomState();
+  pkceStore.set(state, {
+    codeVerifier,
+    state,
+    expiresAt: Date.now() + 10 * 60 * 1000
+  });
+  for (const [key, value] of pkceStore) {
+    if (value.expiresAt < Date.now()) {
+      pkceStore.delete(key);
+    }
+  }
+  const parameters = {
+    redirect_uri: REDIRECT_URI,
+    scope: "openid profile email slack_id verification_status",
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
+    state
+  };
+  const redirectTo = buildAuthorizationUrl(config, parameters);
+  return redirectTo.href;
+}
+async function exchangeCodeForTokens(code, state) {
   try {
-    const body = new URLSearchParams({
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      redirect_uri: REDIRECT_URI,
-      code,
-      grant_type: "authorization_code"
-    });
-    const response = await fetch(`${HACKCLUB_AUTH_URL}/oauth/token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString()
-    });
-    if (!response.ok) {
-      console.error("Token exchange failed:", await response.text());
+    const pkceData = pkceStore.get(state);
+    if (!pkceData) {
+      console.error("[AUTH] No PKCE data found for state");
       return null;
     }
-    return await response.json();
+    pkceStore.delete(state);
+    if (pkceData.expiresAt < Date.now()) {
+      console.error("[AUTH] PKCE data expired");
+      return null;
+    }
+    const config = await getOIDCConfig();
+    const callbackUrl = new URL(REDIRECT_URI);
+    callbackUrl.searchParams.set("code", code);
+    callbackUrl.searchParams.set("state", state);
+    const tokens = await authorizationCodeGrant(config, callbackUrl, {
+      pkceCodeVerifier: pkceData.codeVerifier,
+      expectedState: pkceData.state
+    });
+    return {
+      access_token: tokens.access_token,
+      token_type: tokens.token_type ?? "Bearer",
+      id_token: tokens.id_token ?? "",
+      refresh_token: tokens.refresh_token
+    };
   } catch (error) {
-    console.error("Token exchange error:", error);
+    console.error("[AUTH] Token exchange error:", error);
     return null;
   }
 }
 async function fetchUserIdentity(accessToken) {
   try {
-    const response = await fetch(`${HACKCLUB_AUTH_URL}/api/v1/me`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`
-      }
-    });
+    const config = await getOIDCConfig();
+    const response = await fetchProtectedResource(config, accessToken, new URL("https://auth.hackclub.com/oauth/userinfo"), "GET");
     if (!response.ok) {
       console.error("[AUTH] Failed to fetch user identity:", await response.text());
       return null;
     }
-    return await response.json();
+    const claims = await response.json();
+    return {
+      id: claims.sub,
+      name: claims.name,
+      email: claims.email,
+      slack_id: claims.slack_id,
+      ysws_eligible: claims.ysws_eligible,
+      verification_status: claims.verification_status
+    };
   } catch (error) {
     console.error("[AUTH] Error fetching user identity:", error);
     return null;
@@ -28355,23 +30191,23 @@ async function createOrUpdateUser(identity, tokens) {
   if (!identity.ysws_eligible) {
     throw new Error("not-eligible");
   }
-  const name = [identity.first_name, identity.last_name].filter(Boolean).join(" ") || null;
+  let username = identity.name || null;
   let avatarUrl = null;
   if (identity.slack_id && process.env.SLACK_BOT_TOKEN) {
     const slackProfile = await getSlackProfile(identity.slack_id, process.env.SLACK_BOT_TOKEN);
     if (slackProfile) {
+      username = slackProfile.display_name || slackProfile.real_name || username;
       avatarUrl = getAvatarUrl(slackProfile);
+      console.log("[AUTH] Slack profile fetched:", { username, avatarUrl });
     }
   }
   const existingUser = await db.select().from(usersTable).where(eq(usersTable.sub, identity.id)).limit(1);
   if (existingUser.length > 0) {
     const updated = await db.update(usersTable).set({
-      name,
-      email: identity.primary_email || existingUser[0].email,
+      username,
+      email: identity.email || existingUser[0].email,
       slackId: identity.slack_id,
       avatar: avatarUrl || existingUser[0].avatar,
-      yswsEligible: identity.ysws_eligible,
-      verificationStatus: identity.verification_status,
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       idToken: tokens.id_token,
@@ -28381,20 +30217,16 @@ async function createOrUpdateUser(identity, tokens) {
   } else {
     console.log("[AUTH] New user signup:", {
       id: identity.id,
-      name,
-      email: identity.primary_email,
-      slackId: identity.slack_id,
-      yswsEligible: identity.ysws_eligible,
-      verificationStatus: identity.verification_status
+      username,
+      email: identity.email,
+      slackId: identity.slack_id
     });
     const newUser = await db.insert(usersTable).values({
       sub: identity.id,
       slackId: identity.slack_id,
-      name,
-      email: identity.primary_email || "",
+      username,
+      email: identity.email || null,
       avatar: avatarUrl,
-      yswsEligible: identity.ysws_eligible,
-      verificationStatus: identity.verification_status,
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       idToken: tokens.id_token
@@ -28402,72 +30234,143 @@ async function createOrUpdateUser(identity, tokens) {
     return newUser[0];
   }
 }
-var sessions = new Map;
-function createSession(userId) {
+async function createSession(userId) {
   const token = crypto.randomUUID();
-  sessions.set(token, { userId, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) });
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  await db.insert(sessionsTable).values({
+    token,
+    userId,
+    expiresAt
+  });
   return token;
 }
-function getSessionUserId(token) {
-  const session = sessions.get(token);
-  if (!session || session.expiresAt < new Date) {
-    if (session)
-      sessions.delete(token);
+async function getSessionUserId(token) {
+  const session = await db.select().from(sessionsTable).where(and(eq(sessionsTable.token, token), gt(sessionsTable.expiresAt, new Date))).limit(1);
+  if (!session[0])
     return null;
-  }
-  return session.userId;
+  return session[0].userId;
 }
-function deleteSession(token) {
-  sessions.delete(token);
+async function deleteSession(token) {
+  await db.delete(sessionsTable).where(eq(sessionsTable.token, token));
 }
-async function getUserFromSession(headers) {
-  const cookie = headers.cookie || "";
+async function getUserFromSession(headers2) {
+  const cookie = headers2.cookie || "";
   const match = cookie.match(/session=([^;]+)/);
   if (!match)
     return null;
-  const userId = getSessionUserId(match[1]);
+  const userId = await getSessionUserId(match[1]);
   if (!userId)
     return null;
   const user = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   return user[0] || null;
 }
+async function checkUserEligibility(accessToken) {
+  const identity = await fetchUserIdentity(accessToken);
+  if (!identity)
+    return null;
+  return {
+    yswsEligible: identity.ysws_eligible ?? false,
+    verificationStatus: identity.verification_status ?? "unknown"
+  };
+}
 
 // src/routes/projects.ts
 var projects = new Elysia({ prefix: "/projects" });
-projects.get("/", async ({ headers }) => {
-  const user = await getUserFromSession(headers);
+projects.get("/", async ({ headers: headers2, query }) => {
+  const user = await getUserFromSession(headers2);
   if (!user)
     return { error: "Unauthorized" };
-  return await db.select().from(projectsTable).where(eq(projectsTable.userId, user.id));
+  const page = parseInt(query.page) || 1;
+  const limit = Math.min(parseInt(query.limit) || 20, 100);
+  const offset = (page - 1) * limit;
+  const [projectsList, countResult] = await Promise.all([
+    db.select().from(projectsTable).where(eq(projectsTable.userId, user.id)).orderBy(desc(projectsTable.updatedAt)).limit(limit).offset(offset),
+    db.select({ count: sql`count(*)` }).from(projectsTable).where(eq(projectsTable.userId, user.id))
+  ]);
+  const total = Number(countResult[0]?.count || 0);
+  return {
+    data: projectsList,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
 });
-projects.get("/:id", async ({ params, headers }) => {
-  const user = await getUserFromSession(headers);
+projects.get("/:id", async ({ params, headers: headers2 }) => {
+  const user = await getUserFromSession(headers2);
   if (!user)
     return { error: "Unauthorized" };
   const project = await db.select().from(projectsTable).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).limit(1);
   return project[0] || { error: "Not found" };
 });
-projects.post("/", async ({ body, headers }) => {
-  const user = await getUserFromSession(headers);
+projects.post("/", async ({ body, headers: headers2 }) => {
+  const user = await getUserFromSession(headers2);
   if (!user)
     return { error: "Unauthorized" };
   const data = body;
-  const newProject = await db.insert(projectsTable).values({ userId: user.id, ...data }).returning();
+  const newProject = await db.insert(projectsTable).values({
+    userId: user.id,
+    name: data.name,
+    description: data.description,
+    image: data.image || null,
+    githubUrl: data.githubUrl || null,
+    hackatimeProject: data.hackatimeProject || null,
+    hours: data.hours || 0
+  }).returning();
   return newProject[0];
 });
-projects.put("/:id", async ({ params, body, headers }) => {
-  const user = await getUserFromSession(headers);
+projects.put("/:id", async ({ params, body, headers: headers2 }) => {
+  const user = await getUserFromSession(headers2);
   if (!user)
     return { error: "Unauthorized" };
-  const updated = await db.update(projectsTable).set(body).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).returning();
+  const data = body;
+  const updated = await db.update(projectsTable).set({
+    name: data.name,
+    description: data.description,
+    image: data.image,
+    githubUrl: data.githubUrl,
+    hackatimeProject: data.hackatimeProject,
+    hours: data.hours,
+    updatedAt: new Date
+  }).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).returning();
   return updated[0] || { error: "Not found" };
 });
-projects.delete("/:id", async ({ params, headers }) => {
-  const user = await getUserFromSession(headers);
+projects.delete("/:id", async ({ params, headers: headers2 }) => {
+  const user = await getUserFromSession(headers2);
   if (!user)
     return { error: "Unauthorized" };
   const deleted = await db.delete(projectsTable).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).returning();
   return deleted.length ? { success: true } : { error: "Not found" };
+});
+projects.post("/:id/submit", async ({ params, headers: headers2 }) => {
+  const user = await getUserFromSession(headers2);
+  if (!user)
+    return { error: "Unauthorized" };
+  const project = await db.select().from(projectsTable).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).limit(1);
+  if (!project[0])
+    return { error: "Not found" };
+  if (project[0].status !== "in_progress") {
+    return { error: "Project cannot be submitted in current status" };
+  }
+  const updated = await db.update(projectsTable).set({ status: "waiting_for_review", updatedAt: new Date }).where(eq(projectsTable.id, parseInt(params.id))).returning();
+  return updated[0];
+});
+projects.get("/:id/reviews", async ({ params, headers: headers2 }) => {
+  const user = await getUserFromSession(headers2);
+  if (!user)
+    return { error: "Unauthorized" };
+  const project = await db.select().from(projectsTable).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).limit(1);
+  if (!project[0])
+    return { error: "Not found" };
+  const reviews = await db.select({
+    id: reviewsTable.id,
+    action: reviewsTable.action,
+    feedbackForAuthor: reviewsTable.feedbackForAuthor,
+    createdAt: reviewsTable.createdAt
+  }).from(reviewsTable).where(eq(reviewsTable.projectId, parseInt(params.id)));
+  return reviews;
 });
 var projects_default = projects;
 
@@ -28561,46 +30464,54 @@ var items_default = items;
 // src/routes/auth.ts
 var FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 var authRoutes = new Elysia({ prefix: "/auth" });
-authRoutes.get("/login", ({ redirect: redirect2 }) => {
+authRoutes.get("/login", async ({ redirect: redirect2 }) => {
   console.log("[AUTH] Login initiated");
-  return redirect2(getAuthorizationUrl());
+  const authUrl = await getAuthorizationUrl();
+  return redirect2(authUrl);
 });
+var usedCodes = new Set;
 authRoutes.get("/callback", async ({ query, redirect: redirect2, cookie }) => {
   console.log("[AUTH] Callback received");
   const code = query.code;
-  if (!code) {
-    console.log("[AUTH] Callback error: no code provided");
+  const state = query.state;
+  if (!code || typeof code !== "string" || !state || typeof state !== "string") {
+    console.log("[AUTH] Callback error: no code or state provided");
     return redirect2(`${FRONTEND_URL}/auth/error?reason=auth-failed`);
   }
+  if (usedCodes.has(code)) {
+    console.log("[AUTH] Code already used, redirecting to dashboard");
+    return redirect2(`${FRONTEND_URL}/dashboard`);
+  }
+  usedCodes.add(code);
+  setTimeout(() => usedCodes.delete(code), 5 * 60 * 1000);
   try {
-    const tokens = await exchangeCodeForTokens(code);
+    const tokens = await exchangeCodeForTokens(code, state);
     if (!tokens) {
       console.log("[AUTH] Callback error: token exchange failed");
+      usedCodes.delete(code);
       return redirect2(`${FRONTEND_URL}/auth/error?reason=auth-failed`);
     }
-    const meResponse = await fetchUserIdentity(tokens.access_token);
-    if (!meResponse) {
+    const identity = await fetchUserIdentity(tokens.access_token);
+    if (!identity) {
       console.log("[AUTH] Callback error: failed to fetch user identity");
       return redirect2(`${FRONTEND_URL}/auth/error?reason=auth-failed`);
     }
-    const { identity } = meResponse;
     console.log("[AUTH] Identity received:", {
       id: identity.id,
-      firstName: identity.first_name,
-      lastName: identity.last_name,
-      email: identity.primary_email,
+      name: identity.name,
+      email: identity.email,
       slackId: identity.slack_id,
       yswsEligible: identity.ysws_eligible,
       verificationStatus: identity.verification_status
     });
     const user = await createOrUpdateUser(identity, tokens);
-    const sessionToken = createSession(user.id);
-    console.log("[AUTH] User authenticated successfully:", { userId: user.id, name: user.name });
+    const sessionToken = await createSession(user.id);
+    console.log("[AUTH] User authenticated successfully:", { userId: user.id, username: user.username });
     cookie.session.set({
       value: sessionToken,
       httpOnly: true,
       secure: false,
-      sameSite: "lax",
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60,
       path: "/"
     });
@@ -28614,27 +30525,29 @@ authRoutes.get("/callback", async ({ query, redirect: redirect2, cookie }) => {
     return redirect2(`${FRONTEND_URL}/auth/error?reason=auth-failed`);
   }
 });
-authRoutes.get("/me", async ({ headers }) => {
-  const user = await getUserFromSession(headers);
-  console.log("[AUTH] /me check:", user ? { userId: user.id, name: user.name } : "no session");
+authRoutes.get("/me", async ({ headers: headers2 }) => {
+  console.log(headers2);
+  const user = await getUserFromSession(headers2);
+  console.log("[AUTH] /me check:", user ? { userId: user.id, username: user.username } : "no session");
   if (!user)
     return { user: null };
   return {
     user: {
       id: user.id,
-      name: user.name,
+      username: user.username,
       email: user.email,
       avatar: user.avatar,
       slackId: user.slackId,
-      yswsEligible: user.yswsEligible
+      scraps: user.scraps,
+      role: user.role
     }
   };
 });
-authRoutes.post("/logout", ({ cookie }) => {
+authRoutes.post("/logout", async ({ cookie }) => {
   console.log("[AUTH] Logout requested");
   const token = cookie.session.value;
   if (token) {
-    deleteSession(token);
+    await deleteSession(token);
     cookie.session.remove();
   }
   return { success: true };
@@ -28643,17 +30556,28 @@ var auth_default = authRoutes;
 
 // src/routes/user.ts
 var user = new Elysia({ prefix: "/user" });
-user.get("/me", async ({ headers }) => {
-  const userData = await getUserFromSession(headers);
+user.get("/me", async ({ headers: headers2 }) => {
+  const userData = await getUserFromSession(headers2);
   if (!userData)
     return { error: "Unauthorized" };
+  let yswsEligible = false;
+  let verificationStatus = "unknown";
+  if (userData.accessToken) {
+    const eligibility = await checkUserEligibility(userData.accessToken);
+    if (eligibility) {
+      yswsEligible = eligibility.yswsEligible;
+      verificationStatus = eligibility.verificationStatus;
+    }
+  }
   return {
     id: userData.id,
-    name: userData.name,
+    username: userData.username,
     email: userData.email,
     avatar: userData.avatar,
     slackId: userData.slackId,
-    yswsEligible: userData.yswsEligible
+    scraps: userData.scraps,
+    yswsEligible,
+    verificationStatus
   };
 });
 var user_default = user;
@@ -28681,8 +30605,8 @@ var shopHeartsTable = pgTable("shop_hearts", {
 
 // src/routes/shop.ts
 var shop = new Elysia({ prefix: "/shop" });
-shop.get("/items", async ({ headers }) => {
-  const user2 = await getUserFromSession(headers);
+shop.get("/items", async ({ headers: headers2 }) => {
+  const user2 = await getUserFromSession(headers2);
   const items2 = await db.select({
     id: shopItemsTable.id,
     name: shopItemsTable.name,
@@ -28708,8 +30632,8 @@ shop.get("/items", async ({ headers }) => {
     hearted: false
   }));
 });
-shop.get("/items/:id", async ({ params, headers }) => {
-  const user2 = await getUserFromSession(headers);
+shop.get("/items/:id", async ({ params, headers: headers2 }) => {
+  const user2 = await getUserFromSession(headers2);
   const itemId = parseInt(params.id);
   const items2 = await db.select({
     id: shopItemsTable.id,
@@ -28734,8 +30658,8 @@ shop.get("/items/:id", async ({ params, headers }) => {
   }
   return { ...item, hearted };
 });
-shop.post("/items/:id/heart", async ({ params, headers }) => {
-  const user2 = await getUserFromSession(headers);
+shop.post("/items/:id/heart", async ({ params, headers: headers2 }) => {
+  const user2 = await getUserFromSession(headers2);
   if (!user2) {
     return { error: "Unauthorized" };
   }
@@ -28762,10 +30686,323 @@ shop.get("/categories", async () => {
 });
 var shop_default = shop;
 
+// src/routes/leaderboard.ts
+var leaderboard = new Elysia({ prefix: "/leaderboard" });
+leaderboard.get("/", async ({ query }) => {
+  const sortBy = query.sortBy || "scraps";
+  if (sortBy === "hours") {
+    const results2 = await db.select({
+      id: usersTable.id,
+      username: usersTable.username,
+      avatar: usersTable.avatar,
+      scraps: usersTable.scraps,
+      hours: sql`COALESCE(SUM(${projectsTable.hours}), 0)`.as("total_hours"),
+      projectCount: sql`COUNT(${projectsTable.id})`.as("project_count")
+    }).from(usersTable).leftJoin(projectsTable, eq(projectsTable.userId, usersTable.id)).groupBy(usersTable.id).orderBy(desc(sql`total_hours`)).limit(10);
+    return results2.map((user2, index) => ({
+      rank: index + 1,
+      id: user2.id,
+      username: user2.username,
+      avatar: user2.avatar,
+      hours: Number(user2.hours),
+      scraps: user2.scraps,
+      projectCount: Number(user2.projectCount)
+    }));
+  }
+  const results = await db.select({
+    id: usersTable.id,
+    username: usersTable.username,
+    avatar: usersTable.avatar,
+    scraps: usersTable.scraps,
+    hours: sql`COALESCE(SUM(${projectsTable.hours}), 0)`.as("total_hours"),
+    projectCount: sql`COUNT(${projectsTable.id})`.as("project_count")
+  }).from(usersTable).leftJoin(projectsTable, eq(projectsTable.userId, usersTable.id)).groupBy(usersTable.id).orderBy(desc(usersTable.scraps)).limit(10);
+  return results.map((user2, index) => ({
+    rank: index + 1,
+    id: user2.id,
+    username: user2.username,
+    avatar: user2.avatar,
+    hours: Number(user2.hours),
+    scraps: user2.scraps,
+    projectCount: Number(user2.projectCount)
+  }));
+}, {
+  query: t.Object({
+    sortBy: t.Optional(t.Union([t.Literal("hours"), t.Literal("scraps")]))
+  })
+});
+var leaderboard_default = leaderboard;
+
+// src/routes/hackatime.ts
+var HACKATIME_API = "https://hackatime.hackclub.com/api/v1";
+var hackatime = new Elysia({ prefix: "/hackatime" });
+hackatime.get("/projects", async ({ headers: headers2 }) => {
+  const user2 = await getUserFromSession(headers2);
+  if (!user2)
+    return { error: "Unauthorized" };
+  if (!user2.slackId) {
+    console.log("[HACKATIME] No slackId found for user:", user2.id);
+    return { error: "No Slack ID found for user", projects: [] };
+  }
+  const url = `${HACKATIME_API}/users/${encodeURIComponent(user2.slackId)}/projects/details`;
+  console.log("[HACKATIME] Fetching projects:", { userId: user2.id, slackId: user2.slackId, url });
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json"
+      }
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log("[HACKATIME] API error:", { status: response.status, body: errorText });
+      return { projects: [] };
+    }
+    const data = await response.json();
+    console.log("[HACKATIME] Projects fetched:", data.projects?.length || 0);
+    return {
+      projects: data.projects.map((p) => ({
+        name: p.name,
+        hours: Math.round(p.total_seconds / 3600 * 10) / 10,
+        repoUrl: p.repo_url,
+        languages: p.languages
+      }))
+    };
+  } catch (error) {
+    console.error("[HACKATIME] Error fetching projects:", error);
+    return { projects: [] };
+  }
+});
+var hackatime_default = hackatime;
+
+// src/routes/upload.ts
+var HCCDN_URL = "https://cdn.hackclub.com/api/v4/upload";
+var HCCDN_KEY = process.env.HCCDN_KEY;
+var upload = new Elysia({ prefix: "/upload" });
+upload.post("/image", async ({ body, headers: headers2 }) => {
+  const user2 = await getUserFromSession(headers2);
+  if (!user2)
+    return { error: "Unauthorized" };
+  if (!HCCDN_KEY) {
+    console.error("[UPLOAD] HCCDN_KEY not configured");
+    return { error: "Upload service not configured" };
+  }
+  const { file } = body;
+  if (!file) {
+    return { error: "No file provided" };
+  }
+  try {
+    const contentType = file.type;
+    const extMap = {
+      "image/jpeg": "jpg",
+      "image/jpg": "jpg",
+      "image/png": "png",
+      "image/gif": "gif",
+      "image/webp": "webp"
+    };
+    const ext = extMap[contentType] || "png";
+    const filename = `scrap-${Date.now()}.${ext}`;
+    const formData = new FormData;
+    formData.append("file", file, filename);
+    console.log("[UPLOAD] Uploading to CDN:", { userId: user2.id, filename, size: file.size });
+    const response = await fetch(HCCDN_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${HCCDN_KEY}`
+      },
+      body: formData
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[UPLOAD] CDN error:", { status: response.status, body: errorText });
+      return { error: "Failed to upload image" };
+    }
+    const data = await response.json();
+    console.log("[UPLOAD] Upload successful:", { url: data.url });
+    return { url: data.url };
+  } catch (error) {
+    console.error("[UPLOAD] Error:", error);
+    return { error: "Failed to upload image" };
+  }
+});
+var upload_default = upload;
+
+// src/routes/admin.ts
+var admin = new Elysia({ prefix: "/admin" });
+async function requireReviewer(headers2) {
+  const user2 = await getUserFromSession(headers2);
+  if (!user2)
+    return null;
+  if (user2.role !== "reviewer" && user2.role !== "admin")
+    return null;
+  return user2;
+}
+async function requireAdmin(headers2) {
+  const user2 = await getUserFromSession(headers2);
+  if (!user2)
+    return null;
+  if (user2.role !== "admin")
+    return null;
+  return user2;
+}
+admin.get("/users", async ({ headers: headers2, query }) => {
+  const user2 = await requireReviewer(headers2);
+  if (!user2)
+    return { error: "Unauthorized" };
+  const page = parseInt(query.page) || 1;
+  const limit = Math.min(parseInt(query.limit) || 20, 100);
+  const offset = (page - 1) * limit;
+  const [users, countResult] = await Promise.all([
+    db.select().from(usersTable).orderBy(desc(usersTable.createdAt)).limit(limit).offset(offset),
+    db.select({ count: sql`count(*)` }).from(usersTable)
+  ]);
+  const total = Number(countResult[0]?.count || 0);
+  return {
+    data: users.map((u) => ({
+      id: u.id,
+      username: u.username,
+      email: user2.role === "admin" ? u.email : undefined,
+      avatar: u.avatar,
+      slackId: u.slackId,
+      scraps: u.scraps,
+      role: u.role,
+      internalNotes: u.internalNotes,
+      createdAt: u.createdAt
+    })),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+});
+admin.put("/users/:id/role", async ({ params, body, headers: headers2 }) => {
+  const user2 = await requireAdmin(headers2);
+  if (!user2)
+    return { error: "Unauthorized" };
+  const { role } = body;
+  if (!["member", "reviewer", "admin"].includes(role)) {
+    return { error: "Invalid role" };
+  }
+  const updated = await db.update(usersTable).set({ role, updatedAt: new Date }).where(eq(usersTable.id, parseInt(params.id))).returning();
+  return updated[0] || { error: "Not found" };
+});
+admin.put("/users/:id/notes", async ({ params, body, headers: headers2 }) => {
+  const user2 = await requireReviewer(headers2);
+  if (!user2)
+    return { error: "Unauthorized" };
+  const { internalNotes } = body;
+  if (typeof internalNotes != "string" || internalNotes.length > 2500) {
+    return { error: "Note is too long or it's malformed!" };
+  }
+  const updated = await db.update(usersTable).set({ internalNotes, updatedAt: new Date }).where(eq(usersTable.id, parseInt(params.id))).returning();
+  return updated[0] || { error: "Not found" };
+});
+admin.get("/reviews", async ({ headers: headers2, query }) => {
+  const user2 = await requireReviewer(headers2);
+  if (!user2)
+    return { error: "Unauthorized" };
+  const page = parseInt(query.page) || 1;
+  const limit = Math.min(parseInt(query.limit) || 20, 100);
+  const offset = (page - 1) * limit;
+  const [projects2, countResult] = await Promise.all([
+    db.select().from(projectsTable).where(eq(projectsTable.status, "waiting_for_review")).orderBy(desc(projectsTable.updatedAt)).limit(limit).offset(offset),
+    db.select({ count: sql`count(*)` }).from(projectsTable).where(eq(projectsTable.status, "waiting_for_review"))
+  ]);
+  const total = Number(countResult[0]?.count || 0);
+  return {
+    data: projects2,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+});
+admin.get("/reviews/:id", async ({ params, headers: headers2 }) => {
+  const user2 = await requireReviewer(headers2);
+  if (!user2)
+    return { error: "Unauthorized" };
+  const project = await db.select().from(projectsTable).where(eq(projectsTable.id, parseInt(params.id))).limit(1);
+  if (project.length <= 0)
+    return { error: "Project not found!" };
+  const projectUser = await db.select().from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
+  const reviews = await db.select().from(reviewsTable).where(eq(reviewsTable.projectId, parseInt(params.id)));
+  const reviewerIds = reviews.map((r) => r.reviewerId);
+  let reviewers = [];
+  if (reviewerIds.length > 0) {
+    reviewers = await db.select({ id: usersTable.id, username: usersTable.username }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
+  }
+  return {
+    project: project[0],
+    user: projectUser[0] ? {
+      id: projectUser[0].id,
+      username: projectUser[0].username,
+      email: user2.role === "admin" ? projectUser[0].email : undefined,
+      avatar: projectUser[0].avatar,
+      internalNotes: projectUser[0].internalNotes
+    } : null,
+    reviews: reviews.map((r) => ({
+      ...r,
+      reviewerName: reviewers.find((rv) => rv.id === r.reviewerId)?.username
+    }))
+  };
+});
+admin.post("/reviews/:id", async ({ params, body, headers: headers2 }) => {
+  const user2 = await requireReviewer(headers2);
+  if (!user2)
+    return { error: "Unauthorized" };
+  const { action, feedbackForAuthor, internalJustification, hoursOverride, userInternalNotes } = body;
+  if (!["approved", "denied", "permanently_rejected"].includes(action)) {
+    return { error: "Invalid action" };
+  }
+  if (!feedbackForAuthor?.trim()) {
+    return { error: "Feedback for author is required" };
+  }
+  const projectId = parseInt(params.id);
+  const project = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1);
+  if (!project[0])
+    return { error: "Project not found" };
+  await db.insert(reviewsTable).values({
+    projectId,
+    reviewerId: user2.id,
+    action,
+    feedbackForAuthor,
+    internalJustification
+  });
+  let newStatus = "in_progress";
+  switch (action) {
+    case "approved":
+      newStatus = "shipped";
+    case "denied":
+      newStatus = "in_progress";
+    case "permanently_rejected":
+      newStatus = "permanently_rejected";
+    default:
+      newStatus = action;
+  }
+  const updateData = {
+    status: newStatus,
+    updatedAt: new Date
+  };
+  if (hoursOverride !== undefined) {
+    updateData.hoursOverride = hoursOverride;
+  }
+  await db.update(projectsTable).set(updateData).where(eq(projectsTable.id, projectId));
+  if (userInternalNotes !== undefined) {
+    if (userInternalNotes.length <= 2500) {
+      await db.update(usersTable).set({ internalNotes: userInternalNotes, updatedAt: new Date }).where(eq(usersTable.id, project[0].userId));
+    }
+  }
+  return { success: true };
+});
+var admin_default = admin;
+
 // src/index.ts
-var api = new Elysia({ prefix: "/api" }).use(auth_default).use(projects_default).use(news_default).use(items_default).use(user_default).use(shop_default).get("/", () => "if you dm @notaroomba abt finding this you may get cool stickers");
+var api = new Elysia({ prefix: "/api" }).use(auth_default).use(projects_default).use(news_default).use(items_default).use(user_default).use(shop_default).use(leaderboard_default).use(hackatime_default).use(upload_default).use(admin_default).get("/", () => "if you dm @notaroomba abt finding this you may get cool stickers");
 var app = new Elysia().use(cors({
-  origin: ["http://localhost:5173", "http://localhost:3000"],
+  origin: [process.env.FRONTEND_URL],
   credentials: true
 })).use(api).listen(3000);
 console.log(`\uD83E\uDD8A Elysia is running at ${app.server?.hostname}:${app.server?.port}`);

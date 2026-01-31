@@ -19,6 +19,8 @@ export const usersTable = pgTable('users', {
 
   // scraps info
   scraps: integer().notNull().default(0),
+  role: varchar().notNull().default('member'),
+  internalNotes: text('internal_notes'),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()

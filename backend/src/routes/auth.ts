@@ -19,20 +19,34 @@ authRoutes.get("/login", ({ redirect }) => {
     return redirect(getAuthorizationUrl())
 })
 
+// Track used codes to prevent double-submission
+const usedCodes = new Set<string>()
+
 // GET /auth/callback - Handle OIDC callback
 authRoutes.get("/callback", async ({ query, redirect, cookie }) => {
     console.log("[AUTH] Callback received")
     const code = query.code as string | undefined
 
-    if (!code) {
+    if (!code || typeof code !== "string") {
         console.log("[AUTH] Callback error: no code provided")
         return redirect(`${FRONTEND_URL}/auth/error?reason=auth-failed`)
     }
+
+    // Check if code was already used (prevents double-submission on refresh)
+    if (usedCodes.has(code)) {
+        console.log("[AUTH] Code already used, redirecting to dashboard")
+        return redirect(`${FRONTEND_URL}/dashboard`)
+    }
+    usedCodes.add(code)
+    
+    // Clean up old codes after 5 minutes
+    setTimeout(() => usedCodes.delete(code), 5 * 60 * 1000)
 
     try {
         const tokens = await exchangeCodeForTokens(code)
         if (!tokens) {
             console.log("[AUTH] Callback error: token exchange failed")
+            usedCodes.delete(code)
             return redirect(`${FRONTEND_URL}/auth/error?reason=auth-failed`)
         }
 
@@ -59,7 +73,7 @@ authRoutes.get("/callback", async ({ query, redirect, cookie }) => {
             value: sessionToken,
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
+            sameSite: process.env.NODE_ENV === "production" ? "lax" : "none",
             maxAge: 7 * 24 * 60 * 60,
             path: "/"
         })
@@ -77,6 +91,7 @@ authRoutes.get("/callback", async ({ query, redirect, cookie }) => {
 
 // GET /auth/me - Get current user
 authRoutes.get("/me", async ({ headers }) => {
+    console.log(headers)
     const user = await getUserFromSession(headers as Record<string, string>)
     console.log("[AUTH] /me check:", user ? { userId: user.id, username: user.username } : "no session")
     if (!user) return { user: null }
@@ -87,7 +102,8 @@ authRoutes.get("/me", async ({ headers }) => {
             email: user.email,
             avatar: user.avatar,
             slackId: user.slackId,
-            scraps: user.scraps
+            scraps: user.scraps,
+            role: user.role
         }
     }
 })

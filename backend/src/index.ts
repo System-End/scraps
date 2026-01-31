@@ -9,6 +9,7 @@ import shop from './routes/shop'
 import leaderboard from './routes/leaderboard'
 import hackatime from './routes/hackatime'
 import upload from './routes/upload'
+import admin from './routes/admin'
 
 const api = new Elysia({ prefix: '/api' })
     .use(authRoutes)
@@ -20,11 +21,12 @@ const api = new Elysia({ prefix: '/api' })
     .use(leaderboard)
     .use(hackatime)
     .use(upload)
+    .use(admin)
     .get("/", () => "if you dm @notaroomba abt finding this you may get cool stickers")
 
 const app = new Elysia()
     .use(cors({
-        origin: ["http://localhost:5173", "http://localhost:3000"],
+        origin: [process.env.FRONTEND_URL as string],
         credentials: true
     }))
     .use(api)

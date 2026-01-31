@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
-	import DashboardNavbar from '$lib/components/DashboardNavbar.svelte'
 	import HeartButton from '$lib/components/HeartButton.svelte'
 	import { API_URL } from '$lib/config'
 	import { getUser } from '$lib/auth-client'
@@ -24,6 +23,7 @@
 		avatar: string | null
 		slackId: string | null
 		scraps: number
+		role: string
 	}
 
 	let items = $state<ShopItem[]>([])
@@ -83,8 +83,6 @@
 <svelte:head>
 	<title>shop | scraps</title>
 </svelte:head>
-
-<DashboardNavbar {screws} {user} />
 
 <div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">
 	<h1 class="text-4xl md:text-6xl font-bold mb-4">shop</h1>

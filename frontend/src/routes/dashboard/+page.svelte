@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
 	import { FilePlus2, Pencil } from '@lucide/svelte'
-	import DashboardNavbar from '$lib/components/DashboardNavbar.svelte'
 	import ProjectModal from '$lib/components/ProjectModal.svelte'
 	import CreateProjectModal from '$lib/components/CreateProjectModal.svelte'
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte'
@@ -18,6 +17,7 @@
 		githubUrl: string | null
 		hackatimeProject: string | null
 		hours: number
+		status: string
 	}
 
 	interface NewsItem {
@@ -33,6 +33,7 @@
 		avatar: string
 		slackId: string
 		scraps: number
+		role: string
 	}
 
 	let user = $state<User | null>(null)
@@ -52,13 +53,13 @@
 
 		// Fetch user's projects
 		try {
-			const projectsResponse = await fetch(`${API_URL}/projects`, {
+			const projectsResponse = await fetch(`${API_URL}/projects?limit=50`, {
 				credentials: 'include'
 			})
 			if (projectsResponse.ok) {
 				const data = await projectsResponse.json()
-				if (Array.isArray(data)) {
-					projects = data
+				if (data.data) {
+					projects = data.data
 				}
 			}
 		} catch (e) {
@@ -105,8 +106,6 @@
 	<title>dashboard | scraps</title>
 </svelte:head>
 
-<DashboardNavbar {screws} {user} />
-
 <div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">
 	<!-- Greeting -->
 	{#if user}
@@ -121,23 +120,28 @@
 					onclick={() => openEditModal(project)}
 					class="shrink-0 w-80 h-64 rounded-2xl border-4 border-black overflow-hidden relative group bg-white cursor-pointer transition-all hover:border-dashed flex flex-col"
 				>
-					<div class="flex-1 flex items-center justify-center p-6 overflow-hidden">
+					<div class="flex-1 overflow-hidden">
 						{#if project.image}
 							<img
 								src={project.image}
 								alt={project.name}
-								class="max-w-full max-h-full object-contain"
+								class="w-full h-full object-cover"
 							/>
 						{:else}
 							<ProjectPlaceholder seed={project.id} />
 						{/if}
 					</div>
-					<div class="px-4 py-3 border-t-2 border-black bg-white flex items-center justify-between">
-						<span class="font-bold text-lg truncate">{project.name}</span>
-						<span class="text-gray-500 text-sm shrink-0">{project.hours}h</span>
+					<div class="px-4 py-3 border-t-2 border-black bg-white">
+						<div class="flex items-center justify-between mb-1">
+							<span class="font-bold text-lg truncate">{project.name}</span>
+							<span class="text-gray-500 text-sm shrink-0">{project.hours}h</span>
+						</div>
+						<span class="text-xs px-2 py-0.5 rounded-full {project.status === 'shipped' ? 'bg-green-100' : project.status === 'waiting_for_review' ? 'bg-yellow-100' : 'bg-gray-100'}">
+							{project.status.replace(/_/g, ' ')}
+						</span>
 					</div>
 					<div
-						class="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 border-2 border-dashed border-black/50 rounded-full bg-white/90 opacity-0 group-hover:opacity-100 transition-opacity"
+						class="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 border-2 border-dashed border-black/50 rounded-full bg-white/90 opacity-0 group-hover:opacity-100 transition-opacity"
 					>
 						<Pencil size={16} />
 						<span class="font-bold">edit project</span>

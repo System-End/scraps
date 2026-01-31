@@ -2,4 +2,4 @@ import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
-export default defineConfig({ plugins: [tailwindcss(), sveltekit()], server: {allowedHosts: ["james-palestinian-diagram-childrens.trycloudflare.com"]} });
+export default defineConfig({ plugins: [tailwindcss(), sveltekit()], server: {allowedHosts: ["stored-alias-agenda-surgery.trycloudflare.com"]} });

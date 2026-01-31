@@ -1,16 +1,41 @@
 import { Elysia } from 'elysia'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, sql, desc } from 'drizzle-orm'
 import { db } from '../db'
 import { projectsTable } from '../schemas/projects'
+import { reviewsTable } from '../schemas/reviews'
 import { getUserFromSession } from '../lib/auth'
 
 const projects = new Elysia({ prefix: '/projects' })
 
-projects.get('/', async ({ headers }) => {
+projects.get('/', async ({ headers, query }) => {
     const user = await getUserFromSession(headers as Record<string, string>)
     if (!user) return { error: 'Unauthorized' }
 
-    return await db.select().from(projectsTable).where(eq(projectsTable.userId, user.id))
+    const page = parseInt(query.page as string) || 1
+    const limit = Math.min(parseInt(query.limit as string) || 20, 100)
+    const offset = (page - 1) * limit
+
+    const [projectsList, countResult] = await Promise.all([
+        db.select().from(projectsTable)
+            .where(eq(projectsTable.userId, user.id))
+            .orderBy(desc(projectsTable.updatedAt))
+            .limit(limit)
+            .offset(offset),
+        db.select({ count: sql<number>`count(*)` }).from(projectsTable)
+            .where(eq(projectsTable.userId, user.id))
+    ])
+
+    const total = Number(countResult[0]?.count || 0)
+
+    return {
+        data: projectsList,
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit)
+        }
+    }
 })
 
 projects.get('/:id', async ({ params, headers }) => {
@@ -95,6 +120,58 @@ projects.delete("/:id", async ({ params, headers }) => {
         .returning()
 
     return deleted.length ? { success: true } : { error: "Not found" }
+})
+
+// Submit project for review
+projects.post("/:id/submit", async ({ params, headers }) => {
+    const user = await getUserFromSession(headers as Record<string, string>)
+    if (!user) return { error: "Unauthorized" }
+
+    const project = await db
+        .select()
+        .from(projectsTable)
+        .where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id)))
+        .limit(1)
+
+    if (!project[0]) return { error: "Not found" }
+
+    if (project[0].status !== 'in_progress') {
+        return { error: "Project cannot be submitted in current status" }
+    }
+
+    const updated = await db
+        .update(projectsTable)
+        .set({ status: 'waiting_for_review', updatedAt: new Date() })
+        .where(eq(projectsTable.id, parseInt(params.id)))
+        .returning()
+
+    return updated[0]
+})
+
+// Get project reviews (public feedback)
+projects.get("/:id/reviews", async ({ params, headers }) => {
+    const user = await getUserFromSession(headers as Record<string, string>)
+    if (!user) return { error: "Unauthorized" }
+
+    const project = await db
+        .select()
+        .from(projectsTable)
+        .where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id)))
+        .limit(1)
+
+    if (!project[0]) return { error: "Not found" }
+
+    const reviews = await db
+        .select({
+            id: reviewsTable.id,
+            action: reviewsTable.action,
+            feedbackForAuthor: reviewsTable.feedbackForAuthor,
+            createdAt: reviewsTable.createdAt
+        })
+        .from(reviewsTable)
+        .where(eq(reviewsTable.projectId, parseInt(params.id)))
+
+    return reviews
 })
 
 export default projects

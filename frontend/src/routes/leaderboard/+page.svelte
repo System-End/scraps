@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
-	import DashboardNavbar from '$lib/components/DashboardNavbar.svelte'
 	import { API_URL } from '$lib/config'
 	import { getUser } from '$lib/auth-client'
 
@@ -21,6 +20,7 @@
 		avatar: string | null
 		slackId: string | null
 		scraps: number
+		role: string
 	}
 
 	let leaderboard = $state<LeaderboardEntry[]>([])
@@ -59,8 +59,6 @@
 <svelte:head>
 	<title>leaderboard | scraps</title>
 </svelte:head>
-
-<DashboardNavbar {screws} {user} />
 
 <div class="pt-24 px-6 md:px-12 max-w-5xl mx-auto pb-24">
 	<h1 class="text-4xl md:text-6xl font-bold mb-8">leaderboard</h1>
