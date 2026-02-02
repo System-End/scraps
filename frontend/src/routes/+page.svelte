@@ -1,10 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
-	import { LogIn } from '@lucide/svelte'
+	import { Origami } from '@lucide/svelte'
 	import Superscript from '$lib/components/Superscript.svelte'
 	import { login } from '$lib/auth-client'
-
-	let email = $state('')
 
 	function handleLogin() {
 		login()
@@ -121,21 +119,13 @@
 		</p>
 
 		<!-- Auth Section -->
-		<div class="flex flex-col sm:flex-row gap-3">
-			<input
-				type="email"
-				bind:value={email}
-				placeholder="your@email.com"
-				class="flex-1 px-4 py-3 border-4 border-black rounded-full focus:outline-none focus:border-dashed"
-			/>
-			<button
-				onclick={handleLogin}
-				class="flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all"
-			>
-				<LogIn size={18} />
-				<span>sign up / login</span>
-			</button>
-		</div>
+		<button
+			onclick={handleLogin}
+			class="flex items-center cursor-pointer justify-center gap-2 px-8 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all"
+		>
+			<Origami size={18} />
+			<span>start scrapping</span>
+		</button>
 	</div>
 </div>
 
@@ -143,7 +133,7 @@
 <div id="scraps" class="min-h-dvh flex flex-col overflow-hidden">
 	<div class="px-6 md:px-12 pt-24 pb-8">
 		<div class="max-w-3xl mx-auto">
-			<h2 class="text-4xl md:text-6xl font-bold mb-2">scrapss</h2>
+			<h2 class="text-4xl md:text-6xl font-bold mb-2">scraps</h2>
 			<p class="text-lg md:text-xl text-gray-600">(items up for grabs)</p>
 		</div>
 	</div>
@@ -162,7 +152,7 @@
 			>
 				{#each row1Items as item (item.id)}
 					<div
-						class="shrink-0 w-65 p-4 bg-white border-2 border-dashed border-black rounded-lg transition-all duration-300 hover:border-solid"
+						class="shrink-0 w-65 p-4 bg-white border-4 border-dashed border-black rounded-lg transition-all duration-300 hover:border-solid"
 						role="listitem"
 					>
 						<img src={item.image} alt={item.title} class="w-full h-32 object-contain mb-3" />
@@ -189,7 +179,7 @@
 			>
 				{#each row2Items as item (item.id)}
 					<div
-						class="shrink-0 w-65 p-4 bg-white border-2 border-dashed border-black rounded-lg transition-all duration-300 hover:border-solid"
+						class="shrink-0 w-65 p-4 bg-white border-4 border-dashed border-black rounded-lg transition-all duration-300 hover:border-solid"
 						role="listitem"
 					>
 						<img src={item.image} alt={item.title} class="w-full h-32 object-contain mb-3" />
@@ -246,7 +236,7 @@
 				href="https://stickers.hackclub.com/"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="underline hover:no-underline"
+				class="underline hover:no-underline cursor-pointer"
 			>
 				stickers.hackclub.com</a
 			>? well, here is your chance to get any sticker (that we have in stock) to complete your

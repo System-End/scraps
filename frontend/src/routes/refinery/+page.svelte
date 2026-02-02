@@ -14,7 +14,7 @@
 	}
 
 	let user = $state<User | null>(null)
-	let screws = $derived(user?.scraps ?? 0)
+	let scraps = $derived(user?.scraps ?? 0)
 
 	onMount(async () => {
 		user = await getUser()
@@ -52,7 +52,7 @@
 		{
 			id: 3,
 			name: 'mystery box',
-			description: 'trade screws for a mystery item',
+			description: 'trade scraps for a mystery item',
 			inputItems: [],
 			outputItem: { name: '???', chance: 100 },
 			cost: 20
@@ -69,11 +69,8 @@
 	<title>refinery | scraps</title>
 </svelte:head>
 
-<div class="pt-24 px-6 md:px-12 max-w-4xl mx-auto pb-24">
-	<div class="flex items-center gap-4 mb-4">
-		<!-- <Flame size={48} /> -->
-		<h1 class="text-4xl md:text-6xl font-bold">refinery</h1>
-	</div>
+<div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">
+	<h1 class="text-4xl md:text-5xl font-bold mb-2">refinery</h1>
 	<p class="text-lg text-gray-600 mb-8">upgrade and combine your scraps</p>
 
 	<!-- Recipes -->
@@ -87,9 +84,9 @@
 					</div>
 					<button
 						onclick={() => refine(recipe)}
-						class="px-6 py-2 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-colors flex items-center gap-2"
+						class="px-6 py-2 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-colors flex items-center gap-2 cursor-pointer"
 					>
-						<span>{recipe.cost} screws</span>
+						<span>{recipe.cost} scraps</span>
 						<Flame size={16} />
 					</button>
 				</div>
@@ -107,7 +104,7 @@
 							{/each}
 						</div>
 					{:else}
-						<span class="px-3 py-1 bg-gray-100 rounded-full text-sm font-bold">screws only</span>
+						<span class="px-3 py-1 bg-gray-100 rounded-full text-sm font-bold">scraps only</span>
 					{/if}
 
 					<ArrowRight size={20} class="text-gray-400" />

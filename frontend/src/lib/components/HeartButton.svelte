@@ -14,7 +14,7 @@
 
 <button
 	{onclick}
-	class="flex items-center gap-1 p-2 rounded-full border-2 border-black transition-colors {hearted
+	class="flex items-center gap-1 p-2 rounded-full border-2 border-black transition-colors cursor-pointer {hearted
 		? 'bg-red-100 border-red-500'
 		: 'hover:bg-gray-100'}"
 	title={hearted ? 'Remove from wishlist' : 'Add to wishlist'}

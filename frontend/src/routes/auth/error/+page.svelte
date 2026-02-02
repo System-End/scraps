@@ -40,7 +40,7 @@
 		<div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
 			<a
 				href="/"
-				class="px-6 py-3 border-4 border-black rounded-full font-bold hover:border-dashed transition-all"
+				class="px-6 py-3 border-4 border-black rounded-full font-bold hover:border-dashed transition-all cursor-pointer"
 			>
 				go back home
 			</a>
@@ -48,7 +48,7 @@
 				href="https://hackclub.com/slack"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="px-6 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all"
+				class="px-6 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all cursor-pointer"
 			>
 				get help on slack
 			</a>

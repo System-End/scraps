@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
-	import { ChevronLeft, ChevronRight } from '@lucide/svelte'
+	import { ChevronLeft, ChevronRight, Search } from '@lucide/svelte'
 	import { getUser } from '$lib/auth-client'
 	import { API_URL } from '$lib/config'
 
@@ -38,11 +38,13 @@
 	let users = $state<AdminUser[]>([])
 	let pagination = $state<Pagination | null>(null)
 	let loading = $state(true)
-	let screws = $derived(user?.scraps ?? 0)
+	let scraps = $derived(user?.scraps ?? 0)
 	let editingUser = $state<AdminUser | null>(null)
 	let editingNotes = $state('')
 	let editingRole = $state('')
 	let saving = $state(false)
+	let searchQuery = $state('')
+	let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
 	onMount(async () => {
 		user = await getUser()
@@ -54,10 +56,12 @@
 		await fetchUsers()
 	})
 
-	async function fetchUsers(page = 1) {
+	async function fetchUsers(page = 1, search = searchQuery) {
 		loading = true
 		try {
-			const response = await fetch(`${API_URL}/admin/users?page=${page}&limit=20`, {
+			const params = new URLSearchParams({ page: String(page), limit: '20' })
+			if (search) params.set('search', search)
+			const response = await fetch(`${API_URL}/admin/users?${params}`, {
 				credentials: 'include'
 			})
 			if (response.ok) {
@@ -70,6 +74,15 @@
 		} finally {
 			loading = false
 		}
+	}
+
+	function handleSearch(e: Event) {
+		const value = (e.target as HTMLInputElement).value
+		searchQuery = value
+		if (searchTimeout) clearTimeout(searchTimeout)
+		searchTimeout = setTimeout(() => {
+			fetchUsers(1, value)
+		}, 300)
 	}
 
 	function goToPage(page: number) {
@@ -126,6 +139,8 @@
 				return 'bg-red-100 text-red-700'
 			case 'reviewer':
 				return 'bg-blue-100 text-blue-700'
+			case 'banned':
+				return 'bg-black text-white'
 			default:
 				return 'bg-gray-100 text-gray-700'
 		}
@@ -137,17 +152,23 @@
 </svelte:head>
 
 <div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">
-	<div class="flex items-center justify-between mb-8">
-		<div>
-			<h1 class="text-4xl md:text-5xl font-bold mb-2">users</h1>
-			<p class="text-lg text-gray-600">manage users and permissions</p>
+	<div class="mb-8">
+		<h1 class="text-4xl md:text-5xl font-bold mb-2">users</h1>
+		<p class="text-lg text-gray-600">manage users and permissions</p>
+	</div>
+
+	<!-- Search -->
+	<div class="mb-6">
+		<div class="relative">
+			<Search size={20} class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+			<input
+				type="text"
+				placeholder="search by username, email, or slack id..."
+				value={searchQuery}
+				oninput={handleSearch}
+				class="w-full pl-12 pr-4 py-3 border-4 border-black rounded-full focus:outline-none focus:border-dashed"
+			/>
 		</div>
-		<a
-			href="/admin/reviews"
-			class="px-4 py-2 border-2 border-black rounded-full font-bold hover:border-dashed transition-all"
-		>
-			reviews
-		</a>
 	</div>
 
 	{#if loading}
@@ -193,12 +214,20 @@
 							</td>
 							<td class="px-4 py-4 text-center font-bold">{u.scraps}</td>
 							<td class="px-4 py-4 text-right">
-								<button
-									onclick={() => startEditing(u)}
-									class="px-3 py-1 border-2 border-black rounded-full font-bold text-sm hover:border-dashed transition-all"
-								>
-									edit
-								</button>
+								<div class="flex items-center justify-end gap-2">
+									<a
+										href="/admin/users/{u.id}"
+										class="px-3 py-1 border-4 border-black rounded-full font-bold text-sm hover:border-dashed transition-all duration-200 cursor-pointer"
+									>
+										view
+									</a>
+									<button
+										onclick={() => startEditing(u)}
+										class="px-3 py-1 border-4 border-black rounded-full font-bold text-sm hover:border-dashed transition-all duration-200 cursor-pointer"
+									>
+										edit
+									</button>
+								</div>
 							</td>
 						</tr>
 					{/each}
@@ -212,7 +241,7 @@
 				<button
 					onclick={() => goToPage(pagination!.page - 1)}
 					disabled={pagination.page <= 1}
-					class="p-2 border-2 border-black rounded-full hover:border-dashed transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+					class="p-2 border-2 border-black rounded-full hover:border-dashed transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
 				>
 					<ChevronLeft size={20} />
 				</button>
@@ -222,7 +251,7 @@
 				<button
 					onclick={() => goToPage(pagination!.page + 1)}
 					disabled={pagination.page >= pagination.totalPages}
-					class="p-2 border-2 border-black rounded-full hover:border-dashed transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+					class="p-2 border-2 border-black rounded-full hover:border-dashed transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
 				>
 					<ChevronRight size={20} />
 				</button>
@@ -254,6 +283,7 @@
 							<option value="member">member</option>
 							<option value="reviewer">reviewer</option>
 							<option value="admin">admin</option>
+							<option value="banned">banned</option>
 						</select>
 					</div>
 				{/if}
@@ -272,14 +302,14 @@
 				<button
 					onclick={cancelEditing}
 					disabled={saving}
-					class="flex-1 px-4 py-2 border-2 border-black rounded-full font-bold hover:border-dashed transition-all disabled:opacity-50"
+					class="flex-1 px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 disabled:opacity-50 cursor-pointer"
 				>
 					cancel
 				</button>
 				<button
 					onclick={saveChanges}
 					disabled={saving}
-					class="flex-1 px-4 py-2 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all disabled:opacity-50"
+					class="flex-1 px-4 py-2 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 cursor-pointer"
 				>
 					{saving ? 'saving...' : 'save'}
 				</button>

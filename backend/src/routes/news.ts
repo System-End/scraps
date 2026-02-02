@@ -1,21 +1,31 @@
 import { Elysia } from "elysia"
+import { desc } from "drizzle-orm"
+import { db } from "../db"
+import { newsTable } from "../schemas/news"
 
 const news = new Elysia({
     prefix: "/news"
 })
 
-// GET /news/latest - Get the latest news item
-news.get("/latest", async () => {
-    // TODO: Fetch latest news from database
-    // const latestNews = await db.select().from(newsTable).orderBy(desc(newsTable.date)).limit(1)
-    // return latestNews[0]
+// GET /news - Get all active news items
+news.get("/", async () => {
+    const items = await db
+        .select()
+        .from(newsTable)
+        .orderBy(desc(newsTable.createdAt))
 
-    // Dummy data for now
-    return {
-        id: 1,
-        date: "jan 21, 2026",
-        content: "remember to stay scrappy!"
-    }
+    return items
+})
+
+// GET /news/latest - Get the latest active news item
+news.get("/latest", async () => {
+    const items = await db
+        .select()
+        .from(newsTable)
+        .orderBy(desc(newsTable.createdAt))
+        .limit(1)
+
+    return items[0] || null
 })
 
 export default news

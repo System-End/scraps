@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { X, ChevronDown, Upload } from '@lucide/svelte'
+	import { X, ChevronDown, Upload, Check } from '@lucide/svelte'
 	import { API_URL } from '$lib/config'
+	import { formatHours } from '$lib/utils'
 
 	interface Project {
 		id: number
@@ -33,15 +34,27 @@
 
 	let name = $state('')
 	let description = $state('')
+	let githubUrl = $state('')
 	let imageUrl = $state<string | null>(null)
 	let imagePreview = $state<string | null>(null)
 	let uploadingImage = $state(false)
 	let selectedHackatimeProject = $state<HackatimeProject | null>(null)
 	let hackatimeProjects = $state<HackatimeProject[]>([])
+	let userSlackId = $state<string | null>(null)
 	let loadingProjects = $state(false)
 	let showDropdown = $state(false)
 	let loading = $state(false)
 	let error = $state<string | null>(null)
+
+	const NAME_MAX = 50
+	const DESC_MIN = 20
+	const DESC_MAX = 1000
+
+	let hasImage = $derived(!!imageUrl)
+	let hasHackatime = $derived(!!selectedHackatimeProject)
+	let hasDescription = $derived(description.trim().length >= DESC_MIN && description.trim().length <= DESC_MAX)
+	let hasName = $derived(name.trim().length > 0 && name.trim().length <= NAME_MAX)
+	let allRequirementsMet = $derived(hasDescription && hasName)
 
 	async function fetchHackatimeProjects() {
 		loadingProjects = true
@@ -52,6 +65,7 @@
 			if (response.ok) {
 				const data = await response.json()
 				hackatimeProjects = data.projects || []
+				userSlackId = data.slackId || null
 			}
 		} catch (e) {
 			console.error('Failed to fetch hackatime projects:', e)
@@ -112,11 +126,16 @@
 	function selectProject(project: HackatimeProject) {
 		selectedHackatimeProject = project
 		showDropdown = false
+		// Always update GitHub URL from hackatime project if available
+		if (project.repoUrl) {
+			githubUrl = project.repoUrl
+		}
 	}
 
 	function resetForm() {
 		name = ''
 		description = ''
+		githubUrl = ''
 		imageUrl = null
 		imagePreview = null
 		selectedHackatimeProject = null
@@ -125,13 +144,18 @@
 	}
 
 	async function handleSubmit() {
-		if (!name.trim() || !description.trim()) {
-			error = 'Name and description are required'
+		if (!allRequirementsMet) {
+			error = 'Please complete all requirements'
 			return
 		}
 
 		loading = true
 		error = null
+
+		const hackatimeValue = selectedHackatimeProject && userSlackId
+			? `${userSlackId}/${selectedHackatimeProject.name}`
+			: null
+		const finalGithubUrl = githubUrl.trim() || selectedHackatimeProject?.repoUrl || null
 
 		try {
 			const response = await fetch(`${API_URL}/projects`, {
@@ -144,9 +168,8 @@
 					name,
 					description,
 					image: imageUrl || null,
-					githubUrl: selectedHackatimeProject?.repoUrl || null,
-					hackatimeProject: selectedHackatimeProject?.name || null,
-					hours: selectedHackatimeProject?.hours || 0
+					githubUrl: finalGithubUrl,
+					hackatimeProject: hackatimeValue
 				})
 			})
 
@@ -188,7 +211,7 @@
 		<div class="bg-white rounded-2xl w-full max-w-lg p-6 border-4 border-black max-h-[90vh] overflow-y-auto">
 			<div class="flex items-center justify-between mb-6">
 				<h2 class="text-2xl font-bold">new project</h2>
-				<button onclick={handleClose} class="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+				<button onclick={handleClose} class="p-1 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
 					<X size={24} />
 				</button>
 			</div>
@@ -202,7 +225,7 @@
 			<div class="space-y-4">
 				<!-- Image Upload -->
 				<div>
-					<label class="block text-sm font-bold mb-1">image <span class="font-normal text-gray-500">(optional)</span></label>
+					<label class="block text-sm font-bold mb-1">image <span class="text-gray-400">(optional)</span></label>
 					{#if imagePreview}
 						<div class="relative w-full h-40 border-2 border-black rounded-lg overflow-hidden">
 							<img src={imagePreview} alt="Preview" class="w-full h-full object-contain bg-gray-100" />
@@ -214,7 +237,7 @@
 								<button
 									type="button"
 									onclick={removeImage}
-									class="absolute top-2 right-2 p-1 bg-white rounded-full border-2 border-black hover:bg-gray-100"
+									class="absolute top-2 right-2 p-1 bg-white rounded-full border-2 border-black hover:bg-gray-100 cursor-pointer"
 								>
 									<X size={16} />
 								</button>
@@ -229,32 +252,37 @@
 					{/if}
 				</div>
 
-				<!-- Required fields -->
+				<!-- Name -->
 				<div>
 					<label for="name" class="block text-sm font-bold mb-1">name <span class="text-red-500">*</span></label>
 					<input
 						id="name"
 						type="text"
 						bind:value={name}
+						maxlength={NAME_MAX}
 						required
 						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
 					/>
+					<p class="text-xs text-gray-500 mt-1 text-right">{name.length}/{NAME_MAX}</p>
 				</div>
 
+				<!-- Description -->
 				<div>
 					<label for="description" class="block text-sm font-bold mb-1">description <span class="text-red-500">*</span></label>
 					<textarea
 						id="description"
 						bind:value={description}
 						rows="3"
+						maxlength={DESC_MAX}
 						required
 						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed resize-none"
 					></textarea>
+					<p class="text-xs mt-1 text-right {description.length < DESC_MIN ? 'text-red-500' : 'text-gray-500'}">{description.length}/{DESC_MAX} (min {DESC_MIN})</p>
 				</div>
 
-				<!-- Optional Hackatime Project Dropdown -->
+				<!-- Hackatime Project Dropdown -->
 				<div>
-					<label class="block text-sm font-bold mb-1">hackatime project <span class="font-normal text-gray-500">(optional)</span></label>
+					<label class="block text-sm font-bold mb-1">hackatime project <span class="text-gray-400">(optional)</span></label>
 					<div class="relative">
 						<button
 							type="button"
@@ -264,7 +292,7 @@
 							{#if loadingProjects}
 								<span class="text-gray-500">loading projects...</span>
 							{:else if selectedHackatimeProject}
-								<span>{selectedHackatimeProject.name} <span class="text-gray-500">({selectedHackatimeProject.hours}h)</span></span>
+								<span>{selectedHackatimeProject.name} <span class="text-gray-500">({formatHours(selectedHackatimeProject.hours)}h)</span></span>
 							{:else}
 								<span class="text-gray-500">select a project</span>
 							{/if}
@@ -276,30 +304,51 @@
 								{#if hackatimeProjects.length === 0}
 									<div class="px-4 py-2 text-gray-500 text-sm">no projects found</div>
 								{:else}
-									<button
-										type="button"
-										onclick={() => { selectedHackatimeProject = null; showDropdown = false }}
-										class="w-full px-4 py-2 text-left hover:bg-gray-100 text-gray-500"
-									>
-										none
-									</button>
 									{#each hackatimeProjects as project}
 										<button
 											type="button"
 											onclick={() => selectProject(project)}
-											class="w-full px-4 py-2 text-left hover:bg-gray-100 flex justify-between items-center"
+											class="w-full px-4 py-2 text-left hover:bg-gray-100 flex justify-between items-center cursor-pointer"
 										>
 											<span class="font-medium">{project.name}</span>
-											<span class="text-gray-500 text-sm">{project.hours}h</span>
+											<span class="text-gray-500 text-sm">{formatHours(project.hours)}h</span>
 										</button>
 									{/each}
 								{/if}
 							</div>
 						{/if}
 					</div>
-					{#if selectedHackatimeProject?.repoUrl}
-						<p class="text-xs text-gray-500 mt-1">github: {selectedHackatimeProject.repoUrl}</p>
-					{/if}
+				</div>
+
+				<!-- GitHub URL (optional) -->
+				<div>
+					<label for="githubUrl" class="block text-sm font-bold mb-1">github url <span class="text-gray-400">(optional)</span></label>
+					<input
+						id="githubUrl"
+						type="url"
+						bind:value={githubUrl}
+						placeholder="https://github.com/user/repo"
+						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+					/>
+				</div>
+
+				<!-- Requirements Checklist -->
+				<div class="border-2 border-black rounded-lg p-4">
+					<p class="font-bold mb-3">requirements</p>
+					<ul class="space-y-2">
+						<li class="flex items-center gap-2 text-sm">
+							<span class="w-5 h-5 rounded-full border-2 border-black flex items-center justify-center {hasName ? 'bg-black text-white' : ''}">
+								{#if hasName}<Check size={12} />{/if}
+							</span>
+							<span class={hasName ? '' : 'text-gray-500'}>add a project name</span>
+						</li>
+						<li class="flex items-center gap-2 text-sm">
+							<span class="w-5 h-5 rounded-full border-2 border-black flex items-center justify-center {hasDescription ? 'bg-black text-white' : ''}">
+								{#if hasDescription}<Check size={12} />{/if}
+							</span>
+							<span class={hasDescription ? '' : 'text-gray-500'}>write a description (min {DESC_MIN} chars)</span>
+						</li>
+					</ul>
 				</div>
 			</div>
 
@@ -307,14 +356,14 @@
 				<button
 					onclick={handleClose}
 					disabled={loading}
-					class="flex-1 px-4 py-2 border-2 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 disabled:opacity-50"
+					class="flex-1 px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 disabled:opacity-50 cursor-pointer"
 				>
 					cancel
 				</button>
 				<button
 					onclick={handleSubmit}
-					disabled={loading}
-					class="flex-1 px-4 py-2 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50"
+					disabled={loading || !allRequirementsMet}
+					class="flex-1 px-4 py-2 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 cursor-pointer"
 				>
 					{loading ? 'creating...' : 'create'}
 				</button>

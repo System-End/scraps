@@ -49,7 +49,7 @@
 			<p class="text-gray-600 mb-6">{error}</p>
 			<a
 				href="/"
-				class="px-6 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all"
+				class="px-6 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all cursor-pointer"
 			>
 				go back home
 			</a>

@@ -2,7 +2,7 @@ import { Elysia, t } from 'elysia'
 import { db } from '../db'
 import { usersTable } from '../schemas/users'
 import { projectsTable } from '../schemas/projects'
-import { sql, desc, eq } from 'drizzle-orm'
+import { sql, desc, eq, and, or, isNull } from 'drizzle-orm'
 
 const leaderboard = new Elysia({ prefix: '/leaderboard' })
 
@@ -20,7 +20,10 @@ leaderboard.get('/', async ({ query }) => {
 				projectCount: sql<number>`COUNT(${projectsTable.id})`.as('project_count')
 			})
 			.from(usersTable)
-			.leftJoin(projectsTable, eq(projectsTable.userId, usersTable.id))
+			.leftJoin(projectsTable, and(
+				eq(projectsTable.userId, usersTable.id),
+				or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
+			))
 			.groupBy(usersTable.id)
 			.orderBy(desc(sql`total_hours`))
 			.limit(10)
@@ -46,7 +49,10 @@ leaderboard.get('/', async ({ query }) => {
 			projectCount: sql<number>`COUNT(${projectsTable.id})`.as('project_count')
 		})
 		.from(usersTable)
-		.leftJoin(projectsTable, eq(projectsTable.userId, usersTable.id))
+		.leftJoin(projectsTable, and(
+			eq(projectsTable.userId, usersTable.id),
+			or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
+		))
 		.groupBy(usersTable.id)
 		.orderBy(desc(usersTable.scraps))
 		.limit(10)

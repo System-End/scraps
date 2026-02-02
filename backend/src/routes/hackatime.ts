@@ -48,6 +48,7 @@ hackatime.get('/projects', async ({ headers }) => {
 		console.log('[HACKATIME] Projects fetched:', data.projects?.length || 0)
 
 		return {
+			slackId: user.slackId,
 			projects: data.projects.map((p) => ({
 				name: p.name,
 				hours: Math.round(p.total_seconds / 3600 * 10) / 10,

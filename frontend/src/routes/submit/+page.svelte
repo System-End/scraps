@@ -4,6 +4,7 @@
 	import { ChevronDown, Send } from '@lucide/svelte'
 	import { getUser } from '$lib/auth-client'
 	import { API_URL } from '$lib/config'
+	import { formatHours } from '$lib/utils'
 
 	interface Project {
 		id: number
@@ -30,7 +31,7 @@
 	let showDropdown = $state(false)
 	let submitting = $state(false)
 	let error = $state<string | null>(null)
-	let screws = $derived(user?.scraps ?? 0)
+	let scraps = $derived(user?.scraps ?? 0)
 
 	let eligibleProjects = $derived(projects.filter((p) => p.status === 'in_progress'))
 
@@ -106,7 +107,7 @@
 				<button
 					type="button"
 					onclick={() => (showDropdown = !showDropdown)}
-					class="w-full px-4 py-3 border-4 border-black rounded-lg text-left flex items-center justify-between hover:border-dashed transition-all"
+					class="w-full px-4 py-3 border-4 border-black rounded-lg text-left flex items-center justify-between hover:border-dashed transition-all cursor-pointer"
 				>
 					{#if selectedProject}
 						<span class="font-bold">{selectedProject.name}</span>
@@ -133,10 +134,10 @@
 										selectedProject = project
 										showDropdown = false
 									}}
-									class="w-full px-4 py-3 text-left hover:bg-gray-100 transition-colors flex justify-between items-center"
+									class="w-full px-4 py-3 text-left hover:bg-gray-100 transition-colors flex justify-between items-center cursor-pointer"
 								>
 									<span class="font-bold">{project.name}</span>
-									<span class="text-gray-500 text-sm">{project.hours}h</span>
+									<span class="text-gray-500 text-sm">{formatHours(project.hours)}h</span>
 								</button>
 							{/each}
 						{/if}
@@ -150,7 +151,7 @@
 				<h3 class="font-bold text-xl mb-2">{selectedProject.name}</h3>
 				<p class="text-gray-600 mb-4">{selectedProject.description}</p>
 				<div class="flex items-center gap-4 text-sm">
-					<span class="px-3 py-1 bg-gray-100 rounded-full font-bold">{selectedProject.hours}h logged</span>
+					<span class="px-3 py-1 bg-gray-100 rounded-full font-bold">{formatHours(selectedProject.hours)}h logged</span>
 					<span class="px-3 py-1 bg-gray-100 rounded-full font-bold">{selectedProject.status}</span>
 				</div>
 			</div>
@@ -159,7 +160,7 @@
 		<button
 			onclick={submitProject}
 			disabled={submitting || !selectedProject}
-			class="w-full px-6 py-4 bg-black text-white rounded-full font-bold text-lg hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+			class="w-full px-6 py-4 bg-black text-white rounded-full font-bold text-lg hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
 		>
 			<Send size={20} />
 			<span>{submitting ? 'submitting...' : 'submit for review'}</span>

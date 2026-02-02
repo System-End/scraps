@@ -45,7 +45,7 @@
 		<!-- Wishlist button -->
 		<button
 			onclick={onWishlist}
-			class="p-2 rounded-full border-2 border-black hover:bg-gray-100 transition-colors"
+			class="p-2 rounded-full border-2 border-black hover:bg-gray-100 transition-colors cursor-pointer"
 			title="Add to wishlist"
 		>
 			<Heart size={16} />

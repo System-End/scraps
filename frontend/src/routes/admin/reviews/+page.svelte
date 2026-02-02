@@ -5,6 +5,7 @@
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte'
 	import { getUser } from '$lib/auth-client'
 	import { API_URL } from '$lib/config'
+	import { formatHours } from '$lib/utils'
 
 	interface Project {
 		id: number
@@ -37,7 +38,7 @@
 	let projects = $state<Project[]>([])
 	let pagination = $state<Pagination | null>(null)
 	let loading = $state(true)
-	let screws = $derived(user?.scraps ?? 0)
+	let scraps = $derived(user?.scraps ?? 0)
 
 	async function fetchReviews(page = 1) {
 		loading = true
@@ -102,7 +103,7 @@
 					<div class="p-4">
 						<h3 class="font-bold text-xl mb-1">{project.name}</h3>
 						<p class="text-gray-600 text-sm line-clamp-2 mb-2">{project.description}</p>
-						<span class="px-3 py-1 bg-gray-100 rounded-full font-bold text-sm">{project.hours}h</span>
+						<span class="px-3 py-1 bg-gray-100 rounded-full font-bold text-sm">{formatHours(project.hours)}h</span>
 					</div>
 				</a>
 			{/each}
@@ -114,7 +115,7 @@
 				<button
 					onclick={() => goToPage(pagination!.page - 1)}
 					disabled={pagination.page <= 1}
-					class="p-2 border-2 border-black rounded-full hover:border-dashed transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+					class="p-2 border-2 border-black rounded-full hover:border-dashed transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
 				>
 					<ChevronLeft size={20} />
 				</button>
@@ -124,7 +125,7 @@
 				<button
 					onclick={() => goToPage(pagination!.page + 1)}
 					disabled={pagination.page >= pagination.totalPages}
-					class="p-2 border-2 border-black rounded-full hover:border-dashed transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+					class="p-2 border-2 border-black rounded-full hover:border-dashed transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
 				>
 					<ChevronRight size={20} />
 				</button>

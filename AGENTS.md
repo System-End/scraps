@@ -27,17 +27,17 @@ All buttons should follow these patterns:
 
 **Primary Button (filled)**
 ```html
-class="px-4 py-2 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50"
+class="px-4 py-2 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 cursor-pointer"
 ```
 
-**Secondary Button (outlined)**
+**Secondary Button (outlined) - Navigation/Action buttons**
 ```html
-class="px-4 py-2 border-2 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 disabled:opacity-50"
+class="px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 disabled:opacity-50 cursor-pointer"
 ```
 
 **Toggle/Filter Button (selected state)**
 ```html
-class="px-4 py-2 border-2 border-black rounded-full font-bold transition-all duration-200 {isSelected
+class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {isSelected
     ? 'bg-black text-white'
     : 'hover:border-dashed'}"
 ```
@@ -58,10 +58,11 @@ class="bg-white rounded-2xl w-full max-w-lg p-6 border-4 border-black max-h-[90v
 ```
 
 ### Key Patterns
-- **Border style**: `border-2` for buttons/inputs, `border-4` for cards/containers
+- **Border style**: `border-4` for buttons, `border-2` for inputs, `border-4` for cards/containers
 - **Rounding**: `rounded-full` for buttons, `rounded-2xl` for cards, `rounded-lg` for inputs
 - **Hover state**: `hover:border-dashed` for outlined elements
 - **Focus state**: `focus:border-dashed` for inputs
 - **Selected state**: `bg-black text-white` (filled)
 - **Animation**: Always include `transition-all duration-200`
 - **Colors**: Black borders, white backgrounds, no colors except for errors (red)
+- **Cursor**: Always include `cursor-pointer` on clickable elements (buttons, links, interactive cards)

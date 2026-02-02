@@ -6,6 +6,7 @@
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte'
 	import { getUser } from '$lib/auth-client'
 	import { API_URL } from '$lib/config'
+	import { formatHours } from '$lib/utils'
 
 	interface Review {
 		id: number
@@ -40,7 +41,7 @@
 	let loading = $state(true)
 	let submitting = $state(false)
 	let error = $state<string | null>(null)
-	let screws = $derived(user?.scraps ?? 0)
+	let scraps = $derived(user?.scraps ?? 0)
 
 	let projectId = $derived(page.params.id)
 
@@ -110,8 +111,8 @@
 
 	function getStatusColor(status: string) {
 		const colors: Record<string, string> = {
-			in_progress: 'bg-gray-100',
-			waiting_for_review: 'bg-yellow-100',
+			in_progress: 'bg-yellow-100',
+			waiting_for_review: 'bg-blue-100',
 			shipped: 'bg-green-100',
 			permanently_rejected: 'bg-red-100'
 		}
@@ -148,13 +149,13 @@
 			</div>
 			<p class="text-lg text-gray-600 mb-4">{project.description}</p>
 			<div class="flex items-center gap-4">
-				<span class="px-3 py-1 bg-gray-100 rounded-full font-bold text-sm">{project.hours}h logged</span>
+				<span class="px-3 py-1 rounded-full font-bold text-sm">{formatHours(project.hours)}h logged</span>
 				{#if project.githubUrl}
 					<a
 						href={project.githubUrl}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="px-3 py-1 bg-gray-100 rounded-full font-bold text-sm hover:bg-gray-200 transition-colors"
+						class="px-3 py-1 rounded-full font-bold text-sm hover:bg-gray-200 transition-colors cursor-pointer"
 					>
 						github
 					</a>
@@ -173,7 +174,7 @@
 			<button
 				onclick={submitProject}
 				disabled={submitting}
-				class="w-full px-6 py-4 bg-black text-white rounded-full font-bold text-lg hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 mb-8"
+				class="w-full px-6 py-4 bg-black text-white rounded-full font-bold text-lg hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 mb-8 cursor-pointer"
 			>
 				<Send size={20} />
 				<span>{submitting ? 'submitting...' : 'submit for review'}</span>

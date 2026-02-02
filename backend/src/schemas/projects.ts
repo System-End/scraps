@@ -11,10 +11,12 @@ export const projectsTable = pgTable('projects', {
   // Optional fields (required for submission but not creation)
   image: text(),
   githubUrl: varchar('github_url'),
+  playableUrl: varchar('playable_url'),
   hackatimeProject: varchar('hackatime_project'),
   hours: real().default(0),
   hoursOverride: real('hours_override'),
   status: varchar().notNull().default('in_progress'),
+  deleted: integer('deleted').default(0),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
