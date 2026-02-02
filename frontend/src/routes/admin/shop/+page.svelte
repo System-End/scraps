@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
-	import { Plus, Pencil, Trash2, X } from '@lucide/svelte'
+	import { Plus, Pencil, Trash2, X, Spool } from '@lucide/svelte'
 	import { getUser } from '$lib/auth-client'
 	import { API_URL } from '$lib/config'
 
@@ -188,7 +188,7 @@
 						<h3 class="font-bold text-xl">{item.name}</h3>
 						<p class="text-sm text-gray-600 truncate">{item.description}</p>
 						<div class="flex items-center gap-2 mt-1 text-sm flex-wrap">
-							<span class="font-bold">{item.price} scraps</span>
+							<span class="font-bold flex items-center gap-1"><Spool size={16} />{item.price}</span>
 							{#each item.category.split(',').map(c => c.trim()).filter(Boolean) as cat}
 								<span class="px-2 py-0.5 bg-gray-100 rounded-full">{cat}</span>
 							{/each}

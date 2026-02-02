@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
-	import { ArrowLeft, Pencil, Send, Clock, CheckCircle, XCircle, AlertCircle, Github, AlertTriangle, PlaneTakeoff, Plus } from '@lucide/svelte'
+	import { ArrowLeft, Pencil, Send, Clock, CheckCircle, XCircle, AlertCircle, Github, AlertTriangle, PlaneTakeoff, Plus, Globe } from '@lucide/svelte'
 	import { getUser } from '$lib/auth-client'
 	import { API_URL } from '$lib/config'
 	import { formatHours } from '$lib/utils'
@@ -15,6 +15,7 @@
 		description: string
 		image: string | null
 		githubUrl: string | null
+		playableUrl: string | null
 		hackatimeProject?: string | null
 		hours: number
 		hoursOverride?: number | null
@@ -223,6 +224,27 @@
 							<Github size={18} />
 							view on github
 						</a>
+					{:else}
+						<span class="px-4 py-2 border-4 border-dashed border-gray-300 text-gray-400 rounded-full font-bold flex items-center gap-2 cursor-not-allowed">
+							<Github size={18} />
+							view on github
+						</span>
+					{/if}
+					{#if project.playableUrl}
+						<a
+							href={project.playableUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="px-4 py-2 border-4 border-dashed border-black rounded-full font-bold hover:border-solid transition-all duration-200 cursor-pointer flex items-center gap-2"
+						>
+							<Globe size={18} />
+							try it out
+						</a>
+					{:else}
+						<span class="px-4 py-2 border-4 border-dashed border-gray-300 text-gray-400 rounded-full font-bold flex items-center gap-2 cursor-not-allowed">
+							<Globe size={18} />
+							try it out
+						</span>
 					{/if}
 				</div>
 			</div>
