@@ -11,7 +11,7 @@ import hackatime from './routes/hackatime'
 import upload from './routes/upload'
 import admin from './routes/admin'
 
-const api = new Elysia({ prefix: '/api' })
+const api = new Elysia()
     .use(authRoutes)
     .use(projects)
     .use(news)
