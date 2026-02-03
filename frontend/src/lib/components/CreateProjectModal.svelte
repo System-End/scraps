@@ -231,9 +231,11 @@
 		<div class="bg-white rounded-2xl w-full max-w-lg p-6 border-4 border-black max-h-[90vh] overflow-y-auto {tutorialMode ? 'z-[250]' : ''}" data-tutorial="create-project-modal">
 			<div class="flex items-center justify-between mb-6">
 				<h2 class="text-2xl font-bold">new project</h2>
-				<button onclick={handleClose} class="p-1 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
-					<X size={24} />
-				</button>
+				{#if !tutorialMode}
+					<button onclick={handleClose} class="p-1 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+						<X size={24} />
+					</button>
+				{/if}
 			</div>
 
 			{#if error}
@@ -375,8 +377,8 @@
 			<div class="flex gap-3 mt-6">
 				<button
 					onclick={handleClose}
-					disabled={loading}
-					class="flex-1 px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 disabled:opacity-50 cursor-pointer"
+					disabled={loading || tutorialMode}
+					class="flex-1 px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
 				>
 					cancel
 				</button>

@@ -15,7 +15,8 @@
 		ClipboardList,
 		Users,
 		ShoppingBag,
-		Newspaper
+		Newspaper,
+		PackageCheck
 	} from '@lucide/svelte'
 	import { logout, getUser, userScrapsStore } from '$lib/auth-client'
 
@@ -205,6 +206,15 @@
 					>
 						<Newspaper size={18} />
 						<span class="text-lg font-bold">news</span>
+					</a>
+					<a
+						href="/admin/orders"
+						class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath.startsWith('/admin/orders')
+							? 'bg-black text-white border-black'
+							: 'border-black hover:border-dashed'}"
+					>
+						<PackageCheck size={18} />
+						<span class="text-lg font-bold">orders</span>
 					</a>
 				{/if}
 			{/if}

@@ -31,7 +31,8 @@ export const usersTable = pgTable('users', {
 export const userBonusesTable = pgTable('user_bonuses', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   userId: integer('user_id').notNull().references(() => usersTable.id),
-  type: varchar().notNull(),
   amount: integer().notNull(),
+  reason: text().notNull(),
+  givenBy: integer('given_by').references(() => usersTable.id),
   createdAt: timestamp('created_at').defaultNow().notNull()
 })

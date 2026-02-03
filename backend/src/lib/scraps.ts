@@ -1,4 +1,5 @@
 import { eq, sql } from 'drizzle-orm'
+import type { PgTransaction } from 'drizzle-orm/pg-core'
 import { db } from '../db'
 import { projectsTable } from '../schemas/projects'
 import { shopOrdersTable, refineryOrdersTable } from '../schemas/shop'
@@ -11,26 +12,29 @@ export function calculateScrapsFromHours(hours: number): number {
 	return Math.floor(hours * PHI * MULTIPLIER)
 }
 
-export async function getUserScrapsBalance(userId: number): Promise<{
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DbOrTx = typeof db | PgTransaction<any, any, any>
+
+export async function getUserScrapsBalance(userId: number, txOrDb: DbOrTx = db): Promise<{
 	earned: number
 	spent: number
 	balance: number
 }> {
-	const earnedResult = await db
+	const earnedResult = await txOrDb
 		.select({
 			total: sql<number>`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`
 		})
 		.from(projectsTable)
 		.where(eq(projectsTable.userId, userId))
 
-	const bonusResult = await db
+	const bonusResult = await txOrDb
 		.select({
 			total: sql<number>`COALESCE(SUM(${userBonusesTable.amount}), 0)`
 		})
 		.from(userBonusesTable)
 		.where(eq(userBonusesTable.userId, userId))
 
-	const spentResult = await db
+	const spentResult = await txOrDb
 		.select({
 			total: sql<number>`COALESCE(SUM(${shopOrdersTable.totalPrice}), 0)`
 		})
@@ -38,7 +42,7 @@ export async function getUserScrapsBalance(userId: number): Promise<{
 		.where(eq(shopOrdersTable.userId, userId))
 
 	// Calculate scraps spent on probability upgrades from refinery_orders
-	const upgradeSpentResult = await db
+	const upgradeSpentResult = await txOrDb
 		.select({
 			total: sql<number>`COALESCE(SUM(${refineryOrdersTable.cost}), 0)`
 		})
@@ -56,7 +60,7 @@ export async function getUserScrapsBalance(userId: number): Promise<{
 	return { earned, spent, balance }
 }
 
-export async function canAfford(userId: number, cost: number): Promise<boolean> {
-	const { balance } = await getUserScrapsBalance(userId)
+export async function canAfford(userId: number, cost: number, txOrDb: DbOrTx = db): Promise<boolean> {
+	const { balance } = await getUserScrapsBalance(userId, txOrDb)
 	return balance >= cost
 }

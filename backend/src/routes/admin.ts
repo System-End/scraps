@@ -1,7 +1,7 @@
 import { Elysia } from 'elysia'
 import { eq, and, inArray, sql, desc, or } from 'drizzle-orm'
 import { db } from '../db'
-import { usersTable } from '../schemas/users'
+import { usersTable, userBonusesTable } from '../schemas/users'
 import { projectsTable } from '../schemas/projects'
 import { reviewsTable } from '../schemas/reviews'
 import { shopItemsTable, shopOrdersTable, shopHeartsTable } from '../schemas/shop'
@@ -48,7 +48,6 @@ admin.get('/users', async ({ headers, query }) => {
         db.select({
             id: usersTable.id,
             username: usersTable.username,
-            email: usersTable.email,
             avatar: usersTable.avatar,
             slackId: usersTable.slackId,
             role: usersTable.role,
@@ -66,7 +65,6 @@ admin.get('/users', async ({ headers, query }) => {
         data: users.map(u => ({
             id: u.id,
             username: u.username,
-            email: user.role === 'admin' ? u.email : undefined,
             avatar: u.avatar,
             slackId: u.slackId,
             scraps: Number(u.scrapsEarned) - Number(u.scrapsSpent),
@@ -91,7 +89,15 @@ admin.get('/users/:id', async ({ params, headers }) => {
     const targetUserId = parseInt(params.id)
 
     const targetUser = await db
-        .select()
+        .select({
+            id: usersTable.id,
+            username: usersTable.username,
+            avatar: usersTable.avatar,
+            slackId: usersTable.slackId,
+            role: usersTable.role,
+            internalNotes: usersTable.internalNotes,
+            createdAt: usersTable.createdAt
+        })
         .from(usersTable)
         .where(eq(usersTable.id, targetUserId))
         .limit(1)
@@ -120,7 +126,6 @@ admin.get('/users/:id', async ({ params, headers }) => {
         user: {
             id: targetUser[0].id,
             username: targetUser[0].username,
-            email: user.role === 'admin' ? targetUser[0].email : undefined,
             avatar: targetUser[0].avatar,
             slackId: targetUser[0].slackId,
             scraps: scrapsBalance.balance,
@@ -175,6 +180,72 @@ admin.put('/users/:id/notes', async ({ params, body, headers }) => {
     return updated[0] || { error: 'Not found' }
 })
 
+// Give bonus scraps to user (admin only)
+admin.post('/users/:id/bonus', async ({ params, body, headers }) => {
+    const admin = await requireAdmin(headers as Record<string, string>)
+    if (!admin) return { error: 'Unauthorized' }
+
+    const { amount, reason } = body as { amount: number; reason: string }
+
+    if (!amount || typeof amount !== 'number') {
+        return { error: 'Amount is required and must be a number' }
+    }
+
+    if (!reason || typeof reason !== 'string' || reason.trim().length === 0) {
+        return { error: 'Reason is required' }
+    }
+
+    if (reason.length > 500) {
+        return { error: 'Reason is too long (max 500 characters)' }
+    }
+
+    const targetUserId = parseInt(params.id)
+
+    const targetUser = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.id, targetUserId))
+        .limit(1)
+
+    if (!targetUser[0]) return { error: 'User not found' }
+
+    const bonus = await db
+        .insert(userBonusesTable)
+        .values({
+            userId: targetUserId,
+            amount,
+            reason: reason.trim(),
+            givenBy: admin.id
+        })
+        .returning()
+
+    return bonus[0]
+})
+
+// Get user bonuses (admin only)
+admin.get('/users/:id/bonuses', async ({ params, headers }) => {
+    const user = await requireAdmin(headers as Record<string, string>)
+    if (!user) return { error: 'Unauthorized' }
+
+    const targetUserId = parseInt(params.id)
+
+    const bonuses = await db
+        .select({
+            id: userBonusesTable.id,
+            amount: userBonusesTable.amount,
+            reason: userBonusesTable.reason,
+            givenBy: userBonusesTable.givenBy,
+            givenByUsername: usersTable.username,
+            createdAt: userBonusesTable.createdAt
+        })
+        .from(userBonusesTable)
+        .leftJoin(usersTable, eq(userBonusesTable.givenBy, usersTable.id))
+        .where(eq(userBonusesTable.userId, targetUserId))
+        .orderBy(desc(userBonusesTable.createdAt))
+
+    return bonuses
+})
+
 // Get projects waiting for review
 admin.get('/reviews', async ({ headers, query }) => {
     const user = await requireReviewer(headers as Record<string, string>)
@@ -221,7 +292,12 @@ admin.get('/reviews/:id', async ({ params, headers }) => {
     if (project.length <= 0) return { error: "Project not found!" };
 
     const projectUser = await db
-        .select()
+        .select({
+            id: usersTable.id,
+            username: usersTable.username,
+            avatar: usersTable.avatar,
+            internalNotes: usersTable.internalNotes
+        })
         .from(usersTable)
         .where(eq(usersTable.id, project[0].userId))
         .limit(1)
@@ -245,7 +321,6 @@ admin.get('/reviews/:id', async ({ params, headers }) => {
         user: projectUser[0] ? {
             id: projectUser[0].id,
             username: projectUser[0].username,
-            email: user.role === 'admin' ? projectUser[0].email : undefined,
             avatar: projectUser[0].avatar,
             internalNotes: projectUser[0].internalNotes
         } : null,
@@ -578,15 +653,16 @@ admin.get('/orders', async ({ headers, query }) => {
             pricePerItem: shopOrdersTable.pricePerItem,
             totalPrice: shopOrdersTable.totalPrice,
             status: shopOrdersTable.status,
-            shippingAddress: shopOrdersTable.shippingAddress,
+            orderType: shopOrdersTable.orderType,
             notes: shopOrdersTable.notes,
+            isFulfilled: shopOrdersTable.isFulfilled,
+            shippingAddress: shopOrdersTable.shippingAddress,
             createdAt: shopOrdersTable.createdAt,
             itemId: shopItemsTable.id,
             itemName: shopItemsTable.name,
             itemImage: shopItemsTable.image,
             userId: usersTable.id,
-            username: usersTable.username,
-            userEmail: usersTable.email
+            username: usersTable.username
         })
         .from(shopOrdersTable)
         .innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id))
@@ -604,7 +680,7 @@ admin.patch('/orders/:id', async ({ params, body, headers }) => {
     const user = await requireAdmin(headers as Record<string, string>)
     if (!user) return { error: 'Unauthorized' }
 
-    const { status, notes } = body as { status?: string; notes?: string }
+    const { status, notes, isFulfilled } = body as { status?: string; notes?: string; isFulfilled?: boolean }
 
     const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
     if (status && !validStatuses.includes(status)) {
@@ -614,12 +690,19 @@ admin.patch('/orders/:id', async ({ params, body, headers }) => {
     const updateData: Record<string, unknown> = { updatedAt: new Date() }
     if (status) updateData.status = status
     if (notes !== undefined) updateData.notes = notes
+    if (isFulfilled !== undefined) updateData.isFulfilled = isFulfilled
 
     const updated = await db
         .update(shopOrdersTable)
         .set(updateData)
         .where(eq(shopOrdersTable.id, parseInt(params.id)))
-        .returning()
+        .returning({
+            id: shopOrdersTable.id,
+            status: shopOrdersTable.status,
+            notes: shopOrdersTable.notes,
+            isFulfilled: shopOrdersTable.isFulfilled,
+            updatedAt: shopOrdersTable.updatedAt
+        })
 
     return updated[0] || { error: 'Not found' }
 })

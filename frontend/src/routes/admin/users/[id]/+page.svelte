@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
-	import { ArrowLeft, Package, Clock, CheckCircle, XCircle, AlertTriangle } from '@lucide/svelte'
+	import { ArrowLeft, Package, Clock, CheckCircle, XCircle, AlertTriangle, Plus, Gift } from '@lucide/svelte'
 	import { getUser } from '$lib/auth-client'
 	import { API_URL } from '$lib/config'
 	import { formatHours } from '$lib/utils'
@@ -45,14 +45,30 @@
 		role: string
 	}
 
+	interface Bonus {
+		id: number
+		amount: number
+		reason: string
+		givenBy: number | null
+		givenByUsername: string | null
+		createdAt: string
+	}
+
 	let currentUser = $state<CurrentUser | null>(null)
 	let targetUser = $state<TargetUser | null>(null)
 	let projects = $state<Project[]>([])
 	let stats = $state<UserStats | null>(null)
+	let bonuses = $state<Bonus[]>([])
 	let loading = $state(true)
 	let saving = $state(false)
 	let editingNotes = $state('')
 	let editingRole = $state('')
+
+	let showBonusModal = $state(false)
+	let bonusAmount = $state<number | null>(null)
+	let bonusReason = $state('')
+	let savingBonus = $state(false)
+	let bonusError = $state<string | null>(null)
 
 	onMount(async () => {
 		currentUser = await getUser()
@@ -62,16 +78,24 @@
 		}
 
 		try {
-			const response = await fetch(`${API_URL}/admin/users/${data.id}`, {
-				credentials: 'include'
-			})
-			if (response.ok) {
-				const result = await response.json()
+			const [userResponse, bonusesResponse] = await Promise.all([
+				fetch(`${API_URL}/admin/users/${data.id}`, { credentials: 'include' }),
+				currentUser.role === 'admin'
+					? fetch(`${API_URL}/admin/users/${data.id}/bonuses`, { credentials: 'include' })
+					: Promise.resolve(null)
+			])
+
+			if (userResponse.ok) {
+				const result = await userResponse.json()
 				targetUser = result.user
 				projects = result.projects || []
 				stats = result.stats
 				editingNotes = result.user?.internalNotes || ''
 				editingRole = result.user?.role || 'member'
+			}
+
+			if (bonusesResponse?.ok) {
+				bonuses = await bonusesResponse.json()
 			}
 		} catch (e) {
 			console.error('Failed to fetch user:', e)
@@ -107,6 +131,43 @@
 			console.error('Failed to save:', e)
 		} finally {
 			saving = false
+		}
+	}
+
+	async function saveBonus() {
+		if (!targetUser || !bonusAmount || !bonusReason.trim()) return
+		savingBonus = true
+		bonusError = null
+
+		try {
+			const response = await fetch(`${API_URL}/admin/users/${targetUser.id}/bonus`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ amount: bonusAmount, reason: bonusReason.trim() })
+			})
+
+			const result = await response.json()
+
+			if (!response.ok) {
+				throw new Error(result.error || 'Failed to save bonus')
+			}
+
+			bonuses = [
+				{
+					...result,
+					givenByUsername: currentUser?.id === result.givenBy ? 'you' : null
+				},
+				...bonuses
+			]
+			targetUser.scraps += bonusAmount
+			showBonusModal = false
+			bonusAmount = null
+			bonusReason = ''
+		} catch (e) {
+			bonusError = e instanceof Error ? e.message : 'Failed to save bonus'
+		} finally {
+			savingBonus = false
 		}
 	}
 
@@ -217,6 +278,15 @@
 				<div class="text-right">
 					<p class="text-4xl font-bold">{targetUser.scraps}</p>
 					<p class="text-sm text-gray-500">scraps</p>
+					{#if currentUser?.role === 'admin'}
+						<button
+							onclick={() => (showBonusModal = true)}
+							class="mt-2 px-3 py-1 bg-green-500 text-white rounded-full text-sm font-bold hover:bg-green-600 transition-all cursor-pointer flex items-center gap-1"
+						>
+							<Plus size={14} />
+							give bonus
+						</button>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -337,5 +407,102 @@
 				</div>
 			{/if}
 		</div>
+
+		<!-- Bonuses (admin only) -->
+		{#if currentUser?.role === 'admin'}
+			<div class="border-4 border-black rounded-2xl p-6 mt-6 bg-green-50">
+				<div class="flex items-center justify-between mb-4">
+					<h2 class="text-xl font-bold flex items-center gap-2">
+						<Gift size={20} />
+						bonus history ({bonuses.length})
+					</h2>
+				</div>
+				{#if bonuses.length === 0}
+					<p class="text-gray-500">no bonuses given yet</p>
+				{:else}
+					<div class="space-y-3">
+						{#each bonuses as bonus}
+							<div class="p-3 bg-white border-2 border-black rounded-lg">
+								<div class="flex items-start justify-between">
+									<div class="flex-1">
+										<p class="font-bold text-lg {bonus.amount >= 0 ? 'text-green-600' : 'text-red-600'}">
+											{bonus.amount >= 0 ? '+' : ''}{bonus.amount} scraps
+										</p>
+										<p class="text-sm text-gray-700">{bonus.reason}</p>
+									</div>
+									<div class="text-right text-xs text-gray-500">
+										<p>{new Date(bonus.createdAt).toLocaleDateString()}</p>
+										<p>by @{bonus.givenByUsername || 'unknown'}</p>
+									</div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		{/if}
 	{/if}
 </div>
+
+<!-- Bonus Modal -->
+{#if showBonusModal}
+	<div
+		class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+		onclick={(e) => e.target === e.currentTarget && (showBonusModal = false)}
+		onkeydown={(e) => e.key === 'Escape' && (showBonusModal = false)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="bg-white rounded-2xl w-full max-w-md p-6 border-4 border-black">
+			<h2 class="text-2xl font-bold mb-4">give bonus scraps</h2>
+
+			{#if bonusError}
+				<div class="mb-4 p-3 bg-red-100 border-2 border-red-500 rounded-lg text-red-700 text-sm">
+					{bonusError}
+				</div>
+			{/if}
+
+			<div class="space-y-4">
+				<div>
+					<label for="bonusAmount" class="block text-sm font-bold mb-1">amount <span class="text-red-500">*</span></label>
+					<input
+						id="bonusAmount"
+						type="number"
+						bind:value={bonusAmount}
+						placeholder="e.g. 100 or -50"
+						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+					/>
+					<p class="text-xs text-gray-500 mt-1">use negative numbers to deduct scraps</p>
+				</div>
+
+				<div>
+					<label for="bonusReason" class="block text-sm font-bold mb-1">reason <span class="text-red-500">*</span></label>
+					<textarea
+						id="bonusReason"
+						bind:value={bonusReason}
+						rows="3"
+						placeholder="why are you giving this bonus?"
+						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed resize-none"
+					></textarea>
+				</div>
+			</div>
+
+			<div class="flex gap-3 mt-6">
+				<button
+					onclick={() => (showBonusModal = false)}
+					disabled={savingBonus}
+					class="flex-1 px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 disabled:opacity-50 cursor-pointer"
+				>
+					cancel
+				</button>
+				<button
+					onclick={saveBonus}
+					disabled={savingBonus || !bonusAmount || !bonusReason.trim()}
+					class="flex-1 px-4 py-2 bg-green-500 text-white rounded-full font-bold hover:bg-green-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+				>
+					{savingBonus ? 'saving...' : 'give bonus'}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

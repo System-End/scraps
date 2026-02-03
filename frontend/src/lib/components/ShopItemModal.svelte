@@ -252,7 +252,7 @@
 					: 'hover:border-dashed'}"
 			>
 				<Heart size={16} />
-				wishlist
+				wishlist ({localHeartCount})
 			</button>
 			<button
 				onclick={() => (activeTab = 'buyers')}

@@ -1,4 +1,4 @@
-import { eq, and, gt } from "drizzle-orm"
+import { eq, and, gt, sql } from "drizzle-orm"
 import { db } from "../db"
 import { usersTable } from "../schemas/users"
 import { sessionsTable } from "../schemas/sessions"
@@ -35,7 +35,7 @@ export function getAuthorizationUrl(): string {
         client_id: CLIENT_ID,
         redirect_uri: REDIRECT_URI,
         response_type: "code",
-        scope: "openid profile email slack_id verification_status"
+        scope: "openid email name profile birthdate address verification_status slack_id basic_info"
     })
     return `${HACKCLUB_AUTH_URL}/oauth/authorize?${params.toString()}`
 }
@@ -105,50 +105,35 @@ export async function createOrUpdateUser(identity: HackClubIdentity, tokens: OID
         }
     }
 
-    const existingUser = await db
-        .select()
-        .from(usersTable)
-        .where(eq(usersTable.sub, identity.id))
-        .limit(1)
-
-    if (existingUser.length > 0) {
-        const updated = await db
-            .update(usersTable)
-            .set({
+    // Use UPSERT to avoid race condition with concurrent logins
+    const [user] = await db
+        .insert(usersTable)
+        .values({
+            sub: identity.id,
+            slackId: identity.slack_id,
+            username,
+            email: identity.primary_email || "",
+            avatar: avatarUrl,
+            accessToken: tokens.access_token,
+            refreshToken: tokens.refresh_token,
+            idToken: tokens.id_token
+        })
+        .onConflictDoUpdate({
+            target: usersTable.sub,
+            set: {
                 username,
-                email: identity.primary_email || existingUser[0].email,
+                email: sql`COALESCE(${identity.primary_email || null}, ${usersTable.email})`,
                 slackId: identity.slack_id,
-                avatar: avatarUrl || existingUser[0].avatar,
+                avatar: sql`COALESCE(${avatarUrl}, ${usersTable.avatar})`,
                 accessToken: tokens.access_token,
                 refreshToken: tokens.refresh_token,
                 idToken: tokens.id_token,
                 updatedAt: new Date()
-            })
-            .where(eq(usersTable.sub, identity.id))
-            .returning()
-        return updated[0]
-    } else {
-        console.log("[AUTH] New user signup:", {
-            id: identity.id,
-            username,
-            email: identity.primary_email,
-            slackId: identity.slack_id
+            }
         })
-        const newUser = await db
-            .insert(usersTable)
-            .values({
-                sub: identity.id,
-                slackId: identity.slack_id,
-                username,
-                email: identity.primary_email || "",
-                avatar: avatarUrl,
-                accessToken: tokens.access_token,
-                refreshToken: tokens.refresh_token,
-                idToken: tokens.id_token
-            })
-            .returning()
-        return newUser[0]
-    }
+        .returning()
+
+    return user
 }
 
 export async function createSession(userId: number): Promise<string> {

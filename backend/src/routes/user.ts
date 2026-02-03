@@ -69,7 +69,12 @@ user.get('/profile/:id', async ({ params, headers }) => {
     if (!currentUser) return { error: 'Unauthorized' }
 
     const targetUser = await db
-        .select()
+        .select({
+            id: usersTable.id,
+            username: usersTable.username,
+            avatar: usersTable.avatar,
+            createdAt: usersTable.createdAt
+        })
         .from(usersTable)
         .where(eq(usersTable.id, parseInt(params.id)))
         .limit(1)

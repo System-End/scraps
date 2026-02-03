@@ -28277,8 +28277,9 @@ var usersTable = pgTable("users", {
 var userBonusesTable = pgTable("user_bonuses", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
-  type: varchar().notNull(),
   amount: integer().notNull(),
+  reason: text().notNull(),
+  givenBy: integer("given_by").references(() => usersTable.id),
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
@@ -28363,7 +28364,7 @@ function getAuthorizationUrl() {
     client_id: CLIENT_ID,
     redirect_uri: REDIRECT_URI,
     response_type: "code",
-    scope: "openid profile email slack_id verification_status"
+    scope: "openid email name profile birthdate address verification_status slack_id basic_info"
   });
   return `${HACKCLUB_AUTH_URL}/oauth/authorize?${params.toString()}`;
 }
@@ -28422,38 +28423,29 @@ async function createOrUpdateUser(identity, tokens) {
       console.log("[AUTH] Slack profile fetched:", { username, avatarUrl });
     }
   }
-  const existingUser = await db.select().from(usersTable).where(eq(usersTable.sub, identity.id)).limit(1);
-  if (existingUser.length > 0) {
-    const updated = await db.update(usersTable).set({
+  const [user] = await db.insert(usersTable).values({
+    sub: identity.id,
+    slackId: identity.slack_id,
+    username,
+    email: identity.primary_email || "",
+    avatar: avatarUrl,
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+    idToken: tokens.id_token
+  }).onConflictDoUpdate({
+    target: usersTable.sub,
+    set: {
       username,
-      email: identity.primary_email || existingUser[0].email,
+      email: sql`COALESCE(${identity.primary_email || null}, ${usersTable.email})`,
       slackId: identity.slack_id,
-      avatar: avatarUrl || existingUser[0].avatar,
+      avatar: sql`COALESCE(${avatarUrl}, ${usersTable.avatar})`,
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       idToken: tokens.id_token,
       updatedAt: new Date
-    }).where(eq(usersTable.sub, identity.id)).returning();
-    return updated[0];
-  } else {
-    console.log("[AUTH] New user signup:", {
-      id: identity.id,
-      username,
-      email: identity.primary_email,
-      slackId: identity.slack_id
-    });
-    const newUser = await db.insert(usersTable).values({
-      sub: identity.id,
-      slackId: identity.slack_id,
-      username,
-      email: identity.primary_email || "",
-      avatar: avatarUrl,
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      idToken: tokens.id_token
-    }).returning();
-    return newUser[0];
-  }
+    }
+  }).returning();
+  return user;
 }
 async function createSession(userId) {
   const token = crypto.randomUUID();
@@ -28877,6 +28869,7 @@ var shopOrdersTable = pgTable("shop_orders", {
   orderType: varchar("order_type").notNull().default("purchase"),
   shippingAddress: text("shipping_address"),
   notes: text(),
+  isFulfilled: boolean("is_fulfilled").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
@@ -28914,17 +28907,17 @@ var MULTIPLIER = 120;
 function calculateScrapsFromHours(hours) {
   return Math.floor(hours * PHI * MULTIPLIER);
 }
-async function getUserScrapsBalance(userId) {
-  const earnedResult = await db.select({
+async function getUserScrapsBalance(userId, txOrDb = db) {
+  const earnedResult = await txOrDb.select({
     total: sql`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`
   }).from(projectsTable).where(eq(projectsTable.userId, userId));
-  const bonusResult = await db.select({
+  const bonusResult = await txOrDb.select({
     total: sql`COALESCE(SUM(${userBonusesTable.amount}), 0)`
   }).from(userBonusesTable).where(eq(userBonusesTable.userId, userId));
-  const spentResult = await db.select({
+  const spentResult = await txOrDb.select({
     total: sql`COALESCE(SUM(${shopOrdersTable.totalPrice}), 0)`
   }).from(shopOrdersTable).where(eq(shopOrdersTable.userId, userId));
-  const upgradeSpentResult = await db.select({
+  const upgradeSpentResult = await txOrDb.select({
     total: sql`COALESCE(SUM(${refineryOrdersTable.cost}), 0)`
   }).from(refineryOrdersTable).where(eq(refineryOrdersTable.userId, userId));
   const projectEarned = Number(earnedResult[0]?.total) || 0;
@@ -28936,8 +28929,8 @@ async function getUserScrapsBalance(userId) {
   const balance = earned - spent;
   return { earned, spent, balance };
 }
-async function canAfford(userId, cost) {
-  const { balance } = await getUserScrapsBalance(userId);
+async function canAfford(userId, cost, txOrDb = db) {
+  const { balance } = await getUserScrapsBalance(userId, txOrDb);
   return balance >= cost;
 }
 
@@ -29081,7 +29074,12 @@ user.get("/profile/:id", async ({ params, headers }) => {
   const currentUser = await getUserFromSession(headers);
   if (!currentUser)
     return { error: "Unauthorized" };
-  const targetUser = await db.select().from(usersTable).where(eq(usersTable.id, parseInt(params.id))).limit(1);
+  const targetUser = await db.select({
+    id: usersTable.id,
+    username: usersTable.username,
+    avatar: usersTable.avatar,
+    createdAt: usersTable.createdAt
+  }).from(usersTable).where(eq(usersTable.id, parseInt(params.id))).limit(1);
   if (!targetUser[0])
     return { error: "User not found" };
   const allProjects = await db.select().from(projectsTable).where(eq(projectsTable.userId, parseInt(params.id)));
@@ -29258,15 +29256,23 @@ shop.post("/items/:id/heart", async ({ params, headers }) => {
   if (item.length === 0) {
     return { error: "Item not found" };
   }
-  const deleted = await db.delete(shopHeartsTable).where(and(eq(shopHeartsTable.userId, user2.id), eq(shopHeartsTable.shopItemId, itemId))).returning({ userId: shopHeartsTable.userId });
-  if (deleted.length > 0) {
-    return { hearted: false };
-  }
-  await db.insert(shopHeartsTable).values({
-    userId: user2.id,
-    shopItemId: itemId
-  }).onConflictDoNothing();
-  return { hearted: true };
+  const result = await db.execute(sql`
+		WITH del AS (
+			DELETE FROM shop_hearts
+			WHERE user_id = ${user2.id} AND shop_item_id = ${itemId}
+			RETURNING 1
+		),
+		ins AS (
+			INSERT INTO shop_hearts (user_id, shop_item_id)
+			SELECT ${user2.id}, ${itemId}
+			WHERE NOT EXISTS (SELECT 1 FROM del)
+			ON CONFLICT DO NOTHING
+			RETURNING 1
+		)
+		SELECT EXISTS(SELECT 1 FROM ins) AS hearted
+	`);
+  const hearted = result.rows[0]?.hearted ?? false;
+  return { hearted };
 });
 shop.get("/categories", async () => {
   const result = await db.selectDistinct({ category: shopItemsTable.category }).from(shopItemsTable);
@@ -29301,41 +29307,53 @@ shop.post("/items/:id/purchase", async ({ params, body, headers }) => {
     return { error: "Not enough stock available" };
   }
   const totalPrice = item.price * quantity;
-  const affordable = await canAfford(user2.id, totalPrice);
-  if (!affordable) {
-    const { balance } = await getUserScrapsBalance(user2.id);
-    return { error: "Insufficient scraps", required: totalPrice, available: balance };
+  try {
+    const order = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user2.id} FOR UPDATE`);
+      const affordable = await canAfford(user2.id, totalPrice, tx);
+      if (!affordable) {
+        const { balance } = await getUserScrapsBalance(user2.id, tx);
+        throw { type: "insufficient_funds", balance };
+      }
+      const currentItem = await tx.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
+      if (currentItem.length === 0 || currentItem[0].count < quantity) {
+        throw { type: "out_of_stock" };
+      }
+      await tx.update(shopItemsTable).set({
+        count: currentItem[0].count - quantity,
+        updatedAt: new Date
+      }).where(eq(shopItemsTable.id, itemId));
+      const newOrder = await tx.insert(shopOrdersTable).values({
+        userId: user2.id,
+        shopItemId: itemId,
+        quantity,
+        pricePerItem: item.price,
+        totalPrice,
+        shippingAddress: shippingAddress || null,
+        status: "pending"
+      }).returning();
+      return newOrder[0];
+    });
+    return {
+      success: true,
+      order: {
+        id: order.id,
+        itemName: item.name,
+        quantity: order.quantity,
+        totalPrice: order.totalPrice,
+        status: order.status
+      }
+    };
+  } catch (e) {
+    const err = e;
+    if (err.type === "insufficient_funds") {
+      return { error: "Insufficient scraps", required: totalPrice, available: err.balance };
+    }
+    if (err.type === "out_of_stock") {
+      return { error: "Not enough stock" };
+    }
+    throw e;
   }
-  const order = await db.transaction(async (tx) => {
-    const currentItem = await tx.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
-    if (currentItem.length === 0 || currentItem[0].count < quantity) {
-      throw new Error("Not enough stock");
-    }
-    await tx.update(shopItemsTable).set({
-      count: currentItem[0].count - quantity,
-      updatedAt: new Date
-    }).where(eq(shopItemsTable.id, itemId));
-    const newOrder = await tx.insert(shopOrdersTable).values({
-      userId: user2.id,
-      shopItemId: itemId,
-      quantity,
-      pricePerItem: item.price,
-      totalPrice,
-      shippingAddress: shippingAddress || null,
-      status: "pending"
-    }).returning();
-    return newOrder[0];
-  });
-  return {
-    success: true,
-    order: {
-      id: order.id,
-      itemName: item.name,
-      quantity: order.quantity,
-      totalPrice: order.totalPrice,
-      status: order.status
-    }
-  };
 });
 shop.get("/orders", async ({ headers }) => {
   const user2 = await getUserFromSession(headers);
@@ -29372,68 +29390,83 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
   if (item.count < 1) {
     return { error: "Out of stock" };
   }
-  const boostResult = await db.select({
-    boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
-  }).from(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
-  const penaltyResult = await db.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId))).limit(1);
-  const boostPercent = boostResult.length > 0 ? Number(boostResult[0].boostPercent) : 0;
-  const penaltyMultiplier = penaltyResult.length > 0 ? penaltyResult[0].probabilityMultiplier : 100;
-  const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100);
-  const effectiveProbability = Math.min(adjustedBaseProbability + boostPercent, 100);
-  const affordable = await canAfford(user2.id, item.price);
-  if (!affordable) {
-    const { balance } = await getUserScrapsBalance(user2.id);
-    return { error: "Insufficient scraps", required: item.price, available: balance };
-  }
-  const rolled = Math.floor(Math.random() * 100) + 1;
-  const won = rolled <= effectiveProbability;
-  await db.insert(shopRollsTable).values({
-    userId: user2.id,
-    shopItemId: itemId,
-    rolled,
-    threshold: effectiveProbability,
-    won
-  });
-  if (won) {
-    const order = await db.transaction(async (tx) => {
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user2.id} FOR UPDATE`);
+      const affordable = await canAfford(user2.id, item.price, tx);
+      if (!affordable) {
+        const { balance } = await getUserScrapsBalance(user2.id, tx);
+        throw { type: "insufficient_funds", balance };
+      }
       const currentItem = await tx.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
       if (currentItem.length === 0 || currentItem[0].count < 1) {
-        throw new Error("Out of stock");
+        throw { type: "out_of_stock" };
       }
-      await tx.update(shopItemsTable).set({
-        count: currentItem[0].count - 1,
-        updatedAt: new Date
-      }).where(eq(shopItemsTable.id, itemId));
-      const newOrder = await tx.insert(shopOrdersTable).values({
+      const boostResult = await tx.select({
+        boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+      }).from(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
+      const penaltyResult = await tx.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId))).limit(1);
+      const boostPercent = boostResult.length > 0 ? Number(boostResult[0].boostPercent) : 0;
+      const penaltyMultiplier = penaltyResult.length > 0 ? penaltyResult[0].probabilityMultiplier : 100;
+      const adjustedBaseProbability = Math.floor(currentItem[0].baseProbability * penaltyMultiplier / 100);
+      const effectiveProbability = Math.min(adjustedBaseProbability + boostPercent, 100);
+      const rolled = Math.floor(Math.random() * 100) + 1;
+      const won = rolled <= effectiveProbability;
+      await tx.insert(shopRollsTable).values({
         userId: user2.id,
         shopItemId: itemId,
-        quantity: 1,
-        pricePerItem: item.price,
-        totalPrice: item.price,
-        shippingAddress: null,
-        status: "pending",
-        orderType: "luck_win"
-      }).returning();
-      await tx.delete(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
-      const existingPenalty = await tx.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId))).limit(1);
-      if (existingPenalty.length > 0) {
-        const newMultiplier = Math.max(1, Math.floor(existingPenalty[0].probabilityMultiplier / 2));
-        await tx.update(shopPenaltiesTable).set({
-          probabilityMultiplier: newMultiplier,
+        rolled,
+        threshold: effectiveProbability,
+        won
+      });
+      if (won) {
+        await tx.update(shopItemsTable).set({
+          count: currentItem[0].count - 1,
           updatedAt: new Date
-        }).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId)));
-      } else {
-        await tx.insert(shopPenaltiesTable).values({
+        }).where(eq(shopItemsTable.id, itemId));
+        const newOrder = await tx.insert(shopOrdersTable).values({
           userId: user2.id,
           shopItemId: itemId,
-          probabilityMultiplier: 50
-        });
+          quantity: 1,
+          pricePerItem: item.price,
+          totalPrice: item.price,
+          shippingAddress: null,
+          status: "pending",
+          orderType: "luck_win"
+        }).returning();
+        await tx.delete(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
+        const existingPenalty = await tx.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId))).limit(1);
+        if (existingPenalty.length > 0) {
+          const newMultiplier = Math.max(1, Math.floor(existingPenalty[0].probabilityMultiplier / 2));
+          await tx.update(shopPenaltiesTable).set({
+            probabilityMultiplier: newMultiplier,
+            updatedAt: new Date
+          }).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId)));
+        } else {
+          await tx.insert(shopPenaltiesTable).values({
+            userId: user2.id,
+            shopItemId: itemId,
+            probabilityMultiplier: 50
+          });
+        }
+        return { won: true, orderId: newOrder[0].id, effectiveProbability, rolled };
       }
-      return newOrder[0];
+      return { won: false, effectiveProbability, rolled };
     });
-    return { success: true, won: true, orderId: order.id, effectiveProbability, rolled, refineryReset: true, probabilityHalved: true };
+    if (result.won) {
+      return { success: true, won: true, orderId: result.orderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, refineryReset: true, probabilityHalved: true };
+    }
+    return { success: true, won: false, effectiveProbability: result.effectiveProbability, rolled: result.rolled };
+  } catch (e) {
+    const err = e;
+    if (err.type === "insufficient_funds") {
+      return { error: "Insufficient scraps", required: item.price, available: err.balance };
+    }
+    if (err.type === "out_of_stock") {
+      return { error: "Out of stock" };
+    }
+    throw e;
   }
-  return { success: true, won: false, effectiveProbability, rolled };
 });
 shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
   const user2 = await getUserFromSession(headers);
@@ -29449,36 +29482,47 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
     return { error: "Item not found" };
   }
   const item = items2[0];
-  const boostResult = await db.select({
-    boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
-  }).from(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
-  const currentBoost = boostResult.length > 0 ? Number(boostResult[0].boostPercent) : 0;
-  const penaltyResult = await db.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId))).limit(1);
-  const penaltyMultiplier = penaltyResult.length > 0 ? penaltyResult[0].probabilityMultiplier : 100;
-  const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100);
-  const maxBoost = 100 - adjustedBaseProbability;
-  if (currentBoost >= maxBoost) {
-    return { error: "Already at maximum probability" };
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user2.id} FOR UPDATE`);
+      const boostResult = await tx.select({
+        boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+      }).from(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
+      const currentBoost = boostResult.length > 0 ? Number(boostResult[0].boostPercent) : 0;
+      const penaltyResult = await tx.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId))).limit(1);
+      const penaltyMultiplier = penaltyResult.length > 0 ? penaltyResult[0].probabilityMultiplier : 100;
+      const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100);
+      const maxBoost = 100 - adjustedBaseProbability;
+      if (currentBoost >= maxBoost) {
+        throw { type: "max_probability" };
+      }
+      const cost = Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, currentBoost));
+      const affordable = await canAfford(user2.id, cost, tx);
+      if (!affordable) {
+        const { balance } = await getUserScrapsBalance(user2.id, tx);
+        throw { type: "insufficient_funds", balance, cost };
+      }
+      const newBoost = currentBoost + 1;
+      await tx.insert(refineryOrdersTable).values({
+        userId: user2.id,
+        shopItemId: itemId,
+        cost,
+        boostAmount: 1
+      });
+      const nextCost = newBoost >= maxBoost ? null : Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, newBoost));
+      return { boostPercent: newBoost, nextCost, effectiveProbability: Math.min(adjustedBaseProbability + newBoost, 100) };
+    });
+    return result;
+  } catch (e) {
+    const err = e;
+    if (err.type === "max_probability") {
+      return { error: "Already at maximum probability" };
+    }
+    if (err.type === "insufficient_funds") {
+      return { error: "Insufficient scraps", required: err.cost, available: err.balance };
+    }
+    throw e;
   }
-  const cost = Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, currentBoost));
-  const affordable = await canAfford(user2.id, cost);
-  if (!affordable) {
-    const { balance } = await getUserScrapsBalance(user2.id);
-    return { error: "Insufficient scraps", required: cost, available: balance };
-  }
-  const newBoost = currentBoost + 1;
-  await db.insert(refineryOrdersTable).values({
-    userId: user2.id,
-    shopItemId: itemId,
-    cost,
-    boostAmount: 1
-  });
-  const nextCost = newBoost >= maxBoost ? null : Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, newBoost));
-  return {
-    boostPercent: newBoost,
-    nextCost,
-    effectiveProbability: Math.min(adjustedBaseProbability + newBoost, 100)
-  };
 });
 shop.get("/items/:id/leaderboard", async ({ params }) => {
   const itemId = parseInt(params.id);
@@ -29512,7 +29556,7 @@ shop.get("/items/:id/buyers", async ({ params }) => {
     username: usersTable.username,
     avatar: usersTable.avatar,
     quantity: shopOrdersTable.quantity,
-    createdAt: shopOrdersTable.createdAt
+    purchasedAt: shopOrdersTable.createdAt
   }).from(shopOrdersTable).innerJoin(usersTable, eq(shopOrdersTable.userId, usersTable.id)).where(eq(shopOrdersTable.shopItemId, itemId)).orderBy(desc(shopOrdersTable.createdAt)).limit(20);
   return buyers;
 });
@@ -29532,10 +29576,12 @@ shop.get("/items/:id/hearts", async ({ params }) => {
 shop.get("/addresses", async ({ headers }) => {
   const user2 = await getUserFromSession(headers);
   if (!user2) {
+    console.log("[/shop/addresses] Unauthorized - no user session");
     return { error: "Unauthorized" };
   }
   const userData = await db.select({ accessToken: usersTable.accessToken }).from(usersTable).where(eq(usersTable.id, user2.id)).limit(1);
   if (userData.length === 0 || !userData[0].accessToken) {
+    console.log("[/shop/addresses] No access token found for user", user2.id);
     return [];
   }
   try {
@@ -29545,11 +29591,15 @@ shop.get("/addresses", async ({ headers }) => {
       }
     });
     if (!response.ok) {
+      const errorText = await response.text();
+      console.log("[/shop/addresses] Hack Club API error:", response.status, errorText);
       return [];
     }
     const data = await response.json();
+    console.log("[/shop/addresses] Got addresses:", data.identity?.addresses?.length ?? 0);
     return data.identity?.addresses ?? [];
-  } catch {
+  } catch (e) {
+    console.error("[/shop/addresses] Error fetching from Hack Club:", e);
     return [];
   }
 });
@@ -29840,7 +29890,6 @@ admin.get("/users", async ({ headers, query }) => {
     db.select({
       id: usersTable.id,
       username: usersTable.username,
-      email: usersTable.email,
       avatar: usersTable.avatar,
       slackId: usersTable.slackId,
       role: usersTable.role,
@@ -29856,7 +29905,6 @@ admin.get("/users", async ({ headers, query }) => {
     data: users.map((u) => ({
       id: u.id,
       username: u.username,
-      email: user2.role === "admin" ? u.email : undefined,
       avatar: u.avatar,
       slackId: u.slackId,
       scraps: Number(u.scrapsEarned) - Number(u.scrapsSpent),
@@ -29877,7 +29925,15 @@ admin.get("/users/:id", async ({ params, headers }) => {
   if (!user2)
     return { error: "Unauthorized" };
   const targetUserId = parseInt(params.id);
-  const targetUser = await db.select().from(usersTable).where(eq(usersTable.id, targetUserId)).limit(1);
+  const targetUser = await db.select({
+    id: usersTable.id,
+    username: usersTable.username,
+    avatar: usersTable.avatar,
+    slackId: usersTable.slackId,
+    role: usersTable.role,
+    internalNotes: usersTable.internalNotes,
+    createdAt: usersTable.createdAt
+  }).from(usersTable).where(eq(usersTable.id, targetUserId)).limit(1);
   if (!targetUser[0])
     return { error: "User not found" };
   const projects2 = await db.select().from(projectsTable).where(eq(projectsTable.userId, targetUserId)).orderBy(desc(projectsTable.updatedAt));
@@ -29894,7 +29950,6 @@ admin.get("/users/:id", async ({ params, headers }) => {
     user: {
       id: targetUser[0].id,
       username: targetUser[0].username,
-      email: user2.role === "admin" ? targetUser[0].email : undefined,
       avatar: targetUser[0].avatar,
       slackId: targetUser[0].slackId,
       scraps: scrapsBalance.balance,
@@ -29931,6 +29986,47 @@ admin.put("/users/:id/notes", async ({ params, body, headers }) => {
   const updated = await db.update(usersTable).set({ internalNotes, updatedAt: new Date }).where(eq(usersTable.id, parseInt(params.id))).returning();
   return updated[0] || { error: "Not found" };
 });
+admin.post("/users/:id/bonus", async ({ params, body, headers }) => {
+  const admin2 = await requireAdmin(headers);
+  if (!admin2)
+    return { error: "Unauthorized" };
+  const { amount, reason } = body;
+  if (!amount || typeof amount !== "number") {
+    return { error: "Amount is required and must be a number" };
+  }
+  if (!reason || typeof reason !== "string" || reason.trim().length === 0) {
+    return { error: "Reason is required" };
+  }
+  if (reason.length > 500) {
+    return { error: "Reason is too long (max 500 characters)" };
+  }
+  const targetUserId = parseInt(params.id);
+  const targetUser = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, targetUserId)).limit(1);
+  if (!targetUser[0])
+    return { error: "User not found" };
+  const bonus = await db.insert(userBonusesTable).values({
+    userId: targetUserId,
+    amount,
+    reason: reason.trim(),
+    givenBy: admin2.id
+  }).returning();
+  return bonus[0];
+});
+admin.get("/users/:id/bonuses", async ({ params, headers }) => {
+  const user2 = await requireAdmin(headers);
+  if (!user2)
+    return { error: "Unauthorized" };
+  const targetUserId = parseInt(params.id);
+  const bonuses = await db.select({
+    id: userBonusesTable.id,
+    amount: userBonusesTable.amount,
+    reason: userBonusesTable.reason,
+    givenBy: userBonusesTable.givenBy,
+    givenByUsername: usersTable.username,
+    createdAt: userBonusesTable.createdAt
+  }).from(userBonusesTable).leftJoin(usersTable, eq(userBonusesTable.givenBy, usersTable.id)).where(eq(userBonusesTable.userId, targetUserId)).orderBy(desc(userBonusesTable.createdAt));
+  return bonuses;
+});
 admin.get("/reviews", async ({ headers, query }) => {
   const user2 = await requireReviewer(headers);
   if (!user2)
@@ -29960,7 +30056,12 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
   const project = await db.select().from(projectsTable).where(eq(projectsTable.id, parseInt(params.id))).limit(1);
   if (project.length <= 0)
     return { error: "Project not found!" };
-  const projectUser = await db.select().from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
+  const projectUser = await db.select({
+    id: usersTable.id,
+    username: usersTable.username,
+    avatar: usersTable.avatar,
+    internalNotes: usersTable.internalNotes
+  }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
   const reviews = await db.select().from(reviewsTable).where(eq(reviewsTable.projectId, parseInt(params.id)));
   const reviewerIds = reviews.map((r) => r.reviewerId);
   let reviewers = [];
@@ -29972,7 +30073,6 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
     user: projectUser[0] ? {
       id: projectUser[0].id,
       username: projectUser[0].username,
-      email: user2.role === "admin" ? projectUser[0].email : undefined,
       avatar: projectUser[0].avatar,
       internalNotes: projectUser[0].internalNotes
     } : null,
@@ -30188,15 +30288,16 @@ admin.get("/orders", async ({ headers, query }) => {
     pricePerItem: shopOrdersTable.pricePerItem,
     totalPrice: shopOrdersTable.totalPrice,
     status: shopOrdersTable.status,
-    shippingAddress: shopOrdersTable.shippingAddress,
+    orderType: shopOrdersTable.orderType,
     notes: shopOrdersTable.notes,
+    isFulfilled: shopOrdersTable.isFulfilled,
+    shippingAddress: shopOrdersTable.shippingAddress,
     createdAt: shopOrdersTable.createdAt,
     itemId: shopItemsTable.id,
     itemName: shopItemsTable.name,
     itemImage: shopItemsTable.image,
     userId: usersTable.id,
-    username: usersTable.username,
-    userEmail: usersTable.email
+    username: usersTable.username
   }).from(shopOrdersTable).innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id)).innerJoin(usersTable, eq(shopOrdersTable.userId, usersTable.id)).orderBy(desc(shopOrdersTable.createdAt));
   if (status2) {
     ordersQuery = ordersQuery.where(eq(shopOrdersTable.status, status2));
@@ -30207,7 +30308,7 @@ admin.patch("/orders/:id", async ({ params, body, headers }) => {
   const user2 = await requireAdmin(headers);
   if (!user2)
     return { error: "Unauthorized" };
-  const { status: status2, notes } = body;
+  const { status: status2, notes, isFulfilled } = body;
   const validStatuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
   if (status2 && !validStatuses.includes(status2)) {
     return { error: "Invalid status" };
@@ -30217,7 +30318,15 @@ admin.patch("/orders/:id", async ({ params, body, headers }) => {
     updateData.status = status2;
   if (notes !== undefined)
     updateData.notes = notes;
-  const updated = await db.update(shopOrdersTable).set(updateData).where(eq(shopOrdersTable.id, parseInt(params.id))).returning();
+  if (isFulfilled !== undefined)
+    updateData.isFulfilled = isFulfilled;
+  const updated = await db.update(shopOrdersTable).set(updateData).where(eq(shopOrdersTable.id, parseInt(params.id))).returning({
+    id: shopOrdersTable.id,
+    status: shopOrdersTable.status,
+    notes: shopOrdersTable.notes,
+    isFulfilled: shopOrdersTable.isFulfilled,
+    updatedAt: shopOrdersTable.updatedAt
+  });
   return updated[0] || { error: "Not found" };
 });
 var admin_default = admin;

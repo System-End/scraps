@@ -182,27 +182,25 @@ shop.post('/items/:id/heart', async ({ params, headers }) => {
 		return { error: 'Item not found' }
 	}
 
-	const deleted = await db
-		.delete(shopHeartsTable)
-		.where(and(
-			eq(shopHeartsTable.userId, user.id),
-			eq(shopHeartsTable.shopItemId, itemId)
-		))
-		.returning({ userId: shopHeartsTable.userId })
+	// Atomic toggle using CTE to avoid race conditions
+	const result = await db.execute(sql`
+		WITH del AS (
+			DELETE FROM shop_hearts
+			WHERE user_id = ${user.id} AND shop_item_id = ${itemId}
+			RETURNING 1
+		),
+		ins AS (
+			INSERT INTO shop_hearts (user_id, shop_item_id)
+			SELECT ${user.id}, ${itemId}
+			WHERE NOT EXISTS (SELECT 1 FROM del)
+			ON CONFLICT DO NOTHING
+			RETURNING 1
+		)
+		SELECT EXISTS(SELECT 1 FROM ins) AS hearted
+	`)
 
-	if (deleted.length > 0) {
-		return { hearted: false }
-	}
-
-	await db
-		.insert(shopHeartsTable)
-		.values({
-			userId: user.id,
-			shopItemId: itemId
-		})
-		.onConflictDoNothing()
-
-	return { hearted: true }
+	const hearted = (result.rows[0] as { hearted: boolean })?.hearted ?? false
+	return { hearted }
 })
 
 shop.get('/categories', async () => {
@@ -257,56 +255,71 @@ shop.post('/items/:id/purchase', async ({ params, body, headers }) => {
 
 	const totalPrice = item.price * quantity
 
-	const affordable = await canAfford(user.id, totalPrice)
-	if (!affordable) {
-		const { balance } = await getUserScrapsBalance(user.id)
-		return { error: 'Insufficient scraps', required: totalPrice, available: balance }
-	}
+	try {
+		const order = await db.transaction(async (tx) => {
+			// Lock the user row to serialize spend operations and prevent race conditions
+			await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user.id} FOR UPDATE`)
 
-	const order = await db.transaction(async (tx) => {
-		const currentItem = await tx
-			.select()
-			.from(shopItemsTable)
-			.where(eq(shopItemsTable.id, itemId))
-			.limit(1)
+			// Re-check affordability inside the transaction
+			const affordable = await canAfford(user.id, totalPrice, tx)
+			if (!affordable) {
+				const { balance } = await getUserScrapsBalance(user.id, tx)
+				throw { type: 'insufficient_funds', balance }
+			}
 
-		if (currentItem.length === 0 || currentItem[0].count < quantity) {
-			throw new Error('Not enough stock')
+			const currentItem = await tx
+				.select()
+				.from(shopItemsTable)
+				.where(eq(shopItemsTable.id, itemId))
+				.limit(1)
+
+			if (currentItem.length === 0 || currentItem[0].count < quantity) {
+				throw { type: 'out_of_stock' }
+			}
+
+			await tx
+				.update(shopItemsTable)
+				.set({
+					count: currentItem[0].count - quantity,
+					updatedAt: new Date()
+				})
+				.where(eq(shopItemsTable.id, itemId))
+
+			const newOrder = await tx
+				.insert(shopOrdersTable)
+				.values({
+					userId: user.id,
+					shopItemId: itemId,
+					quantity,
+					pricePerItem: item.price,
+					totalPrice,
+					shippingAddress: shippingAddress || null,
+					status: 'pending'
+				})
+				.returning()
+
+			return newOrder[0]
+		})
+
+		return {
+			success: true,
+			order: {
+				id: order.id,
+				itemName: item.name,
+				quantity: order.quantity,
+				totalPrice: order.totalPrice,
+				status: order.status
+			}
 		}
-
-		await tx
-			.update(shopItemsTable)
-			.set({
-				count: currentItem[0].count - quantity,
-				updatedAt: new Date()
-			})
-			.where(eq(shopItemsTable.id, itemId))
-
-		const newOrder = await tx
-			.insert(shopOrdersTable)
-			.values({
-				userId: user.id,
-				shopItemId: itemId,
-				quantity,
-				pricePerItem: item.price,
-				totalPrice,
-				shippingAddress: shippingAddress || null,
-				status: 'pending'
-			})
-			.returning()
-
-		return newOrder[0]
-	})
-
-	return {
-		success: true,
-		order: {
-			id: order.id,
-			itemName: item.name,
-			quantity: order.quantity,
-			totalPrice: order.totalPrice,
-			status: order.status
+	} catch (e) {
+		const err = e as { type?: string; balance?: number }
+		if (err.type === 'insufficient_funds') {
+			return { error: 'Insufficient scraps', required: totalPrice, available: err.balance }
 		}
+		if (err.type === 'out_of_stock') {
+			return { error: 'Not enough stock' }
+		}
+		throw e
 	}
 })
 
@@ -363,50 +376,19 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 		return { error: 'Out of stock' }
 	}
 
-	const boostResult = await db
-		.select({
-			boostPercent: sql<number>`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
-		})
-		.from(refineryOrdersTable)
-		.where(and(
-			eq(refineryOrdersTable.userId, user.id),
-			eq(refineryOrdersTable.shopItemId, itemId)
-		))
+	try {
+		const result = await db.transaction(async (tx) => {
+			// Lock the user row to serialize spend operations and prevent race conditions
+			await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user.id} FOR UPDATE`)
 
-	const penaltyResult = await db
-		.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier })
-		.from(shopPenaltiesTable)
-		.where(and(
-			eq(shopPenaltiesTable.userId, user.id),
-			eq(shopPenaltiesTable.shopItemId, itemId)
-		))
-		.limit(1)
+			// Re-check affordability inside the transaction
+			const affordable = await canAfford(user.id, item.price, tx)
+			if (!affordable) {
+				const { balance } = await getUserScrapsBalance(user.id, tx)
+				throw { type: 'insufficient_funds', balance }
+			}
 
-	const boostPercent = boostResult.length > 0 ? Number(boostResult[0].boostPercent) : 0
-	const penaltyMultiplier = penaltyResult.length > 0 ? penaltyResult[0].probabilityMultiplier : 100
-	const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100)
-	const effectiveProbability = Math.min(adjustedBaseProbability + boostPercent, 100)
-
-	const affordable = await canAfford(user.id, item.price)
-	if (!affordable) {
-		const { balance } = await getUserScrapsBalance(user.id)
-		return { error: 'Insufficient scraps', required: item.price, available: balance }
-	}
-
-	const rolled = Math.floor(Math.random() * 100) + 1
-	const won = rolled <= effectiveProbability
-
-	// Record the roll
-	await db.insert(shopRollsTable).values({
-		userId: user.id,
-		shopItemId: itemId,
-		rolled,
-		threshold: effectiveProbability,
-		won
-	})
-
-	if (won) {
-		const order = await db.transaction(async (tx) => {
+			// Re-check stock inside transaction
 			const currentItem = await tx
 				.select()
 				.from(shopItemsTable)
@@ -414,39 +396,21 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 				.limit(1)
 
 			if (currentItem.length === 0 || currentItem[0].count < 1) {
-				throw new Error('Out of stock')
+				throw { type: 'out_of_stock' }
 			}
 
-			await tx
-				.update(shopItemsTable)
-				.set({
-					count: currentItem[0].count - 1,
-					updatedAt: new Date()
+			// Compute boost and penalty inside transaction
+			const boostResult = await tx
+				.select({
+					boostPercent: sql<number>`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
 				})
-				.where(eq(shopItemsTable.id, itemId))
-
-			const newOrder = await tx
-				.insert(shopOrdersTable)
-				.values({
-					userId: user.id,
-					shopItemId: itemId,
-					quantity: 1,
-					pricePerItem: item.price,
-					totalPrice: item.price,
-					shippingAddress: null,
-					status: 'pending',
-					orderType: 'luck_win'
-				})
-				.returning()
-
-			await tx
-				.delete(refineryOrdersTable)
+				.from(refineryOrdersTable)
 				.where(and(
 					eq(refineryOrdersTable.userId, user.id),
 					eq(refineryOrdersTable.shopItemId, itemId)
 				))
 
-			const existingPenalty = await tx
+			const penaltyResult = await tx
 				.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier })
 				.from(shopPenaltiesTable)
 				.where(and(
@@ -455,35 +419,104 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 				))
 				.limit(1)
 
-			if (existingPenalty.length > 0) {
-				const newMultiplier = Math.max(1, Math.floor(existingPenalty[0].probabilityMultiplier / 2))
+			const boostPercent = boostResult.length > 0 ? Number(boostResult[0].boostPercent) : 0
+			const penaltyMultiplier = penaltyResult.length > 0 ? penaltyResult[0].probabilityMultiplier : 100
+			const adjustedBaseProbability = Math.floor(currentItem[0].baseProbability * penaltyMultiplier / 100)
+			const effectiveProbability = Math.min(adjustedBaseProbability + boostPercent, 100)
+
+			const rolled = Math.floor(Math.random() * 100) + 1
+			const won = rolled <= effectiveProbability
+
+			// Record the roll inside the transaction
+			await tx.insert(shopRollsTable).values({
+				userId: user.id,
+				shopItemId: itemId,
+				rolled,
+				threshold: effectiveProbability,
+				won
+			})
+
+			if (won) {
 				await tx
-					.update(shopPenaltiesTable)
+					.update(shopItemsTable)
 					.set({
-						probabilityMultiplier: newMultiplier,
+						count: currentItem[0].count - 1,
 						updatedAt: new Date()
 					})
+					.where(eq(shopItemsTable.id, itemId))
+
+				const newOrder = await tx
+					.insert(shopOrdersTable)
+					.values({
+						userId: user.id,
+						shopItemId: itemId,
+						quantity: 1,
+						pricePerItem: item.price,
+						totalPrice: item.price,
+						shippingAddress: null,
+						status: 'pending',
+						orderType: 'luck_win'
+					})
+					.returning()
+
+				await tx
+					.delete(refineryOrdersTable)
+					.where(and(
+						eq(refineryOrdersTable.userId, user.id),
+						eq(refineryOrdersTable.shopItemId, itemId)
+					))
+
+				const existingPenalty = await tx
+					.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier })
+					.from(shopPenaltiesTable)
 					.where(and(
 						eq(shopPenaltiesTable.userId, user.id),
 						eq(shopPenaltiesTable.shopItemId, itemId)
 					))
-			} else {
-				await tx
-					.insert(shopPenaltiesTable)
-					.values({
-						userId: user.id,
-						shopItemId: itemId,
-						probabilityMultiplier: 50
-					})
+					.limit(1)
+
+				if (existingPenalty.length > 0) {
+					const newMultiplier = Math.max(1, Math.floor(existingPenalty[0].probabilityMultiplier / 2))
+					await tx
+						.update(shopPenaltiesTable)
+						.set({
+							probabilityMultiplier: newMultiplier,
+							updatedAt: new Date()
+						})
+						.where(and(
+							eq(shopPenaltiesTable.userId, user.id),
+							eq(shopPenaltiesTable.shopItemId, itemId)
+						))
+				} else {
+					await tx
+						.insert(shopPenaltiesTable)
+						.values({
+							userId: user.id,
+							shopItemId: itemId,
+							probabilityMultiplier: 50
+						})
+				}
+
+				return { won: true, orderId: newOrder[0].id, effectiveProbability, rolled }
 			}
 
-			return newOrder[0]
+			return { won: false, effectiveProbability, rolled }
 		})
 
-		return { success: true, won: true, orderId: order.id, effectiveProbability, rolled, refineryReset: true, probabilityHalved: true }
+		if (result.won) {
+			return { success: true, won: true, orderId: result.orderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, refineryReset: true, probabilityHalved: true }
+		}
+		return { success: true, won: false, effectiveProbability: result.effectiveProbability, rolled: result.rolled }
+	} catch (e) {
+		const err = e as { type?: string; balance?: number }
+		if (err.type === 'insufficient_funds') {
+			return { error: 'Insufficient scraps', required: item.price, available: err.balance }
+		}
+		if (err.type === 'out_of_stock') {
+			return { error: 'Out of stock' }
+		}
+		throw e
 	}
-
-	return { success: true, won: false, effectiveProbability, rolled }
 })
 
 shop.post('/items/:id/upgrade-probability', async ({ params, headers }) => {
@@ -509,61 +542,75 @@ shop.post('/items/:id/upgrade-probability', async ({ params, headers }) => {
 
 	const item = items[0]
 
-	const boostResult = await db
-		.select({
-			boostPercent: sql<number>`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+	try {
+		const result = await db.transaction(async (tx) => {
+			// Lock the user row to serialize spend operations and prevent race conditions
+			await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user.id} FOR UPDATE`)
+
+			const boostResult = await tx
+				.select({
+					boostPercent: sql<number>`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+				})
+				.from(refineryOrdersTable)
+				.where(and(
+					eq(refineryOrdersTable.userId, user.id),
+					eq(refineryOrdersTable.shopItemId, itemId)
+				))
+
+			const currentBoost = boostResult.length > 0 ? Number(boostResult[0].boostPercent) : 0
+
+			const penaltyResult = await tx
+				.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier })
+				.from(shopPenaltiesTable)
+				.where(and(
+					eq(shopPenaltiesTable.userId, user.id),
+					eq(shopPenaltiesTable.shopItemId, itemId)
+				))
+				.limit(1)
+
+			const penaltyMultiplier = penaltyResult.length > 0 ? penaltyResult[0].probabilityMultiplier : 100
+			const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100)
+
+			const maxBoost = 100 - adjustedBaseProbability
+			if (currentBoost >= maxBoost) {
+				throw { type: 'max_probability' }
+			}
+
+			const cost = Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, currentBoost))
+
+			const affordable = await canAfford(user.id, cost, tx)
+			if (!affordable) {
+				const { balance } = await getUserScrapsBalance(user.id, tx)
+				throw { type: 'insufficient_funds', balance, cost }
+			}
+
+			const newBoost = currentBoost + 1
+
+			// Record the refinery order
+			await tx.insert(refineryOrdersTable).values({
+				userId: user.id,
+				shopItemId: itemId,
+				cost,
+				boostAmount: 1
+			})
+
+			const nextCost = newBoost >= maxBoost
+				? null
+				: Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, newBoost))
+
+			return { boostPercent: newBoost, nextCost, effectiveProbability: Math.min(adjustedBaseProbability + newBoost, 100) }
 		})
-		.from(refineryOrdersTable)
-		.where(and(
-			eq(refineryOrdersTable.userId, user.id),
-			eq(refineryOrdersTable.shopItemId, itemId)
-		))
 
-	const currentBoost = boostResult.length > 0 ? Number(boostResult[0].boostPercent) : 0
-
-	const penaltyResult = await db
-		.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier })
-		.from(shopPenaltiesTable)
-		.where(and(
-			eq(shopPenaltiesTable.userId, user.id),
-			eq(shopPenaltiesTable.shopItemId, itemId)
-		))
-		.limit(1)
-
-	const penaltyMultiplier = penaltyResult.length > 0 ? penaltyResult[0].probabilityMultiplier : 100
-	const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100)
-
-	const maxBoost = 100 - adjustedBaseProbability
-	if (currentBoost >= maxBoost) {
-		return { error: 'Already at maximum probability' }
-	}
-
-	const cost = Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, currentBoost))
-
-	const affordable = await canAfford(user.id, cost)
-	if (!affordable) {
-		const { balance } = await getUserScrapsBalance(user.id)
-		return { error: 'Insufficient scraps', required: cost, available: balance }
-	}
-
-	const newBoost = currentBoost + 1
-
-	// Record the refinery order
-	await db.insert(refineryOrdersTable).values({
-		userId: user.id,
-		shopItemId: itemId,
-		cost,
-		boostAmount: 1
-	})
-
-	const nextCost = newBoost >= maxBoost
-		? null
-		: Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, newBoost))
-
-	return {
-		boostPercent: newBoost,
-		nextCost,
-		effectiveProbability: Math.min(adjustedBaseProbability + newBoost, 100)
+		return result
+	} catch (e) {
+		const err = e as { type?: string; balance?: number; cost?: number }
+		if (err.type === 'max_probability') {
+			return { error: 'Already at maximum probability' }
+		}
+		if (err.type === 'insufficient_funds') {
+			return { error: 'Insufficient scraps', required: err.cost, available: err.balance }
+		}
+		throw e
 	}
 })
 
@@ -618,7 +665,7 @@ shop.get('/items/:id/buyers', async ({ params }) => {
 			username: usersTable.username,
 			avatar: usersTable.avatar,
 			quantity: shopOrdersTable.quantity,
-			createdAt: shopOrdersTable.createdAt
+			purchasedAt: shopOrdersTable.createdAt
 		})
 		.from(shopOrdersTable)
 		.innerJoin(usersTable, eq(shopOrdersTable.userId, usersTable.id))
@@ -654,6 +701,7 @@ shop.get('/items/:id/hearts', async ({ params }) => {
 shop.get('/addresses', async ({ headers }) => {
 	const user = await getUserFromSession(headers as Record<string, string>)
 	if (!user) {
+		console.log('[/shop/addresses] Unauthorized - no user session')
 		return { error: 'Unauthorized' }
 	}
 
@@ -664,6 +712,7 @@ shop.get('/addresses', async ({ headers }) => {
 		.limit(1)
 
 	if (userData.length === 0 || !userData[0].accessToken) {
+		console.log('[/shop/addresses] No access token found for user', user.id)
 		return []
 	}
 
@@ -675,6 +724,8 @@ shop.get('/addresses', async ({ headers }) => {
 		})
 
 		if (!response.ok) {
+			const errorText = await response.text()
+			console.log('[/shop/addresses] Hack Club API error:', response.status, errorText)
 			return []
 		}
 
@@ -696,8 +747,10 @@ shop.get('/addresses', async ({ headers }) => {
 			}
 		}
 
+		console.log('[/shop/addresses] Got addresses:', data.identity?.addresses?.length ?? 0)
 		return data.identity?.addresses ?? []
-	} catch {
+	} catch (e) {
+		console.error('[/shop/addresses] Error fetching from Hack Club:', e)
 		return []
 	}
 })
