@@ -17,16 +17,20 @@
 		primary: boolean
 	}
 
+	import type { Snippet } from 'svelte'
+
 	let {
 		orderId,
 		itemName,
 		onClose,
-		onComplete
+		onComplete,
+		header
 	}: {
 		orderId: number
 		itemName: string
 		onClose: () => void
 		onComplete: () => void
+		header?: Snippet
 	} = $props()
 
 	let addresses = $state<Address[]>([])
@@ -127,13 +131,17 @@
 			<h2 class="text-2xl font-bold">shipping address</h2>
 		</div>
 
-		<div class="mb-6 p-4 border-2 border-black rounded-lg bg-gray-50">
-			<p class="text-lg font-bold">🎉 congratulations!</p>
-			<p class="text-gray-600 mt-1">
-				you won <span class="font-bold">{itemName}</span>! select your shipping address to receive
-				it.
-			</p>
-		</div>
+		{#if header}
+			{@render header()}
+		{:else}
+			<div class="mb-6 p-4 border-2 border-black rounded-lg bg-gray-50">
+				<p class="text-lg font-bold">🎉 congratulations!</p>
+				<p class="text-gray-600 mt-1">
+					you won <span class="font-bold">{itemName}</span>! select your shipping address to receive
+					it.
+				</p>
+			</div>
+		{/if}
 
 		{#if error}
 			<div class="mb-4 p-3 bg-red-100 border-2 border-red-500 rounded-lg text-red-700 text-sm">
@@ -213,7 +221,7 @@
 					class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-black transition-colors"
 				>
 					<ExternalLink size={14} />
-					manage addresses on hack club
+					manage addresses on hack club auth
 				</a>
 			{:else}
 				<div class="text-center py-6">

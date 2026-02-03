@@ -28,6 +28,7 @@ export interface ShopItem {
 	baseProbability: number
 	baseUpgradeCost: number
 	costMultiplier: number
+	boostAmount: number
 	userBoostPercent: number
 	effectiveProbability: number
 }
@@ -260,14 +261,14 @@ export function updateProject(id: number, updates: Partial<Project>) {
 	)
 }
 
-export function updateShopItemHeart(itemId: number, hearted: boolean) {
+export function updateShopItemHeart(itemId: number, hearted: boolean, heartCount?: number) {
 	shopItemsStore.update((items) =>
 		items.map((item) => {
 			if (item.id === itemId) {
 				return {
 					...item,
 					userHearted: hearted,
-					heartCount: hearted ? item.heartCount + 1 : item.heartCount - 1
+					heartCount: heartCount ?? (hearted ? item.heartCount + 1 : item.heartCount - 1)
 				}
 			}
 			return item

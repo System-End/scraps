@@ -107,7 +107,7 @@
 									{#if upgrading === item.id}
 										upgrading...
 									{:else}
-										upgrade +1% ({nextCost} scraps)
+										upgrade +{item.boostAmount}% ({nextCost} scraps)
 									{/if}
 								</button>
 							{/if}

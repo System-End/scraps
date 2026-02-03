@@ -5,7 +5,7 @@
 	import AddressSelectModal from '$lib/components/AddressSelectModal.svelte'
 	import { API_URL } from '$lib/config'
 	import { getUser } from '$lib/auth-client'
-	import { X, Spool } from '@lucide/svelte'
+	import { X, Spool, PackageCheck } from '@lucide/svelte'
 	import {
 		shopItemsStore,
 		shopLoading,
@@ -21,6 +21,10 @@
 	let winningOrderId = $state<number | null>(null)
 	let winningItemName = $state<string | null>(null)
 	let pendingOrders = $state<{ orderId: number; itemName: string }[]>([])
+
+	let consolationOrderId = $state<number | null>(null)
+	let consolationRolled = $state<number | null>(null)
+	let consolationNeeded = $state<number | null>(null)
 
 	let categories = $derived.by(() => {
 		const allCategories = new Set<string>()
@@ -110,6 +114,13 @@
 		selectedItem = null
 	}
 
+	function handleConsolation(orderId: number, rolled: number, needed: number) {
+		consolationOrderId = orderId
+		consolationRolled = rolled
+		consolationNeeded = needed
+		selectedItem = null
+	}
+
 	function handleAddressComplete() {
 		fetchShopItems(true)
 		winningOrderId = null
@@ -129,16 +140,14 @@
 	})
 
 	async function toggleHeart(itemId: number) {
-		const item = $shopItemsStore.find((i) => i.id === itemId)
-		if (!item) return
-
 		try {
 			const response = await fetch(`${API_URL}/shop/items/${itemId}/heart`, {
 				method: 'POST',
 				credentials: 'include'
 			})
 			if (response.ok) {
-				updateShopItemHeart(itemId, !item.userHearted)
+				const data = await response.json()
+				updateShopItemHeart(itemId, data.hearted, data.heartCount)
 			}
 		} catch (error) {
 			console.error('Failed to toggle heart:', error)
@@ -227,9 +236,16 @@
 			{#each sortedItems as item (item.id)}
 				<button
 					onclick={() => (selectedItem = item)}
-					class="border-4 border-black rounded-2xl p-4 hover:border-dashed transition-all cursor-pointer text-left"
+					class="border-4 border-black rounded-2xl p-4 hover:border-dashed transition-all cursor-pointer text-left relative overflow-hidden {item.count === 0 ? 'bg-gray-100' : ''}"
 				>
-					<div class="relative">
+					{#if item.count === 0}
+						<div class="absolute top-0 right-0 z-20">
+							<div class="bg-red-600 text-white text-xs font-bold px-8 py-1 transform rotate-45 translate-x-6 translate-y-3 shadow-md">
+								sold out
+							</div>
+						</div>
+					{/if}
+					<div class="relative {item.count === 0 ? 'opacity-50 grayscale' : ''}">
 						<img src={item.image} alt={item.name} class="w-full h-32 object-contain mb-4" />
 						<span
 							class="absolute top-0 right-0 text-xs font-bold px-2 py-1 rounded-full {getProbabilityBgColor(item.effectiveProbability)} {getProbabilityColor(item.effectiveProbability)}"
@@ -237,26 +253,28 @@
 							{item.effectiveProbability.toFixed(0)}% chance
 						</span>
 					</div>
-					<h3 class="font-bold text-xl mb-1">{item.name}</h3>
-					<p class="text-sm text-gray-600 mb-2">{item.description}</p>
-					<div class="mb-3">
-						<span class="text-lg font-bold flex items-center gap-1"><Spool size={18} />{item.price}</span>
-						<div class="flex gap-1 flex-wrap mt-2">
-							{#each item.category.split(',').map((c) => c.trim()).filter(Boolean) as cat}
-								<span class="text-xs px-2 py-1 bg-gray-100 rounded-full">{cat}</span>
-							{/each}
+					<div class={item.count === 0 ? 'opacity-50' : ''}>
+						<h3 class="font-bold text-xl mb-1">{item.name}</h3>
+						<p class="text-sm text-gray-600 mb-2">{item.description}</p>
+						<div class="mb-3">
+							<span class="text-lg font-bold flex items-center gap-1"><Spool size={18} />{item.price}</span>
+							<div class="flex gap-1 flex-wrap mt-2">
+								{#each item.category.split(',').map((c) => c.trim()).filter(Boolean) as cat}
+									<span class="text-xs px-2 py-1 bg-gray-100 rounded-full">{cat}</span>
+								{/each}
+							</div>
 						</div>
-					</div>
-					<div class="flex items-center justify-between">
-						<span class="text-xs text-gray-500">{item.count} left</span>
-						<HeartButton
-							count={item.heartCount}
-							hearted={item.userHearted}
-							onclick={(e) => {
-								e.stopPropagation()
-								toggleHeart(item.id)
-							}}
-						/>
+						<div class="flex items-center justify-between">
+							<span class="text-xs {item.count === 0 ? 'text-red-500 font-bold' : 'text-gray-500'}">{item.count === 0 ? 'sold out' : `${item.count} left`}</span>
+							<HeartButton
+								count={item.heartCount}
+								hearted={item.userHearted}
+								onclick={(e) => {
+									e.stopPropagation()
+									toggleHeart(item.id)
+								}}
+							/>
+						</div>
 					</div>
 				</button>
 			{/each}
@@ -269,6 +287,7 @@
 		item={selectedItem}
 		onClose={() => (selectedItem = null)}
 		onTryLuck={handleTryLuck}
+		onConsolation={handleConsolation}
 	/>
 {/if}
 
@@ -283,3 +302,40 @@
 		onComplete={handleAddressComplete}
 	/>
 {/if}
+
+{#if consolationOrderId}
+	<AddressSelectModal
+		orderId={consolationOrderId}
+		itemName="consolation scrap paper"
+		onClose={() => {
+			consolationOrderId = null
+			consolationRolled = null
+			consolationNeeded = null
+		}}
+		onComplete={() => {
+			consolationOrderId = null
+			consolationRolled = null
+			consolationNeeded = null
+		}}
+	>
+		{#snippet header()}
+			<div class="mb-4 p-4 bg-yellow-50 border-2 border-yellow-400 rounded-xl">
+				<p class="font-bold text-yellow-800">better luck next time!</p>
+				<p class="text-sm text-yellow-700 mt-1">
+					you rolled {consolationRolled} but needed {consolationNeeded} or less.
+				</p>
+				<p class="text-sm text-yellow-700 mt-2">
+					as a consolation, we'll send you a random scrap of paper from hack club hq! just tell us where to ship it.
+				</p>
+			</div>
+		{/snippet}
+	</AddressSelectModal>
+{/if}
+
+<a
+	href="/orders"
+	class="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-6 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 border-4 border-black cursor-pointer"
+>
+	<PackageCheck size={20} />
+	<span>my orders</span>
+</a>

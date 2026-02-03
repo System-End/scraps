@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
-	import { ArrowLeft, Pencil, Send, Clock, CheckCircle, XCircle, AlertCircle, Github, AlertTriangle, PlaneTakeoff, Plus, Globe } from '@lucide/svelte'
+	import { ArrowLeft, Pencil, Send, Clock, CheckCircle, XCircle, AlertCircle, Github, AlertTriangle, PlaneTakeoff, Plus, Globe, Spool } from '@lucide/svelte'
 	import { getUser } from '$lib/auth-client'
 	import { API_URL } from '$lib/config'
 	import { formatHours } from '$lib/utils'
@@ -21,6 +21,7 @@
 		hours: number
 		hoursOverride?: number | null
 		status: string
+		scrapsAwarded: number
 		createdAt: string
 		updatedAt: string
 	}
@@ -32,7 +33,7 @@
 	}
 
 	interface ActivityEntry {
-		type: 'review' | 'created' | 'submitted'
+		type: 'review' | 'created' | 'submitted' | 'scraps_earned'
 		action?: string
 		feedbackForAuthor?: string | null
 		createdAt: string
@@ -215,6 +216,12 @@
 						<Clock size={18} />
 						{formatHours(project.hours)}h
 					</span>
+					{#if project.scrapsAwarded > 0}
+						<span class="px-4 py-2 bg-green-100 text-green-700 rounded-full font-bold border-4 border-green-600 flex items-center gap-2">
+							<Spool size={18} />
+							+{project.scrapsAwarded} scraps earned
+						</span>
+					{/if}
 					{#if project.githubUrl}
 						<a
 							href={project.githubUrl}
@@ -364,6 +371,13 @@
 												{/if}
 											</div>
 										</div>
+									</div>
+								{:else if entry.type === 'scraps_earned'}
+									<div class="relative flex items-center gap-3 ml-8 py-2">
+										<div class="absolute left-[-26px] w-6 h-6 bg-white rounded-full flex items-center justify-center z-10">
+											<Spool size={16} class="text-green-600" />
+										</div>
+										<span class="text-sm text-green-600 font-bold">{entry.action} · {formatDate(entry.createdAt)}</span>
 									</div>
 								{:else if entry.type === 'submitted'}
 									<div class="relative flex items-center gap-3 ml-8 py-2">

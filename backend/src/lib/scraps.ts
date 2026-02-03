@@ -6,7 +6,7 @@ import { shopOrdersTable, refineryOrdersTable } from '../schemas/shop'
 import { userBonusesTable } from '../schemas/users'
 
 export const PHI = (1 + Math.sqrt(5)) / 2
-export const MULTIPLIER = 120
+export const MULTIPLIER = 10
 
 export function calculateScrapsFromHours(hours: number): number {
 	return Math.floor(hours * PHI * MULTIPLIER)

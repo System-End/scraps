@@ -151,8 +151,8 @@ projects.get('/:id', async ({ params, headers }) => {
             })
         }
 
-        // Fetch submission events from activity table
-        const submissions = await db
+        // Fetch submission and scraps earned events from activity table
+        const activityEntries = await db
             .select({
                 id: activityTable.id,
                 action: activityTable.action,
@@ -161,14 +161,25 @@ projects.get('/:id', async ({ params, headers }) => {
             .from(activityTable)
             .where(and(
                 eq(activityTable.projectId, parseInt(params.id)),
-                eq(activityTable.action, 'project_submitted')
+                or(
+                    eq(activityTable.action, 'project_submitted'),
+                    sql`${activityTable.action} LIKE 'earned % scraps'`
+                )
             ))
 
-        for (const s of submissions) {
-            activity.push({
-                type: 'submitted',
-                createdAt: s.createdAt
-            })
+        for (const entry of activityEntries) {
+            if (entry.action === 'project_submitted') {
+                activity.push({
+                    type: 'submitted',
+                    createdAt: entry.createdAt
+                })
+            } else if (entry.action.startsWith('earned ') && entry.action.endsWith(' scraps')) {
+                activity.push({
+                    type: 'scraps_earned',
+                    action: entry.action,
+                    createdAt: entry.createdAt
+                })
+            }
         }
 
         // Add "project created" entry
@@ -197,6 +208,7 @@ projects.get('/:id', async ({ params, headers }) => {
             hours: project[0].hoursOverride ?? project[0].hours,
             hoursOverride: isOwner ? project[0].hoursOverride : undefined,
             status: project[0].status,
+            scrapsAwarded: project[0].scrapsAwarded,
             createdAt: project[0].createdAt,
             updatedAt: project[0].updatedAt
         },

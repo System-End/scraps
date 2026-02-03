@@ -29,11 +29,13 @@
 	let {
 		item,
 		onClose,
-		onTryLuck
+		onTryLuck,
+		onConsolation
 	}: {
 		item: ShopItem
 		onClose: () => void
 		onTryLuck: (orderId: number) => void
+		onConsolation: (orderId: number, rolled: number, needed: number) => void
 	} = $props()
 
 	let activeTab = $state<'leaderboard' | 'wishlist' | 'buyers'>('leaderboard')
@@ -118,10 +120,11 @@
 				credentials: 'include'
 			})
 			if (response.ok) {
-				localHearted = !localHearted
-				localHeartCount = localHearted ? localHeartCount + 1 : localHeartCount - 1
+				const data = await response.json()
+				localHearted = data.hearted
+				localHeartCount = data.heartCount
 				// Sync with the store so the shop page updates
-				updateShopItemHeart(item.id, localHearted)
+				updateShopItemHeart(item.id, localHearted, localHeartCount)
 			}
 		} catch (e) {
 			console.error('Failed to toggle heart:', e)
@@ -143,12 +146,11 @@
 				return
 			}
 
+			await refreshUserScraps()
 			if (data.won) {
-				await refreshUserScraps()
 				onTryLuck(data.orderId)
 			} else {
-				alertType = 'info'
-				alertMessage = 'Better luck next time! You rolled ' + data.rolled + ' but needed ' + data.effectiveProbability.toFixed(0) + ' or less.'
+				onConsolation(data.consolationOrderId, data.rolled, Math.floor(data.effectiveProbability))
 			}
 		} catch (e) {
 			console.error('Failed to try luck:', e)
@@ -333,19 +335,25 @@
 			{/if}
 		</div>
 
-		<button
-			onclick={() => (showConfirmation = true)}
-			disabled={item.count === 0 || tryingLuck || !canAfford}
-			class="w-full px-4 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 cursor-pointer text-lg"
-		>
-			{#if item.count === 0}
-				out of stock
-			{:else if !canAfford}
-				not enough scraps
-			{:else}
-				try your luck
-			{/if}
-		</button>
+		{#if item.count === 0}
+			<span
+				class="w-full px-4 py-3 border-4 border-dashed border-gray-300 text-gray-400 rounded-full font-bold text-lg text-center cursor-not-allowed block"
+			>
+				sold out
+			</span>
+		{:else}
+			<button
+				onclick={() => (showConfirmation = true)}
+				disabled={tryingLuck || !canAfford}
+				class="w-full px-4 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-lg"
+			>
+				{#if !canAfford}
+					not enough scraps
+				{:else}
+					try your luck
+				{/if}
+			</button>
+		{/if}
 	</div>
 
 	{#if showConfirmation}

@@ -23,6 +23,7 @@ shop.get('/items', async ({ headers }) => {
 			baseProbability: shopItemsTable.baseProbability,
 			baseUpgradeCost: shopItemsTable.baseUpgradeCost,
 			costMultiplier: shopItemsTable.costMultiplier,
+			boostAmount: shopItemsTable.boostAmount,
 			createdAt: shopItemsTable.createdAt,
 			updatedAt: shopItemsTable.updatedAt,
 			heartCount: sql<number>`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = ${shopItemsTable.id})`.as('heart_count')
@@ -96,6 +97,7 @@ shop.get('/items/:id', async ({ params, headers }) => {
 			baseProbability: shopItemsTable.baseProbability,
 			baseUpgradeCost: shopItemsTable.baseUpgradeCost,
 			costMultiplier: shopItemsTable.costMultiplier,
+			boostAmount: shopItemsTable.boostAmount,
 			createdAt: shopItemsTable.createdAt,
 			updatedAt: shopItemsTable.updatedAt,
 			heartCount: sql<number>`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = ${shopItemsTable.id})`.as('heart_count')
@@ -200,7 +202,16 @@ shop.post('/items/:id/heart', async ({ params, headers }) => {
 	`)
 
 	const hearted = (result.rows[0] as { hearted: boolean })?.hearted ?? false
-	return { hearted }
+
+	// Get the updated heart count
+	const countResult = await db
+		.select({ count: sql<number>`COUNT(*)` })
+		.from(shopHeartsTable)
+		.where(eq(shopHeartsTable.shopItemId, itemId))
+
+	const heartCount = Number(countResult[0]?.count) || 0
+
+	return { hearted, heartCount }
 })
 
 shop.get('/categories', async () => {
@@ -336,6 +347,9 @@ shop.get('/orders', async ({ headers }) => {
 			pricePerItem: shopOrdersTable.pricePerItem,
 			totalPrice: shopOrdersTable.totalPrice,
 			status: shopOrdersTable.status,
+			orderType: shopOrdersTable.orderType,
+			shippingAddress: shopOrdersTable.shippingAddress,
+			isFulfilled: shopOrdersTable.isFulfilled,
 			createdAt: shopOrdersTable.createdAt,
 			itemId: shopItemsTable.id,
 			itemName: shopItemsTable.name,
@@ -500,13 +514,29 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 				return { won: true, orderId: newOrder[0].id, effectiveProbability, rolled }
 			}
 
-			return { won: false, effectiveProbability, rolled }
+			// Create consolation order for scrap paper when user loses
+			const consolationOrder = await tx
+				.insert(shopOrdersTable)
+				.values({
+					userId: user.id,
+					shopItemId: itemId,
+					quantity: 1,
+					pricePerItem: item.price,
+					totalPrice: item.price,
+					shippingAddress: null,
+					status: 'pending',
+					orderType: 'consolation',
+					notes: `Consolation scrap paper - rolled ${rolled}, needed ${effectiveProbability} or less`
+				})
+				.returning()
+
+			return { won: false, effectiveProbability, rolled, consolationOrderId: consolationOrder[0].id }
 		})
 
 		if (result.won) {
 			return { success: true, won: true, orderId: result.orderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, refineryReset: true, probabilityHalved: true }
 		}
-		return { success: true, won: false, effectiveProbability: result.effectiveProbability, rolled: result.rolled }
+		return { success: true, won: false, consolationOrderId: result.consolationOrderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled }
 	} catch (e) {
 		const err = e as { type?: string; balance?: number }
 		if (err.type === 'insufficient_funds') {
@@ -584,21 +614,22 @@ shop.post('/items/:id/upgrade-probability', async ({ params, headers }) => {
 				throw { type: 'insufficient_funds', balance, cost }
 			}
 
-			const newBoost = currentBoost + 1
+			const boostAmount = item.boostAmount
+			const newBoost = currentBoost + boostAmount
 
 			// Record the refinery order
 			await tx.insert(refineryOrdersTable).values({
 				userId: user.id,
 				shopItemId: itemId,
 				cost,
-				boostAmount: 1
+				boostAmount
 			})
 
 			const nextCost = newBoost >= maxBoost
 				? null
 				: Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, newBoost))
 
-			return { boostPercent: newBoost, nextCost, effectiveProbability: Math.min(adjustedBaseProbability + newBoost, 100) }
+			return { boostPercent: newBoost, boostAmount, nextCost, effectiveProbability: Math.min(adjustedBaseProbability + newBoost, 100) }
 		})
 
 		return result

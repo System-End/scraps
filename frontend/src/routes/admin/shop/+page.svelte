@@ -42,9 +42,22 @@
 	let formCount = $state(0)
 	let formBaseProbability = $state(50)
 	let formBaseUpgradeCost = $state(10)
-	let formCostMultiplier = $state(115)
+	let formCostMultiplier = $state(101)
 	let formBoostAmount = $state(1)
+	let formMonetaryValue = $state(0)
 	let formError = $state<string | null>(null)
+
+	const PHI = (1 + Math.sqrt(5)) / 2
+	const SCRAPS_PER_HOUR = PHI * 10
+	const DOLLARS_PER_HOUR = 5
+	const SCRAPS_PER_DOLLAR = SCRAPS_PER_HOUR / DOLLARS_PER_HOUR
+
+	function updateFromMonetary(value: number) {
+		formMonetaryValue = value
+		formPrice = Math.round(value * SCRAPS_PER_DOLLAR)
+		formBaseUpgradeCost = Math.round(formPrice * 0.1) || 1
+		formBaseProbability = Math.max(0.1, Math.min(100, Math.round((100 - value * 2) * 10) / 10))
+	}
 	let deleteConfirmId = $state<number | null>(null)
 
 	onMount(async () => {
@@ -79,11 +92,12 @@
 		formImage = ''
 		formDescription = ''
 		formPrice = 0
+		formMonetaryValue = 0
 		formCategory = ''
 		formCount = 0
 		formBaseProbability = 50
 		formBaseUpgradeCost = 10
-		formCostMultiplier = 115
+		formCostMultiplier = 101
 		formBoostAmount = 1
 		formError = null
 		showModal = true
@@ -95,6 +109,7 @@
 		formImage = item.image
 		formDescription = item.description
 		formPrice = item.price
+		formMonetaryValue = item.price / SCRAPS_PER_DOLLAR
 		formCategory = item.category
 		formCount = item.count
 		formBaseProbability = item.baseProbability
@@ -198,6 +213,22 @@
 		</button>
 	</div>
 
+	<div class="border-4 border-black rounded-2xl p-4 mb-8">
+		<h3 class="font-bold mb-3">scraps per hour reference</h3>
+		<div class="grid grid-cols-4 gap-4 text-center text-sm">
+			{#each [0.8, 1, 1.25, 1.5] as mult}
+				<div class="p-3 bg-gray-100 rounded-lg">
+					<div class="text-gray-500 mb-1">{mult}x</div>
+					<div class="font-bold flex items-center justify-center gap-1">
+						<Spool size={14} />
+						{Math.round(SCRAPS_PER_HOUR * mult)}
+					</div>
+					<div class="text-xs text-gray-500">${(DOLLARS_PER_HOUR * mult).toFixed(2)}/hr</div>
+				</div>
+			{/each}
+		</div>
+	</div>
+
 	{#if loading}
 		<div class="text-center py-12 text-gray-500">loading...</div>
 	{:else if items.length === 0}
@@ -215,19 +246,19 @@
 						<h3 class="font-bold text-xl">{item.name}</h3>
 						<p class="text-sm text-gray-600 truncate">{item.description}</p>
 						<div class="flex items-center gap-2 mt-1 text-sm flex-wrap">
+							<span class="font-bold">${(item.price / SCRAPS_PER_DOLLAR).toFixed(2)}</span>
+							<span class="text-gray-500">•</span>
 							<span class="font-bold flex items-center gap-1"><Spool size={16} />{item.price}</span>
 							{#each item.category.split(',').map(c => c.trim()).filter(Boolean) as cat}
 								<span class="px-2 py-0.5 bg-gray-100 rounded-full">{cat}</span>
 							{/each}
 							<span class="text-gray-500">{item.count} in stock</span>
 							<span class="text-gray-500">•</span>
-							<span class="text-gray-500">{item.baseProbability}% base chance</span>
+							<span class="text-gray-500">{item.baseProbability}%</span>
 							<span class="text-gray-500">•</span>
-							<span class="text-gray-500">{item.baseUpgradeCost} upgrade cost</span>
+							<span class="text-gray-500">+{item.boostAmount ?? 1}%/upgrade</span>
 							<span class="text-gray-500">•</span>
-							<span class="text-gray-500">{item.costMultiplier / 100}x multiplier</span>
-							<span class="text-gray-500">•</span>
-							<span class="text-gray-500">+{item.boostAmount ?? 1}% per upgrade</span>
+							<span class="text-gray-500">~{(item.price / SCRAPS_PER_HOUR).toFixed(1)} hrs</span>
 						</div>
 					</div>
 					<div class="flex gap-2 shrink-0">
@@ -297,17 +328,23 @@
 					></textarea>
 				</div>
 
+				<div>
+					<label for="monetaryValue" class="block text-sm font-bold mb-1">value ($)</label>
+					<input
+						id="monetaryValue"
+						type="number"
+						value={formMonetaryValue}
+						oninput={(e) => updateFromMonetary(parseFloat(e.currentTarget.value) || 0)}
+						min="0"
+						step="0.01"
+						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+					/>
+					<p class="text-xs text-gray-500 mt-1">
+						= {formPrice} scraps · {formBaseProbability}% base probability · {formBaseUpgradeCost} upgrade cost · ~{(formPrice / SCRAPS_PER_HOUR).toFixed(1)} hrs
+					</p>
+				</div>
+
 				<div class="grid grid-cols-2 gap-4">
-					<div>
-						<label for="price" class="block text-sm font-bold mb-1">price (scraps)</label>
-						<input
-							id="price"
-							type="number"
-							bind:value={formPrice}
-							min="0"
-							class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
-						/>
-					</div>
 					<div>
 						<label for="count" class="block text-sm font-bold mb-1">stock count</label>
 						<input
@@ -318,17 +355,16 @@
 							class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
 						/>
 					</div>
-				</div>
-
-				<div>
-					<label for="category" class="block text-sm font-bold mb-1">categories (comma separated)</label>
-					<input
-						id="category"
-						type="text"
-						bind:value={formCategory}
-						placeholder="stickers, hardware, misc"
-						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
-					/>
+					<div>
+						<label for="category" class="block text-sm font-bold mb-1">categories</label>
+						<input
+							id="category"
+							type="text"
+							bind:value={formCategory}
+							placeholder="stickers, hardware"
+							class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+						/>
+					</div>
 				</div>
 
 				<div class="grid grid-cols-2 gap-4">
@@ -338,8 +374,9 @@
 							id="baseProbability"
 							type="number"
 							bind:value={formBaseProbability}
-							min="0"
+							min="0.1"
 							max="100"
+							step="0.1"
 							class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
 						/>
 					</div>
@@ -352,13 +389,12 @@
 							min="1"
 							class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
 						/>
-						<p class="text-xs text-gray-500 mt-1">probability increase per upgrade</p>
 					</div>
 				</div>
 
 				<div class="grid grid-cols-2 gap-4">
 					<div>
-						<label for="baseUpgradeCost" class="block text-sm font-bold mb-1">base upgrade cost (scraps)</label>
+						<label for="baseUpgradeCost" class="block text-sm font-bold mb-1">base upgrade cost</label>
 						<input
 							id="baseUpgradeCost"
 							type="number"
@@ -366,6 +402,7 @@
 							min="0"
 							class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
 						/>
+						<p class="text-xs text-gray-500 mt-1">auto-set to 10% of price</p>
 					</div>
 					<div>
 						<label for="costMultiplier" class="block text-sm font-bold mb-1">cost multiplier (%)</label>
@@ -376,7 +413,7 @@
 							min="100"
 							class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
 						/>
-						<p class="text-xs text-gray-500 mt-1">115 = 1.15x cost increase per upgrade</p>
+						<p class="text-xs text-gray-500 mt-1">115 = 1.15x per upgrade</p>
 					</div>
 				</div>
 			</div>

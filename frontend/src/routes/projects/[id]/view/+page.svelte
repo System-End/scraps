@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
-	import { ArrowLeft, Github, Clock, CheckCircle, AlertTriangle, Package } from '@lucide/svelte'
+	import { ArrowLeft, Github, Globe, Clock, CheckCircle, AlertTriangle, Package } from '@lucide/svelte'
 	import { API_URL } from '$lib/config'
 	import { formatHours } from '$lib/utils'
 	import { getUser } from '$lib/auth-client'
@@ -14,6 +14,7 @@
 		description: string
 		image: string | null
 		githubUrl: string | null
+		playableUrl: string | null
 		hours: number
 		status: string
 		createdAt: string
@@ -124,22 +125,45 @@
 				</span>
 			</div>
 
-			{#if project.githubUrl}
-				<a
-					href={project.githubUrl}
-					target="_blank"
-					rel="noopener noreferrer"
-					class="inline-flex items-center gap-2 mt-4 px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 cursor-pointer"
-				>
-					<Github size={18} />
-					<span>view on github</span>
-				</a>
-			{/if}
+			<div class="flex flex-wrap gap-3 mt-4">
+				{#if project.githubUrl}
+					<a
+						href={project.githubUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="inline-flex items-center gap-2 px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 cursor-pointer"
+					>
+						<Github size={18} />
+						<span>view on github</span>
+					</a>
+				{:else}
+					<span class="inline-flex items-center gap-2 px-4 py-2 border-4 border-dashed border-gray-300 text-gray-400 rounded-full font-bold cursor-not-allowed">
+						<Github size={18} />
+						<span>view on github</span>
+					</span>
+				{/if}
+				{#if project.playableUrl}
+					<a
+						href={project.playableUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="inline-flex items-center gap-2 px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 cursor-pointer"
+					>
+						<Globe size={18} />
+						<span>try it out</span>
+					</a>
+				{:else}
+					<span class="inline-flex items-center gap-2 px-4 py-2 border-4 border-dashed border-gray-300 text-gray-400 rounded-full font-bold cursor-not-allowed">
+						<Globe size={18} />
+						<span>try it out</span>
+					</span>
+				{/if}
+			</div>
 
 			{#if isOwner}
 				<a
 					href="/projects/{project.id}"
-					class="inline-flex items-center gap-2 mt-4 ml-2 px-4 py-2 bg-black text-white border-4 border-black rounded-full font-bold hover:bg-gray-800 transition-all duration-200 cursor-pointer"
+					class="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-black text-white border-4 border-black rounded-full font-bold hover:bg-gray-800 transition-all duration-200 cursor-pointer"
 				>
 					edit project
 				</a>

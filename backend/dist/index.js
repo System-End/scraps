@@ -1819,8 +1819,8 @@ function mergeArrays(chunks) {
 var import_debug, debug, syncBufferSize, ddSignatureArray, eocdSignatureBytes;
 var init_ZipHandler = __esm(() => {
   init_lib3();
-  import_debug = __toESM(require_src(), 1);
   init_ZipToken();
+  import_debug = __toESM(require_src(), 1);
   debug = import_debug.default("tokenizer:inflate");
   syncBufferSize = 256 * 1024;
   ddSignatureArray = signatureToArray(Signature.DataDescriptor);
@@ -5848,7 +5848,6 @@ var require_type_overrides = __commonJS((exports, module) => {
 
 // node_modules/pg-connection-string/index.js
 var require_pg_connection_string = __commonJS((exports, module) => {
-  var { emitWarning } = __require("process");
   function parse2(str, options = {}) {
     if (str.charAt(0) === "/") {
       const config3 = str.split(" ");
@@ -6007,9 +6006,9 @@ var require_pg_connection_string = __commonJS((exports, module) => {
     return toClientConfig(parse2(str));
   }
   function deprecatedSslModeWarning(sslmode) {
-    if (!deprecatedSslModeWarning.warned) {
+    if (!deprecatedSslModeWarning.warned && typeof process !== "undefined" && process.emitWarning) {
       deprecatedSslModeWarning.warned = true;
-      emitWarning(`SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+      process.emitWarning(`SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
 In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
 
 To prepare for this change:
@@ -7917,7 +7916,7 @@ var require_client = __commonJS((exports, module) => {
           if (error) {
             reject(error);
           } else {
-            resolve();
+            resolve(this);
           }
         });
       });
@@ -8073,16 +8072,40 @@ var require_client = __commonJS((exports, module) => {
       activeQuery.handleError(msg, this.connection);
     }
     _handleRowDescription(msg) {
-      this._getActiveQuery().handleRowDescription(msg);
+      const activeQuery = this._getActiveQuery();
+      if (activeQuery == null) {
+        const error = new Error("Received unexpected rowDescription message from backend.");
+        this._handleErrorEvent(error);
+        return;
+      }
+      activeQuery.handleRowDescription(msg);
     }
     _handleDataRow(msg) {
-      this._getActiveQuery().handleDataRow(msg);
+      const activeQuery = this._getActiveQuery();
+      if (activeQuery == null) {
+        const error = new Error("Received unexpected dataRow message from backend.");
+        this._handleErrorEvent(error);
+        return;
+      }
+      activeQuery.handleDataRow(msg);
     }
     _handlePortalSuspended(msg) {
-      this._getActiveQuery().handlePortalSuspended(this.connection);
+      const activeQuery = this._getActiveQuery();
+      if (activeQuery == null) {
+        const error = new Error("Received unexpected portalSuspended message from backend.");
+        this._handleErrorEvent(error);
+        return;
+      }
+      activeQuery.handlePortalSuspended(this.connection);
     }
     _handleEmptyQuery(msg) {
-      this._getActiveQuery().handleEmptyQuery(this.connection);
+      const activeQuery = this._getActiveQuery();
+      if (activeQuery == null) {
+        const error = new Error("Received unexpected emptyQuery message from backend.");
+        this._handleErrorEvent(error);
+        return;
+      }
+      activeQuery.handleEmptyQuery(this.connection);
     }
     _handleCommandComplete(msg) {
       const activeQuery = this._getActiveQuery();
@@ -8105,10 +8128,22 @@ var require_client = __commonJS((exports, module) => {
       }
     }
     _handleCopyInResponse(msg) {
-      this._getActiveQuery().handleCopyInResponse(this.connection);
+      const activeQuery = this._getActiveQuery();
+      if (activeQuery == null) {
+        const error = new Error("Received unexpected copyInResponse message from backend.");
+        this._handleErrorEvent(error);
+        return;
+      }
+      activeQuery.handleCopyInResponse(this.connection);
     }
     _handleCopyData(msg) {
-      this._getActiveQuery().handleCopyData(msg, this.connection);
+      const activeQuery = this._getActiveQuery();
+      if (activeQuery == null) {
+        const error = new Error("Received unexpected copyData message from backend.");
+        this._handleErrorEvent(error);
+        return;
+      }
+      activeQuery.handleCopyData(msg, this.connection);
     }
     _handleNotification(msg) {
       this.emit("notification", msg);
@@ -8902,7 +8937,7 @@ var require_client2 = __commonJS((exports, module) => {
         });
         self.emit("connect");
         self._pulseQueryQueue(true);
-        cb();
+        cb(null, this);
       });
     });
   };
@@ -8916,7 +8951,7 @@ var require_client2 = __commonJS((exports, module) => {
         if (error) {
           reject(error);
         } else {
-          resolve();
+          resolve(this);
         }
       });
     });
@@ -28575,16 +28610,24 @@ projects.get("/:id", async ({ params, headers }) => {
         reviewer: reviewers.find((rv) => rv.id === r.reviewerId) || null
       });
     }
-    const submissions = await db.select({
+    const activityEntries = await db.select({
       id: activityTable.id,
       action: activityTable.action,
       createdAt: activityTable.createdAt
-    }).from(activityTable).where(and(eq(activityTable.projectId, parseInt(params.id)), eq(activityTable.action, "project_submitted")));
-    for (const s of submissions) {
-      activity.push({
-        type: "submitted",
-        createdAt: s.createdAt
-      });
+    }).from(activityTable).where(and(eq(activityTable.projectId, parseInt(params.id)), or(eq(activityTable.action, "project_submitted"), sql`${activityTable.action} LIKE 'earned % scraps'`)));
+    for (const entry of activityEntries) {
+      if (entry.action === "project_submitted") {
+        activity.push({
+          type: "submitted",
+          createdAt: entry.createdAt
+        });
+      } else if (entry.action.startsWith("earned ") && entry.action.endsWith(" scraps")) {
+        activity.push({
+          type: "scraps_earned",
+          action: entry.action,
+          createdAt: entry.createdAt
+        });
+      }
     }
     activity.push({
       type: "created",
@@ -28608,6 +28651,7 @@ projects.get("/:id", async ({ params, headers }) => {
       hours: project[0].hoursOverride ?? project[0].hours,
       hoursOverride: isOwner ? project[0].hoursOverride : undefined,
       status: project[0].status,
+      scrapsAwarded: project[0].scrapsAwarded,
       createdAt: project[0].createdAt,
       updatedAt: project[0].updatedAt
     },
@@ -28903,7 +28947,7 @@ var shopPenaltiesTable = pgTable("shop_penalties", {
 
 // src/lib/scraps.ts
 var PHI = (1 + Math.sqrt(5)) / 2;
-var MULTIPLIER = 120;
+var MULTIPLIER = 10;
 function calculateScrapsFromHours(hours) {
   return Math.floor(hours * PHI * MULTIPLIER);
 }
@@ -29159,6 +29203,7 @@ shop.get("/items", async ({ headers }) => {
     baseProbability: shopItemsTable.baseProbability,
     baseUpgradeCost: shopItemsTable.baseUpgradeCost,
     costMultiplier: shopItemsTable.costMultiplier,
+    boostAmount: shopItemsTable.boostAmount,
     createdAt: shopItemsTable.createdAt,
     updatedAt: shopItemsTable.updatedAt,
     heartCount: sql`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = ${shopItemsTable.id})`.as("heart_count")
@@ -29212,6 +29257,7 @@ shop.get("/items/:id", async ({ params, headers }) => {
     baseProbability: shopItemsTable.baseProbability,
     baseUpgradeCost: shopItemsTable.baseUpgradeCost,
     costMultiplier: shopItemsTable.costMultiplier,
+    boostAmount: shopItemsTable.boostAmount,
     createdAt: shopItemsTable.createdAt,
     updatedAt: shopItemsTable.updatedAt,
     heartCount: sql`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = ${shopItemsTable.id})`.as("heart_count")
@@ -29272,7 +29318,9 @@ shop.post("/items/:id/heart", async ({ params, headers }) => {
 		SELECT EXISTS(SELECT 1 FROM ins) AS hearted
 	`);
   const hearted = result.rows[0]?.hearted ?? false;
-  return { hearted };
+  const countResult = await db.select({ count: sql`COUNT(*)` }).from(shopHeartsTable).where(eq(shopHeartsTable.shopItemId, itemId));
+  const heartCount = Number(countResult[0]?.count) || 0;
+  return { hearted, heartCount };
 });
 shop.get("/categories", async () => {
   const result = await db.selectDistinct({ category: shopItemsTable.category }).from(shopItemsTable);
@@ -29366,6 +29414,9 @@ shop.get("/orders", async ({ headers }) => {
     pricePerItem: shopOrdersTable.pricePerItem,
     totalPrice: shopOrdersTable.totalPrice,
     status: shopOrdersTable.status,
+    orderType: shopOrdersTable.orderType,
+    shippingAddress: shopOrdersTable.shippingAddress,
+    isFulfilled: shopOrdersTable.isFulfilled,
     createdAt: shopOrdersTable.createdAt,
     itemId: shopItemsTable.id,
     itemName: shopItemsTable.name,
@@ -29451,12 +29502,23 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
         }
         return { won: true, orderId: newOrder[0].id, effectiveProbability, rolled };
       }
-      return { won: false, effectiveProbability, rolled };
+      const consolationOrder = await tx.insert(shopOrdersTable).values({
+        userId: user2.id,
+        shopItemId: itemId,
+        quantity: 1,
+        pricePerItem: item.price,
+        totalPrice: item.price,
+        shippingAddress: null,
+        status: "pending",
+        orderType: "consolation",
+        notes: `Consolation scrap paper - rolled ${rolled}, needed ${effectiveProbability} or less`
+      }).returning();
+      return { won: false, effectiveProbability, rolled, consolationOrderId: consolationOrder[0].id };
     });
     if (result.won) {
       return { success: true, won: true, orderId: result.orderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, refineryReset: true, probabilityHalved: true };
     }
-    return { success: true, won: false, effectiveProbability: result.effectiveProbability, rolled: result.rolled };
+    return { success: true, won: false, consolationOrderId: result.consolationOrderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled };
   } catch (e) {
     const err = e;
     if (err.type === "insufficient_funds") {
@@ -29502,15 +29564,16 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
         const { balance } = await getUserScrapsBalance(user2.id, tx);
         throw { type: "insufficient_funds", balance, cost };
       }
-      const newBoost = currentBoost + 1;
+      const boostAmount = item.boostAmount;
+      const newBoost = currentBoost + boostAmount;
       await tx.insert(refineryOrdersTable).values({
         userId: user2.id,
         shopItemId: itemId,
         cost,
-        boostAmount: 1
+        boostAmount
       });
       const nextCost = newBoost >= maxBoost ? null : Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, newBoost));
-      return { boostPercent: newBoost, nextCost, effectiveProbability: Math.min(adjustedBaseProbability + newBoost, 100) };
+      return { boostPercent: newBoost, boostAmount, nextCost, effectiveProbability: Math.min(adjustedBaseProbability + newBoost, 100) };
     });
     return result;
   } catch (e) {
