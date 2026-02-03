@@ -270,7 +270,7 @@
 				<!-- Skeleton for profile -->
 				<div class="w-10 h-10 rounded-full border-4 border-black bg-gray-200 animate-pulse"></div>
 			{:else if user}
-				<div class="flex items-center gap-2 px-6 py-2 border-4 border-black rounded-full">
+				<div data-tutorial="scraps-counter" class="flex items-center gap-2 px-6 py-2 border-4 border-black rounded-full">
 					<Spool size={20} />
 					<span class="text-lg font-bold">{$userScrapsStore}</span>
 				</div>

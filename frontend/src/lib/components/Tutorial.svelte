@@ -126,8 +126,8 @@
 		{
 			title: 'earn scraps',
 			description:
-				'you earn scraps for the time you put in. the more you build, the more you earn!',
-			highlight: null
+				'you earn scraps for the time you put in. the more you build, the more you earn! your scraps balance is shown here.',
+			highlight: 'scraps-counter'
 		},
 		{
 			title: 'the shop',
@@ -175,7 +175,8 @@
 			leaderboard: 'a[href="/leaderboard"]',
 			'new-project-button': 'button[data-tutorial="new-project"]',
 			'create-project-modal': '[data-tutorial="create-project-modal"]',
-			'submit-button': '[data-tutorial="submit-button"]'
+			'submit-button': '[data-tutorial="submit-button"]',
+			'scraps-counter': '[data-tutorial="scraps-counter"]'
 		}
 
 		const selector = selectors[highlight]
@@ -218,7 +219,7 @@
 			return explicitPosition
 		}
 		const highlight = currentStepData.highlight
-		if (highlight === 'navbar' || highlight === 'dashboard' || highlight === 'shop' || highlight === 'refinery' || highlight === 'leaderboard') {
+		if (highlight === 'navbar' || highlight === 'dashboard' || highlight === 'shop' || highlight === 'refinery' || highlight === 'leaderboard' || highlight === 'scraps-counter') {
 			return 'bottom'
 		}
 		if (highlight === 'new-project-button' || highlight === 'create-project-modal' || highlight === 'submit-button') {
@@ -289,8 +290,10 @@
 			})
 			await refreshUserScraps()
 			onComplete()
+			goto('/dashboard', { invalidateAll: false })
 		} catch {
 			onComplete()
+			goto('/dashboard', { invalidateAll: false })
 		}
 	}
 
