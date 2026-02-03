@@ -11,6 +11,7 @@
 		projectsLoading,
 		fetchProjects,
 		addProject,
+		tutorialActiveStore,
 		type Project
 	} from '$lib/stores'
 	import { formatHours } from '$lib/utils'
@@ -52,7 +53,7 @@
 </script>
 
 <svelte:head>
-	<title>dashboard | scraps</title>
+	<title>dashboard - scraps</title>
 </svelte:head>
 
 <div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">
@@ -96,6 +97,7 @@
 			<!-- New Draft Card -->
 			<button
 				onclick={createNewProject}
+				data-tutorial="new-project"
 				class="shrink-0 w-80 h-64 rounded-2xl border-4 border-black flex flex-col items-center justify-center gap-4 cursor-pointer transition-all  border-dashed hover:border-solid bg-white"
 			>
 				<FilePlus2 size={64} strokeWidth={1.5} />
@@ -108,7 +110,7 @@
 	<NewsCarousel />
 </div>
 
-<CreateProjectModal open={showCreateModal} onClose={() => showCreateModal = false} onCreated={handleProjectCreated} />
+<CreateProjectModal open={showCreateModal} onClose={() => showCreateModal = false} onCreated={handleProjectCreated} tutorialMode={$tutorialActiveStore} />
 
 <style>
 	.scrollbar-black {

@@ -168,7 +168,7 @@
 </script>
 
 <svelte:head>
-	<title>{targetUser?.username || 'user'} | admin | scraps</title>
+	<title>{targetUser?.username || 'user'} - admin - scraps</title>
 </svelte:head>
 
 <div class="pt-24 px-6 md:px-12 max-w-4xl mx-auto pb-24">

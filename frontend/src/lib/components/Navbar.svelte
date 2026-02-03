@@ -17,7 +17,7 @@
 		ShoppingBag,
 		Newspaper
 	} from '@lucide/svelte'
-	import { logout, getUser } from '$lib/auth-client'
+	import { logout, getUser, userScrapsStore } from '$lib/auth-client'
 
 	interface User {
 		id: number
@@ -41,7 +41,6 @@
 	let isReviewer = $derived(user?.role === 'admin' || user?.role === 'reviewer')
 	let isAdminOnly = $derived(user?.role === 'admin')
 	let isInAdminSection = $derived(currentPath.startsWith('/admin'))
-	let scraps = $derived(user?.scraps ?? 0)
 
 	let observer: IntersectionObserver | null = null
 
@@ -273,7 +272,7 @@
 			{:else if user}
 				<div class="flex items-center gap-2 px-6 py-2 border-4 border-black rounded-full">
 					<Spool size={20} />
-					<span class="text-lg font-bold">{scraps}</span>
+					<span class="text-lg font-bold">{$userScrapsStore}</span>
 				</div>
 
 				<div class="relative profile-menu-container">

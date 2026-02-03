@@ -4,9 +4,11 @@ import { db } from '../db'
 import { usersTable } from '../schemas/users'
 import { projectsTable } from '../schemas/projects'
 import { reviewsTable } from '../schemas/reviews'
-import { shopItemsTable } from '../schemas/shop'
+import { shopItemsTable, shopOrdersTable, shopHeartsTable } from '../schemas/shop'
 import { newsTable } from '../schemas/news'
+import { activityTable } from '../schemas/activity'
 import { getUserFromSession } from '../lib/auth'
+import { calculateScrapsFromHours, getUserScrapsBalance } from '../lib/scraps'
 
 const admin = new Elysia({ prefix: '/admin' })
 
@@ -43,7 +45,18 @@ admin.get('/users', async ({ headers, query }) => {
         : undefined
 
     const [users, countResult] = await Promise.all([
-        db.select().from(usersTable).where(searchCondition).orderBy(desc(usersTable.createdAt)).limit(limit).offset(offset),
+        db.select({
+            id: usersTable.id,
+            username: usersTable.username,
+            email: usersTable.email,
+            avatar: usersTable.avatar,
+            slackId: usersTable.slackId,
+            role: usersTable.role,
+            internalNotes: usersTable.internalNotes,
+            createdAt: usersTable.createdAt,
+            scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as('scraps_earned'),
+            scrapsSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_spent')
+        }).from(usersTable).where(searchCondition).orderBy(desc(usersTable.createdAt)).limit(limit).offset(offset),
         db.select({ count: sql<number>`count(*)` }).from(usersTable).where(searchCondition)
     ])
 
@@ -56,7 +69,7 @@ admin.get('/users', async ({ headers, query }) => {
             email: user.role === 'admin' ? u.email : undefined,
             avatar: u.avatar,
             slackId: u.slackId,
-            scraps: u.scraps,
+            scraps: Number(u.scrapsEarned) - Number(u.scrapsSpent),
             role: u.role,
             internalNotes: u.internalNotes,
             createdAt: u.createdAt
@@ -75,10 +88,12 @@ admin.get('/users/:id', async ({ params, headers }) => {
     const user = await requireReviewer(headers as Record<string, string>)
     if (!user) return { error: 'Unauthorized' }
 
+    const targetUserId = parseInt(params.id)
+
     const targetUser = await db
         .select()
         .from(usersTable)
-        .where(eq(usersTable.id, parseInt(params.id)))
+        .where(eq(usersTable.id, targetUserId))
         .limit(1)
 
     if (!targetUser[0]) return { error: 'User not found' }
@@ -86,7 +101,7 @@ admin.get('/users/:id', async ({ params, headers }) => {
     const projects = await db
         .select()
         .from(projectsTable)
-        .where(eq(projectsTable.userId, parseInt(params.id)))
+        .where(eq(projectsTable.userId, targetUserId))
         .orderBy(desc(projectsTable.updatedAt))
 
     const projectStats = {
@@ -99,6 +114,8 @@ admin.get('/users/:id', async ({ params, headers }) => {
 
     const totalHours = projects.reduce((sum, p) => sum + (p.hoursOverride ?? p.hours ?? 0), 0)
 
+    const scrapsBalance = await getUserScrapsBalance(targetUserId)
+
     return {
         user: {
             id: targetUser[0].id,
@@ -106,7 +123,7 @@ admin.get('/users/:id', async ({ params, headers }) => {
             email: user.role === 'admin' ? targetUser[0].email : undefined,
             avatar: targetUser[0].avatar,
             slackId: targetUser[0].slackId,
-            scraps: targetUser[0].scraps,
+            scraps: scrapsBalance.balance,
             role: targetUser[0].role,
             internalNotes: targetUser[0].internalNotes,
             createdAt: targetUser[0].createdAt
@@ -319,10 +336,25 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
         updateData.hoursOverride = hoursOverride
     }
 
+    let scrapsAwarded = 0
+    if (action === 'approved') {
+        const hours = hoursOverride ?? project[0].hours ?? 0
+        scrapsAwarded = calculateScrapsFromHours(hours)
+        updateData.scrapsAwarded = scrapsAwarded
+    }
+
     await db
         .update(projectsTable)
         .set(updateData)
         .where(eq(projectsTable.id, projectId))
+
+    if (action === 'approved' && scrapsAwarded > 0) {
+        await db.insert(activityTable).values({
+            userId: project[0].userId,
+            projectId,
+            action: `earned ${scrapsAwarded} scraps`
+        })
+    }
 
     // Update user internal notes if provided
     if (userInternalNotes !== undefined) {
@@ -354,13 +386,17 @@ admin.post('/shop/items', async ({ headers, body }) => {
     const user = await requireAdmin(headers as Record<string, string>)
     if (!user) return { error: 'Unauthorized' }
 
-    const { name, image, description, price, category, count } = body as {
+    const { name, image, description, price, category, count, baseProbability, baseUpgradeCost, costMultiplier, boostAmount } = body as {
         name: string
         image: string
         description: string
         price: number
         category: string
         count: number
+        baseProbability?: number
+        baseUpgradeCost?: number
+        costMultiplier?: number
+        boostAmount?: number
     }
 
     if (!name?.trim() || !image?.trim() || !description?.trim() || !category?.trim()) {
@@ -371,6 +407,10 @@ admin.post('/shop/items', async ({ headers, body }) => {
         return { error: 'Invalid price' }
     }
 
+    if (baseProbability !== undefined && (typeof baseProbability !== 'number' || baseProbability < 0 || baseProbability > 100)) {
+        return { error: 'baseProbability must be between 0 and 100' }
+    }
+
     const inserted = await db
         .insert(shopItemsTable)
         .values({
@@ -379,7 +419,11 @@ admin.post('/shop/items', async ({ headers, body }) => {
             description: description.trim(),
             price,
             category: category.trim(),
-            count: count || 0
+            count: count || 0,
+            baseProbability: baseProbability ?? 50,
+            baseUpgradeCost: baseUpgradeCost ?? 10,
+            costMultiplier: costMultiplier ?? 115,
+            boostAmount: boostAmount ?? 1
         })
         .returning()
 
@@ -390,13 +434,21 @@ admin.put('/shop/items/:id', async ({ params, headers, body }) => {
     const user = await requireAdmin(headers as Record<string, string>)
     if (!user) return { error: 'Unauthorized' }
 
-    const { name, image, description, price, category, count } = body as {
+    const { name, image, description, price, category, count, baseProbability, baseUpgradeCost, costMultiplier, boostAmount } = body as {
         name?: string
         image?: string
         description?: string
         price?: number
         category?: string
         count?: number
+        baseProbability?: number
+        baseUpgradeCost?: number
+        costMultiplier?: number
+        boostAmount?: number
+    }
+
+    if (baseProbability !== undefined && (typeof baseProbability !== 'number' || baseProbability < 0 || baseProbability > 100)) {
+        return { error: 'baseProbability must be between 0 and 100' }
     }
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() }
@@ -407,6 +459,10 @@ admin.put('/shop/items/:id', async ({ params, headers, body }) => {
     if (price !== undefined) updateData.price = price
     if (category !== undefined) updateData.category = category.trim()
     if (count !== undefined) updateData.count = count
+    if (baseProbability !== undefined) updateData.baseProbability = baseProbability
+    if (baseUpgradeCost !== undefined) updateData.baseUpgradeCost = baseUpgradeCost
+    if (costMultiplier !== undefined) updateData.costMultiplier = costMultiplier
+    if (boostAmount !== undefined) updateData.boostAmount = boostAmount
 
     const updated = await db
         .update(shopItemsTable)
@@ -421,9 +477,15 @@ admin.delete('/shop/items/:id', async ({ params, headers }) => {
     const user = await requireAdmin(headers as Record<string, string>)
     if (!user) return { error: 'Unauthorized' }
 
+    const itemId = parseInt(params.id)
+
+    await db
+        .delete(shopHeartsTable)
+        .where(eq(shopHeartsTable.shopItemId, itemId))
+
     await db
         .delete(shopItemsTable)
-        .where(eq(shopItemsTable.id, parseInt(params.id)))
+        .where(eq(shopItemsTable.id, itemId))
 
     return { success: true }
 })
@@ -501,6 +563,65 @@ admin.delete('/news/:id', async ({ params, headers }) => {
         .where(eq(newsTable.id, parseInt(params.id)))
 
     return { success: true }
+})
+
+admin.get('/orders', async ({ headers, query }) => {
+    const user = await requireAdmin(headers as Record<string, string>)
+    if (!user) return { error: 'Unauthorized' }
+
+    const status = query.status as string | undefined
+
+    let ordersQuery = db
+        .select({
+            id: shopOrdersTable.id,
+            quantity: shopOrdersTable.quantity,
+            pricePerItem: shopOrdersTable.pricePerItem,
+            totalPrice: shopOrdersTable.totalPrice,
+            status: shopOrdersTable.status,
+            shippingAddress: shopOrdersTable.shippingAddress,
+            notes: shopOrdersTable.notes,
+            createdAt: shopOrdersTable.createdAt,
+            itemId: shopItemsTable.id,
+            itemName: shopItemsTable.name,
+            itemImage: shopItemsTable.image,
+            userId: usersTable.id,
+            username: usersTable.username,
+            userEmail: usersTable.email
+        })
+        .from(shopOrdersTable)
+        .innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id))
+        .innerJoin(usersTable, eq(shopOrdersTable.userId, usersTable.id))
+        .orderBy(desc(shopOrdersTable.createdAt))
+
+    if (status) {
+        ordersQuery = ordersQuery.where(eq(shopOrdersTable.status, status)) as typeof ordersQuery
+    }
+
+    return await ordersQuery
+})
+
+admin.patch('/orders/:id', async ({ params, body, headers }) => {
+    const user = await requireAdmin(headers as Record<string, string>)
+    if (!user) return { error: 'Unauthorized' }
+
+    const { status, notes } = body as { status?: string; notes?: string }
+
+    const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
+    if (status && !validStatuses.includes(status)) {
+        return { error: 'Invalid status' }
+    }
+
+    const updateData: Record<string, unknown> = { updatedAt: new Date() }
+    if (status) updateData.status = status
+    if (notes !== undefined) updateData.notes = notes
+
+    const updated = await db
+        .update(shopOrdersTable)
+        .set(updateData)
+        .where(eq(shopOrdersTable.id, parseInt(params.id)))
+        .returning()
+
+    return updated[0] || { error: 'Not found' }
 })
 
 export default admin

@@ -8,7 +8,7 @@
 	}: {
 		count: number
 		hearted: boolean
-		onclick: () => void
+		onclick: (e: MouseEvent) => void
 	} = $props()
 </script>
 

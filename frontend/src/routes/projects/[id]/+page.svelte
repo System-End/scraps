@@ -6,6 +6,7 @@
 	import { API_URL } from '$lib/config'
 	import { formatHours } from '$lib/utils'
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte'
+	import { tutorialActiveStore } from '$lib/stores'
 
 	let { data } = $props()
 
@@ -130,7 +131,7 @@
 </script>
 
 <svelte:head>
-	<title>{project?.name || 'project'} | scraps</title>
+	<title>{project?.name || 'project'} - scraps</title>
 </svelte:head>
 
 <div class="pt-24 px-6 md:px-12 max-w-4xl mx-auto pb-24">
@@ -295,9 +296,18 @@
 						<Send size={18} />
 						shipped
 					</span>
+				{:else if $tutorialActiveStore}
+					<span
+						data-tutorial="submit-button"
+						class="flex-1 px-6 py-3 bg-black text-white border-4 border-black rounded-full font-bold flex items-center justify-center gap-2 cursor-not-allowed"
+					>
+						<Send size={18} />
+						review & submit
+					</span>
 				{:else}
 					<a
 						href="/projects/{project.id}/submit"
+						data-tutorial="submit-button"
 						class="flex-1 px-6 py-3 bg-black text-white border-4 border-black rounded-full font-bold hover:bg-gray-800 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
 					>
 						<Send size={18} />

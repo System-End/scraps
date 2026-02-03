@@ -3953,7 +3953,7 @@ var require_main = __commonJS((exports, module) => {
   var os = __require("os");
   var crypto2 = __require("crypto");
   var packageJson = require_package();
-  var version2 = packageJson.version;
+  var version = packageJson.version;
   var TIPS = [
     "\uD83D\uDD10 encrypt with Dotenvx: https://dotenvx.com",
     "\uD83D\uDD10 prevent committing .env to code: https://dotenvx.com/precommit",
@@ -3984,8 +3984,8 @@ var require_main = __commonJS((exports, module) => {
   function supportsAnsi() {
     return process.stdout.isTTY;
   }
-  function dim(text2) {
-    return supportsAnsi() ? `\x1B[2m${text2}\x1B[0m` : text2;
+  function dim(text) {
+    return supportsAnsi() ? `\x1B[2m${text}\x1B[0m` : text;
   }
   var LINE = /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/mg;
   function parse2(src) {
@@ -4037,13 +4037,13 @@ var require_main = __commonJS((exports, module) => {
     return DotenvModule.parse(decrypted);
   }
   function _warn(message) {
-    console.error(`[dotenv@${version2}][WARN] ${message}`);
+    console.error(`[dotenv@${version}][WARN] ${message}`);
   }
   function _debug(message) {
-    console.log(`[dotenv@${version2}][DEBUG] ${message}`);
+    console.log(`[dotenv@${version}][DEBUG] ${message}`);
   }
   function _log(message) {
-    console.log(`[dotenv@${version2}] ${message}`);
+    console.log(`[dotenv@${version}] ${message}`);
   }
   function _dotenvKey(options) {
     if (options && options.DOTENV_KEY && options.DOTENV_KEY.length > 0) {
@@ -5391,19 +5391,19 @@ var require_utils = __commonJS((exports, module) => {
       ret += " BC";
     return ret;
   }
-  function normalizeQueryConfig(config, values, callback) {
-    config = typeof config === "string" ? { text: config } : config;
+  function normalizeQueryConfig(config2, values, callback) {
+    config2 = typeof config2 === "string" ? { text: config2 } : config2;
     if (values) {
       if (typeof values === "function") {
-        config.callback = values;
+        config2.callback = values;
       } else {
-        config.values = values;
+        config2.values = values;
       }
     }
     if (callback) {
-      config.callback = callback;
+      config2.callback = callback;
     }
-    return config;
+    return config2;
   }
   var escapeIdentifier = function(str) {
     return '"' + str.replace(/"/g, '""') + '"';
@@ -5851,10 +5851,10 @@ var require_pg_connection_string = __commonJS((exports, module) => {
   var { emitWarning } = __require("process");
   function parse2(str, options = {}) {
     if (str.charAt(0) === "/") {
-      const config2 = str.split(" ");
-      return { host: config2[0], database: config2[1] };
+      const config3 = str.split(" ");
+      return { host: config3[0], database: config3[1] };
     }
-    const config = {};
+    const config2 = {};
     let result;
     let dummyHost = false;
     if (/ |%[^a-f0-9]|%[a-f0-9][^a-f0-9]/i.test(str)) {
@@ -5872,72 +5872,72 @@ var require_pg_connection_string = __commonJS((exports, module) => {
       throw err;
     }
     for (const entry of result.searchParams.entries()) {
-      config[entry[0]] = entry[1];
+      config2[entry[0]] = entry[1];
     }
-    config.user = config.user || decodeURIComponent(result.username);
-    config.password = config.password || decodeURIComponent(result.password);
+    config2.user = config2.user || decodeURIComponent(result.username);
+    config2.password = config2.password || decodeURIComponent(result.password);
     if (result.protocol == "socket:") {
-      config.host = decodeURI(result.pathname);
-      config.database = result.searchParams.get("db");
-      config.client_encoding = result.searchParams.get("encoding");
-      return config;
+      config2.host = decodeURI(result.pathname);
+      config2.database = result.searchParams.get("db");
+      config2.client_encoding = result.searchParams.get("encoding");
+      return config2;
     }
     const hostname = dummyHost ? "" : result.hostname;
-    if (!config.host) {
-      config.host = decodeURIComponent(hostname);
+    if (!config2.host) {
+      config2.host = decodeURIComponent(hostname);
     } else if (hostname && /^%2f/i.test(hostname)) {
       result.pathname = hostname + result.pathname;
     }
-    if (!config.port) {
-      config.port = result.port;
+    if (!config2.port) {
+      config2.port = result.port;
     }
     const pathname = result.pathname.slice(1) || null;
-    config.database = pathname ? decodeURI(pathname) : null;
-    if (config.ssl === "true" || config.ssl === "1") {
-      config.ssl = true;
+    config2.database = pathname ? decodeURI(pathname) : null;
+    if (config2.ssl === "true" || config2.ssl === "1") {
+      config2.ssl = true;
     }
-    if (config.ssl === "0") {
-      config.ssl = false;
+    if (config2.ssl === "0") {
+      config2.ssl = false;
     }
-    if (config.sslcert || config.sslkey || config.sslrootcert || config.sslmode) {
-      config.ssl = {};
+    if (config2.sslcert || config2.sslkey || config2.sslrootcert || config2.sslmode) {
+      config2.ssl = {};
     }
-    const fs = config.sslcert || config.sslkey || config.sslrootcert ? __require("fs") : null;
-    if (config.sslcert) {
-      config.ssl.cert = fs.readFileSync(config.sslcert).toString();
+    const fs = config2.sslcert || config2.sslkey || config2.sslrootcert ? __require("fs") : null;
+    if (config2.sslcert) {
+      config2.ssl.cert = fs.readFileSync(config2.sslcert).toString();
     }
-    if (config.sslkey) {
-      config.ssl.key = fs.readFileSync(config.sslkey).toString();
+    if (config2.sslkey) {
+      config2.ssl.key = fs.readFileSync(config2.sslkey).toString();
     }
-    if (config.sslrootcert) {
-      config.ssl.ca = fs.readFileSync(config.sslrootcert).toString();
+    if (config2.sslrootcert) {
+      config2.ssl.ca = fs.readFileSync(config2.sslrootcert).toString();
     }
-    if (options.useLibpqCompat && config.uselibpqcompat) {
+    if (options.useLibpqCompat && config2.uselibpqcompat) {
       throw new Error("Both useLibpqCompat and uselibpqcompat are set. Please use only one of them.");
     }
-    if (config.uselibpqcompat === "true" || options.useLibpqCompat) {
-      switch (config.sslmode) {
+    if (config2.uselibpqcompat === "true" || options.useLibpqCompat) {
+      switch (config2.sslmode) {
         case "disable": {
-          config.ssl = false;
+          config2.ssl = false;
           break;
         }
         case "prefer": {
-          config.ssl.rejectUnauthorized = false;
+          config2.ssl.rejectUnauthorized = false;
           break;
         }
         case "require": {
-          if (config.sslrootcert) {
-            config.ssl.checkServerIdentity = function() {};
+          if (config2.sslrootcert) {
+            config2.ssl.checkServerIdentity = function() {};
           } else {
-            config.ssl.rejectUnauthorized = false;
+            config2.ssl.rejectUnauthorized = false;
           }
           break;
         }
         case "verify-ca": {
-          if (!config.ssl.ca) {
+          if (!config2.ssl.ca) {
             throw new Error("SECURITY WARNING: Using sslmode=verify-ca requires specifying a CA with sslrootcert. If a public CA is used, verify-ca allows connections to a server that somebody else may have registered with the CA, making you vulnerable to Man-in-the-Middle attacks. Either specify a custom CA certificate with sslrootcert parameter or use sslmode=verify-full for proper security.");
           }
-          config.ssl.checkServerIdentity = function() {};
+          config2.ssl.checkServerIdentity = function() {};
           break;
         }
         case "verify-full": {
@@ -5945,27 +5945,27 @@ var require_pg_connection_string = __commonJS((exports, module) => {
         }
       }
     } else {
-      switch (config.sslmode) {
+      switch (config2.sslmode) {
         case "disable": {
-          config.ssl = false;
+          config2.ssl = false;
           break;
         }
         case "prefer":
         case "require":
         case "verify-ca":
         case "verify-full": {
-          if (config.sslmode !== "verify-full") {
-            deprecatedSslModeWarning(config.sslmode);
+          if (config2.sslmode !== "verify-full") {
+            deprecatedSslModeWarning(config2.sslmode);
           }
           break;
         }
         case "no-verify": {
-          config.ssl.rejectUnauthorized = false;
+          config2.ssl.rejectUnauthorized = false;
           break;
         }
       }
     }
-    return config;
+    return config2;
   }
   function toConnectionOptions(sslConfig) {
     const connectionOptions = Object.entries(sslConfig).reduce((c, [key, value]) => {
@@ -5976,8 +5976,8 @@ var require_pg_connection_string = __commonJS((exports, module) => {
     }, {});
     return connectionOptions;
   }
-  function toClientConfig(config) {
-    const poolConfig = Object.entries(config).reduce((c, [key, value]) => {
+  function toClientConfig(config2) {
+    const poolConfig = Object.entries(config2).reduce((c, [key, value]) => {
       if (key === "ssl") {
         const sslConfig = value;
         if (typeof sslConfig === "boolean") {
@@ -6030,9 +6030,9 @@ var require_connection_parameters = __commonJS((exports, module) => {
   var dns = __require("dns");
   var defaults = require_defaults();
   var parse2 = require_pg_connection_string().parse;
-  var val = function(key, config, envVar) {
-    if (config[key]) {
-      return config[key];
+  var val = function(key, config2, envVar) {
+    if (config2[key]) {
+      return config2[key];
     }
     if (envVar === undefined) {
       envVar = process.env["PG" + key.toUpperCase()];
@@ -6058,35 +6058,35 @@ var require_connection_parameters = __commonJS((exports, module) => {
   var quoteParamValue = function(value) {
     return "'" + ("" + value).replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
   };
-  var add = function(params, config, paramName) {
-    const value = config[paramName];
+  var add = function(params, config2, paramName) {
+    const value = config2[paramName];
     if (value !== undefined && value !== null) {
       params.push(paramName + "=" + quoteParamValue(value));
     }
   };
 
   class ConnectionParameters {
-    constructor(config) {
-      config = typeof config === "string" ? parse2(config) : config || {};
-      if (config.connectionString) {
-        config = Object.assign({}, config, parse2(config.connectionString));
+    constructor(config2) {
+      config2 = typeof config2 === "string" ? parse2(config2) : config2 || {};
+      if (config2.connectionString) {
+        config2 = Object.assign({}, config2, parse2(config2.connectionString));
       }
-      this.user = val("user", config);
-      this.database = val("database", config);
+      this.user = val("user", config2);
+      this.database = val("database", config2);
       if (this.database === undefined) {
         this.database = this.user;
       }
-      this.port = parseInt(val("port", config), 10);
-      this.host = val("host", config);
+      this.port = parseInt(val("port", config2), 10);
+      this.host = val("host", config2);
       Object.defineProperty(this, "password", {
         configurable: true,
         enumerable: false,
         writable: true,
-        value: val("password", config)
+        value: val("password", config2)
       });
-      this.binary = val("binary", config);
-      this.options = val("options", config);
-      this.ssl = typeof config.ssl === "undefined" ? readSSLConfigFromEnvironment() : config.ssl;
+      this.binary = val("binary", config2);
+      this.options = val("options", config2);
+      this.ssl = typeof config2.ssl === "undefined" ? readSSLConfigFromEnvironment() : config2.ssl;
       if (typeof this.ssl === "string") {
         if (this.ssl === "true") {
           this.ssl = true;
@@ -6100,27 +6100,27 @@ var require_connection_parameters = __commonJS((exports, module) => {
           enumerable: false
         });
       }
-      this.client_encoding = val("client_encoding", config);
-      this.replication = val("replication", config);
+      this.client_encoding = val("client_encoding", config2);
+      this.replication = val("replication", config2);
       this.isDomainSocket = !(this.host || "").indexOf("/");
-      this.application_name = val("application_name", config, "PGAPPNAME");
-      this.fallback_application_name = val("fallback_application_name", config, false);
-      this.statement_timeout = val("statement_timeout", config, false);
-      this.lock_timeout = val("lock_timeout", config, false);
-      this.idle_in_transaction_session_timeout = val("idle_in_transaction_session_timeout", config, false);
-      this.query_timeout = val("query_timeout", config, false);
-      if (config.connectionTimeoutMillis === undefined) {
+      this.application_name = val("application_name", config2, "PGAPPNAME");
+      this.fallback_application_name = val("fallback_application_name", config2, false);
+      this.statement_timeout = val("statement_timeout", config2, false);
+      this.lock_timeout = val("lock_timeout", config2, false);
+      this.idle_in_transaction_session_timeout = val("idle_in_transaction_session_timeout", config2, false);
+      this.query_timeout = val("query_timeout", config2, false);
+      if (config2.connectionTimeoutMillis === undefined) {
         this.connect_timeout = process.env.PGCONNECT_TIMEOUT || 0;
       } else {
-        this.connect_timeout = Math.floor(config.connectionTimeoutMillis / 1000);
+        this.connect_timeout = Math.floor(config2.connectionTimeoutMillis / 1000);
       }
-      if (config.keepAlive === false) {
+      if (config2.keepAlive === false) {
         this.keepalives = 0;
-      } else if (config.keepAlive === true) {
+      } else if (config2.keepAlive === true) {
         this.keepalives = 1;
       }
-      if (typeof config.keepAliveInitialDelayMillis === "number") {
-        this.keepalives_idle = Math.floor(config.keepAliveInitialDelayMillis / 1000);
+      if (typeof config2.keepAliveInitialDelayMillis === "number") {
+        this.keepalives_idle = Math.floor(config2.keepAliveInitialDelayMillis / 1000);
       }
     }
     getLibpqConnectionString(cb) {
@@ -6259,21 +6259,21 @@ var require_query = __commonJS((exports, module) => {
   var utils = require_utils();
 
   class Query extends EventEmitter {
-    constructor(config, values, callback) {
+    constructor(config2, values, callback) {
       super();
-      config = utils.normalizeQueryConfig(config, values, callback);
-      this.text = config.text;
-      this.values = config.values;
-      this.rows = config.rows;
-      this.types = config.types;
-      this.name = config.name;
-      this.queryMode = config.queryMode;
-      this.binary = config.binary;
-      this.portal = config.portal || "";
-      this.callback = config.callback;
-      this._rowMode = config.rowMode;
-      if (process.domain && config.callback) {
-        this.callback = process.domain.bind(config.callback);
+      config2 = utils.normalizeQueryConfig(config2, values, callback);
+      this.text = config2.text;
+      this.values = config2.values;
+      this.rows = config2.rows;
+      this.types = config2.types;
+      this.name = config2.name;
+      this.queryMode = config2.queryMode;
+      this.binary = config2.binary;
+      this.portal = config2.portal || "";
+      this.callback = config2.callback;
+      this._rowMode = config2.rowMode;
+      if (process.domain && config2.callback) {
+        this.callback = process.domain.bind(config2.callback);
       }
       this._result = new Result(this._rowMode, this.types);
       this._results = this._result;
@@ -6762,15 +6762,15 @@ var require_serializer = __commonJS((exports) => {
       }
     }
   };
-  var bind = (config = {}) => {
-    const portal = config.portal || "";
-    const statement = config.statement || "";
-    const binary = config.binary || false;
-    const values = config.values || emptyArray;
+  var bind = (config2 = {}) => {
+    const portal = config2.portal || "";
+    const statement = config2.statement || "";
+    const binary = config2.binary || false;
+    const values = config2.values || emptyArray;
     const len = values.length;
     writer.addCString(portal).addCString(statement);
     writer.addInt16(len);
-    writeValues(values, config.valueMapper);
+    writeValues(values, config2.valueMapper);
     writer.addInt16(len);
     writer.add(paramWriter.flush());
     writer.addInt16(1);
@@ -6778,12 +6778,12 @@ var require_serializer = __commonJS((exports) => {
     return writer.flush(66);
   };
   var emptyExecute = Buffer.from([69, 0, 0, 0, 9, 0, 0, 0, 0, 0]);
-  var execute = (config) => {
-    if (!config || !config.portal && !config.rows) {
+  var execute = (config2) => {
+    if (!config2 || !config2.portal && !config2.rows) {
       return emptyExecute;
     }
-    const portal = config.portal || "";
-    const rows = config.rows || 0;
+    const portal = config2.portal || "";
+    const rows = config2.rows || 0;
     const portalLength = Buffer.byteLength(portal);
     const len = 4 + portalLength + 1 + 4;
     const buff = Buffer.allocUnsafe(1 + len);
@@ -7310,17 +7310,17 @@ var require_connection = __commonJS((exports, module) => {
   var endBuffer = serialize.end();
 
   class Connection extends EventEmitter {
-    constructor(config) {
+    constructor(config2) {
       super();
-      config = config || {};
-      this.stream = config.stream || getStream(config.ssl);
+      config2 = config2 || {};
+      this.stream = config2.stream || getStream(config2.ssl);
       if (typeof this.stream === "function") {
-        this.stream = this.stream(config);
+        this.stream = this.stream(config2);
       }
-      this._keepAlive = config.keepAlive;
-      this._keepAliveInitialDelayMillis = config.keepAliveInitialDelayMillis;
+      this._keepAlive = config2.keepAlive;
+      this._keepAliveInitialDelayMillis = config2.keepAliveInitialDelayMillis;
       this.parsedStatements = {};
-      this.ssl = config.ssl || false;
+      this.ssl = config2.ssl || false;
       this._ending = false;
       this._emitMessage = false;
       const self = this;
@@ -7401,8 +7401,8 @@ var require_connection = __commonJS((exports, module) => {
     requestSsl() {
       this.stream.write(serialize.requestSsl());
     }
-    startup(config) {
-      this.stream.write(serialize.startup(config));
+    startup(config2) {
+      this.stream.write(serialize.startup(config2));
     }
     cancel(processID, secretKey) {
       this._send(serialize.cancel(processID, secretKey));
@@ -7428,11 +7428,11 @@ var require_connection = __commonJS((exports, module) => {
     parse(query) {
       this._send(serialize.parse(query));
     }
-    bind(config) {
-      this._send(serialize.bind(config));
+    bind(config2) {
+      this._send(serialize.bind(config2));
     }
-    execute(config) {
-      this._send(serialize.execute(config));
+    execute(config2) {
+      this._send(serialize.execute(config2));
     }
     flush() {
       if (this.stream.writable) {
@@ -7777,9 +7777,9 @@ var require_client = __commonJS((exports, module) => {
   var byoPromiseDeprecationNotice = nodeUtils.deprecate(() => {}, "Passing a custom Promise implementation to the Client/Pool constructor is deprecated and will be removed in a future version.");
 
   class Client extends EventEmitter {
-    constructor(config) {
+    constructor(config2) {
       super();
-      this.connectionParameters = new ConnectionParameters(config);
+      this.connectionParameters = new ConnectionParameters(config2);
       this.user = this.connectionParameters.user;
       this.database = this.connectionParameters.database;
       this.port = this.connectionParameters.port;
@@ -7791,7 +7791,7 @@ var require_client = __commonJS((exports, module) => {
         value: this.connectionParameters.password
       });
       this.replication = this.connectionParameters.replication;
-      const c = config || {};
+      const c = config2 || {};
       if (c.Promise) {
         byoPromiseDeprecationNotice();
       }
@@ -8191,23 +8191,23 @@ var require_client = __commonJS((exports, module) => {
         }
       }
     }
-    query(config, values, callback) {
+    query(config2, values, callback) {
       let query;
       let result;
       let readTimeout;
       let readTimeoutTimer;
       let queryCallback;
-      if (config === null || config === undefined) {
+      if (config2 === null || config2 === undefined) {
         throw new TypeError("Client was passed a null or undefined query");
-      } else if (typeof config.submit === "function") {
-        readTimeout = config.query_timeout || this.connectionParameters.query_timeout;
-        result = query = config;
+      } else if (typeof config2.submit === "function") {
+        readTimeout = config2.query_timeout || this.connectionParameters.query_timeout;
+        result = query = config2;
         if (typeof values === "function") {
           query.callback = query.callback || values;
         }
       } else {
-        readTimeout = config.query_timeout || this.connectionParameters.query_timeout;
-        query = new Query(config, values, callback);
+        readTimeout = config2.query_timeout || this.connectionParameters.query_timeout;
+        query = new Query(config2, values, callback);
         if (!query.callback) {
           result = new this._Promise((resolve, reject) => {
             query.callback = (err, res) => err ? reject(err) : resolve(res);
@@ -8683,16 +8683,16 @@ var require_query2 = __commonJS((exports, module) => {
   var EventEmitter = __require("events").EventEmitter;
   var util = __require("util");
   var utils = require_utils();
-  var NativeQuery = module.exports = function(config, values, callback) {
+  var NativeQuery = module.exports = function(config2, values, callback) {
     EventEmitter.call(this);
-    config = utils.normalizeQueryConfig(config, values, callback);
-    this.text = config.text;
-    this.values = config.values;
-    this.name = config.name;
-    this.queryMode = config.queryMode;
-    this.callback = config.callback;
+    config2 = utils.normalizeQueryConfig(config2, values, callback);
+    this.text = config2.text;
+    this.values = config2.values;
+    this.name = config2.name;
+    this.queryMode = config2.queryMode;
+    this.callback = config2.callback;
     this.state = "new";
-    this._arrayMode = config.rowMode === "array";
+    this._arrayMode = config2.rowMode === "array";
     this._emitRowEvents = false;
     this.on("newListener", function(event) {
       if (event === "row")
@@ -8827,11 +8827,11 @@ var require_client2 = __commonJS((exports, module) => {
   var util = __require("util");
   var ConnectionParameters = require_connection_parameters();
   var NativeQuery = require_query2();
-  var Client = module.exports = function(config) {
+  var Client = module.exports = function(config2) {
     EventEmitter.call(this);
-    config = config || {};
-    this._Promise = config.Promise || global.Promise;
-    this._types = new TypeOverrides(config.types);
+    config2 = config2 || {};
+    this._Promise = config2.Promise || global.Promise;
+    this._types = new TypeOverrides(config2.types);
     this.native = new Native({
       types: this._types
     });
@@ -8840,9 +8840,9 @@ var require_client2 = __commonJS((exports, module) => {
     this._connecting = false;
     this._connected = false;
     this._queryable = true;
-    const cp = this.connectionParameters = new ConnectionParameters(config);
-    if (config.nativeConnectionString)
-      cp.nativeConnectionString = config.nativeConnectionString;
+    const cp = this.connectionParameters = new ConnectionParameters(config2);
+    if (config2.nativeConnectionString)
+      cp.nativeConnectionString = config2.nativeConnectionString;
     this.user = cp.user;
     Object.defineProperty(this, "password", {
       configurable: true,
@@ -8921,23 +8921,23 @@ var require_client2 = __commonJS((exports, module) => {
       });
     });
   };
-  Client.prototype.query = function(config, values, callback) {
+  Client.prototype.query = function(config2, values, callback) {
     let query;
     let result;
     let readTimeout;
     let readTimeoutTimer;
     let queryCallback;
-    if (config === null || config === undefined) {
+    if (config2 === null || config2 === undefined) {
       throw new TypeError("Client was passed a null or undefined query");
-    } else if (typeof config.submit === "function") {
-      readTimeout = config.query_timeout || this.connectionParameters.query_timeout;
-      result = query = config;
+    } else if (typeof config2.submit === "function") {
+      readTimeout = config2.query_timeout || this.connectionParameters.query_timeout;
+      result = query = config2;
       if (typeof values === "function") {
-        config.callback = values;
+        config2.callback = values;
       }
     } else {
-      readTimeout = config.query_timeout || this.connectionParameters.query_timeout;
-      query = new NativeQuery(config, values, callback);
+      readTimeout = config2.query_timeout || this.connectionParameters.query_timeout;
+      query = new NativeQuery(config2, values, callback);
       if (!query.callback) {
         let resolveOut, rejectOut;
         result = new this._Promise((resolve, reject) => {
@@ -23048,6 +23048,23 @@ var cors = (config) => {
   });
 };
 
+// src/config.ts
+var import_config = __toESM(require_config(), 1);
+var isDev = true;
+var config = {
+  isDev,
+  port: 3000,
+  databaseUrl: process.env.DATABASE_URL,
+  frontendUrl: isDev ? "http://localhost:5173" : process.env.FRONTEND_URL,
+  hcauth: {
+    clientId: process.env.HCAUTH_CLIENT_ID,
+    clientSecret: process.env.HCAUTH_CLIENT_SECRET,
+    redirectUri: isDev ? "http://localhost:3000/auth/callback" : process.env.HCAUTH_REDIRECT_URI
+  },
+  slackBotToken: process.env.SLACK_BOT_TOKEN,
+  hccdnKey: process.env.HCCDN_KEY
+};
+
 // node_modules/drizzle-orm/entity.js
 var entityKind = Symbol.for("drizzle:entityKind");
 var hasOwnEntityKind = Symbol.for("drizzle:hasOwnEntityKind");
@@ -23075,24 +23092,24 @@ function is(value, type) {
 
 // node_modules/drizzle-orm/column.js
 class Column {
-  constructor(table, config) {
+  constructor(table, config2) {
     this.table = table;
-    this.config = config;
-    this.name = config.name;
-    this.keyAsName = config.keyAsName;
-    this.notNull = config.notNull;
-    this.default = config.default;
-    this.defaultFn = config.defaultFn;
-    this.onUpdateFn = config.onUpdateFn;
-    this.hasDefault = config.hasDefault;
-    this.primary = config.primaryKey;
-    this.isUnique = config.isUnique;
-    this.uniqueName = config.uniqueName;
-    this.uniqueType = config.uniqueType;
-    this.dataType = config.dataType;
-    this.columnType = config.columnType;
-    this.generated = config.generated;
-    this.generatedIdentity = config.generatedIdentity;
+    this.config = config2;
+    this.name = config2.name;
+    this.keyAsName = config2.keyAsName;
+    this.notNull = config2.notNull;
+    this.default = config2.default;
+    this.defaultFn = config2.defaultFn;
+    this.onUpdateFn = config2.onUpdateFn;
+    this.hasDefault = config2.hasDefault;
+    this.primary = config2.primaryKey;
+    this.isUnique = config2.isUnique;
+    this.uniqueName = config2.uniqueName;
+    this.uniqueType = config2.uniqueType;
+    this.dataType = config2.dataType;
+    this.columnType = config2.columnType;
+    this.generated = config2.generated;
+    this.generatedIdentity = config2.generatedIdentity;
   }
   static [entityKind] = "Column";
   name;
@@ -23188,9 +23205,9 @@ class ForeignKeyBuilder {
   reference;
   _onUpdate = "no action";
   _onDelete = "no action";
-  constructor(config, actions) {
+  constructor(config2, actions) {
     this.reference = () => {
-      const { name, columns, foreignColumns } = config();
+      const { name, columns, foreignColumns } = config2();
       return { name, columns, foreignTable: foreignColumns[0].table, foreignColumns };
     };
     if (actions) {
@@ -23380,10 +23397,10 @@ class PgColumnBuilder extends ColumnBuilder {
     this.foreignKeyConfigs.push({ ref, actions });
     return this;
   }
-  unique(name, config) {
+  unique(name, config2) {
     this.config.isUnique = true;
     this.config.uniqueName = name;
-    this.config.uniqueType = config?.nulls;
+    this.config.uniqueType = config2?.nulls;
     return this;
   }
   generatedAlwaysAs(as) {
@@ -23417,11 +23434,11 @@ class PgColumnBuilder extends ColumnBuilder {
 }
 
 class PgColumn extends Column {
-  constructor(table, config) {
-    if (!config.uniqueName) {
-      config.uniqueName = uniqueKeyName(table, [config.name]);
+  constructor(table, config2) {
+    if (!config2.uniqueName) {
+      config2.uniqueName = uniqueKeyName(table, [config2.name]);
     }
-    super(table, config);
+    super(table, config2);
     this.table = table;
   }
   static [entityKind] = "PgColumn";
@@ -23477,11 +23494,11 @@ class PgArrayBuilder extends PgColumnBuilder {
 }
 
 class PgArray extends PgColumn {
-  constructor(table, config, baseColumn, range) {
-    super(table, config);
+  constructor(table, config2, baseColumn, range) {
+    super(table, config2);
     this.baseColumn = baseColumn;
     this.range = range;
-    this.size = config.size;
+    this.size = config2.size;
   }
   size;
   static [entityKind] = "PgArray";
@@ -23507,9 +23524,9 @@ class PgEnumObjectColumn extends PgColumn {
   static [entityKind] = "PgEnumObjectColumn";
   enum;
   enumValues = this.config.enum.enumValues;
-  constructor(table, config) {
-    super(table, config);
-    this.enum = config.enum;
+  constructor(table, config2) {
+    super(table, config2);
+    this.enum = config2.enum;
   }
   getSQLType() {
     return this.enum.enumName;
@@ -23523,9 +23540,9 @@ class PgEnumColumn extends PgColumn {
   static [entityKind] = "PgEnumColumn";
   enum = this.config.enum;
   enumValues = this.config.enum.enumValues;
-  constructor(table, config) {
-    super(table, config);
-    this.enum = config.enum;
+  constructor(table, config2) {
+    super(table, config2);
+    this.enum = config2.enum;
   }
   getSQLType() {
     return this.enum.enumName;
@@ -23676,9 +23693,9 @@ class SQL {
     this.queryChunks.push(...query.queryChunks);
     return this;
   }
-  toQuery(config) {
+  toQuery(config2) {
     return tracer.startActiveSpan("drizzle.buildSQL", (span) => {
-      const query = this.buildQueryFromSourceParams(this.queryChunks, config);
+      const query = this.buildQueryFromSourceParams(this.queryChunks, config2);
       span?.setAttributes({
         "drizzle.query.text": query.sql,
         "drizzle.query.params": JSON.stringify(query.params)
@@ -23687,7 +23704,7 @@ class SQL {
     });
   }
   buildQueryFromSourceParams(chunks, _config) {
-    const config = Object.assign({}, _config, {
+    const config2 = Object.assign({}, _config, {
       inlineParams: _config.inlineParams || this.shouldInlineParams,
       paramStartIndex: _config.paramStartIndex || { value: 0 }
     });
@@ -23698,7 +23715,7 @@ class SQL {
       prepareTyping,
       inlineParams,
       paramStartIndex
-    } = config;
+    } = config2;
     return mergeQueries(chunks.map((chunk) => {
       if (is(chunk, StringChunk)) {
         return { sql: chunk.value.join(""), params: [] };
@@ -23718,11 +23735,11 @@ class SQL {
           }
         }
         result.push(new StringChunk(")"));
-        return this.buildQueryFromSourceParams(result, config);
+        return this.buildQueryFromSourceParams(result, config2);
       }
       if (is(chunk, SQL)) {
         return this.buildQueryFromSourceParams(chunk.queryChunks, {
-          ...config,
+          ...config2,
           inlineParams: inlineParams || chunk.shouldInlineParams
         });
       }
@@ -23759,10 +23776,10 @@ class SQL {
         }
         const mappedValue = chunk.value === null ? null : chunk.encoder.mapToDriverValue(chunk.value);
         if (is(mappedValue, SQL)) {
-          return this.buildQueryFromSourceParams([mappedValue], config);
+          return this.buildQueryFromSourceParams([mappedValue], config2);
         }
         if (inlineParams) {
-          return { sql: this.mapInlineParam(mappedValue, config), params: [] };
+          return { sql: this.mapInlineParam(mappedValue, config2), params: [] };
         }
         let typings = ["none"];
         if (prepareTyping) {
@@ -23785,7 +23802,7 @@ class SQL {
           chunk._.sql,
           new StringChunk(") "),
           new Name(chunk._.alias)
-        ], config);
+        ], config2);
       }
       if (isPgEnum(chunk)) {
         if (chunk.schema) {
@@ -23795,16 +23812,16 @@ class SQL {
       }
       if (isSQLWrapper(chunk)) {
         if (chunk.shouldOmitSQLParens?.()) {
-          return this.buildQueryFromSourceParams([chunk.getSQL()], config);
+          return this.buildQueryFromSourceParams([chunk.getSQL()], config2);
         }
         return this.buildQueryFromSourceParams([
           new StringChunk("("),
           chunk.getSQL(),
           new StringChunk(")")
-        ], config);
+        ], config2);
       }
       if (inlineParams) {
-        return { sql: this.mapInlineParam(chunk, config), params: [] };
+        return { sql: this.mapInlineParam(chunk, config2), params: [] };
       }
       return { sql: escapeParam(paramStartIndex.value++, chunk), params: [chunk], typings: ["none"] };
     }));
@@ -24128,8 +24145,8 @@ class ConsoleLogWriter {
 class DefaultLogger {
   static [entityKind] = "DefaultLogger";
   writer;
-  constructor(config) {
-    this.writer = config?.writer ?? new ConsoleLogWriter;
+  constructor(config2) {
+    this.writer = config2?.writer ?? new ConsoleLogWriter;
   }
   logQuery(query, params) {
     const stringifiedParams = params.map((p) => {
@@ -24407,8 +24424,8 @@ class PgBigInt64 extends PgColumn {
   }
 }
 function bigint(a, b) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  if (config.mode === "number") {
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  if (config2.mode === "number") {
     return new PgBigInt53Builder(name);
   }
   return new PgBigInt64Builder(name);
@@ -24461,8 +24478,8 @@ class PgBigSerial64 extends PgColumn {
   }
 }
 function bigserial(a, b) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  if (config.mode === "number") {
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  if (config2.mode === "number") {
     return new PgBigSerial53Builder(name);
   }
   return new PgBigSerial64Builder(name);
@@ -24492,10 +24509,10 @@ function boolean(name) {
 // node_modules/drizzle-orm/pg-core/columns/char.js
 class PgCharBuilder extends PgColumnBuilder {
   static [entityKind] = "PgCharBuilder";
-  constructor(name, config) {
+  constructor(name, config2) {
     super(name, "string", "PgChar");
-    this.config.length = config.length;
-    this.config.enumValues = config.enum;
+    this.config.length = config2.length;
+    this.config.enumValues = config2.enum;
   }
   build(table) {
     return new PgChar(table, this.config);
@@ -24511,8 +24528,8 @@ class PgChar extends PgColumn {
   }
 }
 function char(a, b = {}) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  return new PgCharBuilder(name, config);
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  return new PgCharBuilder(name, config2);
 }
 
 // node_modules/drizzle-orm/pg-core/columns/cidr.js
@@ -24554,11 +24571,11 @@ class PgCustomColumn extends PgColumn {
   sqlName;
   mapTo;
   mapFrom;
-  constructor(table, config) {
-    super(table, config);
-    this.sqlName = config.customTypeParams.dataType(config.fieldConfig);
-    this.mapTo = config.customTypeParams.toDriver;
-    this.mapFrom = config.customTypeParams.fromDriver;
+  constructor(table, config2) {
+    super(table, config2);
+    this.sqlName = config2.customTypeParams.dataType(config2.fieldConfig);
+    this.mapTo = config2.customTypeParams.toDriver;
+    this.mapFrom = config2.customTypeParams.fromDriver;
   }
   getSQLType() {
     return this.sqlName;
@@ -24572,8 +24589,8 @@ class PgCustomColumn extends PgColumn {
 }
 function customType(customTypeParams) {
   return (a, b) => {
-    const { name, config } = getColumnNameAndConfig(a, b);
-    return new PgCustomColumnBuilder(name, config, customTypeParams);
+    const { name, config: config2 } = getColumnNameAndConfig(a, b);
+    return new PgCustomColumnBuilder(name, config2, customTypeParams);
   };
 }
 
@@ -24633,8 +24650,8 @@ class PgDateString extends PgColumn {
   }
 }
 function date2(a, b) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  if (config?.mode === "date") {
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  if (config2?.mode === "date") {
     return new PgDateBuilder(name);
   }
   return new PgDateStringBuilder(name);
@@ -24738,8 +24755,8 @@ class PgInterval extends PgColumn {
   }
 }
 function interval(a, b = {}) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  return new PgIntervalBuilder(name, config);
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  return new PgIntervalBuilder(name, config2);
 }
 
 // node_modules/drizzle-orm/pg-core/columns/json.js
@@ -24755,8 +24772,8 @@ class PgJsonBuilder extends PgColumnBuilder {
 
 class PgJson extends PgColumn {
   static [entityKind] = "PgJson";
-  constructor(table, config) {
-    super(table, config);
+  constructor(table, config2) {
+    super(table, config2);
   }
   getSQLType() {
     return "json";
@@ -24792,8 +24809,8 @@ class PgJsonbBuilder extends PgColumnBuilder {
 
 class PgJsonb extends PgColumn {
   static [entityKind] = "PgJsonb";
-  constructor(table, config) {
-    super(table, config);
+  constructor(table, config2) {
+    super(table, config2);
   }
   getSQLType() {
     return "jsonb";
@@ -24865,8 +24882,8 @@ class PgLineABC extends PgColumn {
   }
 }
 function line(a, b) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  if (!config?.mode || config.mode === "tuple") {
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  if (!config2?.mode || config2.mode === "tuple") {
     return new PgLineBuilder(name);
   }
   return new PgLineABCBuilder(name);
@@ -24931,10 +24948,10 @@ class PgNumeric extends PgColumn {
   static [entityKind] = "PgNumeric";
   precision;
   scale;
-  constructor(table, config) {
-    super(table, config);
-    this.precision = config.precision;
-    this.scale = config.scale;
+  constructor(table, config2) {
+    super(table, config2);
+    this.precision = config2.precision;
+    this.scale = config2.scale;
   }
   mapFromDriverValue(value) {
     if (typeof value === "string")
@@ -24968,10 +24985,10 @@ class PgNumericNumber extends PgColumn {
   static [entityKind] = "PgNumericNumber";
   precision;
   scale;
-  constructor(table, config) {
-    super(table, config);
-    this.precision = config.precision;
-    this.scale = config.scale;
+  constructor(table, config2) {
+    super(table, config2);
+    this.precision = config2.precision;
+    this.scale = config2.scale;
   }
   mapFromDriverValue(value) {
     if (typeof value === "number")
@@ -25006,10 +25023,10 @@ class PgNumericBigInt extends PgColumn {
   static [entityKind] = "PgNumericBigInt";
   precision;
   scale;
-  constructor(table, config) {
-    super(table, config);
-    this.precision = config.precision;
-    this.scale = config.scale;
+  constructor(table, config2) {
+    super(table, config2);
+    this.precision = config2.precision;
+    this.scale = config2.scale;
   }
   mapFromDriverValue = BigInt;
   mapToDriverValue = String;
@@ -25024,9 +25041,9 @@ class PgNumericBigInt extends PgColumn {
   }
 }
 function numeric(a, b) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  const mode = config?.mode;
-  return mode === "number" ? new PgNumericNumberBuilder(name, config?.precision, config?.scale) : mode === "bigint" ? new PgNumericBigIntBuilder(name, config?.precision, config?.scale) : new PgNumericBuilder(name, config?.precision, config?.scale);
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  const mode = config2?.mode;
+  return mode === "number" ? new PgNumericNumberBuilder(name, config2?.precision, config2?.scale) : mode === "bigint" ? new PgNumericBigIntBuilder(name, config2?.precision, config2?.scale) : new PgNumericBuilder(name, config2?.precision, config2?.scale);
 }
 
 // node_modules/drizzle-orm/pg-core/columns/point.js
@@ -25084,8 +25101,8 @@ class PgPointObject extends PgColumn {
   }
 }
 function point(a, b) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  if (!config?.mode || config.mode === "tuple") {
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  if (!config2?.mode || config2.mode === "tuple") {
     return new PgPointTupleBuilder(name);
   }
   return new PgPointObjectBuilder(name);
@@ -25178,8 +25195,8 @@ class PgGeometryObject extends PgColumn {
   }
 }
 function geometry(a, b) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  if (!config?.mode || config.mode === "tuple") {
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  if (!config2?.mode || config2.mode === "tuple") {
     return new PgGeometryBuilder(name);
   }
   return new PgGeometryObjectBuilder(name);
@@ -25199,8 +25216,8 @@ class PgRealBuilder extends PgColumnBuilder {
 
 class PgReal extends PgColumn {
   static [entityKind] = "PgReal";
-  constructor(table, config) {
-    super(table, config);
+  constructor(table, config2) {
+    super(table, config2);
   }
   getSQLType() {
     return "real";
@@ -25292,9 +25309,9 @@ function smallserial(name) {
 // node_modules/drizzle-orm/pg-core/columns/text.js
 class PgTextBuilder extends PgColumnBuilder {
   static [entityKind] = "PgTextBuilder";
-  constructor(name, config) {
+  constructor(name, config2) {
     super(name, "string", "PgText");
-    this.config.enumValues = config.enum;
+    this.config.enumValues = config2.enum;
   }
   build(table) {
     return new PgText(table, this.config);
@@ -25309,8 +25326,8 @@ class PgText extends PgColumn {
   }
 }
 function text(a, b = {}) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  return new PgTextBuilder(name, config);
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  return new PgTextBuilder(name, config2);
 }
 
 // node_modules/drizzle-orm/pg-core/columns/time.js
@@ -25332,10 +25349,10 @@ class PgTime extends PgColumn {
   static [entityKind] = "PgTime";
   withTimezone;
   precision;
-  constructor(table, config) {
-    super(table, config);
-    this.withTimezone = config.withTimezone;
-    this.precision = config.precision;
+  constructor(table, config2) {
+    super(table, config2);
+    this.withTimezone = config2.withTimezone;
+    this.precision = config2.precision;
   }
   getSQLType() {
     const precision = this.precision === undefined ? "" : `(${this.precision})`;
@@ -25343,8 +25360,8 @@ class PgTime extends PgColumn {
   }
 }
 function time(a, b = {}) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  return new PgTimeBuilder(name, config.withTimezone ?? false, config.precision);
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  return new PgTimeBuilder(name, config2.withTimezone ?? false, config2.precision);
 }
 
 // node_modules/drizzle-orm/pg-core/columns/timestamp.js
@@ -25364,10 +25381,10 @@ class PgTimestamp extends PgColumn {
   static [entityKind] = "PgTimestamp";
   withTimezone;
   precision;
-  constructor(table, config) {
-    super(table, config);
-    this.withTimezone = config.withTimezone;
-    this.precision = config.precision;
+  constructor(table, config2) {
+    super(table, config2);
+    this.withTimezone = config2.withTimezone;
+    this.precision = config2.precision;
   }
   getSQLType() {
     const precision = this.precision === undefined ? "" : ` (${this.precision})`;
@@ -25399,10 +25416,10 @@ class PgTimestampString extends PgColumn {
   static [entityKind] = "PgTimestampString";
   withTimezone;
   precision;
-  constructor(table, config) {
-    super(table, config);
-    this.withTimezone = config.withTimezone;
-    this.precision = config.precision;
+  constructor(table, config2) {
+    super(table, config2);
+    this.withTimezone = config2.withTimezone;
+    this.precision = config2.precision;
   }
   getSQLType() {
     const precision = this.precision === undefined ? "" : `(${this.precision})`;
@@ -25421,11 +25438,11 @@ class PgTimestampString extends PgColumn {
   }
 }
 function timestamp(a, b = {}) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  if (config?.mode === "string") {
-    return new PgTimestampStringBuilder(name, config.withTimezone ?? false, config.precision);
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  if (config2?.mode === "string") {
+    return new PgTimestampStringBuilder(name, config2.withTimezone ?? false, config2.precision);
   }
-  return new PgTimestampBuilder(name, config?.withTimezone ?? false, config?.precision);
+  return new PgTimestampBuilder(name, config2?.withTimezone ?? false, config2?.precision);
 }
 
 // node_modules/drizzle-orm/pg-core/columns/uuid.js
@@ -25455,10 +25472,10 @@ function uuid(name) {
 // node_modules/drizzle-orm/pg-core/columns/varchar.js
 class PgVarcharBuilder extends PgColumnBuilder {
   static [entityKind] = "PgVarcharBuilder";
-  constructor(name, config) {
+  constructor(name, config2) {
     super(name, "string", "PgVarchar");
-    this.config.length = config.length;
-    this.config.enumValues = config.enum;
+    this.config.length = config2.length;
+    this.config.enumValues = config2.enum;
   }
   build(table) {
     return new PgVarchar(table, this.config);
@@ -25474,16 +25491,16 @@ class PgVarchar extends PgColumn {
   }
 }
 function varchar(a, b = {}) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  return new PgVarcharBuilder(name, config);
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  return new PgVarcharBuilder(name, config2);
 }
 
 // node_modules/drizzle-orm/pg-core/columns/vector_extension/bit.js
 class PgBinaryVectorBuilder extends PgColumnBuilder {
   static [entityKind] = "PgBinaryVectorBuilder";
-  constructor(name, config) {
+  constructor(name, config2) {
     super(name, "string", "PgBinaryVector");
-    this.config.dimensions = config.dimensions;
+    this.config.dimensions = config2.dimensions;
   }
   build(table) {
     return new PgBinaryVector(table, this.config);
@@ -25498,16 +25515,16 @@ class PgBinaryVector extends PgColumn {
   }
 }
 function bit(a, b) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  return new PgBinaryVectorBuilder(name, config);
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  return new PgBinaryVectorBuilder(name, config2);
 }
 
 // node_modules/drizzle-orm/pg-core/columns/vector_extension/halfvec.js
 class PgHalfVectorBuilder extends PgColumnBuilder {
   static [entityKind] = "PgHalfVectorBuilder";
-  constructor(name, config) {
+  constructor(name, config2) {
     super(name, "array", "PgHalfVector");
-    this.config.dimensions = config.dimensions;
+    this.config.dimensions = config2.dimensions;
   }
   build(table) {
     return new PgHalfVector(table, this.config);
@@ -25528,16 +25545,16 @@ class PgHalfVector extends PgColumn {
   }
 }
 function halfvec(a, b) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  return new PgHalfVectorBuilder(name, config);
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  return new PgHalfVectorBuilder(name, config2);
 }
 
 // node_modules/drizzle-orm/pg-core/columns/vector_extension/sparsevec.js
 class PgSparseVectorBuilder extends PgColumnBuilder {
   static [entityKind] = "PgSparseVectorBuilder";
-  constructor(name, config) {
+  constructor(name, config2) {
     super(name, "string", "PgSparseVector");
-    this.config.dimensions = config.dimensions;
+    this.config.dimensions = config2.dimensions;
   }
   build(table) {
     return new PgSparseVector(table, this.config);
@@ -25552,16 +25569,16 @@ class PgSparseVector extends PgColumn {
   }
 }
 function sparsevec(a, b) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  return new PgSparseVectorBuilder(name, config);
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  return new PgSparseVectorBuilder(name, config2);
 }
 
 // node_modules/drizzle-orm/pg-core/columns/vector_extension/vector.js
 class PgVectorBuilder extends PgColumnBuilder {
   static [entityKind] = "PgVectorBuilder";
-  constructor(name, config) {
+  constructor(name, config2) {
     super(name, "array", "PgVector");
-    this.config.dimensions = config.dimensions;
+    this.config.dimensions = config2.dimensions;
   }
   build(table) {
     return new PgVector(table, this.config);
@@ -25582,8 +25599,8 @@ class PgVector extends PgColumn {
   }
 }
 function vector(a, b) {
-  const { name, config } = getColumnNameAndConfig(a, b);
-  return new PgVectorBuilder(name, config);
+  const { name, config: config2 } = getColumnNameAndConfig(a, b);
+  return new PgVectorBuilder(name, config2);
 }
 
 // node_modules/drizzle-orm/pg-core/columns/all.js
@@ -25827,17 +25844,17 @@ class Relation {
 }
 
 class Relations {
-  constructor(table, config) {
+  constructor(table, config2) {
     this.table = table;
-    this.config = config;
+    this.config = config2;
   }
   static [entityKind] = "Relations";
 }
 
 class One extends Relation {
-  constructor(sourceTable, referencedTable, config, isNullable) {
-    super(sourceTable, referencedTable, config?.relationName);
-    this.config = config;
+  constructor(sourceTable, referencedTable, config2, isNullable) {
+    super(sourceTable, referencedTable, config2?.relationName);
+    this.config = config2;
     this.isNullable = isNullable;
   }
   static [entityKind] = "One";
@@ -25849,9 +25866,9 @@ class One extends Relation {
 }
 
 class Many extends Relation {
-  constructor(sourceTable, referencedTable, config) {
-    super(sourceTable, referencedTable, config?.relationName);
-    this.config = config;
+  constructor(sourceTable, referencedTable, config2) {
+    super(sourceTable, referencedTable, config2?.relationName);
+    this.config = config2;
   }
   static [entityKind] = "Many";
   withFieldName(fieldName) {
@@ -25953,13 +25970,13 @@ function extractTablesRelationalConfig(schema, configHelpers) {
   return { tables: tablesConfig, tableNamesMap };
 }
 function createOne(sourceTable) {
-  return function one(table, config) {
-    return new One(sourceTable, table, config, config?.fields.reduce((res, f) => res && f.notNull, true) ?? false);
+  return function one(table, config2) {
+    return new One(sourceTable, table, config2, config2?.fields.reduce((res, f) => res && f.notNull, true) ?? false);
   };
 }
 function createMany(sourceTable) {
-  return function many(referencedTable, config) {
-    return new Many(sourceTable, referencedTable, config);
+  return function many(referencedTable, config2) {
+    return new Many(sourceTable, referencedTable, config2);
   };
 }
 function normalizeRelation(schema, tableNamesMap, relation) {
@@ -26033,9 +26050,6 @@ function mapRelationalRow(tablesConfig, tableConfig, row, buildQueryResultSelect
   return result;
 }
 
-// src/db/index.ts
-var import_config = __toESM(require_config(), 1);
-
 // node_modules/pg/esm/index.mjs
 var import_lib = __toESM(require_lib2(), 1);
 var Client = import_lib.default.Client;
@@ -26055,8 +26069,8 @@ var esm_default = import_lib.default;
 class SelectionProxyHandler {
   static [entityKind] = "SelectionProxyHandler";
   config;
-  constructor(config) {
-    this.config = { ...config };
+  constructor(config2) {
+    this.config = { ...config2 };
   }
   get(subquery, prop) {
     if (prop === "_") {
@@ -26165,12 +26179,12 @@ class PgViewBase extends View {
 class PgDialect {
   static [entityKind] = "PgDialect";
   casing;
-  constructor(config) {
-    this.casing = new CasingCache(config?.casing);
+  constructor(config2) {
+    this.casing = new CasingCache(config2?.casing);
   }
-  async migrate(migrations, session, config) {
-    const migrationsTable = typeof config === "string" ? "__drizzle_migrations" : config.migrationsTable ?? "__drizzle_migrations";
-    const migrationsSchema = typeof config === "string" ? "drizzle" : config.migrationsSchema ?? "drizzle";
+  async migrate(migrations, session, config2) {
+    const migrationsTable = typeof config2 === "string" ? "__drizzle_migrations" : config2.migrationsTable ?? "__drizzle_migrations";
+    const migrationsSchema = typeof config2 === "string" ? "drizzle" : config2.migrationsSchema ?? "drizzle";
     const migrationTableCreate = sql`
 			CREATE TABLE IF NOT EXISTS ${sql.identifier(migrationsSchema)}.${sql.identifier(migrationsTable)} (
 				id SERIAL PRIMARY KEY,
@@ -26528,7 +26542,7 @@ class PgDialect {
     tableNamesMap,
     table,
     tableConfig,
-    queryConfig: config,
+    queryConfig: config2,
     tableAlias,
     nestedQueryRelation,
     joinOn
@@ -26536,7 +26550,7 @@ class PgDialect {
     let selection = [];
     let limit, offset, orderBy = [], where;
     const joins = [];
-    if (config === true) {
+    if (config2 === true) {
       const selectionEntries = Object.entries(tableConfig.columns);
       selection = selectionEntries.map(([key, value]) => ({
         dbKey: value.name,
@@ -26548,15 +26562,15 @@ class PgDialect {
       }));
     } else {
       const aliasedColumns = Object.fromEntries(Object.entries(tableConfig.columns).map(([key, value]) => [key, aliasedTableColumn(value, tableAlias)]));
-      if (config.where) {
-        const whereSql = typeof config.where === "function" ? config.where(aliasedColumns, getOperators()) : config.where;
+      if (config2.where) {
+        const whereSql = typeof config2.where === "function" ? config2.where(aliasedColumns, getOperators()) : config2.where;
         where = whereSql && mapColumnsInSQLToAlias(whereSql, tableAlias);
       }
       const fieldsSelection = [];
       let selectedColumns = [];
-      if (config.columns) {
+      if (config2.columns) {
         let isIncludeMode = false;
-        for (const [field, value] of Object.entries(config.columns)) {
+        for (const [field, value] of Object.entries(config2.columns)) {
           if (value === undefined) {
             continue;
           }
@@ -26568,7 +26582,7 @@ class PgDialect {
           }
         }
         if (selectedColumns.length > 0) {
-          selectedColumns = isIncludeMode ? selectedColumns.filter((c) => config.columns?.[c] === true) : Object.keys(tableConfig.columns).filter((key) => !selectedColumns.includes(key));
+          selectedColumns = isIncludeMode ? selectedColumns.filter((c) => config2.columns?.[c] === true) : Object.keys(tableConfig.columns).filter((key) => !selectedColumns.includes(key));
         }
       } else {
         selectedColumns = Object.keys(tableConfig.columns);
@@ -26578,12 +26592,12 @@ class PgDialect {
         fieldsSelection.push({ tsKey: field, value: column });
       }
       let selectedRelations = [];
-      if (config.with) {
-        selectedRelations = Object.entries(config.with).filter((entry) => !!entry[1]).map(([tsKey, queryConfig]) => ({ tsKey, queryConfig, relation: tableConfig.relations[tsKey] }));
+      if (config2.with) {
+        selectedRelations = Object.entries(config2.with).filter((entry) => !!entry[1]).map(([tsKey, queryConfig]) => ({ tsKey, queryConfig, relation: tableConfig.relations[tsKey] }));
       }
       let extras;
-      if (config.extras) {
-        extras = typeof config.extras === "function" ? config.extras(aliasedColumns, { sql }) : config.extras;
+      if (config2.extras) {
+        extras = typeof config2.extras === "function" ? config2.extras(aliasedColumns, { sql }) : config2.extras;
         for (const [tsKey, value] of Object.entries(extras)) {
           fieldsSelection.push({
             tsKey,
@@ -26601,7 +26615,7 @@ class PgDialect {
           selection: []
         });
       }
-      let orderByOrig = typeof config.orderBy === "function" ? config.orderBy(aliasedColumns, getOrderByOperators()) : config.orderBy ?? [];
+      let orderByOrig = typeof config2.orderBy === "function" ? config2.orderBy(aliasedColumns, getOrderByOperators()) : config2.orderBy ?? [];
       if (!Array.isArray(orderByOrig)) {
         orderByOrig = [orderByOrig];
       }
@@ -26611,8 +26625,8 @@ class PgDialect {
         }
         return mapColumnsInSQLToAlias(orderByValue, tableAlias);
       });
-      limit = config.limit;
-      offset = config.offset;
+      limit = config2.limit;
+      offset = config2.offset;
       for (const {
         tsKey: selectedRelationTsKey,
         queryConfig: selectedRelationConfigValue,
@@ -26746,14 +26760,14 @@ class PgSelectBuilder {
   dialect;
   withList = [];
   distinct;
-  constructor(config) {
-    this.fields = config.fields;
-    this.session = config.session;
-    this.dialect = config.dialect;
-    if (config.withList) {
-      this.withList = config.withList;
+  constructor(config2) {
+    this.fields = config2.fields;
+    this.session = config2.session;
+    this.dialect = config2.dialect;
+    if (config2.withList) {
+      this.withList = config2.withList;
     }
-    this.distinct = config.distinct;
+    this.distinct = config2.distinct;
   }
   authToken;
   setToken(token) {
@@ -26961,8 +26975,8 @@ class PgSelectQueryBuilderBase extends TypedQueryBuilder {
     }
     return this;
   }
-  for(strength, config = {}) {
-    this.config.lockingClause = { strength, config };
+  for(strength, config2 = {}) {
+    this.config.lockingClause = { strength, config: config2 };
     return this;
   }
   getSQL() {
@@ -26987,8 +27001,8 @@ class PgSelectQueryBuilderBase extends TypedQueryBuilder {
   $dynamic() {
     return this;
   }
-  $withCache(config) {
-    this.cacheConfig = config === undefined ? { config: {}, enable: true, autoInvalidate: true } : config === false ? { enable: false } : { enable: true, autoInvalidate: true, ...config };
+  $withCache(config2) {
+    this.cacheConfig = config2 === undefined ? { config: {}, enable: true, autoInvalidate: true } : config2 === false ? { enable: false } : { enable: true, autoInvalidate: true, ...config2 };
     return this;
   }
 }
@@ -26996,11 +27010,11 @@ class PgSelectQueryBuilderBase extends TypedQueryBuilder {
 class PgSelectBase extends PgSelectQueryBuilderBase {
   static [entityKind] = "PgSelect";
   _prepare(name) {
-    const { session, config, dialect, joinsNotNullableMap, authToken, cacheConfig, usedTables } = this;
+    const { session, config: config2, dialect, joinsNotNullableMap, authToken, cacheConfig, usedTables } = this;
     if (!session) {
       throw new Error("Cannot execute a query on a query builder. Please use a database instance instead.");
     }
-    const { fields } = config;
+    const { fields } = config2;
     return tracer.startActiveSpan("drizzle.prepareQuery", () => {
       const fieldsList = orderSelectedFields(fields);
       const query = session.prepareQuery(dialect.sqlToQuery(this.getSQL()), fieldsList, name, true, undefined, {
@@ -27267,27 +27281,27 @@ class PgInsertBase extends QueryPromise {
     this.config.returning = orderSelectedFields(fields);
     return this;
   }
-  onConflictDoNothing(config = {}) {
-    if (config.target === undefined) {
+  onConflictDoNothing(config2 = {}) {
+    if (config2.target === undefined) {
       this.config.onConflict = sql`do nothing`;
     } else {
       let targetColumn = "";
-      targetColumn = Array.isArray(config.target) ? config.target.map((it) => this.dialect.escapeName(this.dialect.casing.getColumnCasing(it))).join(",") : this.dialect.escapeName(this.dialect.casing.getColumnCasing(config.target));
-      const whereSql = config.where ? sql` where ${config.where}` : undefined;
+      targetColumn = Array.isArray(config2.target) ? config2.target.map((it) => this.dialect.escapeName(this.dialect.casing.getColumnCasing(it))).join(",") : this.dialect.escapeName(this.dialect.casing.getColumnCasing(config2.target));
+      const whereSql = config2.where ? sql` where ${config2.where}` : undefined;
       this.config.onConflict = sql`(${sql.raw(targetColumn)})${whereSql} do nothing`;
     }
     return this;
   }
-  onConflictDoUpdate(config) {
-    if (config.where && (config.targetWhere || config.setWhere)) {
+  onConflictDoUpdate(config2) {
+    if (config2.where && (config2.targetWhere || config2.setWhere)) {
       throw new Error('You cannot use both "where" and "targetWhere"/"setWhere" at the same time - "where" is deprecated, use "targetWhere" or "setWhere" instead.');
     }
-    const whereSql = config.where ? sql` where ${config.where}` : undefined;
-    const targetWhereSql = config.targetWhere ? sql` where ${config.targetWhere}` : undefined;
-    const setWhereSql = config.setWhere ? sql` where ${config.setWhere}` : undefined;
-    const setSql = this.dialect.buildUpdateSet(this.config.table, mapUpdateSet(this.config.table, config.set));
+    const whereSql = config2.where ? sql` where ${config2.where}` : undefined;
+    const targetWhereSql = config2.targetWhere ? sql` where ${config2.targetWhere}` : undefined;
+    const setWhereSql = config2.setWhere ? sql` where ${config2.setWhere}` : undefined;
+    const setSql = this.dialect.buildUpdateSet(this.config.table, mapUpdateSet(this.config.table, config2.set));
     let targetColumn = "";
-    targetColumn = Array.isArray(config.target) ? config.target.map((it) => this.dialect.escapeName(this.dialect.casing.getColumnCasing(it))).join(",") : this.dialect.escapeName(this.dialect.casing.getColumnCasing(config.target));
+    targetColumn = Array.isArray(config2.target) ? config2.target.map((it) => this.dialect.escapeName(this.dialect.casing.getColumnCasing(it))).join(",") : this.dialect.escapeName(this.dialect.casing.getColumnCasing(config2.target));
     this.config.onConflict = sql`(${sql.raw(targetColumn)})${targetWhereSql} do update set ${setSql}${whereSql}${setWhereSql}`;
     return this;
   }
@@ -27589,16 +27603,16 @@ class RelationalQueryBuilder {
     this.session = session;
   }
   static [entityKind] = "PgRelationalQueryBuilder";
-  findMany(config) {
-    return new PgRelationalQuery(this.fullSchema, this.schema, this.tableNamesMap, this.table, this.tableConfig, this.dialect, this.session, config ? config : {}, "many");
+  findMany(config2) {
+    return new PgRelationalQuery(this.fullSchema, this.schema, this.tableNamesMap, this.table, this.tableConfig, this.dialect, this.session, config2 ? config2 : {}, "many");
   }
-  findFirst(config) {
-    return new PgRelationalQuery(this.fullSchema, this.schema, this.tableNamesMap, this.table, this.tableConfig, this.dialect, this.session, config ? { ...config, limit: 1 } : { limit: 1 }, "first");
+  findFirst(config2) {
+    return new PgRelationalQuery(this.fullSchema, this.schema, this.tableNamesMap, this.table, this.tableConfig, this.dialect, this.session, config2 ? { ...config2, limit: 1 } : { limit: 1 }, "first");
   }
 }
 
 class PgRelationalQuery extends QueryPromise {
-  constructor(fullSchema, schema, tableNamesMap, table, tableConfig, dialect, session, config, mode) {
+  constructor(fullSchema, schema, tableNamesMap, table, tableConfig, dialect, session, config2, mode) {
     super();
     this.fullSchema = fullSchema;
     this.schema = schema;
@@ -27607,7 +27621,7 @@ class PgRelationalQuery extends QueryPromise {
     this.tableConfig = tableConfig;
     this.dialect = dialect;
     this.session = session;
-    this.config = config;
+    this.config = config2;
     this.mode = mode;
   }
   static [entityKind] = "PgRelationalQuery";
@@ -27808,8 +27822,8 @@ class PgDatabase {
     const prepared = this.session.prepareQuery(builtQuery, undefined, undefined, false);
     return new PgRaw(() => prepared.execute(undefined, this.authToken), sequel, builtQuery, (result) => prepared.mapResult(result, true));
   }
-  transaction(transaction, config) {
-    return this.session.transaction(transaction, config);
+  transaction(transaction, config2) {
+    return this.session.transaction(transaction, config2);
   }
 }
 
@@ -27953,21 +27967,21 @@ class PgTransaction extends PgDatabase {
   rollback() {
     throw new TransactionRollbackError;
   }
-  getTransactionConfigSQL(config) {
+  getTransactionConfigSQL(config2) {
     const chunks = [];
-    if (config.isolationLevel) {
-      chunks.push(`isolation level ${config.isolationLevel}`);
+    if (config2.isolationLevel) {
+      chunks.push(`isolation level ${config2.isolationLevel}`);
     }
-    if (config.accessMode) {
-      chunks.push(config.accessMode);
+    if (config2.accessMode) {
+      chunks.push(config2.accessMode);
     }
-    if (typeof config.deferrable === "boolean") {
-      chunks.push(config.deferrable ? "deferrable" : "not deferrable");
+    if (typeof config2.deferrable === "boolean") {
+      chunks.push(config2.deferrable ? "deferrable" : "not deferrable");
     }
     return sql.raw(chunks.join(" "));
   }
-  setTransaction(config) {
-    return this.session.execute(sql`set transaction ${this.getTransactionConfigSQL(config)}`);
+  setTransaction(config2) {
+    return this.session.execute(sql`set transaction ${this.getTransactionConfigSQL(config2)}`);
   }
 }
 
@@ -28129,11 +28143,11 @@ class NodePgSession extends PgSession {
   prepareQuery(query, fields, name, isResponseInArrayMode, customResultMapper, queryMetadata, cacheConfig) {
     return new NodePgPreparedQuery(this.client, query.sql, query.params, this.logger, this.cache, queryMetadata, cacheConfig, fields, name, isResponseInArrayMode, customResultMapper);
   }
-  async transaction(transaction, config) {
+  async transaction(transaction, config2) {
     const isPool = this.client instanceof Pool2 || Object.getPrototypeOf(this.client).constructor.name.includes("Pool");
     const session = isPool ? new NodePgSession(await this.client.connect(), this.dialect, this.schema, this.options) : this;
     const tx = new NodePgTransaction(this.dialect, session, this.schema);
-    await tx.execute(sql`begin${config ? sql` ${tx.getTransactionConfigSQL(config)}` : undefined}`);
+    await tx.execute(sql`begin${config2 ? sql` ${tx.getTransactionConfigSQL(config2)}` : undefined}`);
     try {
       const result = await transaction(tx);
       await tx.execute(sql`commit`);
@@ -28188,30 +28202,30 @@ class NodePgDriver {
 class NodePgDatabase extends PgDatabase {
   static [entityKind] = "NodePgDatabase";
 }
-function construct(client, config = {}) {
-  const dialect = new PgDialect({ casing: config.casing });
+function construct(client, config2 = {}) {
+  const dialect = new PgDialect({ casing: config2.casing });
   let logger;
-  if (config.logger === true) {
+  if (config2.logger === true) {
     logger = new DefaultLogger;
-  } else if (config.logger !== false) {
-    logger = config.logger;
+  } else if (config2.logger !== false) {
+    logger = config2.logger;
   }
   let schema;
-  if (config.schema) {
-    const tablesConfig = extractTablesRelationalConfig(config.schema, createTableRelationsHelpers);
+  if (config2.schema) {
+    const tablesConfig = extractTablesRelationalConfig(config2.schema, createTableRelationsHelpers);
     schema = {
-      fullSchema: config.schema,
+      fullSchema: config2.schema,
       schema: tablesConfig.tables,
       tableNamesMap: tablesConfig.tableNamesMap
     };
   }
-  const driver = new NodePgDriver(client, dialect, { logger, cache: config.cache });
+  const driver = new NodePgDriver(client, dialect, { logger, cache: config2.cache });
   const session = driver.createSession(schema);
   const db = new NodePgDatabase(dialect, session, schema);
   db.$client = client;
-  db.$cache = config.cache;
+  db.$cache = config2.cache;
   if (db.$cache) {
-    db.$cache["invalidate"] = config.cache?.onMutate;
+    db.$cache["invalidate"] = config2.cache?.onMutate;
   }
   return db;
 }
@@ -28234,14 +28248,14 @@ function drizzle(...params) {
   return construct(params[0], params[1]);
 }
 ((drizzle2) => {
-  function mock(config) {
-    return construct({}, config);
+  function mock(config2) {
+    return construct({}, config2);
   }
   drizzle2.mock = mock;
 })(drizzle || (drizzle = {}));
 
 // src/db/index.ts
-var db = drizzle(process.env.DATABASE_URL);
+var db = drizzle(config.databaseUrl);
 
 // src/schemas/users.ts
 var usersTable = pgTable("users", {
@@ -28254,11 +28268,18 @@ var usersTable = pgTable("users", {
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   idToken: text("id_token"),
-  scraps: integer().notNull().default(0),
   role: varchar().notNull().default("member"),
   internalNotes: text("internal_notes"),
+  tutorialCompleted: boolean("tutorial_completed").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+var userBonusesTable = pgTable("user_bonuses", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  type: varchar().notNull(),
+  amount: integer().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
 // src/schemas/projects.ts
@@ -28269,11 +28290,13 @@ var projectsTable = pgTable("projects", {
   description: varchar().notNull(),
   image: text(),
   githubUrl: varchar("github_url"),
+  playableUrl: varchar("playable_url"),
   hackatimeProject: varchar("hackatime_project"),
   hours: real().default(0),
   hoursOverride: real("hours_override"),
   status: varchar().notNull().default("in_progress"),
   deleted: integer("deleted").default(0),
+  scrapsAwarded: integer("scraps_awarded").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
@@ -28332,9 +28355,9 @@ function getAvatarUrl(profile) {
 
 // src/lib/auth.ts
 var HACKCLUB_AUTH_URL = "https://auth.hackclub.com";
-var CLIENT_ID = process.env.HCAUTH_CLIENT_ID;
-var CLIENT_SECRET = process.env.HCAUTH_CLIENT_SECRET;
-var REDIRECT_URI = process.env.HCAUTH_REDIRECT_URI || "http://localhost:3000/api/auth/callback";
+var CLIENT_ID = config.hcauth.clientId;
+var CLIENT_SECRET = config.hcauth.clientSecret;
+var REDIRECT_URI = config.hcauth.redirectUri;
 function getAuthorizationUrl() {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
@@ -28391,8 +28414,8 @@ async function createOrUpdateUser(identity, tokens) {
   }
   let username = null;
   let avatarUrl = null;
-  if (identity.slack_id && process.env.SLACK_BOT_TOKEN) {
-    const slackProfile = await getSlackProfile(identity.slack_id, process.env.SLACK_BOT_TOKEN);
+  if (identity.slack_id && config.slackBotToken) {
+    const slackProfile = await getSlackProfile(identity.slack_id, config.slackBotToken);
     if (slackProfile) {
       username = slackProfile.display_name || slackProfile.real_name || null;
       avatarUrl = getAvatarUrl(slackProfile);
@@ -28537,6 +28560,50 @@ projects.get("/:id", async ({ params, headers }) => {
     return { error: "Not found" };
   }
   const projectOwner = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
+  let activity = [];
+  if (isOwner) {
+    const reviews = await db.select({
+      id: reviewsTable.id,
+      reviewerId: reviewsTable.reviewerId,
+      action: reviewsTable.action,
+      feedbackForAuthor: reviewsTable.feedbackForAuthor,
+      createdAt: reviewsTable.createdAt
+    }).from(reviewsTable).where(eq(reviewsTable.projectId, parseInt(params.id)));
+    const reviewerIds = reviews.map((r) => r.reviewerId);
+    let reviewers = [];
+    if (reviewerIds.length > 0) {
+      reviewers = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
+    }
+    for (const r of reviews) {
+      activity.push({
+        type: "review",
+        action: r.action,
+        feedbackForAuthor: r.feedbackForAuthor,
+        createdAt: r.createdAt,
+        reviewer: reviewers.find((rv) => rv.id === r.reviewerId) || null
+      });
+    }
+    const submissions = await db.select({
+      id: activityTable.id,
+      action: activityTable.action,
+      createdAt: activityTable.createdAt
+    }).from(activityTable).where(and(eq(activityTable.projectId, parseInt(params.id)), eq(activityTable.action, "project_submitted")));
+    for (const s of submissions) {
+      activity.push({
+        type: "submitted",
+        createdAt: s.createdAt
+      });
+    }
+    activity.push({
+      type: "created",
+      createdAt: project[0].createdAt
+    });
+    activity.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+  }
   return {
     project: {
       id: project[0].id,
@@ -28544,6 +28611,7 @@ projects.get("/:id", async ({ params, headers }) => {
       description: project[0].description,
       image: project[0].image,
       githubUrl: project[0].githubUrl,
+      playableUrl: project[0].playableUrl,
       hackatimeProject: isOwner ? project[0].hackatimeProject : undefined,
       hours: project[0].hoursOverride ?? project[0].hours,
       hoursOverride: isOwner ? project[0].hoursOverride : undefined,
@@ -28552,7 +28620,8 @@ projects.get("/:id", async ({ params, headers }) => {
       updatedAt: project[0].updatedAt
     },
     owner: projectOwner[0] || null,
-    isOwner
+    isOwner,
+    activity: isOwner ? activity : undefined
   };
 });
 projects.post("/", async ({ body, headers }) => {
@@ -28585,6 +28654,12 @@ projects.put("/:id", async ({ params, body, headers }) => {
   const user = await getUserFromSession(headers);
   if (!user)
     return { error: "Unauthorized" };
+  const existing = await db.select().from(projectsTable).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).limit(1);
+  if (!existing[0])
+    return { error: "Not found" };
+  if (existing[0].status === "waiting_for_review") {
+    return { error: "Cannot edit project while waiting for review" };
+  }
   const data = body;
   let hours = 0;
   const parsed = parseHackatimeProject(data.hackatimeProject || null);
@@ -28596,6 +28671,7 @@ projects.put("/:id", async ({ params, body, headers }) => {
     description: data.description,
     image: data.image,
     githubUrl: data.githubUrl,
+    playableUrl: data.playableUrl,
     hackatimeProject: data.hackatimeProject,
     hours,
     updatedAt: new Date
@@ -28766,8 +28842,107 @@ items.get("/", async () => {
 });
 var items_default = items;
 
+// src/schemas/shop.ts
+var shopItemsTable = pgTable("shop_items", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  name: varchar().notNull(),
+  image: varchar().notNull(),
+  description: varchar().notNull(),
+  price: integer().notNull(),
+  category: varchar().notNull(),
+  count: integer().notNull().default(0),
+  baseProbability: integer("base_probability").notNull().default(50),
+  baseUpgradeCost: integer("base_upgrade_cost").notNull().default(10),
+  costMultiplier: integer("cost_multiplier").notNull().default(115),
+  boostAmount: integer("boost_amount").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+var shopHeartsTable = pgTable("shop_hearts", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  shopItemId: integer("shop_item_id").notNull().references(() => shopItemsTable.id),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+}, (table) => [
+  unique().on(table.userId, table.shopItemId)
+]);
+var shopOrdersTable = pgTable("shop_orders", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  shopItemId: integer("shop_item_id").notNull().references(() => shopItemsTable.id),
+  quantity: integer().notNull().default(1),
+  pricePerItem: integer("price_per_item").notNull(),
+  totalPrice: integer("total_price").notNull(),
+  status: varchar().notNull().default("pending"),
+  orderType: varchar("order_type").notNull().default("purchase"),
+  shippingAddress: text("shipping_address"),
+  notes: text(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+var shopRollsTable = pgTable("shop_rolls", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  shopItemId: integer("shop_item_id").notNull().references(() => shopItemsTable.id),
+  rolled: integer().notNull(),
+  threshold: integer().notNull(),
+  won: boolean().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+var refineryOrdersTable = pgTable("refinery_orders", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  shopItemId: integer("shop_item_id").notNull().references(() => shopItemsTable.id),
+  cost: integer().notNull(),
+  boostAmount: integer("boost_amount").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+var shopPenaltiesTable = pgTable("shop_penalties", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  shopItemId: integer("shop_item_id").notNull().references(() => shopItemsTable.id),
+  probabilityMultiplier: integer("probability_multiplier").notNull().default(100),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+}, (table) => [
+  unique().on(table.userId, table.shopItemId)
+]);
+
+// src/lib/scraps.ts
+var PHI = (1 + Math.sqrt(5)) / 2;
+var MULTIPLIER = 120;
+function calculateScrapsFromHours(hours) {
+  return Math.floor(hours * PHI * MULTIPLIER);
+}
+async function getUserScrapsBalance(userId) {
+  const earnedResult = await db.select({
+    total: sql`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`
+  }).from(projectsTable).where(eq(projectsTable.userId, userId));
+  const bonusResult = await db.select({
+    total: sql`COALESCE(SUM(${userBonusesTable.amount}), 0)`
+  }).from(userBonusesTable).where(eq(userBonusesTable.userId, userId));
+  const spentResult = await db.select({
+    total: sql`COALESCE(SUM(${shopOrdersTable.totalPrice}), 0)`
+  }).from(shopOrdersTable).where(eq(shopOrdersTable.userId, userId));
+  const upgradeSpentResult = await db.select({
+    total: sql`COALESCE(SUM(${refineryOrdersTable.cost}), 0)`
+  }).from(refineryOrdersTable).where(eq(refineryOrdersTable.userId, userId));
+  const projectEarned = Number(earnedResult[0]?.total) || 0;
+  const bonusEarned = Number(bonusResult[0]?.total) || 0;
+  const earned = projectEarned + bonusEarned;
+  const shopSpent = Number(spentResult[0]?.total) || 0;
+  const upgradeSpent = Number(upgradeSpentResult[0]?.total) || 0;
+  const spent = shopSpent + upgradeSpent;
+  const balance = earned - spent;
+  return { earned, spent, balance };
+}
+async function canAfford(userId, cost) {
+  const { balance } = await getUserScrapsBalance(userId);
+  return balance >= cost;
+}
+
 // src/routes/auth.ts
-var FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+var FRONTEND_URL = config.frontendUrl;
 var authRoutes = new Elysia({ prefix: "/auth" });
 authRoutes.get("/login", ({ redirect: redirect2 }) => {
   console.log("[AUTH] Login initiated");
@@ -28809,7 +28984,7 @@ authRoutes.get("/callback", async ({ query, redirect: redirect2, cookie }) => {
     cookie.session.set({
       value: sessionToken,
       httpOnly: true,
-      secure: false,
+      secure: !config.isDev,
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60,
       path: "/"
@@ -28832,6 +29007,7 @@ authRoutes.get("/me", async ({ headers }) => {
   if (user.role === "banned") {
     return { user: null, banned: true };
   }
+  const scrapsBalance = await getUserScrapsBalance(user.id);
   return {
     user: {
       id: user.id,
@@ -28839,8 +29015,9 @@ authRoutes.get("/me", async ({ headers }) => {
       email: user.email,
       avatar: user.avatar,
       slackId: user.slackId,
-      scraps: user.scraps,
-      role: user.role
+      scraps: scrapsBalance.balance,
+      role: user.role,
+      tutorialCompleted: user.tutorialCompleted
     }
   };
 });
@@ -28854,27 +29031,6 @@ authRoutes.post("/logout", async ({ cookie }) => {
   return { success: true };
 });
 var auth_default = authRoutes;
-
-// src/schemas/shop.ts
-var shopItemsTable = pgTable("shop_items", {
-  id: integer().primaryKey().generatedAlwaysAsIdentity(),
-  name: varchar().notNull(),
-  image: varchar().notNull(),
-  description: varchar().notNull(),
-  price: integer().notNull(),
-  category: varchar().notNull(),
-  count: integer().notNull().default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull()
-});
-var shopHeartsTable = pgTable("shop_hearts", {
-  id: integer().primaryKey().generatedAlwaysAsIdentity(),
-  userId: integer("user_id").notNull().references(() => usersTable.id),
-  shopItemId: integer("shop_item_id").notNull().references(() => shopItemsTable.id),
-  createdAt: timestamp("created_at").defaultNow().notNull()
-}, (table) => [
-  unique().on(table.userId, table.shopItemId)
-]);
 
 // src/routes/user.ts
 var user = new Elysia({ prefix: "/user" });
@@ -28891,16 +29047,35 @@ user.get("/me", async ({ headers }) => {
       verificationStatus = eligibility.verificationStatus;
     }
   }
+  const scrapsBalance = await getUserScrapsBalance(userData.id);
   return {
     id: userData.id,
     username: userData.username,
     email: userData.email,
     avatar: userData.avatar,
     slackId: userData.slackId,
-    scraps: userData.scraps,
+    scraps: scrapsBalance.balance,
+    scrapsEarned: scrapsBalance.earned,
+    scrapsSpent: scrapsBalance.spent,
     yswsEligible,
-    verificationStatus
+    verificationStatus,
+    tutorialCompleted: userData.tutorialCompleted
   };
+});
+user.post("/complete-tutorial", async ({ headers }) => {
+  const userData = await getUserFromSession(headers);
+  if (!userData)
+    return { error: "Unauthorized" };
+  if (userData.tutorialCompleted) {
+    return { success: true, alreadyCompleted: true };
+  }
+  await db.update(usersTable).set({ tutorialCompleted: true, updatedAt: new Date }).where(eq(usersTable.id, userData.id));
+  await db.insert(userBonusesTable).values({
+    userId: userData.id,
+    type: "tutorial_bonus",
+    amount: 10
+  });
+  return { success: true, bonusAwarded: 10 };
 });
 user.get("/profile/:id", async ({ params, headers }) => {
   const currentUser = await getUserFromSession(headers);
@@ -28910,10 +29085,12 @@ user.get("/profile/:id", async ({ params, headers }) => {
   if (!targetUser[0])
     return { error: "User not found" };
   const allProjects = await db.select().from(projectsTable).where(eq(projectsTable.userId, parseInt(params.id)));
-  const visibleProjects = allProjects.filter((p) => p.status === "shipped" || p.status === "in_progress");
-  const shippedCount = allProjects.filter((p) => p.status === "shipped").length;
-  const inProgressCount = allProjects.filter((p) => p.status === "in_progress").length;
-  const totalHours = allProjects.filter((p) => p.status === "shipped").reduce((sum, p) => sum + (p.hoursOverride ?? p.hours), 0);
+  const visibleProjects = allProjects.filter((p) => !p.deleted && (p.status === "shipped" || p.status === "in_progress" || p.status === "waiting_for_review"));
+  const shippedCount = allProjects.filter((p) => !p.deleted && p.status === "shipped").length;
+  const inProgressCount = allProjects.filter((p) => !p.deleted && (p.status === "in_progress" || p.status === "waiting_for_review")).length;
+  const shippedHours = allProjects.filter((p) => !p.deleted && p.status === "shipped").reduce((sum, p) => sum + (p.hoursOverride ?? p.hours ?? 0), 0);
+  const inProgressHours = allProjects.filter((p) => !p.deleted && (p.status === "in_progress" || p.status === "waiting_for_review")).reduce((sum, p) => sum + (p.hoursOverride ?? p.hours ?? 0), 0);
+  const totalHours = shippedHours + inProgressHours;
   const userHearts = await db.select({ shopItemId: shopHeartsTable.shopItemId }).from(shopHeartsTable).where(eq(shopHeartsTable.userId, parseInt(params.id)));
   const heartedItemIds = userHearts.map((h) => h.shopItemId);
   let heartedItems = [];
@@ -28925,12 +29102,20 @@ user.get("/profile/:id", async ({ params, headers }) => {
       price: shopItemsTable.price
     }).from(shopItemsTable).where(inArray(shopItemsTable.id, heartedItemIds));
   }
+  const scrapsBalance = await getUserScrapsBalance(parseInt(params.id));
+  const refinements = await db.select({
+    shopItemId: refineryOrdersTable.shopItemId,
+    itemName: shopItemsTable.name,
+    itemImage: shopItemsTable.image,
+    baseProbability: shopItemsTable.baseProbability,
+    totalBoost: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+  }).from(refineryOrdersTable).innerJoin(shopItemsTable, eq(refineryOrdersTable.shopItemId, shopItemsTable.id)).where(eq(refineryOrdersTable.userId, parseInt(params.id))).groupBy(refineryOrdersTable.shopItemId, shopItemsTable.name, shopItemsTable.image, shopItemsTable.baseProbability);
   return {
     user: {
       id: targetUser[0].id,
       username: targetUser[0].username,
       avatar: targetUser[0].avatar,
-      scraps: targetUser[0].scraps,
+      scraps: scrapsBalance.balance,
       createdAt: targetUser[0].createdAt
     },
     projects: visibleProjects.map((p) => ({
@@ -28944,6 +29129,14 @@ user.get("/profile/:id", async ({ params, headers }) => {
       createdAt: p.createdAt
     })),
     heartedItems,
+    refinements: refinements.map((r) => ({
+      shopItemId: r.shopItemId,
+      itemName: r.itemName,
+      itemImage: r.itemImage,
+      baseProbability: r.baseProbability,
+      totalBoost: Number(r.totalBoost),
+      effectiveProbability: Math.min(r.baseProbability + Number(r.totalBoost), 100)
+    })),
     stats: {
       projectCount: shippedCount,
       inProgressCount,
@@ -28965,21 +29158,46 @@ shop.get("/items", async ({ headers }) => {
     price: shopItemsTable.price,
     category: shopItemsTable.category,
     count: shopItemsTable.count,
+    baseProbability: shopItemsTable.baseProbability,
+    baseUpgradeCost: shopItemsTable.baseUpgradeCost,
+    costMultiplier: shopItemsTable.costMultiplier,
     createdAt: shopItemsTable.createdAt,
     updatedAt: shopItemsTable.updatedAt,
     heartCount: sql`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = ${shopItemsTable.id})`.as("heart_count")
   }).from(shopItemsTable);
   if (user2) {
     const userHearts = await db.select({ shopItemId: shopHeartsTable.shopItemId }).from(shopHeartsTable).where(eq(shopHeartsTable.userId, user2.id));
+    const userBoosts = await db.select({
+      shopItemId: refineryOrdersTable.shopItemId,
+      boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+    }).from(refineryOrdersTable).where(eq(refineryOrdersTable.userId, user2.id)).groupBy(refineryOrdersTable.shopItemId);
+    const userPenalties = await db.select({
+      shopItemId: shopPenaltiesTable.shopItemId,
+      probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier
+    }).from(shopPenaltiesTable).where(eq(shopPenaltiesTable.userId, user2.id));
     const heartedIds = new Set(userHearts.map((h) => h.shopItemId));
-    return items2.map((item) => ({
-      ...item,
-      hearted: heartedIds.has(item.id)
-    }));
+    const boostMap = new Map(userBoosts.map((b) => [b.shopItemId, Number(b.boostPercent)]));
+    const penaltyMap = new Map(userPenalties.map((p) => [p.shopItemId, p.probabilityMultiplier]));
+    return items2.map((item) => {
+      const userBoostPercent = boostMap.get(item.id) ?? 0;
+      const penaltyMultiplier = penaltyMap.get(item.id) ?? 100;
+      const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100);
+      return {
+        ...item,
+        heartCount: Number(item.heartCount) || 0,
+        userBoostPercent,
+        adjustedBaseProbability,
+        effectiveProbability: Math.min(adjustedBaseProbability + userBoostPercent, 100),
+        userHearted: heartedIds.has(item.id)
+      };
+    });
   }
   return items2.map((item) => ({
     ...item,
-    hearted: false
+    heartCount: Number(item.heartCount) || 0,
+    userBoostPercent: 0,
+    effectiveProbability: Math.min(item.baseProbability, 100),
+    userHearted: false
   }));
 });
 shop.get("/items/:id", async ({ params, headers }) => {
@@ -28993,6 +29211,9 @@ shop.get("/items/:id", async ({ params, headers }) => {
     price: shopItemsTable.price,
     category: shopItemsTable.category,
     count: shopItemsTable.count,
+    baseProbability: shopItemsTable.baseProbability,
+    baseUpgradeCost: shopItemsTable.baseUpgradeCost,
+    costMultiplier: shopItemsTable.costMultiplier,
     createdAt: shopItemsTable.createdAt,
     updatedAt: shopItemsTable.updatedAt,
     heartCount: sql`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = ${shopItemsTable.id})`.as("heart_count")
@@ -29002,11 +29223,27 @@ shop.get("/items/:id", async ({ params, headers }) => {
   }
   const item = items2[0];
   let hearted = false;
+  let userBoostPercent = 0;
+  let penaltyMultiplier = 100;
   if (user2) {
     const heart = await db.select().from(shopHeartsTable).where(and(eq(shopHeartsTable.userId, user2.id), eq(shopHeartsTable.shopItemId, itemId))).limit(1);
     hearted = heart.length > 0;
+    const boost = await db.select({
+      boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+    }).from(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
+    userBoostPercent = boost.length > 0 ? Number(boost[0].boostPercent) : 0;
+    const penalty = await db.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId))).limit(1);
+    penaltyMultiplier = penalty.length > 0 ? penalty[0].probabilityMultiplier : 100;
   }
-  return { ...item, hearted };
+  const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100);
+  return {
+    ...item,
+    heartCount: Number(item.heartCount) || 0,
+    userBoostPercent,
+    adjustedBaseProbability,
+    effectiveProbability: Math.min(adjustedBaseProbability + userBoostPercent, 100),
+    userHearted: hearted
+  };
 });
 shop.post("/items/:id/heart", async ({ params, headers }) => {
   const user2 = await getUserFromSession(headers);
@@ -29014,25 +29251,352 @@ shop.post("/items/:id/heart", async ({ params, headers }) => {
     return { error: "Unauthorized" };
   }
   const itemId = parseInt(params.id);
+  if (!Number.isInteger(itemId)) {
+    return { error: "Invalid item id" };
+  }
   const item = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
   if (item.length === 0) {
     return { error: "Item not found" };
   }
-  const existingHeart = await db.select().from(shopHeartsTable).where(and(eq(shopHeartsTable.userId, user2.id), eq(shopHeartsTable.shopItemId, itemId))).limit(1);
-  if (existingHeart.length > 0) {
-    await db.delete(shopHeartsTable).where(and(eq(shopHeartsTable.userId, user2.id), eq(shopHeartsTable.shopItemId, itemId)));
+  const deleted = await db.delete(shopHeartsTable).where(and(eq(shopHeartsTable.userId, user2.id), eq(shopHeartsTable.shopItemId, itemId))).returning({ userId: shopHeartsTable.userId });
+  if (deleted.length > 0) {
     return { hearted: false };
-  } else {
-    await db.insert(shopHeartsTable).values({
-      userId: user2.id,
-      shopItemId: itemId
-    });
-    return { hearted: true };
   }
+  await db.insert(shopHeartsTable).values({
+    userId: user2.id,
+    shopItemId: itemId
+  }).onConflictDoNothing();
+  return { hearted: true };
 });
 shop.get("/categories", async () => {
   const result = await db.selectDistinct({ category: shopItemsTable.category }).from(shopItemsTable);
   return result.map((r) => r.category);
+});
+shop.get("/balance", async ({ headers }) => {
+  const user2 = await getUserFromSession(headers);
+  if (!user2) {
+    return { error: "Unauthorized" };
+  }
+  return await getUserScrapsBalance(user2.id);
+});
+shop.post("/items/:id/purchase", async ({ params, body, headers }) => {
+  const user2 = await getUserFromSession(headers);
+  if (!user2) {
+    return { error: "Unauthorized" };
+  }
+  const itemId = parseInt(params.id);
+  if (!Number.isInteger(itemId)) {
+    return { error: "Invalid item id" };
+  }
+  const { quantity = 1, shippingAddress } = body;
+  if (quantity < 1 || !Number.isInteger(quantity)) {
+    return { error: "Invalid quantity" };
+  }
+  const items2 = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
+  if (items2.length === 0) {
+    return { error: "Item not found" };
+  }
+  const item = items2[0];
+  if (item.count < quantity) {
+    return { error: "Not enough stock available" };
+  }
+  const totalPrice = item.price * quantity;
+  const affordable = await canAfford(user2.id, totalPrice);
+  if (!affordable) {
+    const { balance } = await getUserScrapsBalance(user2.id);
+    return { error: "Insufficient scraps", required: totalPrice, available: balance };
+  }
+  const order = await db.transaction(async (tx) => {
+    const currentItem = await tx.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
+    if (currentItem.length === 0 || currentItem[0].count < quantity) {
+      throw new Error("Not enough stock");
+    }
+    await tx.update(shopItemsTable).set({
+      count: currentItem[0].count - quantity,
+      updatedAt: new Date
+    }).where(eq(shopItemsTable.id, itemId));
+    const newOrder = await tx.insert(shopOrdersTable).values({
+      userId: user2.id,
+      shopItemId: itemId,
+      quantity,
+      pricePerItem: item.price,
+      totalPrice,
+      shippingAddress: shippingAddress || null,
+      status: "pending"
+    }).returning();
+    return newOrder[0];
+  });
+  return {
+    success: true,
+    order: {
+      id: order.id,
+      itemName: item.name,
+      quantity: order.quantity,
+      totalPrice: order.totalPrice,
+      status: order.status
+    }
+  };
+});
+shop.get("/orders", async ({ headers }) => {
+  const user2 = await getUserFromSession(headers);
+  if (!user2) {
+    return { error: "Unauthorized" };
+  }
+  const orders = await db.select({
+    id: shopOrdersTable.id,
+    quantity: shopOrdersTable.quantity,
+    pricePerItem: shopOrdersTable.pricePerItem,
+    totalPrice: shopOrdersTable.totalPrice,
+    status: shopOrdersTable.status,
+    createdAt: shopOrdersTable.createdAt,
+    itemId: shopItemsTable.id,
+    itemName: shopItemsTable.name,
+    itemImage: shopItemsTable.image
+  }).from(shopOrdersTable).innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id)).where(eq(shopOrdersTable.userId, user2.id)).orderBy(desc(shopOrdersTable.createdAt));
+  return orders;
+});
+shop.post("/items/:id/try-luck", async ({ params, headers }) => {
+  const user2 = await getUserFromSession(headers);
+  if (!user2) {
+    return { error: "Unauthorized" };
+  }
+  const itemId = parseInt(params.id);
+  if (!Number.isInteger(itemId)) {
+    return { error: "Invalid item id" };
+  }
+  const items2 = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
+  if (items2.length === 0) {
+    return { error: "Item not found" };
+  }
+  const item = items2[0];
+  if (item.count < 1) {
+    return { error: "Out of stock" };
+  }
+  const boostResult = await db.select({
+    boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+  }).from(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
+  const penaltyResult = await db.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId))).limit(1);
+  const boostPercent = boostResult.length > 0 ? Number(boostResult[0].boostPercent) : 0;
+  const penaltyMultiplier = penaltyResult.length > 0 ? penaltyResult[0].probabilityMultiplier : 100;
+  const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100);
+  const effectiveProbability = Math.min(adjustedBaseProbability + boostPercent, 100);
+  const affordable = await canAfford(user2.id, item.price);
+  if (!affordable) {
+    const { balance } = await getUserScrapsBalance(user2.id);
+    return { error: "Insufficient scraps", required: item.price, available: balance };
+  }
+  const rolled = Math.floor(Math.random() * 100) + 1;
+  const won = rolled <= effectiveProbability;
+  await db.insert(shopRollsTable).values({
+    userId: user2.id,
+    shopItemId: itemId,
+    rolled,
+    threshold: effectiveProbability,
+    won
+  });
+  if (won) {
+    const order = await db.transaction(async (tx) => {
+      const currentItem = await tx.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
+      if (currentItem.length === 0 || currentItem[0].count < 1) {
+        throw new Error("Out of stock");
+      }
+      await tx.update(shopItemsTable).set({
+        count: currentItem[0].count - 1,
+        updatedAt: new Date
+      }).where(eq(shopItemsTable.id, itemId));
+      const newOrder = await tx.insert(shopOrdersTable).values({
+        userId: user2.id,
+        shopItemId: itemId,
+        quantity: 1,
+        pricePerItem: item.price,
+        totalPrice: item.price,
+        shippingAddress: null,
+        status: "pending",
+        orderType: "luck_win"
+      }).returning();
+      await tx.delete(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
+      const existingPenalty = await tx.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId))).limit(1);
+      if (existingPenalty.length > 0) {
+        const newMultiplier = Math.max(1, Math.floor(existingPenalty[0].probabilityMultiplier / 2));
+        await tx.update(shopPenaltiesTable).set({
+          probabilityMultiplier: newMultiplier,
+          updatedAt: new Date
+        }).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId)));
+      } else {
+        await tx.insert(shopPenaltiesTable).values({
+          userId: user2.id,
+          shopItemId: itemId,
+          probabilityMultiplier: 50
+        });
+      }
+      return newOrder[0];
+    });
+    return { success: true, won: true, orderId: order.id, effectiveProbability, rolled, refineryReset: true, probabilityHalved: true };
+  }
+  return { success: true, won: false, effectiveProbability, rolled };
+});
+shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
+  const user2 = await getUserFromSession(headers);
+  if (!user2) {
+    return { error: "Unauthorized" };
+  }
+  const itemId = parseInt(params.id);
+  if (!Number.isInteger(itemId)) {
+    return { error: "Invalid item id" };
+  }
+  const items2 = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
+  if (items2.length === 0) {
+    return { error: "Item not found" };
+  }
+  const item = items2[0];
+  const boostResult = await db.select({
+    boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+  }).from(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
+  const currentBoost = boostResult.length > 0 ? Number(boostResult[0].boostPercent) : 0;
+  const penaltyResult = await db.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId))).limit(1);
+  const penaltyMultiplier = penaltyResult.length > 0 ? penaltyResult[0].probabilityMultiplier : 100;
+  const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100);
+  const maxBoost = 100 - adjustedBaseProbability;
+  if (currentBoost >= maxBoost) {
+    return { error: "Already at maximum probability" };
+  }
+  const cost = Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, currentBoost));
+  const affordable = await canAfford(user2.id, cost);
+  if (!affordable) {
+    const { balance } = await getUserScrapsBalance(user2.id);
+    return { error: "Insufficient scraps", required: cost, available: balance };
+  }
+  const newBoost = currentBoost + 1;
+  await db.insert(refineryOrdersTable).values({
+    userId: user2.id,
+    shopItemId: itemId,
+    cost,
+    boostAmount: 1
+  });
+  const nextCost = newBoost >= maxBoost ? null : Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, newBoost));
+  return {
+    boostPercent: newBoost,
+    nextCost,
+    effectiveProbability: Math.min(adjustedBaseProbability + newBoost, 100)
+  };
+});
+shop.get("/items/:id/leaderboard", async ({ params }) => {
+  const itemId = parseInt(params.id);
+  if (!Number.isInteger(itemId)) {
+    return { error: "Invalid item id" };
+  }
+  const items2 = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
+  if (items2.length === 0) {
+    return { error: "Item not found" };
+  }
+  const item = items2[0];
+  const leaderboard = await db.select({
+    userId: refineryOrdersTable.userId,
+    username: usersTable.username,
+    avatar: usersTable.avatar,
+    boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+  }).from(refineryOrdersTable).innerJoin(usersTable, eq(refineryOrdersTable.userId, usersTable.id)).where(eq(refineryOrdersTable.shopItemId, itemId)).groupBy(refineryOrdersTable.userId, usersTable.username, usersTable.avatar).orderBy(desc(sql`SUM(${refineryOrdersTable.boostAmount})`)).limit(20);
+  return leaderboard.map((entry) => ({
+    ...entry,
+    boostPercent: Number(entry.boostPercent),
+    effectiveProbability: Math.min(item.baseProbability + Number(entry.boostPercent), 100)
+  }));
+});
+shop.get("/items/:id/buyers", async ({ params }) => {
+  const itemId = parseInt(params.id);
+  if (!Number.isInteger(itemId)) {
+    return { error: "Invalid item id" };
+  }
+  const buyers = await db.select({
+    userId: shopOrdersTable.userId,
+    username: usersTable.username,
+    avatar: usersTable.avatar,
+    quantity: shopOrdersTable.quantity,
+    createdAt: shopOrdersTable.createdAt
+  }).from(shopOrdersTable).innerJoin(usersTable, eq(shopOrdersTable.userId, usersTable.id)).where(eq(shopOrdersTable.shopItemId, itemId)).orderBy(desc(shopOrdersTable.createdAt)).limit(20);
+  return buyers;
+});
+shop.get("/items/:id/hearts", async ({ params }) => {
+  const itemId = parseInt(params.id);
+  if (!Number.isInteger(itemId)) {
+    return { error: "Invalid item id" };
+  }
+  const hearts = await db.select({
+    userId: shopHeartsTable.userId,
+    username: usersTable.username,
+    avatar: usersTable.avatar,
+    createdAt: shopHeartsTable.createdAt
+  }).from(shopHeartsTable).innerJoin(usersTable, eq(shopHeartsTable.userId, usersTable.id)).where(eq(shopHeartsTable.shopItemId, itemId)).orderBy(desc(shopHeartsTable.createdAt)).limit(20);
+  return hearts;
+});
+shop.get("/addresses", async ({ headers }) => {
+  const user2 = await getUserFromSession(headers);
+  if (!user2) {
+    return { error: "Unauthorized" };
+  }
+  const userData = await db.select({ accessToken: usersTable.accessToken }).from(usersTable).where(eq(usersTable.id, user2.id)).limit(1);
+  if (userData.length === 0 || !userData[0].accessToken) {
+    return [];
+  }
+  try {
+    const response = await fetch("https://identity.hackclub.com/api/v1/me", {
+      headers: {
+        Authorization: `Bearer ${userData[0].accessToken}`
+      }
+    });
+    if (!response.ok) {
+      return [];
+    }
+    const data = await response.json();
+    return data.identity?.addresses ?? [];
+  } catch {
+    return [];
+  }
+});
+shop.get("/orders/pending-address", async ({ headers }) => {
+  const user2 = await getUserFromSession(headers);
+  if (!user2) {
+    return { error: "Unauthorized" };
+  }
+  const orders = await db.select({
+    id: shopOrdersTable.id,
+    quantity: shopOrdersTable.quantity,
+    pricePerItem: shopOrdersTable.pricePerItem,
+    totalPrice: shopOrdersTable.totalPrice,
+    status: shopOrdersTable.status,
+    orderType: shopOrdersTable.orderType,
+    createdAt: shopOrdersTable.createdAt,
+    itemId: shopItemsTable.id,
+    itemName: shopItemsTable.name,
+    itemImage: shopItemsTable.image
+  }).from(shopOrdersTable).innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id)).where(and(eq(shopOrdersTable.userId, user2.id), isNull(shopOrdersTable.shippingAddress))).orderBy(desc(shopOrdersTable.createdAt));
+  return orders;
+});
+shop.post("/orders/:id/address", async ({ params, body, headers }) => {
+  const user2 = await getUserFromSession(headers);
+  if (!user2) {
+    return { error: "Unauthorized" };
+  }
+  const orderId = parseInt(params.id);
+  if (!Number.isInteger(orderId)) {
+    return { error: "Invalid order id" };
+  }
+  const { shippingAddress } = body;
+  if (!shippingAddress) {
+    return { error: "Shipping address is required" };
+  }
+  const orders = await db.select().from(shopOrdersTable).where(eq(shopOrdersTable.id, orderId)).limit(1);
+  if (orders.length === 0) {
+    return { error: "Order not found" };
+  }
+  if (orders[0].userId !== user2.id) {
+    return { error: "Unauthorized" };
+  }
+  await db.update(shopOrdersTable).set({
+    shippingAddress,
+    updatedAt: new Date
+  }).where(eq(shopOrdersTable.id, orderId));
+  return { success: true };
 });
 var shop_default = shop;
 
@@ -29045,17 +29609,19 @@ leaderboard.get("/", async ({ query }) => {
       id: usersTable.id,
       username: usersTable.username,
       avatar: usersTable.avatar,
-      scraps: usersTable.scraps,
+      scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as("scraps_earned"),
+      scrapsSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_spent"),
       hours: sql`COALESCE(SUM(${projectsTable.hours}), 0)`.as("total_hours"),
       projectCount: sql`COUNT(${projectsTable.id})`.as("project_count")
-    }).from(usersTable).leftJoin(projectsTable, eq(projectsTable.userId, usersTable.id)).groupBy(usersTable.id).orderBy(desc(sql`total_hours`)).limit(10);
+    }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))).groupBy(usersTable.id).orderBy(desc(sql`total_hours`)).limit(10);
     return results2.map((user2, index) => ({
       rank: index + 1,
       id: user2.id,
       username: user2.username,
       avatar: user2.avatar,
       hours: Number(user2.hours),
-      scraps: user2.scraps,
+      scraps: Number(user2.scrapsEarned) - Number(user2.scrapsSpent),
+      scrapsEarned: Number(user2.scrapsEarned),
       projectCount: Number(user2.projectCount)
     }));
   }
@@ -29063,23 +29629,89 @@ leaderboard.get("/", async ({ query }) => {
     id: usersTable.id,
     username: usersTable.username,
     avatar: usersTable.avatar,
-    scraps: usersTable.scraps,
+    scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as("scraps_earned"),
+    scrapsSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_spent"),
     hours: sql`COALESCE(SUM(${projectsTable.hours}), 0)`.as("total_hours"),
     projectCount: sql`COUNT(${projectsTable.id})`.as("project_count")
-  }).from(usersTable).leftJoin(projectsTable, eq(projectsTable.userId, usersTable.id)).groupBy(usersTable.id).orderBy(desc(usersTable.scraps)).limit(10);
+  }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))).groupBy(usersTable.id).orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`)).limit(10);
   return results.map((user2, index) => ({
     rank: index + 1,
     id: user2.id,
     username: user2.username,
     avatar: user2.avatar,
     hours: Number(user2.hours),
-    scraps: user2.scraps,
+    scraps: Number(user2.scrapsEarned) - Number(user2.scrapsSpent),
+    scrapsEarned: Number(user2.scrapsEarned),
     projectCount: Number(user2.projectCount)
   }));
 }, {
   query: t.Object({
     sortBy: t.Optional(t.Union([t.Literal("hours"), t.Literal("scraps")]))
   })
+});
+leaderboard.get("/probability-leaders", async () => {
+  const items2 = await db.select({
+    id: shopItemsTable.id,
+    name: shopItemsTable.name,
+    image: shopItemsTable.image,
+    baseProbability: shopItemsTable.baseProbability
+  }).from(shopItemsTable);
+  const allBoosts = await db.select({
+    userId: refineryOrdersTable.userId,
+    shopItemId: refineryOrdersTable.shopItemId,
+    boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+  }).from(refineryOrdersTable).groupBy(refineryOrdersTable.userId, refineryOrdersTable.shopItemId);
+  const allPenalties = await db.select({
+    userId: shopPenaltiesTable.userId,
+    shopItemId: shopPenaltiesTable.shopItemId,
+    probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier
+  }).from(shopPenaltiesTable);
+  const boostMap = new Map;
+  for (const b of allBoosts) {
+    boostMap.set(`${b.userId}-${b.shopItemId}`, Number(b.boostPercent));
+  }
+  const penaltyMap = new Map;
+  for (const p of allPenalties) {
+    penaltyMap.set(`${p.userId}-${p.shopItemId}`, p.probabilityMultiplier);
+  }
+  const userIds = new Set;
+  for (const b of allBoosts)
+    userIds.add(b.userId);
+  for (const p of allPenalties)
+    userIds.add(p.userId);
+  const users = userIds.size > 0 ? await db.select({
+    id: usersTable.id,
+    username: usersTable.username,
+    avatar: usersTable.avatar
+  }).from(usersTable) : [];
+  const userMap = new Map(users.map((u) => [u.id, u]));
+  const result = items2.map((item) => {
+    let topUser = null;
+    let topProbability = item.baseProbability;
+    for (const userId of userIds) {
+      const boost = boostMap.get(`${userId}-${item.id}`) ?? 0;
+      const penaltyMultiplier = penaltyMap.get(`${userId}-${item.id}`) ?? 100;
+      const adjustedBase = Math.floor(item.baseProbability * penaltyMultiplier / 100);
+      const effectiveProbability = Math.min(adjustedBase + boost, 100);
+      if (effectiveProbability > topProbability) {
+        topProbability = effectiveProbability;
+        topUser = userMap.get(userId) ?? null;
+      }
+    }
+    return {
+      itemId: item.id,
+      itemName: item.name,
+      itemImage: item.image,
+      baseProbability: item.baseProbability,
+      topUser: topUser ? {
+        id: topUser.id,
+        username: topUser.username,
+        avatar: topUser.avatar
+      } : null,
+      effectiveProbability: topProbability
+    };
+  });
+  return result;
 });
 var leaderboard_default = leaderboard;
 
@@ -29127,7 +29759,7 @@ var hackatime_default = hackatime;
 
 // src/routes/upload.ts
 var HCCDN_URL = "https://cdn.hackclub.com/api/v4/upload";
-var HCCDN_KEY = process.env.HCCDN_KEY;
+var HCCDN_KEY = config.hccdnKey;
 var upload = new Elysia({ prefix: "/upload" });
 upload.post("/image", async ({ body, headers }) => {
   const user2 = await getUserFromSession(headers);
@@ -29202,9 +29834,22 @@ admin.get("/users", async ({ headers, query }) => {
   const page = parseInt(query.page) || 1;
   const limit = Math.min(parseInt(query.limit) || 20, 100);
   const offset = (page - 1) * limit;
+  const search = query.search?.trim() || "";
+  const searchCondition = search ? or(sql`${usersTable.username} ILIKE ${"%" + search + "%"}`, sql`${usersTable.email} ILIKE ${"%" + search + "%"}`, sql`${usersTable.slackId} ILIKE ${"%" + search + "%"}`) : undefined;
   const [users, countResult] = await Promise.all([
-    db.select().from(usersTable).orderBy(desc(usersTable.createdAt)).limit(limit).offset(offset),
-    db.select({ count: sql`count(*)` }).from(usersTable)
+    db.select({
+      id: usersTable.id,
+      username: usersTable.username,
+      email: usersTable.email,
+      avatar: usersTable.avatar,
+      slackId: usersTable.slackId,
+      role: usersTable.role,
+      internalNotes: usersTable.internalNotes,
+      createdAt: usersTable.createdAt,
+      scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as("scraps_earned"),
+      scrapsSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_spent")
+    }).from(usersTable).where(searchCondition).orderBy(desc(usersTable.createdAt)).limit(limit).offset(offset),
+    db.select({ count: sql`count(*)` }).from(usersTable).where(searchCondition)
   ]);
   const total = Number(countResult[0]?.count || 0);
   return {
@@ -29214,7 +29859,7 @@ admin.get("/users", async ({ headers, query }) => {
       email: user2.role === "admin" ? u.email : undefined,
       avatar: u.avatar,
       slackId: u.slackId,
-      scraps: u.scraps,
+      scraps: Number(u.scrapsEarned) - Number(u.scrapsSpent),
       role: u.role,
       internalNotes: u.internalNotes,
       createdAt: u.createdAt
@@ -29231,10 +29876,11 @@ admin.get("/users/:id", async ({ params, headers }) => {
   const user2 = await requireReviewer(headers);
   if (!user2)
     return { error: "Unauthorized" };
-  const targetUser = await db.select().from(usersTable).where(eq(usersTable.id, parseInt(params.id))).limit(1);
+  const targetUserId = parseInt(params.id);
+  const targetUser = await db.select().from(usersTable).where(eq(usersTable.id, targetUserId)).limit(1);
   if (!targetUser[0])
     return { error: "User not found" };
-  const projects2 = await db.select().from(projectsTable).where(eq(projectsTable.userId, parseInt(params.id))).orderBy(desc(projectsTable.updatedAt));
+  const projects2 = await db.select().from(projectsTable).where(eq(projectsTable.userId, targetUserId)).orderBy(desc(projectsTable.updatedAt));
   const projectStats = {
     total: projects2.length,
     shipped: projects2.filter((p) => p.status === "shipped").length,
@@ -29242,7 +29888,8 @@ admin.get("/users/:id", async ({ params, headers }) => {
     waitingForReview: projects2.filter((p) => p.status === "waiting_for_review").length,
     rejected: projects2.filter((p) => p.status === "permanently_rejected").length
   };
-  const totalHours = projects2.reduce((sum, p) => sum + (p.hoursOverride ?? p.hours), 0);
+  const totalHours = projects2.reduce((sum, p) => sum + (p.hoursOverride ?? p.hours ?? 0), 0);
+  const scrapsBalance = await getUserScrapsBalance(targetUserId);
   return {
     user: {
       id: targetUser[0].id,
@@ -29250,7 +29897,7 @@ admin.get("/users/:id", async ({ params, headers }) => {
       email: user2.role === "admin" ? targetUser[0].email : undefined,
       avatar: targetUser[0].avatar,
       slackId: targetUser[0].slackId,
-      scraps: targetUser[0].scraps,
+      scraps: scrapsBalance.balance,
       role: targetUser[0].role,
       internalNotes: targetUser[0].internalNotes,
       createdAt: targetUser[0].createdAt
@@ -29355,6 +30002,12 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
   const project = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1);
   if (!project[0])
     return { error: "Project not found" };
+  if (project[0].deleted) {
+    return { error: "Cannot review a deleted project" };
+  }
+  if (project[0].status !== "waiting_for_review") {
+    return { error: "Project is not marked for review" };
+  }
   await db.insert(reviewsTable).values({
     projectId,
     reviewerId: user2.id,
@@ -29383,7 +30036,20 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
   if (hoursOverride !== undefined) {
     updateData.hoursOverride = hoursOverride;
   }
+  let scrapsAwarded = 0;
+  if (action === "approved") {
+    const hours = hoursOverride ?? project[0].hours ?? 0;
+    scrapsAwarded = calculateScrapsFromHours(hours);
+    updateData.scrapsAwarded = scrapsAwarded;
+  }
   await db.update(projectsTable).set(updateData).where(eq(projectsTable.id, projectId));
+  if (action === "approved" && scrapsAwarded > 0) {
+    await db.insert(activityTable).values({
+      userId: project[0].userId,
+      projectId,
+      action: `earned ${scrapsAwarded} scraps`
+    });
+  }
   if (userInternalNotes !== undefined) {
     if (userInternalNotes.length <= 2500) {
       await db.update(usersTable).set({ internalNotes: userInternalNotes, updatedAt: new Date }).where(eq(usersTable.id, project[0].userId));
@@ -29402,12 +30068,15 @@ admin.post("/shop/items", async ({ headers, body }) => {
   const user2 = await requireAdmin(headers);
   if (!user2)
     return { error: "Unauthorized" };
-  const { name, image, description, price, category, count } = body;
+  const { name, image, description, price, category, count, baseProbability, baseUpgradeCost, costMultiplier, boostAmount } = body;
   if (!name?.trim() || !image?.trim() || !description?.trim() || !category?.trim()) {
     return { error: "All fields are required" };
   }
   if (typeof price !== "number" || price < 0) {
     return { error: "Invalid price" };
+  }
+  if (baseProbability !== undefined && (typeof baseProbability !== "number" || baseProbability < 0 || baseProbability > 100)) {
+    return { error: "baseProbability must be between 0 and 100" };
   }
   const inserted = await db.insert(shopItemsTable).values({
     name: name.trim(),
@@ -29415,7 +30084,11 @@ admin.post("/shop/items", async ({ headers, body }) => {
     description: description.trim(),
     price,
     category: category.trim(),
-    count: count || 0
+    count: count || 0,
+    baseProbability: baseProbability ?? 50,
+    baseUpgradeCost: baseUpgradeCost ?? 10,
+    costMultiplier: costMultiplier ?? 115,
+    boostAmount: boostAmount ?? 1
   }).returning();
   return inserted[0];
 });
@@ -29423,7 +30096,10 @@ admin.put("/shop/items/:id", async ({ params, headers, body }) => {
   const user2 = await requireAdmin(headers);
   if (!user2)
     return { error: "Unauthorized" };
-  const { name, image, description, price, category, count } = body;
+  const { name, image, description, price, category, count, baseProbability, baseUpgradeCost, costMultiplier, boostAmount } = body;
+  if (baseProbability !== undefined && (typeof baseProbability !== "number" || baseProbability < 0 || baseProbability > 100)) {
+    return { error: "baseProbability must be between 0 and 100" };
+  }
   const updateData = { updatedAt: new Date };
   if (name !== undefined)
     updateData.name = name.trim();
@@ -29437,6 +30113,14 @@ admin.put("/shop/items/:id", async ({ params, headers, body }) => {
     updateData.category = category.trim();
   if (count !== undefined)
     updateData.count = count;
+  if (baseProbability !== undefined)
+    updateData.baseProbability = baseProbability;
+  if (baseUpgradeCost !== undefined)
+    updateData.baseUpgradeCost = baseUpgradeCost;
+  if (costMultiplier !== undefined)
+    updateData.costMultiplier = costMultiplier;
+  if (boostAmount !== undefined)
+    updateData.boostAmount = boostAmount;
   const updated = await db.update(shopItemsTable).set(updateData).where(eq(shopItemsTable.id, parseInt(params.id))).returning();
   return updated[0] || { error: "Not found" };
 });
@@ -29444,7 +30128,9 @@ admin.delete("/shop/items/:id", async ({ params, headers }) => {
   const user2 = await requireAdmin(headers);
   if (!user2)
     return { error: "Unauthorized" };
-  await db.delete(shopItemsTable).where(eq(shopItemsTable.id, parseInt(params.id)));
+  const itemId = parseInt(params.id);
+  await db.delete(shopHeartsTable).where(eq(shopHeartsTable.shopItemId, itemId));
+  await db.delete(shopItemsTable).where(eq(shopItemsTable.id, itemId));
   return { success: true };
 });
 admin.get("/news", async ({ headers }) => {
@@ -29491,12 +30177,55 @@ admin.delete("/news/:id", async ({ params, headers }) => {
   await db.delete(newsTable).where(eq(newsTable.id, parseInt(params.id)));
   return { success: true };
 });
+admin.get("/orders", async ({ headers, query }) => {
+  const user2 = await requireAdmin(headers);
+  if (!user2)
+    return { error: "Unauthorized" };
+  const status2 = query.status;
+  let ordersQuery = db.select({
+    id: shopOrdersTable.id,
+    quantity: shopOrdersTable.quantity,
+    pricePerItem: shopOrdersTable.pricePerItem,
+    totalPrice: shopOrdersTable.totalPrice,
+    status: shopOrdersTable.status,
+    shippingAddress: shopOrdersTable.shippingAddress,
+    notes: shopOrdersTable.notes,
+    createdAt: shopOrdersTable.createdAt,
+    itemId: shopItemsTable.id,
+    itemName: shopItemsTable.name,
+    itemImage: shopItemsTable.image,
+    userId: usersTable.id,
+    username: usersTable.username,
+    userEmail: usersTable.email
+  }).from(shopOrdersTable).innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id)).innerJoin(usersTable, eq(shopOrdersTable.userId, usersTable.id)).orderBy(desc(shopOrdersTable.createdAt));
+  if (status2) {
+    ordersQuery = ordersQuery.where(eq(shopOrdersTable.status, status2));
+  }
+  return await ordersQuery;
+});
+admin.patch("/orders/:id", async ({ params, body, headers }) => {
+  const user2 = await requireAdmin(headers);
+  if (!user2)
+    return { error: "Unauthorized" };
+  const { status: status2, notes } = body;
+  const validStatuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
+  if (status2 && !validStatuses.includes(status2)) {
+    return { error: "Invalid status" };
+  }
+  const updateData = { updatedAt: new Date };
+  if (status2)
+    updateData.status = status2;
+  if (notes !== undefined)
+    updateData.notes = notes;
+  const updated = await db.update(shopOrdersTable).set(updateData).where(eq(shopOrdersTable.id, parseInt(params.id))).returning();
+  return updated[0] || { error: "Not found" };
+});
 var admin_default = admin;
 
 // src/index.ts
-var api = new Elysia({ prefix: "/api" }).use(auth_default).use(projects_default).use(news_default).use(items_default).use(user_default).use(shop_default).use(leaderboard_default).use(hackatime_default).use(upload_default).use(admin_default).get("/", () => "if you dm @notaroomba abt finding this you may get cool stickers");
+var api = new Elysia().use(auth_default).use(projects_default).use(news_default).use(items_default).use(user_default).use(shop_default).use(leaderboard_default).use(hackatime_default).use(upload_default).use(admin_default).get("/", () => "if you dm @notaroomba abt finding this you may get cool stickers");
 var app = new Elysia().use(cors({
-  origin: [process.env.FRONTEND_URL],
+  origin: [config.frontendUrl],
   credentials: true
-})).use(api).listen(3000);
+})).use(api).listen(config.port);
 console.log(`\uD83E\uDD8A Elysia is running at ${app.server?.hostname}:${app.server?.port}`);

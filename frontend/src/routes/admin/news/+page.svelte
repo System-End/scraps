@@ -31,6 +31,7 @@
 	let formContent = $state('')
 	let formActive = $state(true)
 	let formError = $state<string | null>(null)
+	let deleteConfirmId = $state<number | null>(null)
 
 	onMount(async () => {
 		user = await getUser()
@@ -136,11 +137,15 @@
 		}
 	}
 
-	async function deleteItem(id: number) {
-		if (!confirm('Are you sure you want to delete this news item?')) return
+	function requestDelete(id: number) {
+		deleteConfirmId = id
+	}
+
+	async function confirmDelete() {
+		if (!deleteConfirmId) return
 
 		try {
-			const response = await fetch(`${API_URL}/admin/news/${id}`, {
+			const response = await fetch(`${API_URL}/admin/news/${deleteConfirmId}`, {
 				method: 'DELETE',
 				credentials: 'include'
 			})
@@ -149,6 +154,8 @@
 			}
 		} catch (e) {
 			console.error('Failed to delete:', e)
+		} finally {
+			deleteConfirmId = null
 		}
 	}
 
@@ -162,7 +169,7 @@
 </script>
 
 <svelte:head>
-	<title>news editor | admin | scraps</title>
+	<title>news editor - admin - scraps</title>
 </svelte:head>
 
 <div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">
@@ -218,7 +225,7 @@
 								<Pencil size={18} />
 							</button>
 							<button
-								onclick={() => deleteItem(item.id)}
+								onclick={() => requestDelete(item.id)}
 								class="p-2 border-4 border-red-600 text-red-600 rounded-lg hover:bg-red-50 transition-all duration-200 cursor-pointer"
 							>
 								<Trash2 size={18} />
@@ -293,6 +300,37 @@
 					class="flex-1 px-4 py-2 bg-black text-white rounded-full font-bold border-4 border-black hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 cursor-pointer"
 				>
 					{saving ? 'saving...' : editingItem ? 'save' : 'create'}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if deleteConfirmId}
+	<div
+		class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+		onclick={(e) => e.target === e.currentTarget && (deleteConfirmId = null)}
+		onkeydown={(e) => e.key === 'Escape' && (deleteConfirmId = null)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="bg-white rounded-2xl w-full max-w-md p-6 border-4 border-black">
+			<h2 class="text-2xl font-bold mb-4">confirm delete</h2>
+			<p class="text-gray-600 mb-6">
+				are you sure you want to delete this news item? <span class="text-red-600 block mt-2">this action cannot be undone.</span>
+			</p>
+			<div class="flex gap-3">
+				<button
+					onclick={() => (deleteConfirmId = null)}
+					class="flex-1 px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 cursor-pointer"
+				>
+					cancel
+				</button>
+				<button
+					onclick={confirmDelete}
+					class="flex-1 px-4 py-2 bg-red-600 text-white rounded-full font-bold border-4 border-black hover:border-dashed transition-all duration-200 cursor-pointer"
+				>
+					delete
 				</button>
 			</div>
 		</div>

@@ -3,78 +3,97 @@
 	import { Origami } from '@lucide/svelte'
 	import Superscript from '$lib/components/Superscript.svelte'
 	import { login } from '$lib/auth-client'
+	import { API_URL } from '$lib/config'
 
 	function handleLogin() {
 		login()
 	}
 
-	interface ScrapItem {
-		id: string;
-		image: string;
-		title: string;
-		chance: number;
-		description?: string;
+	interface ShopItem {
+		id: number
+		name: string
+		description: string
+		image: string
+		price: number
+		category: string
 	}
 
-	const exampleItems: ScrapItem[] = [
-		{ id: '1', image: '/hero.png', title: 'esp32', chance: 15, description: 'a tiny microcontroller' },
-		{ id: '2', image: '/hero.png', title: 'arduino nano', chance: 10 },
-		{ id: '3', image: '/hero.png', title: 'breadboard', chance: 20, description: 'for prototyping' },
-		{ id: '4', image: '/hero.png', title: 'resistor pack', chance: 25 },
-		{ id: '5', image: '/hero.png', title: 'vermont fudge', chance: 5, description: 'delicious!' },
-		{ id: '6', image: '/hero.png', title: 'rare sticker', chance: 8 },
-		{ id: '7', image: '/hero.png', title: 'postcard', chance: 12 },
-		{ id: '8', image: '/hero.png', title: 'sensor kit', chance: 5, description: 'various sensors' }
-	];
+	interface ScrapItem {
+		id: string
+		image: string
+		title: string
+		price: number
+		description?: string
+	}
 
-	let row1ScrollPos = $state(0);
-	let row2ScrollPos = $state(0);
-	let isManualScrolling = $state(false);
-	let manualScrollTimeout: ReturnType<typeof setTimeout>;
+	let shopItems = $state<ShopItem[]>([])
+	let row1ScrollPos = $state(0)
+	let row2ScrollPos = $state(0)
+	let isManualScrolling = $state(false)
+	let manualScrollTimeout: ReturnType<typeof setTimeout>
 
-	const SCROLL_SPEED = 0.5;
-	const ITEM_WIDTH = 280;
-	const GAP = 16;
+	const SCROLL_SPEED = 0.5
+	const ITEM_WIDTH = 280
+	const GAP = 16
+
+	function shopToScrapItems(items: ShopItem[]): ScrapItem[] {
+		return items.map((item) => ({
+			id: String(item.id),
+			image: item.image || '/hero.png',
+			title: item.name,
+			price: item.price,
+			description: item.description
+		}))
+	}
 
 	function duplicateItems(items: ScrapItem[], times: number): ScrapItem[] {
-		const result: ScrapItem[] = [];
+		const result: ScrapItem[] = []
 		for (let i = 0; i < times; i++) {
 			items.forEach((item, idx) => {
-				result.push({ ...item, id: `${item.id}-${i}-${idx}` });
-			});
+				result.push({ ...item, id: `${item.id}-${i}-${idx}` })
+			})
 		}
-		return result;
+		return result
 	}
 
-	const row1Items = duplicateItems(exampleItems, 8);
-	const row2Items = duplicateItems([...exampleItems].reverse(), 8);
+	let scrapItems = $derived(shopToScrapItems(shopItems))
+	let row1Items = $derived(duplicateItems(scrapItems, 8))
+	let row2Items = $derived(duplicateItems([...scrapItems].reverse(), 8))
+	let totalSetWidth = $derived(scrapItems.length * (ITEM_WIDTH + GAP))
 
-	const totalSetWidth = exampleItems.length * (ITEM_WIDTH + GAP);
-
-	onMount(() => {
-		let animationId: number;
-
-		function animate() {
-			if (!isManualScrolling) {
-				row1ScrollPos += SCROLL_SPEED;
-				row2ScrollPos += SCROLL_SPEED;
-
-				if (row1ScrollPos >= totalSetWidth) {
-					row1ScrollPos = row1ScrollPos - totalSetWidth;
-				}
-				if (row2ScrollPos >= totalSetWidth) {
-					row2ScrollPos = row2ScrollPos - totalSetWidth;
-				}
+	onMount(async () => {
+		try {
+			const response = await fetch(`${API_URL}/shop/items`)
+			if (response.ok) {
+				shopItems = await response.json()
 			}
-			animationId = requestAnimationFrame(animate);
+		} catch (e) {
+			console.error('Failed to fetch shop items:', e)
 		}
 
-		animate();
+		let animationId: number
+
+		function animate() {
+			if (!isManualScrolling && totalSetWidth > 0) {
+				row1ScrollPos += SCROLL_SPEED
+				row2ScrollPos += SCROLL_SPEED
+
+				if (row1ScrollPos >= totalSetWidth) {
+					row1ScrollPos = row1ScrollPos - totalSetWidth
+				}
+				if (row2ScrollPos >= totalSetWidth) {
+					row2ScrollPos = row2ScrollPos - totalSetWidth
+				}
+			}
+			animationId = requestAnimationFrame(animate)
+		}
+
+		animate()
 
 		return () => {
-			cancelAnimationFrame(animationId);
-		};
-	});
+			cancelAnimationFrame(animationId)
+		}
+	})
 
 	function handleWheel(e: WheelEvent, row: 1 | 2) {
 		if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
@@ -157,7 +176,7 @@
 					>
 						<img src={item.image} alt={item.title} class="w-full h-32 object-contain mb-3" />
 						<h3 class="font-bold text-lg">{item.title}</h3>
-						<p class="text-sm text-gray-600">{item.chance}% chance</p>
+						<p class="text-sm text-gray-600">{item.price} scraps</p>
 						{#if item.description}
 							<p class="text-sm mt-1">{item.description}</p>
 						{/if}
@@ -184,7 +203,7 @@
 					>
 						<img src={item.image} alt={item.title} class="w-full h-32 object-contain mb-3" />
 						<h3 class="font-bold text-lg">{item.title}</h3>
-						<p class="text-sm text-gray-600">{item.chance}% chance</p>
+						<p class="text-sm text-gray-600">{item.price} scraps</p>
 						{#if item.description}
 							<p class="text-sm mt-1">{item.description}</p>
 						{/if}
@@ -219,14 +238,19 @@
 
 		<p class="mb-6">
 			well, it's simple: you just ship any projects that are extra silly, nonsensical, or fun<Superscript number={8} tooltip="or literally any project" />, and
-			you will get a chance to spin a wheel<Superscript number={9} tooltip="totally not gambling" /> for every 30 minutes of work you do!
+			you will earn scraps for the time you put in! track your time with <a
+				href="https://hackatime.hackclub.com"
+				target="_blank"
+				rel="noopener noreferrer"
+				class="underline hover:no-underline cursor-pointer"
+			>hackatime</a> and watch the scraps roll in.
 		</p>
 
-		<p class="text-xl font-bold mb-4">what's on the wheel?</p>
+		<p class="text-xl font-bold mb-4">what can you win?</p>
 
 		<p class="mb-6">
 			currently, there is a random assortment of hardware left over from prototype, postcards, the
-			famous vermont fudge<Superscript number={10} tooltip="fudge fudge fudge" />, and more items planned as events wrap up. oh, and the best part,
+			famous vermont fudge<Superscript number={9} tooltip="fudge fudge fudge" />, and more items planned as events wrap up. oh, and the best part,
 			<strong>stickers!</strong>
 		</p>
 
@@ -240,7 +264,25 @@
 			>
 				stickers.hackclub.com</a
 			>? well, here is your chance to get any sticker (that we have in stock) to complete your
-			collection<Superscript number={11} tooltip="soon to be made collection.hackclub.com to keep track of your sticker collection" />! this includes some of the rarest and most sought-after stickers from hack club.
+			collection<Superscript number={10} tooltip="soon to be made collection.hackclub.com to keep track of your sticker collection" />! this includes some of the rarest and most sought-after stickers from hack club.
+		</p>
+
+		<p class="text-xl font-bold mb-4">how does the shop work?</p>
+
+		<p class="mb-6">
+			here's where it gets interesting. each item in the shop has a <strong>base probability</strong> (like 50%). when you "try your luck," you spend scraps and roll the dice<Superscript number={11} tooltip="totally not gambling" />. if you roll under your probability, you win the item!
+		</p>
+
+		<p class="mb-6">
+			but wait, there's more! you can visit <strong>the refinery</strong> to boost your odds. spend scraps to increase your probability for any item. the catch? each upgrade costs more than the last.
+		</p>
+
+		<p class="mb-6">
+			so you have a choice: <strong>gamble at low odds</strong> and maybe get lucky, or <strong>invest in the refinery</strong> until your chances are high enough that winning is almost guaranteed. the strategy is up to you!
+		</p>
+
+		<p class="mb-6">
+			one catch: <strong>every time you win an item, your base probability for that item gets halved</strong>. so winning becomes harder each time, but the refinery is always there to help you boost your odds back up!
 		</p>
 	</div>
 </div>

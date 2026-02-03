@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
-	import { ArrowLeft, Github, Clock, Package, CheckCircle, AlertTriangle, Heart } from '@lucide/svelte'
+	import { ArrowLeft, Github, Clock, Package, CheckCircle, AlertTriangle, Heart, Flame, Origami } from '@lucide/svelte'
 	import { API_URL } from '$lib/config'
 	import { formatHours } from '$lib/utils'
 
@@ -24,6 +24,15 @@
 		price: number
 	}
 
+	interface Refinement {
+		shopItemId: number
+		itemName: string
+		itemImage: string
+		baseProbability: number
+		totalBoost: number
+		effectiveProbability: number
+	}
+
 	interface ProfileUser {
 		id: number
 		username: string
@@ -43,6 +52,7 @@
 	let profileUser = $state<ProfileUser | null>(null)
 	let projects = $state<Project[]>([])
 	let heartedItems = $state<HeartedItem[]>([])
+	let refinements = $state<Refinement[]>([])
 	let stats = $state<Stats | null>(null)
 	let loading = $state(true)
 	let error = $state<string | null>(null)
@@ -66,6 +76,7 @@
 				profileUser = result.user
 				projects = result.projects || []
 				heartedItems = result.heartedItems || []
+				refinements = result.refinements || []
 				stats = result.stats
 			} else {
 				error = 'User not found'
@@ -80,7 +91,7 @@
 </script>
 
 <svelte:head>
-	<title>{profileUser?.username || 'profile'} | scraps</title>
+	<title>{profileUser?.username || 'profile'} - scraps</title>
 </svelte:head>
 
 <div class="pt-24 px-6 md:px-12 max-w-4xl mx-auto pb-24">
@@ -143,7 +154,10 @@
 		<!-- Projects -->
 		<div class="border-4 border-black rounded-2xl p-6">
 			<div class="flex items-center justify-between mb-4">
-				<h2 class="text-xl font-bold">projects ({filteredProjects.length})</h2>
+				<div class="flex items-center gap-2">
+					<Origami size={20} />
+					<h2 class="text-xl font-bold">projects ({filteredProjects.length})</h2>
+				</div>
 				<div class="flex gap-2">
 					<button
 						onclick={() => (filter = 'all')}
@@ -254,5 +268,32 @@
 				</div>
 			</div>
 		{/if}
+
+		<!-- Refinements -->
+		<div class="border-4 border-black rounded-2xl p-6 mt-6">
+			<div class="flex items-center gap-2 mb-4">
+				<Flame size={20} class="text-orange-500" />
+				<h2 class="text-xl font-bold">refinements</h2>
+			</div>
+			{#if refinements.length === 0}
+				<p class="text-gray-500 text-center py-4">no refinements to show</p>
+			{:else}
+				<div class="space-y-3">
+					{#each refinements.sort((a, b) => b.totalBoost - a.totalBoost) as refinement}
+						{@const maxBoost = Math.max(...refinements.map(r => r.totalBoost))}
+						{@const barWidth = maxBoost > 0 ? (refinement.totalBoost / maxBoost) * 100 : 0}
+						<div class="relative">
+							<div
+								class="h-10 rounded-lg flex items-center justify-between px-3 text-white font-bold text-sm bg-black border-2 border-black"
+								style="width: {Math.max(barWidth, 20)}%;"
+							>
+								<span class="truncate">{refinement.itemName}</span>
+								<span class="shrink-0 ml-2">+{refinement.totalBoost}%</span>
+							</div>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
 	{/if}
 </div>

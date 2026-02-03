@@ -2,6 +2,7 @@ import { Elysia, t } from 'elysia'
 import { db } from '../db'
 import { usersTable } from '../schemas/users'
 import { projectsTable } from '../schemas/projects'
+import { shopItemsTable, shopOrdersTable, refineryOrdersTable, shopPenaltiesTable } from '../schemas/shop'
 import { sql, desc, eq, and, or, isNull } from 'drizzle-orm'
 
 const leaderboard = new Elysia({ prefix: '/leaderboard' })
@@ -15,7 +16,8 @@ leaderboard.get('/', async ({ query }) => {
 				id: usersTable.id,
 				username: usersTable.username,
 				avatar: usersTable.avatar,
-				scraps: usersTable.scraps,
+				scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as('scraps_earned'),
+				scrapsSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_spent'),
 				hours: sql<number>`COALESCE(SUM(${projectsTable.hours}), 0)`.as('total_hours'),
 				projectCount: sql<number>`COUNT(${projectsTable.id})`.as('project_count')
 			})
@@ -34,7 +36,8 @@ leaderboard.get('/', async ({ query }) => {
 			username: user.username,
 			avatar: user.avatar,
 			hours: Number(user.hours),
-			scraps: user.scraps,
+			scraps: Number(user.scrapsEarned) - Number(user.scrapsSpent),
+			scrapsEarned: Number(user.scrapsEarned),
 			projectCount: Number(user.projectCount)
 		}))
 	}
@@ -44,7 +47,8 @@ leaderboard.get('/', async ({ query }) => {
 			id: usersTable.id,
 			username: usersTable.username,
 			avatar: usersTable.avatar,
-			scraps: usersTable.scraps,
+			scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as('scraps_earned'),
+			scrapsSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_spent'),
 			hours: sql<number>`COALESCE(SUM(${projectsTable.hours}), 0)`.as('total_hours'),
 			projectCount: sql<number>`COUNT(${projectsTable.id})`.as('project_count')
 		})
@@ -54,7 +58,7 @@ leaderboard.get('/', async ({ query }) => {
 			or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
 		))
 		.groupBy(usersTable.id)
-		.orderBy(desc(usersTable.scraps))
+		.orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`))
 		.limit(10)
 
 	return results.map((user, index) => ({
@@ -63,13 +67,100 @@ leaderboard.get('/', async ({ query }) => {
 		username: user.username,
 		avatar: user.avatar,
 		hours: Number(user.hours),
-		scraps: user.scraps,
+		scraps: Number(user.scrapsEarned) - Number(user.scrapsSpent),
+		scrapsEarned: Number(user.scrapsEarned),
 		projectCount: Number(user.projectCount)
 	}))
 }, {
 	query: t.Object({
 		sortBy: t.Optional(t.Union([t.Literal('hours'), t.Literal('scraps')]))
 	})
+})
+
+leaderboard.get('/probability-leaders', async () => {
+	const items = await db
+		.select({
+			id: shopItemsTable.id,
+			name: shopItemsTable.name,
+			image: shopItemsTable.image,
+			baseProbability: shopItemsTable.baseProbability
+		})
+		.from(shopItemsTable)
+
+	const allBoosts = await db
+		.select({
+			userId: refineryOrdersTable.userId,
+			shopItemId: refineryOrdersTable.shopItemId,
+			boostPercent: sql<number>`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+		})
+		.from(refineryOrdersTable)
+		.groupBy(refineryOrdersTable.userId, refineryOrdersTable.shopItemId)
+
+	const allPenalties = await db
+		.select({
+			userId: shopPenaltiesTable.userId,
+			shopItemId: shopPenaltiesTable.shopItemId,
+			probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier
+		})
+		.from(shopPenaltiesTable)
+
+	const boostMap = new Map<string, number>()
+	for (const b of allBoosts) {
+		boostMap.set(`${b.userId}-${b.shopItemId}`, Number(b.boostPercent))
+	}
+
+	const penaltyMap = new Map<string, number>()
+	for (const p of allPenalties) {
+		penaltyMap.set(`${p.userId}-${p.shopItemId}`, p.probabilityMultiplier)
+	}
+
+	const userIds = new Set<number>()
+	for (const b of allBoosts) userIds.add(b.userId)
+	for (const p of allPenalties) userIds.add(p.userId)
+
+	const users = userIds.size > 0
+		? await db
+			.select({
+				id: usersTable.id,
+				username: usersTable.username,
+				avatar: usersTable.avatar
+			})
+			.from(usersTable)
+		: []
+
+	const userMap = new Map(users.map(u => [u.id, u]))
+
+	const result = items.map(item => {
+		let topUser: { id: number; username: string; avatar: string | null } | null = null
+		let topProbability = item.baseProbability
+
+		for (const userId of userIds) {
+			const boost = boostMap.get(`${userId}-${item.id}`) ?? 0
+			const penaltyMultiplier = penaltyMap.get(`${userId}-${item.id}`) ?? 100
+			const adjustedBase = Math.floor(item.baseProbability * penaltyMultiplier / 100)
+			const effectiveProbability = Math.min(adjustedBase + boost, 100)
+
+			if (effectiveProbability > topProbability) {
+				topProbability = effectiveProbability
+				topUser = userMap.get(userId) ?? null
+			}
+		}
+
+		return {
+			itemId: item.id,
+			itemName: item.name,
+			itemImage: item.image,
+			baseProbability: item.baseProbability,
+			topUser: topUser ? {
+				id: topUser.id,
+				username: topUser.username,
+				avatar: topUser.avatar
+			} : null,
+			effectiveProbability: topProbability
+		}
+	})
+
+	return result
 })
 
 export default leaderboard

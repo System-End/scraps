@@ -8,8 +8,10 @@ import {
     deleteSession,
     getUserFromSession
 } from "../lib/auth"
+import { config } from "../config"
+import { getUserScrapsBalance } from "../lib/scraps"
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173"
+const FRONTEND_URL = config.frontendUrl
 
 const authRoutes = new Elysia({ prefix: "/auth" })
 
@@ -64,7 +66,7 @@ authRoutes.get("/callback", async ({ query, redirect, cookie }) => {
         cookie.session.set({
             value: sessionToken,
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: !config.isDev,
             sameSite: "lax",
             maxAge: 7 * 24 * 60 * 60,
             path: "/"
@@ -89,6 +91,7 @@ authRoutes.get("/me", async ({ headers }) => {
     if (user.role === 'banned') {
         return { user: null, banned: true }
     }
+    const scrapsBalance = await getUserScrapsBalance(user.id)
     return {
         user: {
             id: user.id,
@@ -96,8 +99,9 @@ authRoutes.get("/me", async ({ headers }) => {
             email: user.email,
             avatar: user.avatar,
             slackId: user.slackId,
-            scraps: user.scraps,
-            role: user.role
+            scraps: scrapsBalance.balance,
+            role: user.role,
+            tutorialCompleted: user.tutorialCompleted
         }
     }
 })

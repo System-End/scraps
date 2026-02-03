@@ -23,7 +23,7 @@
 </script>
 
 <svelte:head>
-	<title>error | scraps</title>
+	<title>error - scraps</title>
 </svelte:head>
 
 <div class="min-h-dvh flex items-center justify-center px-6">

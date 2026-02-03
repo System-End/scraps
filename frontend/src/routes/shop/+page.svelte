@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import HeartButton from '$lib/components/HeartButton.svelte'
+	import ShopItemModal from '$lib/components/ShopItemModal.svelte'
+	import AddressSelectModal from '$lib/components/AddressSelectModal.svelte'
 	import { API_URL } from '$lib/config'
 	import { getUser } from '$lib/auth-client'
 	import { X, Spool } from '@lucide/svelte'
@@ -8,10 +10,17 @@
 		shopItemsStore,
 		shopLoading,
 		fetchShopItems,
-		updateShopItemHeart
+		updateShopItemHeart,
+		type ShopItem
 	} from '$lib/stores'
 
 	let selectedCategories = $state<Set<string>>(new Set())
+	let sortBy = $state<'default' | 'favorites' | 'probability'>('default')
+
+	let selectedItem = $state<ShopItem | null>(null)
+	let winningOrderId = $state<number | null>(null)
+	let winningItemName = $state<string | null>(null)
+	let pendingOrders = $state<{ orderId: number; itemName: string }[]>([])
 
 	let categories = $derived.by(() => {
 		const allCategories = new Set<string>()
@@ -35,6 +44,16 @@
 				)
 	)
 
+	let sortedItems = $derived.by(() => {
+		let items = [...filteredItems]
+		if (sortBy === 'favorites') {
+			return items.sort((a, b) => b.heartCount - a.heartCount)
+		} else if (sortBy === 'probability') {
+			return items.sort((a, b) => b.effectiveProbability - a.effectiveProbability)
+		}
+		return items
+	})
+
 	function toggleCategory(category: string) {
 		const newSet = new Set(selectedCategories)
 		if (newSet.has(category)) {
@@ -49,9 +68,64 @@
 		selectedCategories = new Set()
 	}
 
+	function getProbabilityColor(prob: number): string {
+		if (prob >= 70) return 'text-green-600'
+		if (prob >= 40) return 'text-yellow-600'
+		return 'text-red-600'
+	}
+
+	function getProbabilityBgColor(prob: number): string {
+		if (prob >= 70) return 'bg-green-100'
+		if (prob >= 40) return 'bg-yellow-100'
+		return 'bg-red-100'
+	}
+
+	async function checkPendingOrders() {
+		try {
+			const response = await fetch(`${API_URL}/shop/orders/pending-address`, {
+				credentials: 'include'
+			})
+			if (response.ok) {
+				const data = await response.json()
+				if (Array.isArray(data) && data.length > 0) {
+					pendingOrders = data.map((o: { id: number; itemName: string }) => ({
+						orderId: o.id,
+						itemName: o.itemName
+					}))
+					const first = pendingOrders[0]
+					winningOrderId = first.orderId
+					winningItemName = first.itemName
+				}
+			}
+		} catch (e) {
+			console.error('Failed to check pending orders:', e)
+		}
+	}
+
+	function handleTryLuck(orderId: number) {
+		if (selectedItem) {
+			winningItemName = selectedItem.name
+		}
+		winningOrderId = orderId
+		selectedItem = null
+	}
+
+	function handleAddressComplete() {
+		fetchShopItems(true)
+		winningOrderId = null
+		winningItemName = null
+		pendingOrders = pendingOrders.slice(1)
+		if (pendingOrders.length > 0) {
+			const next = pendingOrders[0]
+			winningOrderId = next.orderId
+			winningItemName = next.itemName
+		}
+	}
+
 	onMount(async () => {
 		await getUser()
 		fetchShopItems()
+		checkPendingOrders()
 	})
 
 	async function toggleHeart(itemId: number) {
@@ -73,34 +147,69 @@
 </script>
 
 <svelte:head>
-	<title>shop | scraps</title>
+	<title>shop - scraps</title>
 </svelte:head>
 
 <div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">
 	<h1 class="text-4xl md:text-5xl font-bold mb-2">shop</h1>
 	<p class="text-lg text-gray-600 mb-8">items up for grabs</p>
 
-	<!-- Category Filter -->
-	<div class="flex gap-2 mb-8 flex-wrap items-center">
-		{#each categories as category}
+	<!-- Filters & Sort -->
+	<div class="flex flex-col md:flex-row gap-4 mb-8 md:items-start justify-between">
+		<!-- Category Filter -->
+		<div class="flex gap-2 flex-wrap items-center flex-1">
+			{#each categories as category}
+				<button
+					onclick={() => toggleCategory(category)}
+					class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {selectedCategories.has(category)
+						? 'bg-black text-white'
+						: 'hover:border-dashed'}"
+				>
+					{category}
+				</button>
+			{/each}
+			{#if selectedCategories.size > 0}
+				<button
+					onclick={clearFilters}
+					class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer hover:border-dashed flex items-center gap-2"
+				>
+					<X size={16} />
+					clear
+				</button>
+			{/if}
+		</div>
+
+		<!-- Sort Options -->
+		<div class="flex gap-2 items-center shrink-0">
+			<span class="font-bold">sort:</span>
 			<button
-				onclick={() => toggleCategory(category)}
-				class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {selectedCategories.has(category)
+				onclick={() => (sortBy = 'default')}
+				class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {sortBy ===
+				'default'
 					? 'bg-black text-white'
 					: 'hover:border-dashed'}"
 			>
-				{category}
+				default
 			</button>
-		{/each}
-		{#if selectedCategories.size > 0}
 			<button
-				onclick={clearFilters}
-				class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer hover:border-dashed flex items-center gap-2"
+				onclick={() => (sortBy = 'favorites')}
+				class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {sortBy ===
+				'favorites'
+					? 'bg-black text-white'
+					: 'hover:border-dashed'}"
 			>
-				<X size={16} />
-				clear
+				favorites
 			</button>
-		{/if}
+			<button
+				onclick={() => (sortBy = 'probability')}
+				class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {sortBy ===
+				'probability'
+					? 'bg-black text-white'
+					: 'hover:border-dashed'}"
+			>
+				probability
+			</button>
+		</div>
 	</div>
 
 	<!-- Loading State -->
@@ -115,15 +224,25 @@
 	{:else}
 		<!-- Items Grid -->
 		<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-			{#each filteredItems as item (item.id)}
-				<div class="border-4 border-black rounded-2xl p-4 hover:border-dashed transition-all">
-					<img src={item.image} alt={item.name} class="w-full h-32 object-contain mb-4" />
+			{#each sortedItems as item (item.id)}
+				<button
+					onclick={() => (selectedItem = item)}
+					class="border-4 border-black rounded-2xl p-4 hover:border-dashed transition-all cursor-pointer text-left"
+				>
+					<div class="relative">
+						<img src={item.image} alt={item.name} class="w-full h-32 object-contain mb-4" />
+						<span
+							class="absolute top-0 right-0 text-xs font-bold px-2 py-1 rounded-full {getProbabilityBgColor(item.effectiveProbability)} {getProbabilityColor(item.effectiveProbability)}"
+						>
+							{item.effectiveProbability.toFixed(0)}% chance
+						</span>
+					</div>
 					<h3 class="font-bold text-xl mb-1">{item.name}</h3>
 					<p class="text-sm text-gray-600 mb-2">{item.description}</p>
 					<div class="mb-3">
 						<span class="text-lg font-bold flex items-center gap-1"><Spool size={18} />{item.price}</span>
 						<div class="flex gap-1 flex-wrap mt-2">
-							{#each item.category.split(',').map(c => c.trim()).filter(Boolean) as cat}
+							{#each item.category.split(',').map((c) => c.trim()).filter(Boolean) as cat}
 								<span class="text-xs px-2 py-1 bg-gray-100 rounded-full">{cat}</span>
 							{/each}
 						</div>
@@ -133,11 +252,34 @@
 						<HeartButton
 							count={item.heartCount}
 							hearted={item.userHearted}
-							onclick={() => toggleHeart(item.id)}
+							onclick={(e) => {
+								e.stopPropagation()
+								toggleHeart(item.id)
+							}}
 						/>
 					</div>
-				</div>
+				</button>
 			{/each}
 		</div>
 	{/if}
 </div>
+
+{#if selectedItem}
+	<ShopItemModal
+		item={selectedItem}
+		onClose={() => (selectedItem = null)}
+		onTryLuck={handleTryLuck}
+	/>
+{/if}
+
+{#if winningOrderId && winningItemName}
+	<AddressSelectModal
+		orderId={winningOrderId}
+		itemName={winningItemName}
+		onClose={() => {
+			winningOrderId = null
+			winningItemName = null
+		}}
+		onComplete={handleAddressComplete}
+	/>
+{/if}

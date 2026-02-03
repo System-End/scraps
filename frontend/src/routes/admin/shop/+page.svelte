@@ -13,6 +13,10 @@
 		price: number
 		category: string
 		count: number
+		baseProbability: number
+		baseUpgradeCost: number
+		costMultiplier: number
+		boostAmount: number
 		createdAt: string
 		updatedAt: string
 	}
@@ -36,7 +40,12 @@
 	let formPrice = $state(0)
 	let formCategory = $state('')
 	let formCount = $state(0)
+	let formBaseProbability = $state(50)
+	let formBaseUpgradeCost = $state(10)
+	let formCostMultiplier = $state(115)
+	let formBoostAmount = $state(1)
 	let formError = $state<string | null>(null)
+	let deleteConfirmId = $state<number | null>(null)
 
 	onMount(async () => {
 		user = await getUser()
@@ -72,6 +81,10 @@
 		formPrice = 0
 		formCategory = ''
 		formCount = 0
+		formBaseProbability = 50
+		formBaseUpgradeCost = 10
+		formCostMultiplier = 115
+		formBoostAmount = 1
 		formError = null
 		showModal = true
 	}
@@ -84,6 +97,10 @@
 		formPrice = item.price
 		formCategory = item.category
 		formCount = item.count
+		formBaseProbability = item.baseProbability
+		formBaseUpgradeCost = item.baseUpgradeCost
+		formCostMultiplier = item.costMultiplier
+		formBoostAmount = item.boostAmount ?? 1
 		formError = null
 		showModal = true
 	}
@@ -117,7 +134,11 @@
 					description: formDescription,
 					price: formPrice,
 					category: formCategory,
-					count: formCount
+					count: formCount,
+					baseProbability: formBaseProbability,
+					baseUpgradeCost: formBaseUpgradeCost,
+					costMultiplier: formCostMultiplier,
+					boostAmount: formBoostAmount
 				})
 			})
 
@@ -135,11 +156,15 @@
 		}
 	}
 
-	async function deleteItem(id: number) {
-		if (!confirm('Are you sure you want to delete this item?')) return
+	function requestDelete(id: number) {
+		deleteConfirmId = id
+	}
+
+	async function confirmDelete() {
+		if (!deleteConfirmId) return
 
 		try {
-			const response = await fetch(`${API_URL}/admin/shop/items/${id}`, {
+			const response = await fetch(`${API_URL}/admin/shop/items/${deleteConfirmId}`, {
 				method: 'DELETE',
 				credentials: 'include'
 			})
@@ -148,12 +173,14 @@
 			}
 		} catch (e) {
 			console.error('Failed to delete:', e)
+		} finally {
+			deleteConfirmId = null
 		}
 	}
 </script>
 
 <svelte:head>
-	<title>shop editor | admin | scraps</title>
+	<title>shop editor - admin - scraps</title>
 </svelte:head>
 
 <div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">
@@ -193,6 +220,14 @@
 								<span class="px-2 py-0.5 bg-gray-100 rounded-full">{cat}</span>
 							{/each}
 							<span class="text-gray-500">{item.count} in stock</span>
+							<span class="text-gray-500">•</span>
+							<span class="text-gray-500">{item.baseProbability}% base chance</span>
+							<span class="text-gray-500">•</span>
+							<span class="text-gray-500">{item.baseUpgradeCost} upgrade cost</span>
+							<span class="text-gray-500">•</span>
+							<span class="text-gray-500">{item.costMultiplier / 100}x multiplier</span>
+							<span class="text-gray-500">•</span>
+							<span class="text-gray-500">+{item.boostAmount ?? 1}% per upgrade</span>
 						</div>
 					</div>
 					<div class="flex gap-2 shrink-0">
@@ -203,7 +238,7 @@
 							<Pencil size={18} />
 						</button>
 						<button
-							onclick={() => deleteItem(item.id)}
+							onclick={() => requestDelete(item.id)}
 							class="p-2 border-4 border-red-600 text-red-600 rounded-lg hover:bg-red-50 transition-all duration-200 cursor-pointer"
 						>
 							<Trash2 size={18} />
@@ -295,6 +330,55 @@
 						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
 					/>
 				</div>
+
+				<div class="grid grid-cols-2 gap-4">
+					<div>
+						<label for="baseProbability" class="block text-sm font-bold mb-1">base probability (%)</label>
+						<input
+							id="baseProbability"
+							type="number"
+							bind:value={formBaseProbability}
+							min="0"
+							max="100"
+							class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+						/>
+					</div>
+					<div>
+						<label for="boostAmount" class="block text-sm font-bold mb-1">boost per upgrade (%)</label>
+						<input
+							id="boostAmount"
+							type="number"
+							bind:value={formBoostAmount}
+							min="1"
+							class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+						/>
+						<p class="text-xs text-gray-500 mt-1">probability increase per upgrade</p>
+					</div>
+				</div>
+
+				<div class="grid grid-cols-2 gap-4">
+					<div>
+						<label for="baseUpgradeCost" class="block text-sm font-bold mb-1">base upgrade cost (scraps)</label>
+						<input
+							id="baseUpgradeCost"
+							type="number"
+							bind:value={formBaseUpgradeCost}
+							min="0"
+							class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+						/>
+					</div>
+					<div>
+						<label for="costMultiplier" class="block text-sm font-bold mb-1">cost multiplier (%)</label>
+						<input
+							id="costMultiplier"
+							type="number"
+							bind:value={formCostMultiplier}
+							min="100"
+							class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+						/>
+						<p class="text-xs text-gray-500 mt-1">115 = 1.15x cost increase per upgrade</p>
+					</div>
+				</div>
 			</div>
 
 			<div class="flex gap-3 mt-6">
@@ -311,6 +395,37 @@
 					class="flex-1 px-4 py-2 bg-black text-white rounded-full font-bold border-4 border-black hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 cursor-pointer"
 				>
 					{saving ? 'saving...' : editingItem ? 'save' : 'create'}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if deleteConfirmId}
+	<div
+		class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+		onclick={(e) => e.target === e.currentTarget && (deleteConfirmId = null)}
+		onkeydown={(e) => e.key === 'Escape' && (deleteConfirmId = null)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="bg-white rounded-2xl w-full max-w-md p-6 border-4 border-black">
+			<h2 class="text-2xl font-bold mb-4">confirm delete</h2>
+			<p class="text-gray-600 mb-6">
+				are you sure you want to delete this item? <span class="text-red-600 block mt-2">this action cannot be undone.</span>
+			</p>
+			<div class="flex gap-3">
+				<button
+					onclick={() => (deleteConfirmId = null)}
+					class="flex-1 px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 cursor-pointer"
+				>
+					cancel
+				</button>
+				<button
+					onclick={confirmDelete}
+					class="flex-1 px-4 py-2 bg-red-600 text-white rounded-full font-bold border-4 border-black hover:border-dashed transition-all duration-200 cursor-pointer"
+				>
+					delete
 				</button>
 			</div>
 		</div>

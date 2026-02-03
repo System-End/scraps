@@ -1,4 +1,4 @@
-import { integer, pgTable, varchar, text, timestamp } from 'drizzle-orm/pg-core'
+import { integer, pgTable, varchar, text, timestamp, boolean } from 'drizzle-orm/pg-core'
 
 export const usersTable = pgTable('users', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -17,11 +17,21 @@ export const usersTable = pgTable('users', {
   refreshToken: text('refresh_token'),
   idToken: text('id_token'),
 
-  // scraps info
-  scraps: integer().notNull().default(0),
+  // user role
   role: varchar().notNull().default('member'),
   internalNotes: text('internal_notes'),
 
+  // tutorial status
+  tutorialCompleted: boolean('tutorial_completed').notNull().default(false),
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
+})
+
+export const userBonusesTable = pgTable('user_bonuses', {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer('user_id').notNull().references(() => usersTable.id),
+  type: varchar().notNull(),
+  amount: integer().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull()
 })

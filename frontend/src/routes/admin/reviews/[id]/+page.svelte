@@ -230,7 +230,7 @@
 </script>
 
 <svelte:head>
-	<title>review {project?.name || 'project'} | admin | scraps</title>
+	<title>review {project?.name || 'project'} - admin - scraps</title>
 </svelte:head>
 
 <div class="pt-24 px-6 md:px-12 max-w-4xl mx-auto pb-24">

@@ -1,5 +1,6 @@
 import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
+import { config } from './config'
 import projects from './routes/projects'
 import news from './routes/news'
 import items from './routes/items'
@@ -26,11 +27,11 @@ const api = new Elysia()
 
 const app = new Elysia()
     .use(cors({
-        origin: [process.env.FRONTEND_URL as string],
+        origin: [config.frontendUrl],
         credentials: true
     }))
     .use(api)
-    .listen(3000)
+    .listen(config.port)
 
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`

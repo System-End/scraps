@@ -1,0 +1,183 @@
+Date : 2026-02-03 15:48:00
+Directory : c:\Users\Nathan\Documents\GitHub\scraps
+Total : 101 files,  40545 codes, 597 comments, 2288 blanks, all 43430 lines
+
+Languages
++--------------------+------------+------------+------------+------------+------------+
+| language           | files      | code       | comment    | blank      | total      |
++--------------------+------------+------------+------------+------------+------------+
+| JavaScript         |          3 |     29,514 |        326 |        451 |     30,291 |
+| Svelte             |         35 |      7,228 |        102 |        699 |      8,029 |
+| TypeScript         |         46 |      2,940 |         74 |        567 |      3,581 |
+| JSON with Comments |          4 |        593 |         83 |        514 |      1,190 |
+| Markdown           |          3 |        102 |          2 |         23 |        127 |
+| JSON               |          4 |         89 |          0 |          3 |         92 |
+| Docker             |          2 |         27 |          4 |         20 |         51 |
+| PostCSS            |          1 |         20 |          1 |          4 |         25 |
+| Properties         |          1 |         15 |          3 |          4 |         22 |
+| HTML               |          1 |         11 |          0 |          1 |         12 |
+| Ignore             |          1 |          6 |          2 |          2 |         10 |
++--------------------+------------+------------+------------+------------+------------+
+
+Directories
++-----------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                          | files      | code       | comment    | blank      | total      |
++-----------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                             |        101 |     40,545 |        597 |      2,288 |     43,430 |
+| . (Files)                                                                                     |          2 |        101 |          2 |         23 |        126 |
+| backend                                                                                       |         33 |     32,273 |        468 |      1,109 |     33,850 |
+| backend (Files)                                                                               |          6 |        232 |         85 |        167 |        484 |
+| backend\dist                                                                                  |          1 |     29,463 |        323 |        446 |     30,232 |
+| backend\scripts                                                                               |          1 |          6 |          0 |          3 |          9 |
+| backend\src                                                                                   |         25 |      2,572 |         60 |        493 |      3,125 |
+| backend\src (Files)                                                                           |          2 |         54 |          5 |         12 |         71 |
+| backend\src\db                                                                                |          2 |          5 |          0 |          3 |          8 |
+| backend\src\lib                                                                               |          3 |        275 |          1 |         47 |        323 |
+| backend\src\routes                                                                            |         10 |      2,083 |         41 |        396 |      2,520 |
+| backend\src\schemas                                                                           |          8 |        155 |         13 |         35 |        203 |
+| frontend                                                                                      |         66 |      8,171 |        127 |      1,156 |      9,454 |
+| frontend (Files)                                                                              |         10 |        563 |         10 |        386 |        959 |
+| frontend\src                                                                                  |         55 |      7,607 |        117 |        770 |      8,494 |
+| frontend\src (Files)                                                                          |          2 |         16 |          7 |          3 |         26 |
+| frontend\src\lib                                                                              |         18 |      2,721 |         42 |        283 |      3,046 |
+| frontend\src\lib (Files)                                                                      |          4 |        302 |          7 |         48 |        357 |
+| frontend\src\lib\components                                                                   |         14 |      2,419 |         35 |        235 |      2,689 |
+| frontend\src\routes                                                                           |         35 |      4,870 |         68 |        484 |      5,422 |
+| frontend\src\routes (Files)                                                                   |          4 |        321 |          7 |         53 |        381 |
+| frontend\src\routes\admin                                                                     |          7 |      1,911 |         15 |        167 |      2,093 |
+| frontend\src\routes\admin\news                                                                |          1 |        307 |          0 |         32 |        339 |
+| frontend\src\routes\admin\reviews                                                             |          2 |        595 |          8 |         49 |        652 |
+| frontend\src\routes\admin\reviews (Files)                                                     |          1 |        123 |          1 |         12 |        136 |
+| frontend\src\routes\admin\reviews\[id]                                                        |          1 |        472 |          7 |         37 |        516 |
+| frontend\src\routes\admin\shop                                                                |          1 |        400 |          0 |         34 |        434 |
+| frontend\src\routes\admin\users                                                               |          3 |        609 |          7 |         52 |        668 |
+| frontend\src\routes\admin\users (Files)                                                       |          1 |        291 |          3 |         26 |        320 |
+| frontend\src\routes\admin\users\[id]                                                          |          2 |        318 |          4 |         26 |        348 |
+| frontend\src\routes\auth                                                                      |          4 |        104 |          0 |         17 |        121 |
+| frontend\src\routes\auth\callback                                                             |          2 |         53 |          0 |          8 |         61 |
+| frontend\src\routes\auth\error                                                                |          2 |         51 |          0 |          9 |         60 |
+| frontend\src\routes\dashboard                                                                 |          2 |        114 |          4 |         15 |        133 |
+| frontend\src\routes\leaderboard                                                               |          2 |        157 |          0 |          9 |        166 |
+| frontend\src\routes\project                                                                   |          1 |        186 |          4 |         23 |        213 |
+| frontend\src\routes\project\[id]                                                              |          1 |        186 |          4 |         23 |        213 |
+| frontend\src\routes\projects                                                                  |          8 |      1,250 |         28 |        127 |      1,405 |
+| frontend\src\routes\projects\[id]                                                             |          8 |      1,250 |         28 |        127 |      1,405 |
+| frontend\src\routes\projects\[id] (Files)                                                     |          2 |        355 |          7 |         28 |        390 |
+| frontend\src\routes\projects\[id]\edit                                                        |          2 |        405 |          9 |         46 |        460 |
+| frontend\src\routes\projects\[id]\submit                                                      |          2 |        336 |          9 |         34 |        379 |
+| frontend\src\routes\projects\[id]\view                                                        |          2 |        154 |          3 |         19 |        176 |
+| frontend\src\routes\refinery                                                                  |          2 |        135 |          0 |         11 |        146 |
+| frontend\src\routes\shop                                                                      |          2 |        259 |          5 |         24 |        288 |
+| frontend\src\routes\submit                                                                    |          1 |        151 |          0 |         19 |        170 |
+| frontend\src\routes\users                                                                     |          2 |        282 |          5 |         19 |        306 |
+| frontend\src\routes\users\[id]                                                                |          2 |        282 |          5 |         19 |        306 |
+| frontend\static                                                                               |          1 |          1 |          0 |          0 |          1 |
++-----------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-----------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| filename                                                                                      | language           | code       | comment    | blank      | total      |
++-----------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| c:\Users\Nathan\Documents\GitHub\scraps\AGENTS.md                                             | Markdown           |         98 |          2 |         21 |        121 |
+| c:\Users\Nathan\Documents\GitHub\scraps\README.md                                             | Markdown           |          3 |          0 |          2 |          5 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\Dockerfile                                    | Docker             |         14 |          2 |         10 |         26 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\README.md                                     | Markdown           |          1 |          0 |          0 |          1 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\bun.lock                                      | JSON with Comments |        170 |          0 |        145 |        315 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\dist\index.js                                 | JavaScript         |     29,463 |        323 |        446 |     30,232 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\drizzle.config.ts                             | TypeScript         |         10 |          0 |          2 |         12 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\package.json                                  | JSON               |         25 |          0 |          1 |         26 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\scripts\reset-projects.ts                     | TypeScript         |          6 |          0 |          3 |          9 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\config.ts                                 | TypeScript         |         19 |          5 |          8 |         32 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\db\index.ts                               | TypeScript         |          3 |          0 |          2 |          5 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\db\schema.ts                              | TypeScript         |          2 |          0 |          1 |          3 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\index.ts                                  | TypeScript         |         35 |          0 |          4 |         39 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\lib\auth.ts                               | TypeScript         |        181 |          0 |         30 |        211 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\lib\scraps.ts                             | TypeScript         |         52 |          1 |         10 |         63 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\lib\slack.ts                              | TypeScript         |         42 |          0 |          7 |         49 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\routes\admin.ts                           | TypeScript         |        505 |         14 |        109 |        628 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\routes\auth.ts                            | TypeScript         |        100 |          4 |         17 |        121 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\routes\hackatime.ts                       | TypeScript         |         53 |          0 |         13 |         66 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\routes\items.ts                           | TypeScript         |         73 |          5 |          5 |         83 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\routes\leaderboard.ts                     | TypeScript         |        146 |          0 |         21 |        167 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\routes\news.ts                            | TypeScript         |         23 |          2 |          7 |         32 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\routes\projects.ts                        | TypeScript         |        329 |         10 |         63 |        402 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\routes\shop.ts                            | TypeScript         |        653 |          2 |        122 |        777 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\routes\upload.ts                          | TypeScript         |         60 |          0 |         16 |         76 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\routes\user.ts                            | TypeScript         |        141 |          4 |         23 |        168 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\schemas\activity.ts                       | TypeScript         |         10 |          0 |          2 |         12 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\schemas\index.ts                          | TypeScript         |          7 |          0 |          1 |          8 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\schemas\news.ts                           | TypeScript         |          9 |          0 |          2 |         11 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\schemas\projects.ts                       | TypeScript         |         19 |          8 |          8 |         35 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\schemas\reviews.ts                        | TypeScript         |         12 |          0 |          4 |         16 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\schemas\sessions.ts                       | TypeScript         |          8 |          0 |          2 |         10 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\schemas\shop.ts                           | TypeScript         |         66 |          0 |          7 |         73 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\src\schemas\users.ts                          | TypeScript         |         24 |          5 |          9 |         38 |
+| c:\Users\Nathan\Documents\GitHub\scraps\backend\tsconfig.json                                 | JSON with Comments |         12 |         83 |          9 |        104 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\.prettierignore                              | Ignore             |          6 |          2 |          2 |         10 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\.prettierrc                                  | JSON               |         16 |          0 |          1 |         17 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\Dockerfile                                   | Docker             |         13 |          2 |         10 |         25 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\bun.lock                                     | JSON with Comments |        397 |          0 |        359 |        756 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\eslint.config.js                             | JavaScript         |         35 |          2 |          3 |         40 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\nginx.conf                                   | Properties         |         15 |          3 |          4 |         22 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\package.json                                 | JSON               |         47 |          0 |          1 |         48 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\app.d.ts                                 | TypeScript         |          5 |          7 |          2 |         14 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\app.html                                 | HTML               |         11 |          0 |          1 |         12 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\auth-client.ts                       | TypeScript         |         63 |          0 |         11 |         74 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\AddressSelectModal.svelte | Svelte             |        315 |          0 |         28 |        343 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\ConfirmModal.svelte       | Svelte             |         69 |          0 |          4 |         73 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\CreateProjectModal.svelte | Svelte             |        350 |          6 |         38 |        394 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\Footer.svelte             | Svelte             |          5 |          0 |          2 |          7 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\HeartButton.svelte        | Svelte             |         24 |          0 |          3 |         27 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\Navbar.svelte             | Svelte             |        300 |          8 |         25 |        333 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\NewsCarousel.svelte       | Svelte             |         96 |          0 |         13 |        109 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\ProjectModal.svelte       | Svelte             |        343 |          3 |         35 |        381 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\ProjectPlaceholder.svelte | Svelte             |         35 |          0 |          7 |         42 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\RandomPhrase.svelte       | Svelte             |         15 |          0 |          3 |         18 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\ShopItemModal.svelte      | Svelte             |        389 |          0 |         30 |        419 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\Superscript.svelte        | Svelte             |         11 |          0 |          2 |         13 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\Tutorial.svelte           | Svelte             |        359 |         15 |         33 |        407 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\components\WishlistAvatars.svelte    | Svelte             |        108 |          3 |         12 |        123 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\config.ts                            | TypeScript         |          1 |          0 |          1 |          2 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\stores.ts                            | TypeScript         |        235 |          7 |         35 |        277 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\lib\utils.ts                             | TypeScript         |          3 |          0 |          1 |          4 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\+layout.svelte                    | Svelte             |         51 |          0 |          9 |         60 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\+layout.ts                        | TypeScript         |          1 |          0 |          0 |          1 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\+page.svelte                      | Svelte             |        249 |          6 |         40 |        295 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\admin\news\+page.svelte           | Svelte             |        307 |          0 |         32 |        339 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\admin\reviews\+page.svelte        | Svelte             |        123 |          1 |         12 |        136 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\admin\reviews\[id]\+page.svelte   | Svelte             |        472 |          7 |         37 |        516 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\admin\shop\+page.svelte           | Svelte             |        400 |          0 |         34 |        434 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\admin\users\+page.svelte          | Svelte             |        291 |          3 |         26 |        320 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\admin\users\[id]\+page.svelte     | Svelte             |        313 |          4 |         25 |        342 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\admin\users\[id]\+page.ts         | TypeScript         |          5 |          0 |          1 |          6 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\auth\callback\+page.svelte        | Svelte             |         52 |          0 |          7 |         59 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\auth\callback\+page.ts            | TypeScript         |          1 |          0 |          1 |          2 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\auth\error\+page.svelte           | Svelte             |         50 |          0 |          8 |         58 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\auth\error\+page.ts               | TypeScript         |          1 |          0 |          1 |          2 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\dashboard\+page.svelte            | Svelte             |        113 |          4 |         14 |        131 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\dashboard\+page.ts                | TypeScript         |          1 |          0 |          1 |          2 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\layout.css                        | PostCSS            |         20 |          1 |          4 |         25 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\leaderboard\+page.svelte          | Svelte             |        156 |          0 |          8 |        164 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\leaderboard\+page.ts              | TypeScript         |          1 |          0 |          1 |          2 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\project\[id]\+page.svelte         | Svelte             |        186 |          4 |         23 |        213 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\projects\[id]\+page.svelte        | Svelte             |        349 |          7 |         26 |        382 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\projects\[id]\+page.ts            | TypeScript         |          6 |          0 |          2 |          8 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\projects\[id]\edit\+page.svelte   | Svelte             |        399 |          9 |         44 |        452 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\projects\[id]\edit\+page.ts       | TypeScript         |          6 |          0 |          2 |          8 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\projects\[id]\submit\+page.svelte | Svelte             |        330 |          9 |         32 |        371 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\projects\[id]\submit\+page.ts     | TypeScript         |          6 |          0 |          2 |          8 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\projects\[id]\view\+page.svelte   | Svelte             |        148 |          3 |         17 |        168 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\projects\[id]\view\+page.ts       | TypeScript         |          6 |          0 |          2 |          8 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\refinery\+page.svelte             | Svelte             |        134 |          0 |         10 |        144 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\refinery\+page.ts                 | TypeScript         |          1 |          0 |          1 |          2 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\shop\+page.svelte                 | Svelte             |        258 |          5 |         23 |        286 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\shop\+page.ts                     | TypeScript         |          1 |          0 |          1 |          2 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\submit\+page.svelte               | Svelte             |        151 |          0 |         19 |        170 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\users\[id]\+page.svelte           | Svelte             |        277 |          5 |         18 |        300 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\src\routes\users\[id]\+page.ts               | TypeScript         |          5 |          0 |          1 |          6 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\static\site.webmanifest                      | JSON               |          1 |          0 |          0 |          1 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\svelte.config.js                             | JavaScript         |         16 |          1 |          2 |         19 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\tsconfig.json                                | JSON with Comments |         14 |          0 |          1 |         15 |
+| c:\Users\Nathan\Documents\GitHub\scraps\frontend\vite.config.ts                               | TypeScript         |          4 |          0 |          3 |          7 |
+| Total                                                                                         |                    |     40,545 |        597 |      2,288 |     43,430 |
++-----------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+

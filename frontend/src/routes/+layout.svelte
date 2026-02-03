@@ -5,12 +5,15 @@
 	import favicon from '$lib/assets/favicon.ico'
 	import Navbar from '$lib/components/Navbar.svelte'
 	import Footer from '$lib/components/Footer.svelte'
+	import Tutorial from '$lib/components/Tutorial.svelte'
 	import { handleNavigation, prefetchUserData } from '$lib/stores'
-	import { getUser } from '$lib/auth-client'
+	import { getUser, type User } from '$lib/auth-client'
 
 	let { children } = $props()
 
 	let previousPath = $state('')
+	let showTutorial = $state(false)
+	let user = $state<User | null>(null)
 
 	// Handle navigation changes
 	$effect(() => {
@@ -23,11 +26,19 @@
 
 	// Prefetch data on initial load if user is logged in
 	onMount(async () => {
-		const user = await getUser()
+		user = await getUser()
 		if (user) {
 			prefetchUserData()
+			// Show tutorial for users who haven't completed it
+			if (!user.tutorialCompleted) {
+				showTutorial = true
+			}
 		}
 	})
+
+	function handleTutorialComplete() {
+		showTutorial = false
+	}
 </script>
 
 <svelte:head><link rel="icon" href={favicon} />
@@ -42,3 +53,7 @@
 	</main>
 	<Footer />
 </div>
+
+{#if showTutorial}
+	<Tutorial onComplete={handleTutorialComplete} />
+{/if}

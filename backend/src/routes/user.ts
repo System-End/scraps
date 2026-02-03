@@ -1,10 +1,11 @@
 import { Elysia } from 'elysia'
-import { eq, inArray } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { getUserFromSession, checkUserEligibility } from '../lib/auth'
 import { db } from '../db'
-import { usersTable } from '../schemas/users'
+import { usersTable, userBonusesTable } from '../schemas/users'
 import { projectsTable } from '../schemas/projects'
-import { shopHeartsTable, shopItemsTable } from '../schemas/shop'
+import { shopHeartsTable, shopItemsTable, refineryOrdersTable } from '../schemas/shop'
+import { getUserScrapsBalance } from '../lib/scraps'
 
 const user = new Elysia({ prefix: '/user' })
 
@@ -23,16 +24,43 @@ user.get('/me', async ({ headers }) => {
         }
     }
 
+    const scrapsBalance = await getUserScrapsBalance(userData.id)
+
     return {
         id: userData.id,
         username: userData.username,
         email: userData.email,
         avatar: userData.avatar,
         slackId: userData.slackId,
-        scraps: userData.scraps,
+        scraps: scrapsBalance.balance,
+        scrapsEarned: scrapsBalance.earned,
+        scrapsSpent: scrapsBalance.spent,
         yswsEligible,
-        verificationStatus
+        verificationStatus,
+        tutorialCompleted: userData.tutorialCompleted
     }
+})
+
+user.post('/complete-tutorial', async ({ headers }) => {
+    const userData = await getUserFromSession(headers as Record<string, string>)
+    if (!userData) return { error: 'Unauthorized' }
+
+    if (userData.tutorialCompleted) {
+        return { success: true, alreadyCompleted: true }
+    }
+
+    await db
+        .update(usersTable)
+        .set({ tutorialCompleted: true, updatedAt: new Date() })
+        .where(eq(usersTable.id, userData.id))
+
+    await db.insert(userBonusesTable).values({
+        userId: userData.id,
+        type: 'tutorial_bonus',
+        amount: 10
+    })
+
+    return { success: true, bonusAwarded: 10 }
 })
 
 // Public profile - anyone logged in can view
@@ -85,12 +113,28 @@ user.get('/profile/:id', async ({ params, headers }) => {
             .where(inArray(shopItemsTable.id, heartedItemIds))
     }
 
+    const scrapsBalance = await getUserScrapsBalance(parseInt(params.id))
+
+    // Get user's refinery boosts
+    const refinements = await db
+        .select({
+            shopItemId: refineryOrdersTable.shopItemId,
+            itemName: shopItemsTable.name,
+            itemImage: shopItemsTable.image,
+            baseProbability: shopItemsTable.baseProbability,
+            totalBoost: sql<number>`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+        })
+        .from(refineryOrdersTable)
+        .innerJoin(shopItemsTable, eq(refineryOrdersTable.shopItemId, shopItemsTable.id))
+        .where(eq(refineryOrdersTable.userId, parseInt(params.id)))
+        .groupBy(refineryOrdersTable.shopItemId, shopItemsTable.name, shopItemsTable.image, shopItemsTable.baseProbability)
+
     return {
         user: {
             id: targetUser[0].id,
             username: targetUser[0].username,
             avatar: targetUser[0].avatar,
-            scraps: targetUser[0].scraps,
+            scraps: scrapsBalance.balance,
             createdAt: targetUser[0].createdAt
         },
         projects: visibleProjects.map(p => ({
@@ -104,6 +148,14 @@ user.get('/profile/:id', async ({ params, headers }) => {
             createdAt: p.createdAt
         })),
         heartedItems,
+        refinements: refinements.map(r => ({
+            shopItemId: r.shopItemId,
+            itemName: r.itemName,
+            itemImage: r.itemImage,
+            baseProbability: r.baseProbability,
+            totalBoost: Number(r.totalBoost),
+            effectiveProbability: Math.min(r.baseProbability + Number(r.totalBoost), 100)
+        })),
         stats: {
             projectCount: shippedCount,
             inProgressCount,

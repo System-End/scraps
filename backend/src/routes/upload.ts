@@ -1,8 +1,9 @@
 import { Elysia } from 'elysia'
 import { getUserFromSession } from '../lib/auth'
+import { config } from '../config'
 
 const HCCDN_URL = 'https://cdn.hackclub.com/api/v4/upload'
-const HCCDN_KEY = process.env.HCCDN_KEY
+const HCCDN_KEY = config.hccdnKey
 
 interface CDNUploadResponse {
 	id: string

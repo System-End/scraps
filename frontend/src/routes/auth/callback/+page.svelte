@@ -34,7 +34,7 @@
 </script>
 
 <svelte:head>
-	<title>authenticating... | scraps</title>
+	<title>authenticating... - scraps</title>
 </svelte:head>
 
 <div class="min-h-dvh flex items-center justify-center">

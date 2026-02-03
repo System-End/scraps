@@ -148,7 +148,7 @@
 </script>
 
 <svelte:head>
-	<title>users | admin | scraps</title>
+	<title>users - admin - scraps</title>
 </svelte:head>
 
 <div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">

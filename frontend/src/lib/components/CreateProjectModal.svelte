@@ -2,6 +2,8 @@
 	import { X, ChevronDown, Upload, Check } from '@lucide/svelte'
 	import { API_URL } from '$lib/config'
 	import { formatHours } from '$lib/utils'
+	import { tutorialProjectIdStore } from '$lib/stores'
+	import { goto } from '$app/navigation'
 
 	interface Project {
 		id: number
@@ -25,15 +27,25 @@
 	let {
 		open,
 		onClose,
-		onCreated
+		onCreated,
+		tutorialMode = false
 	}: {
 		open: boolean
 		onClose: () => void
 		onCreated: (project: Project) => void
+		tutorialMode?: boolean
 	} = $props()
 
 	let name = $state('')
 	let description = $state('')
+
+	// Pre-fill values when modal opens in tutorial mode
+	$effect(() => {
+		if (open && tutorialMode && name === '' && description === '') {
+			name = 'my first scrap'
+			description = "this is my first project on scraps! i'm excited to start building and earning rewards."
+		}
+	})
 	let githubUrl = $state('')
 	let imageUrl = $state<string | null>(null)
 	let imagePreview = $state<string | null>(null)
@@ -180,7 +192,14 @@
 
 			const newProject = await response.json()
 			resetForm()
-			onCreated(newProject)
+			if (tutorialMode) {
+				tutorialProjectIdStore.set(newProject.id)
+				window.dispatchEvent(new CustomEvent('tutorial:project-created'))
+				onCreated(newProject)
+				goto(`/projects/${newProject.id}`, { invalidateAll: false })
+			} else {
+				onCreated(newProject)
+			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to create project'
 		} finally {
@@ -194,6 +213,7 @@
 	}
 
 	function handleBackdropClick(e: MouseEvent) {
+		if (tutorialMode) return
 		if (e.target === e.currentTarget) {
 			handleClose()
 		}
@@ -202,13 +222,13 @@
 
 {#if open}
 	<div
-		class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+		class="fixed inset-0 flex items-center justify-center p-4 {tutorialMode ? 'z-[200] bg-transparent' : 'z-50 bg-black/50'}"
 		onclick={handleBackdropClick}
-		onkeydown={(e) => e.key === 'Escape' && handleClose()}
+		onkeydown={(e) => !tutorialMode && e.key === 'Escape' && handleClose()}
 		role="dialog"
 		tabindex="-1"
 	>
-		<div class="bg-white rounded-2xl w-full max-w-lg p-6 border-4 border-black max-h-[90vh] overflow-y-auto">
+		<div class="bg-white rounded-2xl w-full max-w-lg p-6 border-4 border-black max-h-[90vh] overflow-y-auto {tutorialMode ? 'z-[250]' : ''}" data-tutorial="create-project-modal">
 			<div class="flex items-center justify-between mb-6">
 				<h2 class="text-2xl font-bold">new project</h2>
 				<button onclick={handleClose} class="p-1 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">

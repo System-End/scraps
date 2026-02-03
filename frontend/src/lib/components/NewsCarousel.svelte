@@ -41,7 +41,7 @@
 	}
 </script>
 
-{#if !$newsLoading && $newsStore.length > 0}
+{#if !$newsLoading}
 	<div
 		class="border-4 border-black rounded-2xl p-6 mb-8 relative overflow-hidden"
 		onmouseenter={() => (isPaused = true)}
@@ -71,34 +71,38 @@
 			{/if}
 		</div>
 
-		<div class="relative h-20 overflow-hidden">
-			{#each $newsStore as item, index (item.id)}
-				<div
-					class="absolute inset-0 transition-all duration-500 ease-in-out {index === currentIndex
-						? 'opacity-100 translate-x-0'
-						: index < currentIndex
-							? 'opacity-0 -translate-x-full'
-							: 'opacity-0 translate-x-full'}"
-				>
-					<p class="text-xl font-bold mb-1">{item.title}</p>
-					<p class="text-gray-600">{item.content}</p>
-					<p class="text-sm text-gray-400 mt-1">{formatDate(item.createdAt)}</p>
-				</div>
-			{/each}
-		</div>
-
-		{#if $newsStore.length > 1}
-			<div class="flex justify-center gap-2 mt-4">
-				{#each $newsStore as _, index}
-					<button
-						onclick={() => goTo(index)}
-						class="w-2 h-2 rounded-full transition-all duration-300 cursor-pointer {index === currentIndex
-							? 'bg-black w-6'
-							: 'bg-gray-300 hover:bg-gray-400'}"
-						aria-label="Go to news {index + 1}"
-					></button>
+		{#if $newsStore.length === 0}
+			<p class="text-gray-500">no news right now</p>
+		{:else}
+			<div class="relative h-20 overflow-hidden">
+				{#each $newsStore as item, index (item.id)}
+					<div
+						class="absolute inset-0 transition-all duration-500 ease-in-out {index === currentIndex
+							? 'opacity-100 translate-x-0'
+							: index < currentIndex
+								? 'opacity-0 -translate-x-full'
+								: 'opacity-0 translate-x-full'}"
+					>
+						<p class="text-xl font-bold mb-1">{item.title}</p>
+						<p class="text-gray-600">{item.content}</p>
+						<p class="text-sm text-gray-400 mt-1">{formatDate(item.createdAt)}</p>
+					</div>
 				{/each}
 			</div>
+
+			{#if $newsStore.length > 1}
+				<div class="flex justify-center gap-2 mt-4">
+					{#each $newsStore as _, index}
+						<button
+							onclick={() => goTo(index)}
+							class="w-2 h-2 rounded-full transition-all duration-300 cursor-pointer {index === currentIndex
+								? 'bg-black w-6'
+								: 'bg-gray-300 hover:bg-gray-400'}"
+							aria-label="Go to news {index + 1}"
+						></button>
+					{/each}
+				</div>
+			{/if}
 		{/if}
 	</div>
 {/if}

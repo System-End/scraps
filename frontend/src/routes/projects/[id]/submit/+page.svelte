@@ -167,7 +167,7 @@
 </script>
 
 <svelte:head>
-	<title>submit {project?.name || 'project'} | scraps</title>
+	<title>submit {project?.name || 'project'} - scraps</title>
 </svelte:head>
 
 <div class="pt-24 px-6 md:px-12 max-w-4xl mx-auto pb-24">

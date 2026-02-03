@@ -25,6 +25,11 @@ export interface ShopItem {
 	count: number
 	heartCount: number
 	userHearted: boolean
+	baseProbability: number
+	baseUpgradeCost: number
+	costMultiplier: number
+	userBoostPercent: number
+	effectiveProbability: number
 }
 
 export interface LeaderboardEntry {
@@ -34,7 +39,21 @@ export interface LeaderboardEntry {
 	avatar: string
 	hours: number
 	scraps: number
+	scrapsEarned: number
 	projectCount: number
+}
+
+export interface ProbabilityLeader {
+	itemId: number
+	itemName: string
+	itemImage: string
+	baseProbability: number
+	topUser: {
+		id: number
+		username: string
+		avatar: string | null
+	} | null
+	effectiveProbability: number
 }
 
 export interface NewsItem {
@@ -46,6 +65,8 @@ export interface NewsItem {
 
 // Stores
 export const userStore = writable<User | null>(null)
+export const tutorialActiveStore = writable(false)
+export const tutorialProjectIdStore = writable<number | null>(null)
 export const projectsStore = writable<Project[]>([])
 export const shopItemsStore = writable<ShopItem[]>([])
 export const leaderboardStore = writable<{ hours: LeaderboardEntry[]; scraps: LeaderboardEntry[] }>({
@@ -53,12 +74,14 @@ export const leaderboardStore = writable<{ hours: LeaderboardEntry[]; scraps: Le
 	scraps: []
 })
 export const newsStore = writable<NewsItem[]>([])
+export const probabilityLeadersStore = writable<ProbabilityLeader[]>([])
 
 // Loading states
 export const projectsLoading = writable(true)
 export const shopLoading = writable(true)
 export const leaderboardLoading = writable(true)
 export const newsLoading = writable(true)
+export const probabilityLeadersLoading = writable(true)
 
 // Track if this is a fresh page load (refresh/external) vs SPA navigation
 let isInitialLoad = true
@@ -90,10 +113,12 @@ export function invalidateAllStores() {
 	shopItemsStore.set([])
 	leaderboardStore.set({ hours: [], scraps: [] })
 	newsStore.set([])
+	probabilityLeadersStore.set([])
 	projectsLoading.set(true)
 	shopLoading.set(true)
 	leaderboardLoading.set(true)
 	newsLoading.set(true)
+	probabilityLeadersLoading.set(true)
 }
 
 // Fetch functions
@@ -190,6 +215,30 @@ export async function fetchNews(force = false) {
 	} finally {
 		newsLoading.set(false)
 	}
+}
+
+export async function fetchProbabilityLeaders(force = false) {
+	if (!browser) return
+
+	const current = get(probabilityLeadersStore)
+	if (current.length > 0 && !force && !get(probabilityLeadersLoading)) return current
+
+	probabilityLeadersLoading.set(true)
+	try {
+		const response = await fetch(`${API_URL}/leaderboard/probability-leaders`, {
+			credentials: 'include'
+		})
+		if (response.ok) {
+			const data = await response.json()
+			probabilityLeadersStore.set(data)
+			return data
+		}
+	} catch (e) {
+		console.error('Failed to fetch probability leaders:', e)
+	} finally {
+		probabilityLeadersLoading.set(false)
+	}
+	return []
 }
 
 // Background prefetch for common data

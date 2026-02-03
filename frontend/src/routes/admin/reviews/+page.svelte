@@ -73,7 +73,7 @@
 </script>
 
 <svelte:head>
-	<title>reviews | admin | scraps</title>
+	<title>reviews - admin - scraps</title>
 </svelte:head>
 
 <div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">

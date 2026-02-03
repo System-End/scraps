@@ -1,4 +1,5 @@
 import { API_URL } from '$lib/config'
+import { writable } from 'svelte/store'
 
 export interface User {
     id: number
@@ -8,7 +9,10 @@ export interface User {
     slackId: string | null
     scraps: number
     role: string
+    tutorialCompleted: boolean
 }
+
+export const userScrapsStore = writable<number>(0)
 
 let cachedUser: User | null | undefined = undefined
 let fetchPromise: Promise<User | null> | null = null
@@ -27,8 +31,8 @@ export async function logout() {
     window.location.href = "/"
 }
 
-export async function getUser(): Promise<User | null> {
-    if (cachedUser !== undefined) return cachedUser
+export async function getUser(forceRefresh = false): Promise<User | null> {
+    if (!forceRefresh && cachedUser !== undefined) return cachedUser
 
     if (fetchPromise) return fetchPromise
 
@@ -48,6 +52,9 @@ export async function getUser(): Promise<User | null> {
                 return null
             }
             cachedUser = (data.user as User) || null
+            if (cachedUser) {
+                userScrapsStore.set(cachedUser.scraps)
+            }
             return cachedUser
         } catch {
             cachedUser = null
@@ -58,4 +65,9 @@ export async function getUser(): Promise<User | null> {
     })()
 
     return fetchPromise
+}
+
+export async function refreshUserScraps(): Promise<number | null> {
+    const user = await getUser(true)
+    return user?.scraps ?? null
 }

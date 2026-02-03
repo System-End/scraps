@@ -87,7 +87,7 @@
 </script>
 
 <svelte:head>
-	<title>submit project | scraps</title>
+	<title>submit project - scraps</title>
 </svelte:head>
 
 <div class="pt-24 px-6 md:px-12 max-w-2xl mx-auto pb-24">

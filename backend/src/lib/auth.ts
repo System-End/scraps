@@ -3,11 +3,12 @@ import { db } from "../db"
 import { usersTable } from "../schemas/users"
 import { sessionsTable } from "../schemas/sessions"
 import { getSlackProfile, getAvatarUrl } from "./slack"
+import { config } from "../config"
 
 const HACKCLUB_AUTH_URL = "https://auth.hackclub.com"
-const CLIENT_ID = process.env.HCAUTH_CLIENT_ID!
-const CLIENT_SECRET = process.env.HCAUTH_CLIENT_SECRET!
-const REDIRECT_URI = process.env.HCAUTH_REDIRECT_URI || "http://localhost:3000/api/auth/callback"
+const CLIENT_ID = config.hcauth.clientId
+const CLIENT_SECRET = config.hcauth.clientSecret
+const REDIRECT_URI = config.hcauth.redirectUri
 
 interface OIDCTokenResponse {
     access_token: string
@@ -95,8 +96,8 @@ export async function createOrUpdateUser(identity: HackClubIdentity, tokens: OID
     let username: string | null = null
     let avatarUrl: string | null = null
 
-    if (identity.slack_id && process.env.SLACK_BOT_TOKEN) {
-        const slackProfile = await getSlackProfile(identity.slack_id, process.env.SLACK_BOT_TOKEN)
+    if (identity.slack_id && config.slackBotToken) {
+        const slackProfile = await getSlackProfile(identity.slack_id, config.slackBotToken)
         if (slackProfile) {
             username = slackProfile.display_name || slackProfile.real_name || null
             avatarUrl = getAvatarUrl(slackProfile)
