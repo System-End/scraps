@@ -1,43 +1,45 @@
 <script lang="ts">
-	import { X, AlertTriangle } from '@lucide/svelte'
-	import { errorStore, clearError } from '$lib/stores'
+	import { X, AlertTriangle } from '@lucide/svelte';
+	import { errorStore, clearError } from '$lib/stores';
 
-	let error = $derived($errorStore)
+	let error = $derived($errorStore);
 </script>
 
 {#if error}
 	<div
-		class="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4"
+		class="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4"
 		onclick={(e) => e.target === e.currentTarget && clearError()}
 		onkeydown={(e) => e.key === 'Escape' && clearError()}
 		role="dialog"
 		tabindex="-1"
 	>
-		<div class="bg-white rounded-2xl w-full max-w-md p-6 border-4 border-red-600">
-			<div class="flex items-start justify-between mb-4">
+		<div class="w-full max-w-md rounded-2xl border-4 border-red-600 bg-white p-6">
+			<div class="mb-4 flex items-start justify-between">
 				<div class="flex items-center gap-3">
-					<div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+					<div class="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
 						<AlertTriangle size={24} class="text-red-600" />
 					</div>
 					<h2 class="text-2xl font-bold text-red-600">{error.title || 'error'}</h2>
 				</div>
 				<button
 					onclick={clearError}
-					class="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+					class="cursor-pointer rounded-lg p-2 transition-colors hover:bg-gray-100"
 					aria-label="Close"
 				>
 					<X size={20} />
 				</button>
 			</div>
-			<p class="text-gray-600 mb-6">{error.message}</p>
+			<p class="mb-6 text-gray-600">{error.message}</p>
 			{#if error.details}
-				<div class="mb-6 p-3 bg-gray-100 rounded-lg text-sm text-gray-500 font-mono overflow-x-auto">
+				<div
+					class="mb-6 overflow-x-auto rounded-lg bg-gray-100 p-3 font-mono text-sm text-gray-500"
+				>
 					{error.details}
 				</div>
 			{/if}
 			<button
 				onclick={clearError}
-				class="w-full px-4 py-2 bg-red-600 text-white rounded-full font-bold border-4 border-red-600 hover:border-dashed transition-all duration-200 cursor-pointer"
+				class="w-full cursor-pointer rounded-full border-4 border-red-600 bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed"
 			>
 				dismiss
 			</button>

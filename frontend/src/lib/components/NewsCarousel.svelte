@@ -1,35 +1,35 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
-	import { ChevronLeft, ChevronRight } from '@lucide/svelte'
-	import { newsStore, newsLoading, fetchNews } from '$lib/stores'
+	import { onMount } from 'svelte';
+	import { ChevronLeft, ChevronRight } from '@lucide/svelte';
+	import { newsStore, newsLoading, fetchNews } from '$lib/stores';
 
-	let currentIndex = $state(0)
-	let isPaused = $state(false)
+	let currentIndex = $state(0);
+	let isPaused = $state(false);
 
-	const AUTO_SCROLL_INTERVAL = 5000
+	const AUTO_SCROLL_INTERVAL = 5000;
 
 	onMount(() => {
-		fetchNews()
+		fetchNews();
 
 		const interval = setInterval(() => {
 			if (!isPaused && $newsStore.length > 1) {
-				currentIndex = (currentIndex + 1) % $newsStore.length
+				currentIndex = (currentIndex + 1) % $newsStore.length;
 			}
-		}, AUTO_SCROLL_INTERVAL)
+		}, AUTO_SCROLL_INTERVAL);
 
-		return () => clearInterval(interval)
-	})
+		return () => clearInterval(interval);
+	});
 
 	function goTo(index: number) {
-		currentIndex = index
+		currentIndex = index;
 	}
 
 	function prev() {
-		currentIndex = currentIndex === 0 ? $newsStore.length - 1 : currentIndex - 1
+		currentIndex = currentIndex === 0 ? $newsStore.length - 1 : currentIndex - 1;
 	}
 
 	function next() {
-		currentIndex = (currentIndex + 1) % $newsStore.length
+		currentIndex = (currentIndex + 1) % $newsStore.length;
 	}
 
 	function formatDate(dateString: string) {
@@ -37,32 +37,32 @@
 			month: 'short',
 			day: 'numeric',
 			year: 'numeric'
-		})
+		});
 	}
 </script>
 
 {#if !$newsLoading}
 	<div
-		class="border-4 border-black rounded-2xl p-6 mb-8 relative overflow-hidden"
+		class="relative mb-8 overflow-hidden rounded-2xl border-4 border-black p-6"
 		onmouseenter={() => (isPaused = true)}
 		onmouseleave={() => (isPaused = false)}
 		role="region"
 		aria-label="News carousel"
 	>
-		<div class="flex items-center justify-between mb-2">
-			<h2 class="font-bold text-lg">news</h2>
+		<div class="mb-2 flex items-center justify-between">
+			<h2 class="text-lg font-bold">news</h2>
 			{#if $newsStore.length > 1}
 				<div class="flex items-center gap-2">
 					<button
 						onclick={prev}
-						class="p-1 hover:bg-gray-100 rounded transition-colors cursor-pointer"
+						class="cursor-pointer rounded p-1 transition-colors hover:bg-gray-100"
 						aria-label="Previous news"
 					>
 						<ChevronLeft size={20} />
 					</button>
 					<button
 						onclick={next}
-						class="p-1 hover:bg-gray-100 rounded transition-colors cursor-pointer"
+						class="cursor-pointer rounded p-1 transition-colors hover:bg-gray-100"
 						aria-label="Next news"
 					>
 						<ChevronRight size={20} />
@@ -78,25 +78,26 @@
 				{#each $newsStore as item, index (item.id)}
 					<div
 						class="absolute inset-0 transition-all duration-500 ease-in-out {index === currentIndex
-							? 'opacity-100 translate-x-0'
+							? 'translate-x-0 opacity-100'
 							: index < currentIndex
-								? 'opacity-0 -translate-x-full'
-								: 'opacity-0 translate-x-full'}"
+								? '-translate-x-full opacity-0'
+								: 'translate-x-full opacity-0'}"
 					>
-						<p class="text-xl font-bold mb-1">{item.title}</p>
+						<p class="mb-1 text-xl font-bold">{item.title}</p>
 						<p class="text-gray-600">{item.content}</p>
-						<p class="text-sm text-gray-400 mt-1">{formatDate(item.createdAt)}</p>
+						<p class="mt-1 text-sm text-gray-400">{formatDate(item.createdAt)}</p>
 					</div>
 				{/each}
 			</div>
 
 			{#if $newsStore.length > 1}
-				<div class="flex justify-center gap-2 mt-4">
+				<div class="mt-4 flex justify-center gap-2">
 					{#each $newsStore as _, index}
 						<button
 							onclick={() => goTo(index)}
-							class="w-2 h-2 rounded-full transition-all duration-300 cursor-pointer {index === currentIndex
-								? 'bg-black w-6'
+							class="h-2 w-2 cursor-pointer rounded-full transition-all duration-300 {index ===
+							currentIndex
+								? 'w-6 bg-black'
 								: 'bg-gray-300 hover:bg-gray-400'}"
 							aria-label="Go to news {index + 1}"
 						></button>

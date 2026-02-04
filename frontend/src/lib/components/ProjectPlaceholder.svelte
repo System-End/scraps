@@ -1,19 +1,19 @@
 <script lang="ts">
-	import { Spool } from '@lucide/svelte'
+	import { Spool } from '@lucide/svelte';
 
-	let { seed = 0 }: { seed?: number } = $props()
+	let { seed = 0 }: { seed?: number } = $props();
 
 	function seededRandom(s: number) {
 		return () => {
-			s = Math.sin(s) * 10000
-			return s - Math.floor(s)
-		}
+			s = Math.sin(s) * 10000;
+			return s - Math.floor(s);
+		};
 	}
 
 	let spools = $derived.by(() => {
-		const random = seededRandom(seed)
-		const count = Math.floor(random() * 4) + 5
-		const items = []
+		const random = seededRandom(seed);
+		const count = Math.floor(random() * 4) + 5;
+		const items = [];
 
 		for (let i = 0; i < count; i++) {
 			items.push({
@@ -22,14 +22,14 @@
 				size: random() * 20 + 16,
 				rotation: random() * 360,
 				opacity: random() * 0.3 + 0.1
-			})
+			});
 		}
 
-		return items
-	})
+		return items;
+	});
 </script>
 
-<div class="w-full h-full relative bg-gray-50 overflow-hidden">
+<div class="relative h-full w-full overflow-hidden bg-gray-50">
 	{#each spools as spool, i}
 		<div
 			class="absolute text-black"

@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
-	import { goto } from '$app/navigation'
-	import { FilePlus2 } from '@lucide/svelte'
-	import CreateProjectModal from '$lib/components/CreateProjectModal.svelte'
-	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte'
-	import NewsCarousel from '$lib/components/NewsCarousel.svelte'
-	import { getUser } from '$lib/auth-client'
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { FilePlus2 } from '@lucide/svelte';
+	import CreateProjectModal from '$lib/components/CreateProjectModal.svelte';
+	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
+	import NewsCarousel from '$lib/components/NewsCarousel.svelte';
+	import { getUser } from '$lib/auth-client';
 	import {
 		projectsStore,
 		projectsLoading,
@@ -13,8 +13,8 @@
 		addProject,
 		tutorialActiveStore,
 		type Project
-	} from '$lib/stores'
-	import { formatHours } from '$lib/utils'
+	} from '$lib/stores';
+	import { formatHours } from '$lib/utils';
 
 	const greetingPhrases = [
 		'ready to scrap?',
@@ -25,30 +25,30 @@
 		'make something fun',
 		'create, ship, repeat',
 		'keep on scrapping'
-	]
+	];
 
-	const randomPhrase = greetingPhrases[Math.floor(Math.random() * greetingPhrases.length)]
+	const randomPhrase = greetingPhrases[Math.floor(Math.random() * greetingPhrases.length)];
 
-	let user = $state<Awaited<ReturnType<typeof getUser>>>(null)
-	let showCreateModal = $state(false)
+	let user = $state<Awaited<ReturnType<typeof getUser>>>(null);
+	let showCreateModal = $state(false);
 
 	onMount(async () => {
-		const userData = await getUser()
+		const userData = await getUser();
 		if (!userData) {
-			goto('/')
-			return
+			goto('/');
+			return;
 		}
-		user = userData
-		fetchProjects()
-	})
+		user = userData;
+		fetchProjects();
+	});
 
 	function createNewProject() {
-		showCreateModal = true
+		showCreateModal = true;
 	}
 
 	function handleProjectCreated(newProject: Project) {
-		addProject(newProject)
-		showCreateModal = false
+		addProject(newProject);
+		showCreateModal = false;
 	}
 </script>
 
@@ -56,42 +56,46 @@
 	<title>dashboard - scraps</title>
 </svelte:head>
 
-<div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">
+<div class="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12">
 	<!-- Greeting -->
 	{#if user}
-		<h1 class="text-4xl md:text-5xl font-bold mb-2">hello, {(user.username || 'friend').toLocaleLowerCase()}</h1>
-		<p class="text-lg text-gray-600 mb-8">{randomPhrase}</p>
+		<h1 class="mb-2 text-4xl font-bold md:text-5xl">
+			hello, {(user.username || 'friend').toLocaleLowerCase()}
+		</h1>
+		<p class="mb-8 text-lg text-gray-600">{randomPhrase}</p>
 	{/if}
 
 	<!-- Projects Section -->
 	<div class="mb-12">
-		<div class="flex gap-6 overflow-x-auto pb-4 scrollbar-black">
+		<div class="scrollbar-black flex gap-6 overflow-x-auto pb-4">
 			{#each $projectsStore as project (project.id)}
 				<a
 					href="/projects/{project.id}"
-					class="shrink-0 w-80 h-64 rounded-2xl border-4 border-black overflow-hidden relative group bg-white cursor-pointer transition-all hover:border-dashed flex flex-col"
+					class="group relative flex h-64 w-80 shrink-0 cursor-pointer flex-col overflow-hidden rounded-2xl border-4 border-black bg-white transition-all hover:border-dashed"
 				>
 					<div class="flex-1 overflow-hidden">
 						{#if project.image}
-							<img
-								src={project.image}
-								alt={project.name}
-								class="w-full h-full object-cover"
-							/>
+							<img src={project.image} alt={project.name} class="h-full w-full object-cover" />
 						{:else}
 							<ProjectPlaceholder seed={project.id} />
 						{/if}
 					</div>
-					<div class="px-4 py-3 border-t-2 border-black bg-white">
-						<div class="flex items-center justify-between mb-1">
-							<span class="font-bold text-lg truncate">{project.name}</span>
-							<span class="text-gray-500 text-sm shrink-0">{formatHours(project.hours)}h</span>
+					<div class="border-t-2 border-black bg-white px-4 py-3">
+						<div class="mb-1 flex items-center justify-between">
+							<span class="truncate text-lg font-bold">{project.name}</span>
+							<span class="shrink-0 text-sm text-gray-500">{formatHours(project.hours)}h</span>
 						</div>
 						<div class="flex items-center justify-between">
-							<span class="text-xs px-2 py-0.5 rounded-full bg-gray-100">
+							<span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs">
 								tier {project.tier}
 							</span>
-							<span class="text-xs px-2 py-0.5 rounded-full {project.status === 'shipped' ? 'bg-green-100' : project.status === 'waiting_for_review' ? 'bg-yellow-100' : 'bg-gray-100'}">
+							<span
+								class="rounded-full px-2 py-0.5 text-xs {project.status === 'shipped'
+									? 'bg-green-100'
+									: project.status === 'waiting_for_review'
+										? 'bg-yellow-100'
+										: 'bg-gray-100'}"
+							>
 								{project.status.replace(/_/g, ' ')}
 							</span>
 						</div>
@@ -103,7 +107,7 @@
 			<button
 				onclick={createNewProject}
 				data-tutorial="new-project"
-				class="shrink-0 w-80 h-64 rounded-2xl border-4 border-black flex flex-col items-center justify-center gap-4 cursor-pointer transition-all  border-dashed hover:border-solid bg-white"
+				class="flex h-64 w-80 shrink-0 cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-4 border-dashed border-black bg-white transition-all hover:border-solid"
 			>
 				<FilePlus2 size={64} strokeWidth={1.5} />
 				<span class="text-2xl font-bold">new project</span>
@@ -115,7 +119,12 @@
 	<NewsCarousel />
 </div>
 
-<CreateProjectModal open={showCreateModal} onClose={() => showCreateModal = false} onCreated={handleProjectCreated} tutorialMode={$tutorialActiveStore} />
+<CreateProjectModal
+	open={showCreateModal}
+	onClose={() => (showCreateModal = false)}
+	onCreated={handleProjectCreated}
+	tutorialMode={$tutorialActiveStore}
+/>
 
 <style>
 	.scrollbar-black {

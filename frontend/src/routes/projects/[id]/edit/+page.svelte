@@ -1,26 +1,26 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
-	import { goto } from '$app/navigation'
-	import { ArrowLeft, ChevronDown, Upload, X, Save, Check, Trash2 } from '@lucide/svelte'
-	import { getUser } from '$lib/auth-client'
-	import { API_URL } from '$lib/config'
-	import { formatHours } from '$lib/utils'
-	import { invalidateAllStores } from '$lib/stores'
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { ArrowLeft, ChevronDown, Upload, X, Save, Check, Trash2 } from '@lucide/svelte';
+	import { getUser } from '$lib/auth-client';
+	import { API_URL } from '$lib/config';
+	import { formatHours } from '$lib/utils';
+	import { invalidateAllStores } from '$lib/stores';
 
-	let { data } = $props()
+	let { data } = $props();
 
 	interface Project {
-		id: number
-		userId: string
-		name: string
-		description: string
-		image: string | null
-		githubUrl: string | null
-		playableUrl: string | null
-		hackatimeProject: string | null
-		hours: number
-		tier: number
-		status: string
+		id: number;
+		userId: string;
+		name: string;
+		description: string;
+		image: string | null;
+		githubUrl: string | null;
+		playableUrl: string | null;
+		hackatimeProject: string | null;
+		hours: number;
+		tier: number;
+		status: string;
 	}
 
 	const TIERS = [
@@ -28,154 +28,158 @@
 		{ value: 2, description: 'moderate complexity, multi-file projects' },
 		{ value: 3, description: 'complex features, APIs, integrations' },
 		{ value: 4, description: 'full applications, major undertakings' }
-	]
+	];
 
 	interface HackatimeProject {
-		name: string
-		hours: number
-		repoUrl: string | null
-		languages: string[]
+		name: string;
+		hours: number;
+		repoUrl: string | null;
+		languages: string[];
 	}
 
-	let project = $state<Project | null>(null)
-	let loading = $state(true)
-	let saving = $state(false)
-	let deleting = $state(false)
-	let showDeleteConfirm = $state(false)
-	let error = $state<string | null>(null)
-	let imagePreview = $state<string | null>(null)
-	let uploadingImage = $state(false)
-	let hackatimeProjects = $state<HackatimeProject[]>([])
-	let userSlackId = $state<string | null>(null)
-	let selectedHackatimeName = $state<string | null>(null)
-	let loadingProjects = $state(false)
-	let showDropdown = $state(false)
-	let selectedTier = $state(1)
+	let project = $state<Project | null>(null);
+	let loading = $state(true);
+	let saving = $state(false);
+	let deleting = $state(false);
+	let showDeleteConfirm = $state(false);
+	let error = $state<string | null>(null);
+	let imagePreview = $state<string | null>(null);
+	let uploadingImage = $state(false);
+	let hackatimeProjects = $state<HackatimeProject[]>([]);
+	let userSlackId = $state<string | null>(null);
+	let selectedHackatimeName = $state<string | null>(null);
+	let loadingProjects = $state(false);
+	let showDropdown = $state(false);
+	let selectedTier = $state(1);
 
-	const NAME_MAX = 50
-	const DESC_MIN = 20
-	const DESC_MAX = 1000
+	const NAME_MAX = 50;
+	const DESC_MIN = 20;
+	const DESC_MAX = 1000;
 
-	let hasDescription = $derived((project?.description?.trim().length ?? 0) >= DESC_MIN && (project?.description?.trim().length ?? 0) <= DESC_MAX)
-	let hasName = $derived((project?.name?.trim().length ?? 0) > 0 && (project?.name?.trim().length ?? 0) <= NAME_MAX)
-	let canSave = $derived(hasDescription && hasName)
+	let hasDescription = $derived(
+		(project?.description?.trim().length ?? 0) >= DESC_MIN &&
+			(project?.description?.trim().length ?? 0) <= DESC_MAX
+	);
+	let hasName = $derived(
+		(project?.name?.trim().length ?? 0) > 0 && (project?.name?.trim().length ?? 0) <= NAME_MAX
+	);
+	let canSave = $derived(hasDescription && hasName);
 
 	onMount(async () => {
-		const user = await getUser()
+		const user = await getUser();
 		if (!user) {
-			goto('/')
-			return
+			goto('/');
+			return;
 		}
 
 		try {
 			const response = await fetch(`${API_URL}/projects/${data.id}`, {
 				credentials: 'include'
-			})
+			});
 			if (!response.ok) {
-				throw new Error('Project not found')
+				throw new Error('Project not found');
 			}
-			const responseData = await response.json()
+			const responseData = await response.json();
 			if (responseData.error) {
-				throw new Error(responseData.error)
+				throw new Error(responseData.error);
 			}
-			project = responseData.project
-			imagePreview = project?.image || null
-			selectedTier = project?.tier || 1
+			project = responseData.project;
+			imagePreview = project?.image || null;
+			selectedTier = project?.tier || 1;
 			if (project?.hackatimeProject) {
-				const parts = project.hackatimeProject.split('/')
-				selectedHackatimeName = parts.length > 1 ? parts.slice(1).join('/') : parts[0]
+				const parts = project.hackatimeProject.split('/');
+				selectedHackatimeName = parts.length > 1 ? parts.slice(1).join('/') : parts[0];
 			}
-			fetchHackatimeProjects()
+			fetchHackatimeProjects();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load project'
+			error = e instanceof Error ? e.message : 'Failed to load project';
 		} finally {
-			loading = false
+			loading = false;
 		}
-	})
+	});
 
 	async function fetchHackatimeProjects() {
-		loadingProjects = true
+		loadingProjects = true;
 		try {
 			const response = await fetch(`${API_URL}/hackatime/projects`, {
 				credentials: 'include'
-			})
+			});
 			if (response.ok) {
-				const apiData = await response.json()
-				hackatimeProjects = apiData.projects || []
-				userSlackId = apiData.slackId || null
+				const apiData = await response.json();
+				hackatimeProjects = apiData.projects || [];
+				userSlackId = apiData.slackId || null;
 			}
 		} catch (e) {
-			console.error('Failed to fetch hackatime projects:', e)
+			console.error('Failed to fetch hackatime projects:', e);
 		} finally {
-			loadingProjects = false
+			loadingProjects = false;
 		}
 	}
 
 	async function handleImageUpload(event: Event) {
-		const input = event.target as HTMLInputElement
-		const file = input.files?.[0]
-		if (!file || !project) return
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file || !project) return;
 
 		if (file.size > 5 * 1024 * 1024) {
-			error = 'Image must be less than 5MB'
-			return
+			error = 'Image must be less than 5MB';
+			return;
 		}
 
-		imagePreview = URL.createObjectURL(file)
-		uploadingImage = true
-		error = null
+		imagePreview = URL.createObjectURL(file);
+		uploadingImage = true;
+		error = null;
 
 		try {
-			const formData = new FormData()
-			formData.append('file', file)
+			const formData = new FormData();
+			formData.append('file', file);
 
 			const response = await fetch(`${API_URL}/upload/image`, {
 				method: 'POST',
 				credentials: 'include',
 				body: formData
-			})
+			});
 
-			const responseData = await response.json()
+			const responseData = await response.json();
 			if (responseData.error) {
-				throw new Error(responseData.error)
+				throw new Error(responseData.error);
 			}
 
-			project.image = responseData.url
+			project.image = responseData.url;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to upload image'
-			imagePreview = project?.image || null
+			error = e instanceof Error ? e.message : 'Failed to upload image';
+			imagePreview = project?.image || null;
 		} finally {
-			uploadingImage = false
+			uploadingImage = false;
 		}
 	}
 
 	function removeImage() {
 		if (project) {
-			project.image = null
+			project.image = null;
 		}
-		imagePreview = null
+		imagePreview = null;
 	}
 
 	function selectHackatimeProject(hp: HackatimeProject) {
 		if (project) {
-			selectedHackatimeName = hp.name
-			project.hours = hp.hours
+			selectedHackatimeName = hp.name;
+			project.hours = hp.hours;
 			if (hp.repoUrl && !project.githubUrl) {
-				project.githubUrl = hp.repoUrl
+				project.githubUrl = hp.repoUrl;
 			}
 		}
-		showDropdown = false
+		showDropdown = false;
 	}
 
 	async function handleSave() {
-		if (!project || !canSave) return
+		if (!project || !canSave) return;
 
-		saving = true
-		error = null
+		saving = true;
+		error = null;
 
-		const hackatimeValue = selectedHackatimeName && userSlackId
-			? `${userSlackId}/${selectedHackatimeName}`
-			: null
+		const hackatimeValue =
+			selectedHackatimeName && userSlackId ? `${userSlackId}/${selectedHackatimeName}` : null;
 
 		try {
 			const response = await fetch(`${API_URL}/projects/${project.id}`, {
@@ -193,46 +197,46 @@
 					hackatimeProject: hackatimeValue,
 					tier: selectedTier
 				})
-			})
+			});
 
 			if (!response.ok) {
-				const responseData = await response.json().catch(() => ({}))
-				throw new Error(responseData.message || 'Failed to save project')
+				const responseData = await response.json().catch(() => ({}));
+				throw new Error(responseData.message || 'Failed to save project');
 			}
 
-			invalidateAllStores()
-			goto(`/projects/${project.id}`)
+			invalidateAllStores();
+			goto(`/projects/${project.id}`);
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to save project'
+			error = e instanceof Error ? e.message : 'Failed to save project';
 		} finally {
-			saving = false
+			saving = false;
 		}
 	}
 
 	async function handleDelete() {
-		if (!project) return
+		if (!project) return;
 
-		deleting = true
-		error = null
+		deleting = true;
+		error = null;
 
 		try {
 			const response = await fetch(`${API_URL}/projects/${project.id}`, {
 				method: 'DELETE',
 				credentials: 'include'
-			})
+			});
 
 			if (!response.ok) {
-				const responseData = await response.json().catch(() => ({}))
-				throw new Error(responseData.message || 'Failed to delete project')
+				const responseData = await response.json().catch(() => ({}));
+				throw new Error(responseData.message || 'Failed to delete project');
 			}
 
-			invalidateAllStores()
-			goto('/dashboard')
+			invalidateAllStores();
+			goto('/dashboard');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to delete project'
-			showDeleteConfirm = false
+			error = e instanceof Error ? e.message : 'Failed to delete project';
+			showDeleteConfirm = false;
 		} finally {
-			deleting = false
+			deleting = false;
 		}
 	}
 </script>
@@ -241,30 +245,30 @@
 	<title>edit {project?.name || 'project'} - scraps</title>
 </svelte:head>
 
-<div class="pt-24 px-6 md:px-12 max-w-4xl mx-auto pb-24">
+<div class="mx-auto max-w-4xl px-6 pt-24 pb-24 md:px-12">
 	<a
 		href="/projects/{data.id}"
-		class="inline-flex items-center gap-2 mb-8 font-bold hover:underline cursor-pointer"
+		class="mb-8 inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
 	>
 		<ArrowLeft size={20} />
 		back to project
 	</a>
 
 	{#if loading}
-		<div class="text-center py-12">
+		<div class="py-12 text-center">
 			<p class="text-lg text-gray-500">loading project...</p>
 		</div>
 	{:else if error && !project}
-		<div class="text-center py-12">
+		<div class="py-12 text-center">
 			<p class="text-lg text-red-600">{error}</p>
 			<a href="/dashboard" class="mt-4 inline-block font-bold underline">go back</a>
 		</div>
 	{:else if project}
-		<div class="border-8 border-black rounded-2xl p-6 bg-white">
-			<h1 class="text-3xl font-bold mb-6">edit project</h1>
+		<div class="rounded-2xl border-8 border-black bg-white p-6">
+			<h1 class="mb-6 text-3xl font-bold">edit project</h1>
 
 			{#if error}
-				<div class="mb-4 p-3 bg-red-100 border-2 border-red-500 rounded-lg text-red-700 text-sm">
+				<div class="mb-4 rounded-lg border-2 border-red-500 bg-red-100 p-3 text-sm text-red-700">
 					{error}
 				</div>
 			{/if}
@@ -272,27 +276,35 @@
 			<div class="space-y-6">
 				<!-- Image Upload -->
 				<div>
-					<label class="block text-sm font-bold mb-2">image <span class="text-red-500">*</span></label>
+					<label class="mb-2 block text-sm font-bold"
+						>image <span class="text-red-500">*</span></label
+					>
 					{#if imagePreview}
-						<div class="relative w-full h-48 border-2 border-black rounded-lg overflow-hidden">
-							<img src={imagePreview} alt="Preview" class="w-full h-full object-contain bg-gray-100" />
+						<div class="relative h-48 w-full overflow-hidden rounded-lg border-2 border-black">
+							<img
+								src={imagePreview}
+								alt="Preview"
+								class="h-full w-full bg-gray-100 object-contain"
+							/>
 							{#if uploadingImage}
-								<div class="absolute inset-0 bg-black/50 flex items-center justify-center">
-									<span class="text-white font-bold">uploading...</span>
+								<div class="absolute inset-0 flex items-center justify-center bg-black/50">
+									<span class="font-bold text-white">uploading...</span>
 								</div>
 							{:else}
 								<button
 									type="button"
 									onclick={removeImage}
-									class="absolute top-2 right-2 p-1 bg-white rounded-full border-2 border-black hover:bg-gray-100 cursor-pointer"
+									class="absolute top-2 right-2 cursor-pointer rounded-full border-2 border-black bg-white p-1 hover:bg-gray-100"
 								>
 									<X size={16} />
 								</button>
 							{/if}
 						</div>
 					{:else}
-						<label class="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-black rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-							<Upload size={32} class="text-gray-400 mb-2" />
+						<label
+							class="flex h-40 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-black transition-colors hover:bg-gray-50"
+						>
+							<Upload size={32} class="mb-2 text-gray-400" />
 							<span class="text-sm text-gray-500">click to upload image</span>
 							<input type="file" accept="image/*" onchange={handleImageUpload} class="hidden" />
 						</label>
@@ -301,87 +313,111 @@
 
 				<!-- Name -->
 				<div>
-					<label for="name" class="block text-sm font-bold mb-2">name <span class="text-red-500">*</span></label>
+					<label for="name" class="mb-2 block text-sm font-bold"
+						>name <span class="text-red-500">*</span></label
+					>
 					<input
 						id="name"
 						type="text"
 						bind:value={project.name}
 						maxlength={NAME_MAX}
-						class="w-full px-4 py-3 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+						class="w-full rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
 					/>
-					<p class="text-xs text-gray-500 mt-1 text-right">{project.name.length}/{NAME_MAX}</p>
+					<p class="mt-1 text-right text-xs text-gray-500">{project.name.length}/{NAME_MAX}</p>
 				</div>
 
 				<!-- Description -->
 				<div>
-					<label for="description" class="block text-sm font-bold mb-2">description <span class="text-red-500">*</span></label>
+					<label for="description" class="mb-2 block text-sm font-bold"
+						>description <span class="text-red-500">*</span></label
+					>
 					<textarea
 						id="description"
 						bind:value={project.description}
 						rows="4"
 						maxlength={DESC_MAX}
-						class="w-full px-4 py-3 border-2 border-black rounded-lg focus:outline-none focus:border-dashed resize-none"
+						class="w-full resize-none rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
 					></textarea>
-					<p class="text-xs mt-1 text-right {project.description.length < DESC_MIN ? 'text-red-500' : 'text-gray-500'}">{project.description.length}/{DESC_MAX} (min {DESC_MIN})</p>
+					<p
+						class="mt-1 text-right text-xs {project.description.length < DESC_MIN
+							? 'text-red-500'
+							: 'text-gray-500'}"
+					>
+						{project.description.length}/{DESC_MAX} (min {DESC_MIN})
+					</p>
 				</div>
 
 				<!-- GitHub URL -->
 				<div>
-					<label for="githubUrl" class="block text-sm font-bold mb-2">github url <span class="text-gray-400">(optional)</span></label>
+					<label for="githubUrl" class="mb-2 block text-sm font-bold"
+						>github url <span class="text-gray-400">(optional)</span></label
+					>
 					<input
 						id="githubUrl"
 						type="url"
 						bind:value={project.githubUrl}
 						placeholder="https://github.com/user/repo"
-						class="w-full px-4 py-3 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+						class="w-full rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
 					/>
 				</div>
 
 				<!-- Playable URL -->
 				<div>
-					<label for="playableUrl" class="block text-sm font-bold mb-2">playable url <span class="text-gray-400">(required for submission)</span></label>
+					<label for="playableUrl" class="mb-2 block text-sm font-bold"
+						>playable url <span class="text-gray-400">(required for submission)</span></label
+					>
 					<input
 						id="playableUrl"
 						type="url"
 						bind:value={project.playableUrl}
 						placeholder="https://yourproject.com or https://replit.com/..."
-						class="w-full px-4 py-3 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+						class="w-full rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
 					/>
-					<p class="text-xs text-gray-500 mt-1">a link where reviewers can try your project</p>
+					<p class="mt-1 text-xs text-gray-500">a link where reviewers can try your project</p>
 				</div>
 
 				<!-- Hackatime Project Dropdown -->
 				<div>
-					<label class="block text-sm font-bold mb-2">hackatime project <span class="text-gray-400">(optional)</span></label>
+					<label class="mb-2 block text-sm font-bold"
+						>hackatime project <span class="text-gray-400">(optional)</span></label
+					>
 					<div class="relative">
 						<button
 							type="button"
 							onclick={() => (showDropdown = !showDropdown)}
-							class="w-full px-4 py-3 border-2 border-black rounded-lg focus:outline-none focus:border-dashed text-left flex items-center justify-between"
+							class="flex w-full items-center justify-between rounded-lg border-2 border-black px-4 py-3 text-left focus:border-dashed focus:outline-none"
 						>
 							{#if loadingProjects}
 								<span class="text-gray-500">loading projects...</span>
 							{:else if selectedHackatimeName}
-								<span>{selectedHackatimeName} <span class="text-gray-500">({formatHours(project.hours)}h)</span></span>
+								<span
+									>{selectedHackatimeName}
+									<span class="text-gray-500">({formatHours(project.hours)}h)</span></span
+								>
 							{:else}
 								<span class="text-gray-500">select a project</span>
 							{/if}
-							<ChevronDown size={20} class={showDropdown ? 'rotate-180 transition-transform' : 'transition-transform'} />
+							<ChevronDown
+								size={20}
+								class={showDropdown ? 'rotate-180 transition-transform' : 'transition-transform'}
+							/>
 						</button>
 
 						{#if showDropdown && !loadingProjects}
-							<div class="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-black rounded-lg max-h-48 overflow-y-auto z-10">
+							<div
+								class="absolute top-full right-0 left-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border-2 border-black bg-white"
+							>
 								{#if hackatimeProjects.length === 0}
-									<div class="px-4 py-2 text-gray-500 text-sm">no projects found</div>
+									<div class="px-4 py-2 text-sm text-gray-500">no projects found</div>
 								{:else}
 									{#each hackatimeProjects as hp}
 										<button
 											type="button"
 											onclick={() => selectHackatimeProject(hp)}
-											class="w-full px-4 py-2 text-left hover:bg-gray-100 flex justify-between items-center cursor-pointer"
+											class="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-left hover:bg-gray-100"
 										>
 											<span class="font-medium">{hp.name}</span>
-											<span class="text-gray-500 text-sm">{formatHours(hp.hours)}h</span>
+											<span class="text-sm text-gray-500">{formatHours(hp.hours)}h</span>
 										</button>
 									{/each}
 								{/if}
@@ -392,16 +428,25 @@
 
 				<!-- Tier Selector -->
 				<div>
-					<label class="block text-sm font-bold mb-2">project tier</label>
+					<label class="mb-2 block text-sm font-bold">project tier</label>
 					<div class="grid grid-cols-2 gap-2">
 						{#each TIERS as tier}
 							<button
 								type="button"
 								onclick={() => (selectedTier = tier.value)}
-								class="px-3 py-2 border-2 border-black rounded-lg font-bold transition-all duration-200 cursor-pointer text-left {selectedTier === tier.value ? 'bg-black text-white' : 'hover:border-dashed'}"
+								class="cursor-pointer rounded-lg border-2 border-black px-3 py-2 text-left font-bold transition-all duration-200 {selectedTier ===
+								tier.value
+									? 'bg-black text-white'
+									: 'hover:border-dashed'}"
 							>
 								<span>tier {tier.value}</span>
-								<p class="text-xs mt-1 {selectedTier === tier.value ? 'text-gray-300' : 'text-gray-500'}">{tier.description}</p>
+								<p
+									class="mt-1 text-xs {selectedTier === tier.value
+										? 'text-gray-300'
+										: 'text-gray-500'}"
+								>
+									{tier.description}
+								</p>
 							</button>
 						{/each}
 					</div>
@@ -409,17 +454,17 @@
 			</div>
 
 			<!-- Actions -->
-			<div class="flex gap-4 mt-8">
+			<div class="mt-8 flex gap-4">
 				<a
 					href="/projects/{data.id}"
-					class="w-1/2 px-4 py-3 border-4 border-black rounded-full font-bold text-center hover:border-dashed transition-all duration-200 cursor-pointer flex items-center justify-center"
+					class="flex w-1/2 cursor-pointer items-center justify-center rounded-full border-4 border-black px-4 py-3 text-center font-bold transition-all duration-200 hover:border-dashed"
 				>
 					cancel
 				</a>
 				<button
 					onclick={handleSave}
 					disabled={saving || !canSave}
-					class="w-1/2 px-4 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+					class="flex w-1/2 cursor-pointer items-center justify-center gap-2 rounded-full bg-black px-4 py-3 font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
 				>
 					<Save size={18} />
 					{saving ? 'saving...' : 'save changes'}
@@ -427,9 +472,9 @@
 			</div>
 
 			<!-- Danger Zone -->
-			<div class="mt-12 pt-8 border-t-4 border-dashed border-gray-300">
-				<h2 class="text-xl font-bold text-red-600 mb-4">danger zone</h2>
-				<div class="border-4 border-red-500 rounded-2xl p-6">
+			<div class="mt-12 border-t-4 border-dashed border-gray-300 pt-8">
+				<h2 class="mb-4 text-xl font-bold text-red-600">danger zone</h2>
+				<div class="rounded-2xl border-4 border-red-500 p-6">
 					<div class="flex items-center justify-between">
 						<div>
 							<h3 class="font-bold">delete this project</h3>
@@ -437,7 +482,7 @@
 						</div>
 						<button
 							onclick={() => (showDeleteConfirm = true)}
-							class="px-4 py-2 border-4 border-red-500 text-red-600 rounded-full font-bold hover:bg-red-50 transition-all duration-200 cursor-pointer flex items-center gap-2"
+							class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-red-500 px-4 py-2 font-bold text-red-600 transition-all duration-200 hover:bg-red-50"
 						>
 							<Trash2 size={18} />
 							delete
@@ -449,24 +494,25 @@
 
 		<!-- Delete Confirmation Modal -->
 		{#if showDeleteConfirm}
-			<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-6">
-				<div class="bg-white rounded-2xl w-full max-w-lg p-6 border-4 border-black">
-					<h2 class="text-2xl font-bold mb-4">are you sure?</h2>
-					<p class="text-gray-700 mb-6">
-						this will permanently delete <strong>{project.name}</strong>. this action cannot be undone.
+			<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+				<div class="w-full max-w-lg rounded-2xl border-4 border-black bg-white p-6">
+					<h2 class="mb-4 text-2xl font-bold">are you sure?</h2>
+					<p class="mb-6 text-gray-700">
+						this will permanently delete <strong>{project.name}</strong>. this action cannot be
+						undone.
 					</p>
 					<div class="flex gap-4">
 						<button
 							onclick={() => (showDeleteConfirm = false)}
 							disabled={deleting}
-							class="flex-1 px-4 py-3 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 cursor-pointer disabled:opacity-50"
+							class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-3 font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50"
 						>
 							cancel
 						</button>
 						<button
 							onclick={handleDelete}
 							disabled={deleting}
-							class="flex-1 px-4 py-3 bg-red-600 text-white border-4 border-red-600 rounded-full font-bold hover:bg-red-700 transition-all duration-200 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+							class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-red-600 bg-red-600 px-4 py-3 font-bold text-white transition-all duration-200 hover:bg-red-700 disabled:opacity-50"
 						>
 							<Trash2 size={18} />
 							{deleting ? 'deleting...' : 'delete project'}

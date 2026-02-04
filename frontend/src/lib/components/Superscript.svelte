@@ -2,10 +2,10 @@
 	let { number, tooltip }: { number: number | string; tooltip: string } = $props();
 </script>
 
-<span class="relative group">
+<span class="group relative">
 	<sup class="cursor-help hover:underline">{number}</sup>
 	<span
-		class="invisible group-hover:visible absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-2 text-sm bg-white border-2 border-dashed border-black rounded whitespace-nowrap z-10"
+		class="invisible absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 rounded border-2 border-dashed border-black bg-white px-3 py-2 text-sm whitespace-nowrap group-hover:visible"
 	>
 		{tooltip}
 	</span>

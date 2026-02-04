@@ -1,126 +1,139 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
-	import { goto } from '$app/navigation'
-	import { ArrowLeft, Pencil, Send, Clock, CheckCircle, XCircle, AlertCircle, Github, AlertTriangle, PlaneTakeoff, Plus, Globe, Spool, Eye } from '@lucide/svelte'
-	import { getUser } from '$lib/auth-client'
-	import { API_URL } from '$lib/config'
-	import { formatHours } from '$lib/utils'
-	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte'
-	import { tutorialActiveStore } from '$lib/stores'
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import {
+		ArrowLeft,
+		Pencil,
+		Send,
+		Clock,
+		CheckCircle,
+		XCircle,
+		AlertCircle,
+		Github,
+		AlertTriangle,
+		PlaneTakeoff,
+		Plus,
+		Globe,
+		Spool,
+		Eye
+	} from '@lucide/svelte';
+	import { getUser } from '$lib/auth-client';
+	import { API_URL } from '$lib/config';
+	import { formatHours } from '$lib/utils';
+	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
+	import { tutorialActiveStore } from '$lib/stores';
 
-	let { data } = $props()
+	let { data } = $props();
 
 	interface Project {
-		id: number
-		name: string
-		description: string
-		image: string | null
-		githubUrl: string | null
-		playableUrl: string | null
-		hackatimeProject?: string | null
-		hours: number
-		hoursOverride?: number | null
-		tier: number
-		status: string
-		scrapsAwarded: number
-		views: number
-		createdAt: string
-		updatedAt: string
+		id: number;
+		name: string;
+		description: string;
+		image: string | null;
+		githubUrl: string | null;
+		playableUrl: string | null;
+		hackatimeProject?: string | null;
+		hours: number;
+		hoursOverride?: number | null;
+		tier: number;
+		status: string;
+		scrapsAwarded: number;
+		views: number;
+		createdAt: string;
+		updatedAt: string;
 	}
 
-
-
 	interface Owner {
-		id: number
-		username: string | null
-		avatar: string | null
+		id: number;
+		username: string | null;
+		avatar: string | null;
 	}
 
 	interface ActivityEntry {
-		type: 'review' | 'created' | 'submitted' | 'scraps_earned'
-		action?: string
-		feedbackForAuthor?: string | null
-		createdAt: string
+		type: 'review' | 'created' | 'submitted' | 'scraps_earned';
+		action?: string;
+		feedbackForAuthor?: string | null;
+		createdAt: string;
 		reviewer?: {
-			id: number
-			username: string | null
-			avatar: string | null
-		} | null
+			id: number;
+			username: string | null;
+			avatar: string | null;
+		} | null;
 	}
 
-	let project = $state<Project | null>(null)
-	let owner = $state<Owner | null>(null)
-	let isOwner = $state(false)
-	let activity = $state<ActivityEntry[]>([])
-	let loading = $state(true)
-	let error = $state<string | null>(null)
+	let project = $state<Project | null>(null);
+	let owner = $state<Owner | null>(null);
+	let isOwner = $state(false);
+	let activity = $state<ActivityEntry[]>([]);
+	let loading = $state(true);
+	let error = $state<string | null>(null);
 
 	onMount(async () => {
-		const user = await getUser()
+		const user = await getUser();
 		if (!user) {
-			goto('/')
-			return
+			goto('/');
+			return;
 		}
 
 		try {
-			const projectRes = await fetch(`${API_URL}/projects/${data.id}`, { credentials: 'include' })
+			const projectRes = await fetch(`${API_URL}/projects/${data.id}`, { credentials: 'include' });
 
 			if (!projectRes.ok) {
-				throw new Error('Project not found')
+				throw new Error('Project not found');
 			}
 
-			const result = await projectRes.json()
+			const result = await projectRes.json();
 			if (result.error) {
-				throw new Error(result.error)
+				throw new Error(result.error);
 			}
 
-			project = result.project
-			owner = result.owner
-			isOwner = result.isOwner
-			activity = result.activity || []
+			project = result.project;
+			owner = result.owner;
+			isOwner = result.isOwner;
+			activity = result.activity || [];
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to load project'
+			error = e instanceof Error ? e.message : 'Failed to load project';
 		} finally {
-			loading = false
+			loading = false;
 		}
-	})
+	});
 
 	function getReviewIcon(action: string) {
 		switch (action) {
 			case 'approved':
-				return CheckCircle
+				return CheckCircle;
 			case 'denied':
-				return AlertCircle
+				return AlertCircle;
 			case 'permanently_rejected':
-				return XCircle
+				return XCircle;
 			default:
-				return Clock
+				return Clock;
 		}
 	}
 
 	function getReviewColor(action: string) {
 		switch (action) {
 			case 'approved':
-				return 'text-green-600'
+				return 'text-green-600';
 			case 'denied':
-				return 'text-yellow-600'
+				return 'text-yellow-600';
 			case 'permanently_rejected':
-				return 'text-red-600'
+				return 'text-red-600';
 			default:
-				return 'text-gray-600'
+				return 'text-gray-600';
 		}
 	}
 
 	function getReviewLabel(action: string) {
 		switch (action) {
 			case 'approved':
-				return 'approved'
+				return 'approved';
 			case 'denied':
-				return 'changes requested'
+				return 'changes requested';
 			case 'permanently_rejected':
-				return 'permanently rejected'
+				return 'permanently rejected';
 			default:
-				return action
+				return action;
 		}
 	}
 
@@ -131,7 +144,7 @@
 			day: 'numeric',
 			hour: '2-digit',
 			minute: '2-digit'
-		})
+		});
 	}
 </script>
 
@@ -139,11 +152,11 @@
 	<title>{project?.name || 'project'} - scraps</title>
 </svelte:head>
 
-<div class="pt-24 px-6 md:px-12 max-w-4xl mx-auto pb-24">
+<div class="mx-auto max-w-4xl px-6 pt-24 pb-24 md:px-12">
 	{#if isOwner}
 		<a
 			href="/dashboard"
-			class="inline-flex items-center gap-2 mb-8 font-bold hover:underline cursor-pointer"
+			class="mb-8 inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
 		>
 			<ArrowLeft size={20} />
 			back to dashboard
@@ -151,7 +164,7 @@
 	{:else if owner}
 		<a
 			href="/users/{owner.id}"
-			class="inline-flex items-center gap-2 mb-8 font-bold hover:underline cursor-pointer"
+			class="mb-8 inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
 		>
 			<ArrowLeft size={20} />
 			back to {owner.username}'s profile
@@ -159,7 +172,7 @@
 	{:else}
 		<a
 			href="/leaderboard"
-			class="inline-flex items-center gap-2 mb-8 font-bold hover:underline cursor-pointer"
+			class="mb-8 inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
 		>
 			<ArrowLeft size={20} />
 			back
@@ -167,21 +180,21 @@
 	{/if}
 
 	{#if loading}
-		<div class="text-center py-12">
+		<div class="py-12 text-center">
 			<p class="text-lg text-gray-500">loading project...</p>
 		</div>
 	{:else if error && !project}
-		<div class="text-center py-12">
+		<div class="py-12 text-center">
 			<p class="text-lg text-red-600">{error}</p>
 			<a href="/dashboard" class="mt-4 inline-block font-bold underline">go back</a>
 		</div>
 	{:else if project}
 		<!-- Project Header -->
-		<div class="border-4 border-black rounded-2xl overflow-hidden bg-white mb-8">
+		<div class="mb-8 overflow-hidden rounded-2xl border-4 border-black bg-white">
 			<!-- Image -->
 			<div class="h-64 w-full overflow-hidden border-b-4 border-black">
 				{#if project.image}
-					<img src={project.image} alt={project.name} class="w-full h-full object-cover" />
+					<img src={project.image} alt={project.name} class="h-full w-full object-cover" />
 				{:else}
 					<ProjectPlaceholder seed={project.id} />
 				{/if}
@@ -189,51 +202,65 @@
 
 			<!-- Content -->
 			<div class="p-6">
-				<div class="flex items-start justify-between gap-4 mb-2">
-					<h1 class="text-3xl md:text-4xl font-bold">{project.name}</h1>
+				<div class="mb-2 flex items-start justify-between gap-4">
+					<h1 class="text-3xl font-bold md:text-4xl">{project.name}</h1>
 					{#if project.status === 'shipped'}
-						<span class="px-3 py-1 rounded-full text-sm font-bold border-2 bg-green-100 text-green-700 border-green-600 flex items-center gap-1 shrink-0">
+						<span
+							class="flex shrink-0 items-center gap-1 rounded-full border-2 border-green-600 bg-green-100 px-3 py-1 text-sm font-bold text-green-700"
+						>
 							<CheckCircle size={14} />
 							shipped
 						</span>
 					{:else if project.status === 'waiting_for_review'}
-						<span class="px-3 py-1 rounded-full text-sm font-bold border-2 bg-yellow-100 text-yellow-700 border-yellow-600 flex items-center gap-1 shrink-0">
+						<span
+							class="flex shrink-0 items-center gap-1 rounded-full border-2 border-yellow-600 bg-yellow-100 px-3 py-1 text-sm font-bold text-yellow-700"
+						>
 							<Clock size={14} />
 							awaiting review
 						</span>
 					{:else}
-						<span class="px-3 py-1 rounded-full text-sm font-bold border-2 bg-yellow-100 text-yellow-700 border-yellow-600 flex items-center gap-1 shrink-0">
+						<span
+							class="flex shrink-0 items-center gap-1 rounded-full border-2 border-yellow-600 bg-yellow-100 px-3 py-1 text-sm font-bold text-yellow-700"
+						>
 							<AlertTriangle size={14} />
 							in progress
 						</span>
 					{/if}
 				</div>
-				<div class="flex items-center gap-2 mb-4">
-					<span class="px-3 py-1 rounded-full text-sm font-bold border-2 bg-gray-100 text-gray-700 border-gray-400">
+				<div class="mb-4 flex items-center gap-2">
+					<span
+						class="rounded-full border-2 border-gray-400 bg-gray-100 px-3 py-1 text-sm font-bold text-gray-700"
+					>
 						tier {project.tier}
 					</span>
 				</div>
 
 				{#if project.description}
-					<p class="text-lg text-gray-700 mb-4">{project.description}</p>
+					<p class="mb-4 text-lg text-gray-700">{project.description}</p>
 				{:else}
-					<p class="text-lg text-gray-400 italic mb-4">no description yet</p>
+					<p class="mb-4 text-lg text-gray-400 italic">no description yet</p>
 				{/if}
 
-				<div class="flex flex-wrap items-center gap-3 mb-3">
-					<span class="px-4 py-2 bg-white rounded-full font-bold border-4 border-black flex items-center gap-2">
+				<div class="mb-3 flex flex-wrap items-center gap-3">
+					<span
+						class="flex items-center gap-2 rounded-full border-4 border-black bg-white px-4 py-2 font-bold"
+					>
 						<Eye size={18} />
 						{project.views.toLocaleString()} views
 					</span>
 					{#if project.scrapsAwarded > 0}
-						<span class="px-4 py-2 bg-green-100 text-green-700 rounded-full font-bold border-4 border-green-600 flex items-center gap-2">
+						<span
+							class="flex items-center gap-2 rounded-full border-4 border-green-600 bg-green-100 px-4 py-2 font-bold text-green-700"
+						>
 							<Spool size={18} />
 							+{project.scrapsAwarded} scraps earned
 						</span>
 					{/if}
 				</div>
 				<div class="flex flex-wrap items-center gap-3">
-					<span class="px-4 py-2 bg-white rounded-full font-bold border-4 border-black flex items-center gap-2">
+					<span
+						class="flex items-center gap-2 rounded-full border-4 border-black bg-white px-4 py-2 font-bold"
+					>
 						<Clock size={18} />
 						{formatHours(project.hours)}h
 					</span>
@@ -242,13 +269,15 @@
 							href={project.githubUrl}
 							target="_blank"
 							rel="noopener noreferrer"
-							class="px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 cursor-pointer flex items-center gap-2"
+							class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
 						>
 							<Github size={18} />
 							view on github
 						</a>
 					{:else}
-						<span class="px-4 py-2 border-4 border-dashed border-gray-300 text-gray-400 rounded-full font-bold flex items-center gap-2 cursor-not-allowed">
+						<span
+							class="flex cursor-not-allowed items-center gap-2 rounded-full border-4 border-dashed border-gray-300 px-4 py-2 font-bold text-gray-400"
+						>
 							<Github size={18} />
 							view on github
 						</span>
@@ -258,13 +287,15 @@
 							href={project.playableUrl}
 							target="_blank"
 							rel="noopener noreferrer"
-							class="px-4 py-2 border-4 border-solid border-black rounded-full font-bold hover:border-dashed transition-all duration-200 cursor-pointer flex items-center gap-2"
+							class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-solid border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
 						>
 							<Globe size={18} />
 							try it out
 						</a>
 					{:else}
-						<span class="px-4 py-2 border-4 border-dashed border-gray-300 text-gray-400 rounded-full font-bold flex items-center gap-2 cursor-not-allowed">
+						<span
+							class="flex cursor-not-allowed items-center gap-2 rounded-full border-4 border-dashed border-gray-300 px-4 py-2 font-bold text-gray-400"
+						>
 							<Globe size={18} />
 							try it out
 						</span>
@@ -275,53 +306,59 @@
 
 		<!-- Owner Info (for non-owners) -->
 		{#if !isOwner && owner}
-			<div class="border-4 border-black rounded-2xl p-6 mb-8">
-				<h2 class="text-xl font-bold mb-4">created by</h2>
+			<div class="mb-8 rounded-2xl border-4 border-black p-6">
+				<h2 class="mb-4 text-xl font-bold">created by</h2>
 				<a
 					href="/users/{owner.id}"
-					class="flex items-center gap-4 hover:opacity-80 transition-all duration-200 cursor-pointer"
+					class="flex cursor-pointer items-center gap-4 transition-all duration-200 hover:opacity-80"
 				>
 					{#if owner.avatar}
-						<img src={owner.avatar} alt="" class="w-12 h-12 rounded-full border-2 border-black" />
+						<img src={owner.avatar} alt="" class="h-12 w-12 rounded-full border-2 border-black" />
 					{:else}
-						<div class="w-12 h-12 rounded-full bg-gray-200 border-2 border-black"></div>
+						<div class="h-12 w-12 rounded-full border-2 border-black bg-gray-200"></div>
 					{/if}
-					<span class="font-bold text-lg">{owner.username || 'unknown'}</span>
+					<span class="text-lg font-bold">{owner.username || 'unknown'}</span>
 				</a>
 			</div>
 		{/if}
 
 		<!-- Action Buttons (only for owner) -->
 		{#if isOwner}
-			<div class="flex gap-4 mb-8">
+			<div class="mb-8 flex flex-col gap-3 sm:flex-row sm:gap-4">
 				{#if project.status === 'waiting_for_review'}
-					<span class="flex-1 px-6 py-3 bg-gray-200 text-gray-600 border-4 border-black rounded-full font-bold text-center flex items-center justify-center gap-2">
+					<span
+						class="flex flex-1 items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
+					>
 						<Pencil size={18} />
 						edit project
 					</span>
 				{:else}
 					<a
 						href="/projects/{project.id}/edit"
-						class="flex-1 px-6 py-3 border-4 border-black rounded-full font-bold text-center hover:border-dashed transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+						class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black px-4 py-3 text-center text-sm font-bold transition-all duration-200 hover:border-dashed sm:px-6 sm:text-base"
 					>
 						<Pencil size={18} />
 						edit project
 					</a>
 				{/if}
 				{#if project.status === 'waiting_for_review'}
-					<span class="flex-1 px-6 py-3 bg-gray-200 text-gray-600 border-4 border-black rounded-full font-bold text-center flex items-center justify-center gap-2">
+					<span
+						class="flex flex-1 items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
+					>
 						<Send size={18} />
 						awaiting review
 					</span>
 				{:else if project.status === 'shipped'}
-					<span class="flex-1 px-6 py-3 bg-gray-200 text-gray-600 border-4 border-black rounded-full font-bold text-center flex items-center justify-center gap-2">
+					<span
+						class="flex flex-1 items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
+					>
 						<Send size={18} />
 						shipped
 					</span>
 				{:else if $tutorialActiveStore}
 					<span
 						data-tutorial="submit-button"
-						class="flex-1 px-6 py-3 bg-black text-white border-4 border-black rounded-full font-bold flex items-center justify-center gap-2 cursor-not-allowed"
+						class="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full border-4 border-black bg-black px-4 py-3 text-sm font-bold text-white sm:px-6 sm:text-base"
 					>
 						<Send size={18} />
 						review & submit
@@ -330,7 +367,7 @@
 					<a
 						href="/projects/{project.id}/submit"
 						data-tutorial="submit-button"
-						class="flex-1 px-6 py-3 bg-black text-white border-4 border-black rounded-full font-bold hover:bg-gray-800 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
+						class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-black px-4 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 sm:px-6 sm:text-base"
 					>
 						<Send size={18} />
 						review & submit
@@ -339,74 +376,102 @@
 			</div>
 
 			{#if error}
-				<div class="mb-8 p-4 bg-red-100 border-2 border-red-500 rounded-lg text-red-700">
+				<div class="mb-8 rounded-lg border-2 border-red-500 bg-red-100 p-4 text-red-700">
 					{error}
 				</div>
 			{/if}
 
 			<!-- Activity Timeline (only for owner) -->
 			<div>
-				<h2 class="text-2xl font-bold mb-6">activity</h2>
+				<h2 class="mb-6 text-2xl font-bold">activity</h2>
 
 				{#if activity.length === 0}
-					<div class="border-4 border-dashed border-gray-300 rounded-2xl p-8 text-center">
+					<div class="rounded-2xl border-4 border-dashed border-gray-300 p-8 text-center">
 						<p class="text-gray-500">no activity yet</p>
-						<p class="text-gray-400 text-sm mt-2">submit your project to get started</p>
+						<p class="mt-2 text-sm text-gray-400">submit your project to get started</p>
 					</div>
 				{:else}
 					<div class="relative">
 						<!-- Timeline line -->
-						<div class="absolute left-3 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+						<div class="absolute top-0 bottom-0 left-3 w-0.5 bg-gray-200"></div>
 						<div class="space-y-4">
 							{#each activity as entry, i}
 								{#if entry.type === 'review' && entry.action}
 									{@const ReviewIcon = getReviewIcon(entry.action)}
 									<div class="relative">
-										<div class="border-4 border-black rounded-2xl p-6 bg-white hover:border-dashed transition-all duration-200 ml-8">
-											<div class="absolute left-0 top-6 w-6 h-6 bg-white rounded-full flex items-center justify-center z-10">
+										<div
+											class="ml-8 rounded-2xl border-4 border-black bg-white p-6 transition-all duration-200 hover:border-dashed"
+										>
+											<div
+												class="absolute top-6 left-0 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
+											>
 												<ReviewIcon size={20} class={getReviewColor(entry.action)} />
 											</div>
 											<div>
-												<div class="flex items-center justify-between mb-2">
+												<div class="mb-2 flex items-center justify-between">
 													<span class="font-bold">{getReviewLabel(entry.action)}</span>
 													<span class="text-sm text-gray-500">{formatDate(entry.createdAt)}</span>
 												</div>
 												{#if entry.feedbackForAuthor}
-													<p class="text-gray-700 mb-3">{entry.feedbackForAuthor}</p>
+													<p class="mb-3 text-gray-700">{entry.feedbackForAuthor}</p>
 												{/if}
 												{#if entry.reviewer}
-													<a href="/users/{entry.reviewer.id}" class="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-black transition-all duration-200 cursor-pointer">
+													<a
+														href="/users/{entry.reviewer.id}"
+														class="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-500 transition-all duration-200 hover:text-black"
+													>
 														{#if entry.reviewer.avatar}
-															<img src={entry.reviewer.avatar} alt="" class="w-6 h-6 rounded-full border-2 border-black" />
+															<img
+																src={entry.reviewer.avatar}
+																alt=""
+																class="h-6 w-6 rounded-full border-2 border-black"
+															/>
 														{:else}
-															<div class="w-6 h-6 rounded-full bg-gray-200 border-2 border-black"></div>
+															<div
+																class="h-6 w-6 rounded-full border-2 border-black bg-gray-200"
+															></div>
 														{/if}
-														<span>reviewed by <strong>{entry.reviewer.username || 'reviewer'}</strong></span>
+														<span
+															>reviewed by <strong>{entry.reviewer.username || 'reviewer'}</strong
+															></span
+														>
 													</a>
 												{/if}
 											</div>
 										</div>
 									</div>
 								{:else if entry.type === 'scraps_earned'}
-									<div class="relative flex items-center gap-3 ml-8 py-2">
-										<div class="absolute left-[-26px] w-6 h-6 bg-white rounded-full flex items-center justify-center z-10">
+									<div class="relative ml-8 flex items-center gap-3 py-2">
+										<div
+											class="absolute left-[-26px] z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
+										>
 											<Spool size={16} class="text-green-600" />
 										</div>
-										<span class="text-sm text-green-600 font-bold">{entry.action} · {formatDate(entry.createdAt)}</span>
+										<span class="text-sm font-bold text-green-600"
+											>{entry.action} · {formatDate(entry.createdAt)}</span
+										>
 									</div>
 								{:else if entry.type === 'submitted'}
-									<div class="relative flex items-center gap-3 ml-8 py-2">
-										<div class="absolute left-[-26px] w-6 h-6 bg-white rounded-full flex items-center justify-center z-10">
+									<div class="relative ml-8 flex items-center gap-3 py-2">
+										<div
+											class="absolute left-[-26px] z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
+										>
 											<PlaneTakeoff size={16} class="text-gray-500" />
 										</div>
-										<span class="text-sm text-gray-500">submitted for review · {formatDate(entry.createdAt)}</span>
+										<span class="text-sm text-gray-500"
+											>submitted for review · {formatDate(entry.createdAt)}</span
+										>
 									</div>
 								{:else if entry.type === 'created'}
-									<div class="relative flex items-center gap-3 ml-8 py-2">
-										<div class="absolute left-[-26px] w-6 h-6 bg-white rounded-full flex items-center justify-center z-10">
+									<div class="relative ml-8 flex items-center gap-3 py-2">
+										<div
+											class="absolute left-[-26px] z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
+										>
 											<Plus size={16} class="text-gray-500" />
 										</div>
-										<span class="text-sm text-gray-500">project created · {formatDate(entry.createdAt)}</span>
+										<span class="text-sm text-gray-500"
+											>project created · {formatDate(entry.createdAt)}</span
+										>
 									</div>
 								{/if}
 							{/each}

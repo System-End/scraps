@@ -9,9 +9,9 @@
 		'powered by fudge and caffeine',
 		'404 boredom not found',
 		'shipping since 2025'
-	]
+	];
 
-	const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)]
+	const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
 </script>
 
 <span>{randomPhrase}</span>

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { page } from '$app/state'
-	import { onMount } from 'svelte'
+	import { page } from '$app/state';
+	import { onMount } from 'svelte';
 	import {
 		Home,
 		Package,
@@ -18,107 +18,125 @@
 		Newspaper,
 		PackageCheck,
 		Compass,
-		BarChart3
-	} from '@lucide/svelte'
-	import { logout, getUser, userScrapsStore } from '$lib/auth-client'
+		BarChart3,
+		Menu,
+		X
+	} from '@lucide/svelte';
+	import { logout, getUser, userScrapsStore } from '$lib/auth-client';
 
 	interface User {
-		id: number
-		username: string
-		email: string
-		avatar: string | null
-		slackId: string | null
-		scraps: number
-		role?: string
+		id: number;
+		username: string;
+		email: string;
+		avatar: string | null;
+		slackId: string | null;
+		scraps: number;
+		role?: string;
 	}
 
-	let user = $state<User | null>(null)
-	let loading = $state(true)
-	let showProfileMenu = $state(false)
-	let activeSection = $state('home')
-	let isScrolling = $state(false)
+	let user = $state<User | null>(null);
+	let loading = $state(true);
+	let showProfileMenu = $state(false);
+	let showMobileMenu = $state(false);
+	let activeSection = $state('home');
+	let isScrolling = $state(false);
 
-	let currentPath = $derived(page.url.pathname)
-	let isHomePage = $derived(currentPath === '/')
-	let isLoggedIn = $derived(user !== null)
-	let isReviewer = $derived(user?.role === 'admin' || user?.role === 'reviewer')
-	let isAdminOnly = $derived(user?.role === 'admin')
-	let isInAdminSection = $derived(currentPath.startsWith('/admin'))
+	let currentPath = $derived(page.url.pathname);
+	let isHomePage = $derived(currentPath === '/');
+	let isLoggedIn = $derived(user !== null);
+	let isReviewer = $derived(user?.role === 'admin' || user?.role === 'reviewer');
+	let isAdminOnly = $derived(user?.role === 'admin');
+	let isInAdminSection = $derived(currentPath.startsWith('/admin'));
 
-	let observer: IntersectionObserver | null = null
+	let observer: IntersectionObserver | null = null;
 
 	onMount(() => {
 		getUser().then((u) => {
-			user = u
-			loading = false
-		})
+			user = u;
+			loading = false;
+		});
 
 		if (page.url.pathname === '/') {
-			const sections = ['home', 'scraps', 'about']
+			const sections = ['home', 'scraps', 'about'];
 			observer = new IntersectionObserver(
 				(entries) => {
-					if (isScrolling) return
+					if (isScrolling) return;
 					entries.forEach((entry) => {
 						if (entry.isIntersecting && entry.intersectionRatio > 0.3) {
-							activeSection = entry.target.id
+							activeSection = entry.target.id;
 						}
-					})
+					});
 				},
 				{
 					threshold: [0.3, 0.5, 0.7],
 					rootMargin: '-20% 0px -20% 0px'
 				}
-			)
+			);
 
 			sections.forEach((id) => {
-				const element = document.getElementById(id)
-				if (element && observer) observer.observe(element)
-			})
+				const element = document.getElementById(id);
+				if (element && observer) observer.observe(element);
+			});
 		}
 
 		return () => {
-			if (observer) observer.disconnect()
-		}
-	})
+			if (observer) observer.disconnect();
+		};
+	});
 
 	function scrollToSection(sectionId: string) {
-		isScrolling = true
-		activeSection = sectionId
+		isScrolling = true;
+		activeSection = sectionId;
+		showMobileMenu = false;
 		if (sectionId === 'home') {
-			window.scrollTo({ top: 0, behavior: 'smooth' })
+			window.scrollTo({ top: 0, behavior: 'smooth' });
 		} else {
-			const element = document.getElementById(sectionId)
-			if (element) element.scrollIntoView({ behavior: 'smooth' })
+			const element = document.getElementById(sectionId);
+			if (element) element.scrollIntoView({ behavior: 'smooth' });
 		}
 		setTimeout(() => {
-			isScrolling = false
-		}, 1000)
+			isScrolling = false;
+		}, 1000);
 	}
 
 	function handleLogout() {
-		logout()
+		showMobileMenu = false;
+		logout();
 	}
 
 	function toggleProfileMenu() {
-		showProfileMenu = !showProfileMenu
+		showProfileMenu = !showProfileMenu;
 	}
 
 	function closeProfileMenu() {
-		showProfileMenu = false
+		showProfileMenu = false;
+	}
+
+	function toggleMobileMenu() {
+		showMobileMenu = !showMobileMenu;
+	}
+
+	function closeMobileMenu() {
+		showMobileMenu = false;
+	}
+
+	function handleMobileNavClick() {
+		showMobileMenu = false;
 	}
 </script>
 
 <svelte:window
 	onclick={(e) => {
-		const target = e.target as HTMLElement
+		const target = e.target as HTMLElement;
 		if (!target.closest('.profile-menu-container')) {
-			closeProfileMenu()
+			closeProfileMenu();
 		}
 	}}
 />
 
+<!-- Desktop navbar -->
 <nav
-	class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 md:px-12 lg:px-64 bg-white/90 backdrop-blur-sm"
+	class="fixed top-0 right-0 left-0 z-50 hidden items-center justify-between bg-white/90 px-6 py-4 backdrop-blur-sm md:flex md:px-12 lg:px-64"
 >
 	<a href="/" class="shrink-0">
 		<img src="/flag-standalone-bw.png" alt="Hack Club" class="h-8 md:h-10" />
@@ -129,9 +147,9 @@
 		<div class="flex items-center gap-2">
 			<button
 				onclick={() => scrollToSection('home')}
-				class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {activeSection ===
+				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {activeSection ===
 				'home'
-					? 'bg-black text-white border-black'
+					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
 			>
 				<Home size={18} />
@@ -139,9 +157,9 @@
 			</button>
 			<button
 				onclick={() => scrollToSection('scraps')}
-				class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {activeSection ===
+				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {activeSection ===
 				'scraps'
-					? 'bg-black text-white border-black'
+					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
 			>
 				<Package size={18} />
@@ -149,9 +167,9 @@
 			</button>
 			<button
 				onclick={() => scrollToSection('about')}
-				class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {activeSection ===
+				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {activeSection ===
 				'about'
-					? 'bg-black text-white border-black'
+					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
 			>
 				<Info size={18} />
@@ -163,17 +181,18 @@
 		<div class="flex items-center gap-2">
 			{#if loading}
 				<!-- Skeleton loaders for admin nav -->
-				<div class="px-6 py-2 border-4 border-black rounded-full">
-					<div class="w-20 h-6 bg-gray-200 rounded animate-pulse"></div>
+				<div class="rounded-full border-4 border-black px-6 py-2">
+					<div class="h-6 w-20 animate-pulse rounded bg-gray-200"></div>
 				</div>
-				<div class="px-6 py-2 border-4 border-black rounded-full">
-					<div class="w-16 h-6 bg-gray-200 rounded animate-pulse"></div>
+				<div class="rounded-full border-4 border-black px-6 py-2">
+					<div class="h-6 w-16 animate-pulse rounded bg-gray-200"></div>
 				</div>
 			{:else}
 				<a
 					href="/admin"
-					class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath === '/admin'
-						? 'bg-black text-white border-black'
+					class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
+					'/admin'
+						? 'border-black bg-black text-white'
 						: 'border-black hover:border-dashed'}"
 				>
 					<BarChart3 size={18} />
@@ -182,8 +201,10 @@
 
 				<a
 					href="/admin/reviews"
-					class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath.startsWith('/admin/reviews')
-						? 'bg-black text-white border-black'
+					class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
+						'/admin/reviews'
+					)
+						? 'border-black bg-black text-white'
 						: 'border-black hover:border-dashed'}"
 				>
 					<ClipboardList size={18} />
@@ -192,8 +213,10 @@
 
 				<a
 					href="/admin/users"
-					class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath.startsWith('/admin/users')
-						? 'bg-black text-white border-black'
+					class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
+						'/admin/users'
+					)
+						? 'border-black bg-black text-white'
 						: 'border-black hover:border-dashed'}"
 				>
 					<Users size={18} />
@@ -203,8 +226,10 @@
 				{#if isAdminOnly}
 					<a
 						href="/admin/shop"
-						class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath.startsWith('/admin/shop')
-							? 'bg-black text-white border-black'
+						class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
+							'/admin/shop'
+						)
+							? 'border-black bg-black text-white'
 							: 'border-black hover:border-dashed'}"
 					>
 						<ShoppingBag size={18} />
@@ -212,8 +237,10 @@
 					</a>
 					<a
 						href="/admin/news"
-						class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath.startsWith('/admin/news')
-							? 'bg-black text-white border-black'
+						class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
+							'/admin/news'
+						)
+							? 'border-black bg-black text-white'
 							: 'border-black hover:border-dashed'}"
 					>
 						<Newspaper size={18} />
@@ -221,8 +248,10 @@
 					</a>
 					<a
 						href="/admin/orders"
-						class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath.startsWith('/admin/orders')
-							? 'bg-black text-white border-black'
+						class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
+							'/admin/orders'
+						)
+							? 'border-black bg-black text-white'
 							: 'border-black hover:border-dashed'}"
 					>
 						<PackageCheck size={18} />
@@ -236,9 +265,9 @@
 		<div class="flex items-center gap-2">
 			<a
 				href="/explore"
-				class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath ===
+				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
 				'/explore'
-					? 'bg-black text-white border-black'
+					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
 			>
 				<Compass size={18} />
@@ -247,9 +276,9 @@
 
 			<a
 				href="/dashboard"
-				class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath ===
+				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
 				'/dashboard'
-					? 'bg-black text-white border-black'
+					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
 			>
 				<LayoutDashboard size={18} />
@@ -258,9 +287,9 @@
 
 			<a
 				href="/leaderboard"
-				class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath ===
+				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
 				'/leaderboard'
-					? 'bg-black text-white border-black'
+					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
 			>
 				<Trophy size={18} />
@@ -269,9 +298,9 @@
 
 			<a
 				href="/shop"
-				class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath ===
+				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
 				'/shop'
-					? 'bg-black text-white border-black'
+					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
 			>
 				<Store size={18} />
@@ -280,9 +309,9 @@
 
 			<a
 				href="/refinery"
-				class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath ===
+				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
 				'/refinery'
-					? 'bg-black text-white border-black'
+					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
 			>
 				<Flame size={18} />
@@ -293,35 +322,38 @@
 
 	<!-- Right side: profile and scraps count (hidden on home page) -->
 	{#if !isHomePage}
-		<div class="flex items-center gap-4 shrink-0">
+		<div class="flex shrink-0 items-center gap-4">
 			{#if loading}
 				<!-- Skeleton for scraps -->
-				<div class="flex items-center gap-2 px-6 py-2 border-4 border-black rounded-full">
+				<div class="flex items-center gap-2 rounded-full border-4 border-black px-6 py-2">
 					<Spool size={20} class="text-gray-300" />
-					<div class="w-8 h-6 bg-gray-200 rounded animate-pulse"></div>
+					<div class="h-6 w-8 animate-pulse rounded bg-gray-200"></div>
 				</div>
 				<!-- Skeleton for profile -->
-				<div class="w-10 h-10 rounded-full border-4 border-black bg-gray-200 animate-pulse"></div>
+				<div class="h-10 w-10 animate-pulse rounded-full border-4 border-black bg-gray-200"></div>
 			{:else if user}
-				<div data-tutorial="scraps-counter" class="flex items-center gap-2 px-6 py-2 border-4 border-black rounded-full">
+				<div
+					data-tutorial="scraps-counter"
+					class="flex items-center gap-2 rounded-full border-4 border-black px-6 py-2"
+				>
 					<Spool size={20} />
 					<span class="text-lg font-bold">{$userScrapsStore}</span>
 				</div>
 
-				<div class="relative profile-menu-container">
+				<div class="profile-menu-container relative">
 					<button
 						onclick={toggleProfileMenu}
-						class="w-10 h-10 rounded-full border-4 border-black overflow-hidden hover:border-dashed transition-all duration-200 cursor-pointer"
+						class="h-10 w-10 cursor-pointer overflow-hidden rounded-full border-4 border-black transition-all duration-200 hover:border-dashed"
 					>
 						{#if user.avatar}
 							<img
 								src={user.avatar}
 								alt={user.username || 'Profile'}
-								class="w-full h-full object-cover"
+								class="h-full w-full object-cover"
 							/>
 						{:else}
 							<div
-								class="w-full h-full bg-black text-white flex items-center justify-center font-bold text-lg"
+								class="flex h-full w-full items-center justify-center bg-black text-lg font-bold text-white"
 							>
 								{(user.username || user.email || '?').charAt(0).toUpperCase()}
 							</div>
@@ -330,15 +362,15 @@
 
 					{#if showProfileMenu}
 						<div
-							class="absolute right-0 top-14 bg-white border-4 border-black rounded-2xl overflow-hidden min-w-48 z-50"
+							class="absolute top-14 right-0 z-50 min-w-48 overflow-hidden rounded-2xl border-4 border-black bg-white"
 						>
-							<div class="px-4 py-3 border-b-2 border-black">
-								<p class="font-bold truncate">{user.username || 'user'}</p>
-								<p class="text-sm text-gray-500 truncate">{user.email}</p>
+							<div class="border-b-2 border-black px-4 py-3">
+								<p class="truncate font-bold">{user.username || 'user'}</p>
+								<p class="truncate text-sm text-gray-500">{user.email}</p>
 							</div>
 							<button
 								onclick={handleLogout}
-								class="w-full px-4 py-3 flex items-center gap-2 hover:bg-gray-100 transition-colors text-left cursor-pointer"
+								class="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-gray-100"
 							>
 								<LogOut size={18} />
 								<span class="font-bold">logout</span>
@@ -350,16 +382,311 @@
 		</div>
 	{:else}
 		<!-- Empty placeholder to maintain justify-between spacing -->
-		<div class="w-0 hidden"></div>
+		<div class="hidden w-0"></div>
 	{/if}
 </nav>
+
+<!-- Mobile navbar -->
+<nav
+	class="fixed top-0 right-0 left-0 z-50 flex items-center justify-between bg-white/90 px-4 py-3 backdrop-blur-sm md:hidden"
+>
+	<a href="/" class="shrink-0">
+		<img src="/flag-standalone-bw.png" alt="Hack Club" class="h-8" />
+	</a>
+
+	<button
+		onclick={toggleMobileMenu}
+		class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border-4 border-black transition-all duration-200 hover:border-dashed"
+		aria-label="Toggle menu"
+	>
+		{#if showMobileMenu}
+			<X size={20} />
+		{:else}
+			<Menu size={20} />
+		{/if}
+	</button>
+</nav>
+
+<!-- Mobile menu overlay -->
+{#if showMobileMenu}
+	<div
+		class="fixed inset-0 z-40 bg-black/50 md:hidden"
+		onclick={closeMobileMenu}
+		onkeydown={(e) => e.key === 'Escape' && closeMobileMenu()}
+		role="button"
+		tabindex="-1"
+		aria-label="Close menu"
+	></div>
+{/if}
+
+<!-- Mobile slide-out menu -->
+<div
+	class="fixed top-0 right-0 bottom-0 z-50 flex w-72 transform flex-col border-l-4 border-black bg-white transition-transform duration-300 ease-in-out md:hidden {showMobileMenu
+		? 'translate-x-0'
+		: 'translate-x-full'}"
+>
+	<!-- Close button at top -->
+	<div class="flex justify-end p-4">
+		<button
+			onclick={closeMobileMenu}
+			class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border-4 border-black transition-all duration-200 hover:border-dashed"
+			aria-label="Close menu"
+		>
+			<X size={20} />
+		</button>
+	</div>
+
+	<!-- Navigation links -->
+	<div class="flex-1 overflow-y-auto px-4 pb-4">
+		{#if isHomePage}
+			<!-- Landing page nav -->
+			<div class="flex flex-col gap-2">
+				<button
+					onclick={() => scrollToSection('home')}
+					class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {activeSection ===
+					'home'
+						? 'border-black bg-black text-white'
+						: 'border-black hover:border-dashed'}"
+				>
+					<Home size={20} />
+					<span class="text-lg font-bold">home</span>
+				</button>
+				<button
+					onclick={() => scrollToSection('scraps')}
+					class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {activeSection ===
+					'scraps'
+						? 'border-black bg-black text-white'
+						: 'border-black hover:border-dashed'}"
+				>
+					<Package size={20} />
+					<span class="text-lg font-bold">scraps</span>
+				</button>
+				<button
+					onclick={() => scrollToSection('about')}
+					class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {activeSection ===
+					'about'
+						? 'border-black bg-black text-white'
+						: 'border-black hover:border-dashed'}"
+				>
+					<Info size={20} />
+					<span class="text-lg font-bold">about</span>
+				</button>
+			</div>
+		{:else if isInAdminSection}
+			<!-- Admin nav -->
+			<div class="flex flex-col gap-2">
+				{#if loading}
+					<div class="rounded-full border-4 border-black px-4 py-3">
+						<div class="h-6 w-full animate-pulse rounded bg-gray-200"></div>
+					</div>
+				{:else}
+					<a
+						href="/admin"
+						onclick={handleMobileNavClick}
+						class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath ===
+						'/admin'
+							? 'border-black bg-black text-white'
+							: 'border-black hover:border-dashed'}"
+					>
+						<BarChart3 size={20} />
+						<span class="text-lg font-bold">info</span>
+					</a>
+
+					<a
+						href="/admin/reviews"
+						onclick={handleMobileNavClick}
+						class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath.startsWith(
+							'/admin/reviews'
+						)
+							? 'border-black bg-black text-white'
+							: 'border-black hover:border-dashed'}"
+					>
+						<ClipboardList size={20} />
+						<span class="text-lg font-bold">reviews</span>
+					</a>
+
+					<a
+						href="/admin/users"
+						onclick={handleMobileNavClick}
+						class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath.startsWith(
+							'/admin/users'
+						)
+							? 'border-black bg-black text-white'
+							: 'border-black hover:border-dashed'}"
+					>
+						<Users size={20} />
+						<span class="text-lg font-bold">users</span>
+					</a>
+
+					{#if isAdminOnly}
+						<a
+							href="/admin/shop"
+							onclick={handleMobileNavClick}
+							class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath.startsWith(
+								'/admin/shop'
+							)
+								? 'border-black bg-black text-white'
+								: 'border-black hover:border-dashed'}"
+						>
+							<ShoppingBag size={20} />
+							<span class="text-lg font-bold">shop</span>
+						</a>
+						<a
+							href="/admin/news"
+							onclick={handleMobileNavClick}
+							class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath.startsWith(
+								'/admin/news'
+							)
+								? 'border-black bg-black text-white'
+								: 'border-black hover:border-dashed'}"
+						>
+							<Newspaper size={20} />
+							<span class="text-lg font-bold">news</span>
+						</a>
+						<a
+							href="/admin/orders"
+							onclick={handleMobileNavClick}
+							class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath.startsWith(
+								'/admin/orders'
+							)
+								? 'border-black bg-black text-white'
+								: 'border-black hover:border-dashed'}"
+						>
+							<PackageCheck size={20} />
+							<span class="text-lg font-bold">orders</span>
+						</a>
+					{/if}
+				{/if}
+			</div>
+		{:else}
+			<!-- Dashboard nav -->
+			<div class="flex flex-col gap-2">
+				<a
+					href="/explore"
+					onclick={handleMobileNavClick}
+					class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath ===
+					'/explore'
+						? 'border-black bg-black text-white'
+						: 'border-black hover:border-dashed'}"
+				>
+					<Compass size={20} />
+					<span class="text-lg font-bold">explore</span>
+				</a>
+
+				<a
+					href="/dashboard"
+					onclick={handleMobileNavClick}
+					class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath ===
+					'/dashboard'
+						? 'border-black bg-black text-white'
+						: 'border-black hover:border-dashed'}"
+				>
+					<LayoutDashboard size={20} />
+					<span class="text-lg font-bold">dashboard</span>
+				</a>
+
+				<a
+					href="/leaderboard"
+					onclick={handleMobileNavClick}
+					class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath ===
+					'/leaderboard'
+						? 'border-black bg-black text-white'
+						: 'border-black hover:border-dashed'}"
+				>
+					<Trophy size={20} />
+					<span class="text-lg font-bold">leaderboard</span>
+				</a>
+
+				<a
+					href="/shop"
+					onclick={handleMobileNavClick}
+					class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath ===
+					'/shop'
+						? 'border-black bg-black text-white'
+						: 'border-black hover:border-dashed'}"
+				>
+					<Store size={20} />
+					<span class="text-lg font-bold">shop</span>
+				</a>
+
+				<a
+					href="/refinery"
+					onclick={handleMobileNavClick}
+					class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath ===
+					'/refinery'
+						? 'border-black bg-black text-white'
+						: 'border-black hover:border-dashed'}"
+				>
+					<Flame size={20} />
+					<span class="text-lg font-bold">refinery</span>
+				</a>
+			</div>
+		{/if}
+	</div>
+
+	<!-- User profile section at bottom -->
+	{#if !isHomePage}
+		<div class="border-t-4 border-black p-4">
+			{#if loading}
+				<div class="mb-3 flex items-center gap-3">
+					<div class="h-12 w-12 animate-pulse rounded-full border-4 border-black bg-gray-200"></div>
+					<div class="flex-1">
+						<div class="mb-1 h-5 w-24 animate-pulse rounded bg-gray-200"></div>
+						<div class="h-4 w-32 animate-pulse rounded bg-gray-200"></div>
+					</div>
+				</div>
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-2 rounded-full border-4 border-black px-4 py-2">
+						<Spool size={18} class="text-gray-300" />
+						<div class="h-5 w-8 animate-pulse rounded bg-gray-200"></div>
+					</div>
+				</div>
+			{:else if user}
+				<div class="mb-3 flex items-center gap-3">
+					<div class="h-12 w-12 shrink-0 overflow-hidden rounded-full border-4 border-black">
+						{#if user.avatar}
+							<img
+								src={user.avatar}
+								alt={user.username || 'Profile'}
+								class="h-full w-full object-cover"
+							/>
+						{:else}
+							<div
+								class="flex h-full w-full items-center justify-center bg-black text-xl font-bold text-white"
+							>
+								{(user.username || user.email || '?').charAt(0).toUpperCase()}
+							</div>
+						{/if}
+					</div>
+					<div class="min-w-0 flex-1">
+						<p class="truncate font-bold">{user.username || 'user'}</p>
+						<p class="truncate text-sm text-gray-500">{user.email}</p>
+					</div>
+				</div>
+				<div class="flex items-center justify-between gap-2">
+					<div class="flex items-center gap-2 rounded-full border-4 border-black px-4 py-2">
+						<Spool size={18} />
+						<span class="font-bold">{$userScrapsStore}</span>
+					</div>
+					<button
+						onclick={handleLogout}
+						class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-4 py-2 transition-all duration-200 hover:border-dashed"
+					>
+						<LogOut size={18} />
+						<span class="font-bold">logout</span>
+					</button>
+				</div>
+			{/if}
+		</div>
+	{/if}
+</div>
 
 {#if isReviewer}
 	<a
 		href={isInAdminSection ? '/dashboard' : '/admin'}
-		class="fixed bottom-6 left-6 z-50 flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-full font-bold hover:bg-red-700 transition-all duration-200 border-4 border-red-800 cursor-pointer"
+		class="fixed bottom-6 left-6 z-50 flex cursor-pointer items-center gap-2 rounded-full border-4 border-red-800 bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-red-700 md:px-6 md:py-3"
 	>
 		<Shield size={20} />
-		<span>{isInAdminSection ? 'escape' : 'admin'}</span>
+		<span class="hidden sm:inline">{isInAdminSection ? 'escape' : 'admin'}</span>
 	</a>
 {/if}

@@ -1,27 +1,27 @@
 <script lang="ts">
-	import { X, ChevronDown, Upload, Check } from '@lucide/svelte'
-	import { API_URL } from '$lib/config'
-	import { formatHours } from '$lib/utils'
-	import { tutorialProjectIdStore } from '$lib/stores'
-	import { goto } from '$app/navigation'
+	import { X, ChevronDown, Upload, Check } from '@lucide/svelte';
+	import { API_URL } from '$lib/config';
+	import { formatHours } from '$lib/utils';
+	import { tutorialProjectIdStore } from '$lib/stores';
+	import { goto } from '$app/navigation';
 
 	interface Project {
-		id: number
-		userId: string
-		name: string
-		description: string
-		image: string | null
-		githubUrl: string | null
-		hackatimeProject: string | null
-		hours: number
-		status: string
+		id: number;
+		userId: string;
+		name: string;
+		description: string;
+		image: string | null;
+		githubUrl: string | null;
+		hackatimeProject: string | null;
+		hours: number;
+		status: string;
 	}
 
 	interface HackatimeProject {
-		name: string
-		hours: number
-		repoUrl: string | null
-		languages: string[]
+		name: string;
+		hours: number;
+		repoUrl: string | null;
+		languages: string[];
 	}
 
 	let {
@@ -30,153 +30,157 @@
 		onCreated,
 		tutorialMode = false
 	}: {
-		open: boolean
-		onClose: () => void
-		onCreated: (project: Project) => void
-		tutorialMode?: boolean
-	} = $props()
+		open: boolean;
+		onClose: () => void;
+		onCreated: (project: Project) => void;
+		tutorialMode?: boolean;
+	} = $props();
 
-	let name = $state('')
-	let description = $state('')
+	let name = $state('');
+	let description = $state('');
 
 	// Pre-fill values when modal opens in tutorial mode
 	$effect(() => {
 		if (open && tutorialMode && name === '' && description === '') {
-			name = 'my first scrap'
-			description = "this is my first project on scraps! i'm excited to start building and earning rewards."
+			name = 'my first scrap';
+			description =
+				"this is my first project on scraps! i'm excited to start building and earning rewards.";
 		}
-	})
-	let githubUrl = $state('')
-	let imageUrl = $state<string | null>(null)
-	let imagePreview = $state<string | null>(null)
-	let uploadingImage = $state(false)
-	let selectedHackatimeProject = $state<HackatimeProject | null>(null)
-	let hackatimeProjects = $state<HackatimeProject[]>([])
-	let userSlackId = $state<string | null>(null)
-	let loadingProjects = $state(false)
-	let showDropdown = $state(false)
-	let loading = $state(false)
-	let error = $state<string | null>(null)
-	let selectedTier = $state(1)
+	});
+	let githubUrl = $state('');
+	let imageUrl = $state<string | null>(null);
+	let imagePreview = $state<string | null>(null);
+	let uploadingImage = $state(false);
+	let selectedHackatimeProject = $state<HackatimeProject | null>(null);
+	let hackatimeProjects = $state<HackatimeProject[]>([]);
+	let userSlackId = $state<string | null>(null);
+	let loadingProjects = $state(false);
+	let showDropdown = $state(false);
+	let loading = $state(false);
+	let error = $state<string | null>(null);
+	let selectedTier = $state(1);
 
 	const TIERS = [
 		{ value: 1, description: 'simple projects, tutorials, small scripts' },
 		{ value: 2, description: 'moderate complexity, multi-file projects' },
 		{ value: 3, description: 'complex features, APIs, integrations' },
 		{ value: 4, description: 'full applications, major undertakings' }
-	]
+	];
 
-	const NAME_MAX = 50
-	const DESC_MIN = 20
-	const DESC_MAX = 1000
+	const NAME_MAX = 50;
+	const DESC_MIN = 20;
+	const DESC_MAX = 1000;
 
-	let hasImage = $derived(!!imageUrl)
-	let hasHackatime = $derived(!!selectedHackatimeProject)
-	let hasDescription = $derived(description.trim().length >= DESC_MIN && description.trim().length <= DESC_MAX)
-	let hasName = $derived(name.trim().length > 0 && name.trim().length <= NAME_MAX)
-	let allRequirementsMet = $derived(hasDescription && hasName)
+	let hasImage = $derived(!!imageUrl);
+	let hasHackatime = $derived(!!selectedHackatimeProject);
+	let hasDescription = $derived(
+		description.trim().length >= DESC_MIN && description.trim().length <= DESC_MAX
+	);
+	let hasName = $derived(name.trim().length > 0 && name.trim().length <= NAME_MAX);
+	let allRequirementsMet = $derived(hasDescription && hasName);
 
 	async function fetchHackatimeProjects() {
-		loadingProjects = true
+		loadingProjects = true;
 		try {
 			const response = await fetch(`${API_URL}/hackatime/projects`, {
 				credentials: 'include'
-			})
+			});
 			if (response.ok) {
-				const data = await response.json()
-				hackatimeProjects = data.projects || []
-				userSlackId = data.slackId || null
+				const data = await response.json();
+				hackatimeProjects = data.projects || [];
+				userSlackId = data.slackId || null;
 			}
 		} catch (e) {
-			console.error('Failed to fetch hackatime projects:', e)
+			console.error('Failed to fetch hackatime projects:', e);
 		} finally {
-			loadingProjects = false
+			loadingProjects = false;
 		}
 	}
 
 	$effect(() => {
 		if (open) {
-			fetchHackatimeProjects()
+			fetchHackatimeProjects();
 		}
-	})
+	});
 
 	async function handleImageUpload(event: Event) {
-		const input = event.target as HTMLInputElement
-		const file = input.files?.[0]
-		if (!file) return
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
 
 		if (file.size > 5 * 1024 * 1024) {
-			error = 'Image must be less than 5MB'
-			return
+			error = 'Image must be less than 5MB';
+			return;
 		}
 
-		imagePreview = URL.createObjectURL(file)
-		uploadingImage = true
-		error = null
+		imagePreview = URL.createObjectURL(file);
+		uploadingImage = true;
+		error = null;
 
 		try {
-			const formData = new FormData()
-			formData.append('file', file)
+			const formData = new FormData();
+			formData.append('file', file);
 
 			const response = await fetch(`${API_URL}/upload/image`, {
 				method: 'POST',
 				credentials: 'include',
 				body: formData
-			})
+			});
 
-			const data = await response.json()
+			const data = await response.json();
 			if (data.error) {
-				throw new Error(data.error)
+				throw new Error(data.error);
 			}
 
-			imageUrl = data.url
+			imageUrl = data.url;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to upload image'
-			imagePreview = null
+			error = e instanceof Error ? e.message : 'Failed to upload image';
+			imagePreview = null;
 		} finally {
-			uploadingImage = false
+			uploadingImage = false;
 		}
 	}
 
 	function removeImage() {
-		imageUrl = null
-		imagePreview = null
+		imageUrl = null;
+		imagePreview = null;
 	}
 
 	function selectProject(project: HackatimeProject) {
-		selectedHackatimeProject = project
-		showDropdown = false
+		selectedHackatimeProject = project;
+		showDropdown = false;
 		// Always update GitHub URL from hackatime project if available
 		if (project.repoUrl) {
-			githubUrl = project.repoUrl
+			githubUrl = project.repoUrl;
 		}
 	}
 
 	function resetForm() {
-		name = ''
-		description = ''
-		githubUrl = ''
-		imageUrl = null
-		imagePreview = null
-		selectedHackatimeProject = null
-		showDropdown = false
-		selectedTier = 1
-		error = null
+		name = '';
+		description = '';
+		githubUrl = '';
+		imageUrl = null;
+		imagePreview = null;
+		selectedHackatimeProject = null;
+		showDropdown = false;
+		selectedTier = 1;
+		error = null;
 	}
 
 	async function handleSubmit() {
 		if (!allRequirementsMet) {
-			error = 'Please complete all requirements'
-			return
+			error = 'Please complete all requirements';
+			return;
 		}
 
-		loading = true
-		error = null
+		loading = true;
+		error = null;
 
-		const hackatimeValue = selectedHackatimeProject && userSlackId
-			? `${userSlackId}/${selectedHackatimeProject.name}`
-			: null
-		const finalGithubUrl = githubUrl.trim() || selectedHackatimeProject?.repoUrl || null
+		const hackatimeValue =
+			selectedHackatimeProject && userSlackId
+				? `${userSlackId}/${selectedHackatimeProject.name}`
+				: null;
+		const finalGithubUrl = githubUrl.trim() || selectedHackatimeProject?.repoUrl || null;
 
 		try {
 			const response = await fetch(`${API_URL}/projects`, {
@@ -193,63 +197,73 @@
 					hackatimeProject: hackatimeValue,
 					tier: selectedTier
 				})
-			})
+			});
 
 			if (!response.ok) {
-				const data = await response.json().catch(() => ({}))
-				throw new Error(data.message || 'Failed to create project')
+				const data = await response.json().catch(() => ({}));
+				throw new Error(data.message || 'Failed to create project');
 			}
 
-			const newProject = await response.json()
-			resetForm()
+			const newProject = await response.json();
+			resetForm();
 			if (tutorialMode) {
-				tutorialProjectIdStore.set(newProject.id)
-				window.dispatchEvent(new CustomEvent('tutorial:project-created'))
-				onCreated(newProject)
-				goto(`/projects/${newProject.id}`, { invalidateAll: false })
+				tutorialProjectIdStore.set(newProject.id);
+				window.dispatchEvent(new CustomEvent('tutorial:project-created'));
+				onCreated(newProject);
+				goto(`/projects/${newProject.id}`, { invalidateAll: false });
 			} else {
-				onCreated(newProject)
+				onCreated(newProject);
 			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to create project'
+			error = e instanceof Error ? e.message : 'Failed to create project';
 		} finally {
-			loading = false
+			loading = false;
 		}
 	}
 
 	function handleClose() {
-		resetForm()
-		onClose()
+		resetForm();
+		onClose();
 	}
 
 	function handleBackdropClick(e: MouseEvent) {
-		if (tutorialMode) return
+		if (tutorialMode) return;
 		if (e.target === e.currentTarget) {
-			handleClose()
+			handleClose();
 		}
 	}
 </script>
 
 {#if open}
 	<div
-		class="fixed inset-0 flex items-center justify-center p-4 {tutorialMode ? 'z-[200] bg-transparent' : 'z-50 bg-black/50'}"
+		class="fixed inset-0 flex items-center justify-center p-4 {tutorialMode
+			? 'z-[200] bg-transparent'
+			: 'z-50 bg-black/50'}"
 		onclick={handleBackdropClick}
 		onkeydown={(e) => !tutorialMode && e.key === 'Escape' && handleClose()}
 		role="dialog"
 		tabindex="-1"
 	>
-		<div class="bg-white rounded-2xl w-full max-w-lg p-6 border-4 border-black max-h-[90vh] overflow-y-auto {tutorialMode ? 'z-[250]' : ''}" data-tutorial="create-project-modal">
-			<div class="flex items-center justify-between mb-6">
+		<div
+			class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border-4 border-black bg-white p-6 {tutorialMode
+				? 'z-[250]'
+				: ''}"
+			data-tutorial="create-project-modal"
+		>
+			<div class="mb-6 flex items-center justify-between">
 				<h2 class="text-2xl font-bold">new project</h2>
 				{#if !tutorialMode}
-					<button onclick={handleClose} class="p-1 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+					<button
+						onclick={handleClose}
+						class="cursor-pointer rounded-lg p-1 transition-colors hover:bg-gray-100"
+					>
 						<X size={24} />
 					</button>
 				{/if}
 			</div>
 
 			{#if error}
-				<div class="mb-4 p-3 bg-red-100 border-2 border-red-500 rounded-lg text-red-700 text-sm">
+				<div class="mb-4 rounded-lg border-2 border-red-500 bg-red-100 p-3 text-sm text-red-700">
 					{error}
 				</div>
 			{/if}
@@ -257,27 +271,35 @@
 			<div class="space-y-4">
 				<!-- Image Upload -->
 				<div>
-					<label class="block text-sm font-bold mb-1">image <span class="text-gray-400">(optional)</span></label>
+					<label class="mb-1 block text-sm font-bold"
+						>image <span class="text-gray-400">(optional)</span></label
+					>
 					{#if imagePreview}
-						<div class="relative w-full h-40 border-2 border-black rounded-lg overflow-hidden">
-							<img src={imagePreview} alt="Preview" class="w-full h-full object-contain bg-gray-100" />
+						<div class="relative h-40 w-full overflow-hidden rounded-lg border-2 border-black">
+							<img
+								src={imagePreview}
+								alt="Preview"
+								class="h-full w-full bg-gray-100 object-contain"
+							/>
 							{#if uploadingImage}
-								<div class="absolute inset-0 bg-black/50 flex items-center justify-center">
-									<span class="text-white font-bold">uploading...</span>
+								<div class="absolute inset-0 flex items-center justify-center bg-black/50">
+									<span class="font-bold text-white">uploading...</span>
 								</div>
 							{:else}
 								<button
 									type="button"
 									onclick={removeImage}
-									class="absolute top-2 right-2 p-1 bg-white rounded-full border-2 border-black hover:bg-gray-100 cursor-pointer"
+									class="absolute top-2 right-2 cursor-pointer rounded-full border-2 border-black bg-white p-1 hover:bg-gray-100"
 								>
 									<X size={16} />
 								</button>
 							{/if}
 						</div>
 					{:else}
-						<label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-black rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-							<Upload size={32} class="text-gray-400 mb-2" />
+						<label
+							class="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-black transition-colors hover:bg-gray-50"
+						>
+							<Upload size={32} class="mb-2 text-gray-400" />
 							<span class="text-sm text-gray-500">click to upload image</span>
 							<input type="file" accept="image/*" onchange={handleImageUpload} class="hidden" />
 						</label>
@@ -286,64 +308,85 @@
 
 				<!-- Name -->
 				<div>
-					<label for="name" class="block text-sm font-bold mb-1">name <span class="text-red-500">*</span></label>
+					<label for="name" class="mb-1 block text-sm font-bold"
+						>name <span class="text-red-500">*</span></label
+					>
 					<input
 						id="name"
 						type="text"
 						bind:value={name}
 						maxlength={NAME_MAX}
 						required
-						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+						class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
 					/>
-					<p class="text-xs text-gray-500 mt-1 text-right">{name.length}/{NAME_MAX}</p>
+					<p class="mt-1 text-right text-xs text-gray-500">{name.length}/{NAME_MAX}</p>
 				</div>
 
 				<!-- Description -->
 				<div>
-					<label for="description" class="block text-sm font-bold mb-1">description <span class="text-red-500">*</span></label>
+					<label for="description" class="mb-1 block text-sm font-bold"
+						>description <span class="text-red-500">*</span></label
+					>
 					<textarea
 						id="description"
 						bind:value={description}
 						rows="3"
 						maxlength={DESC_MAX}
 						required
-						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed resize-none"
+						class="w-full resize-none rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
 					></textarea>
-					<p class="text-xs mt-1 text-right {description.length < DESC_MIN ? 'text-red-500' : 'text-gray-500'}">{description.length}/{DESC_MAX} (min {DESC_MIN})</p>
+					<p
+						class="mt-1 text-right text-xs {description.length < DESC_MIN
+							? 'text-red-500'
+							: 'text-gray-500'}"
+					>
+						{description.length}/{DESC_MAX} (min {DESC_MIN})
+					</p>
 				</div>
 
 				<!-- Hackatime Project Dropdown -->
 				<div>
-					<label class="block text-sm font-bold mb-1">hackatime project <span class="text-gray-400">(optional)</span></label>
+					<label class="mb-1 block text-sm font-bold"
+						>hackatime project <span class="text-gray-400">(optional)</span></label
+					>
 					<div class="relative">
 						<button
 							type="button"
 							onclick={() => (showDropdown = !showDropdown)}
-							class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed text-left flex items-center justify-between"
+							class="flex w-full items-center justify-between rounded-lg border-2 border-black px-4 py-2 text-left focus:border-dashed focus:outline-none"
 						>
 							{#if loadingProjects}
 								<span class="text-gray-500">loading projects...</span>
 							{:else if selectedHackatimeProject}
-								<span>{selectedHackatimeProject.name} <span class="text-gray-500">({formatHours(selectedHackatimeProject.hours)}h)</span></span>
+								<span
+									>{selectedHackatimeProject.name}
+									<span class="text-gray-500">({formatHours(selectedHackatimeProject.hours)}h)</span
+									></span
+								>
 							{:else}
 								<span class="text-gray-500">select a project</span>
 							{/if}
-							<ChevronDown size={20} class={showDropdown ? 'rotate-180 transition-transform' : 'transition-transform'} />
+							<ChevronDown
+								size={20}
+								class={showDropdown ? 'rotate-180 transition-transform' : 'transition-transform'}
+							/>
 						</button>
 
 						{#if showDropdown && !loadingProjects}
-							<div class="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-black rounded-lg max-h-48 overflow-y-auto z-10">
+							<div
+								class="absolute top-full right-0 left-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border-2 border-black bg-white"
+							>
 								{#if hackatimeProjects.length === 0}
-									<div class="px-4 py-2 text-gray-500 text-sm">no projects found</div>
+									<div class="px-4 py-2 text-sm text-gray-500">no projects found</div>
 								{:else}
 									{#each hackatimeProjects as project}
 										<button
 											type="button"
 											onclick={() => selectProject(project)}
-											class="w-full px-4 py-2 text-left hover:bg-gray-100 flex justify-between items-center cursor-pointer"
+											class="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-left hover:bg-gray-100"
 										>
 											<span class="font-medium">{project.name}</span>
-											<span class="text-gray-500 text-sm">{formatHours(project.hours)}h</span>
+											<span class="text-sm text-gray-500">{formatHours(project.hours)}h</span>
 										</button>
 									{/each}
 								{/if}
@@ -354,65 +397,86 @@
 
 				<!-- GitHub URL (optional) -->
 				<div>
-					<label for="githubUrl" class="block text-sm font-bold mb-1">github url <span class="text-gray-400">(optional)</span></label>
+					<label for="githubUrl" class="mb-1 block text-sm font-bold"
+						>github url <span class="text-gray-400">(optional)</span></label
+					>
 					<input
 						id="githubUrl"
 						type="url"
 						bind:value={githubUrl}
 						placeholder="https://github.com/user/repo"
-						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+						class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
 					/>
 				</div>
 
 				<!-- Tier Selector -->
 				<div>
-					<label class="block text-sm font-bold mb-1">project tier</label>
+					<label class="mb-1 block text-sm font-bold">project tier</label>
 					<div class="grid grid-cols-2 gap-2">
 						{#each TIERS as tier}
 							<button
 								type="button"
 								onclick={() => (selectedTier = tier.value)}
-								class="px-3 py-2 border-2 border-black rounded-lg font-bold transition-all duration-200 cursor-pointer text-left {selectedTier === tier.value ? 'bg-black text-white' : 'hover:border-dashed'}"
+								class="cursor-pointer rounded-lg border-2 border-black px-3 py-2 text-left font-bold transition-all duration-200 {selectedTier ===
+								tier.value
+									? 'bg-black text-white'
+									: 'hover:border-dashed'}"
 							>
 								<span>tier {tier.value}</span>
-								<p class="text-xs mt-1 {selectedTier === tier.value ? 'text-gray-300' : 'text-gray-500'}">{tier.description}</p>
+								<p
+									class="mt-1 text-xs {selectedTier === tier.value
+										? 'text-gray-300'
+										: 'text-gray-500'}"
+								>
+									{tier.description}
+								</p>
 							</button>
 						{/each}
 					</div>
 				</div>
 
 				<!-- Requirements Checklist -->
-				<div class="border-2 border-black rounded-lg p-4">
-					<p class="font-bold mb-3">requirements</p>
+				<div class="rounded-lg border-2 border-black p-4">
+					<p class="mb-3 font-bold">requirements</p>
 					<ul class="space-y-2">
 						<li class="flex items-center gap-2 text-sm">
-							<span class="w-5 h-5 rounded-full border-2 border-black flex items-center justify-center {hasName ? 'bg-black text-white' : ''}">
+							<span
+								class="flex h-5 w-5 items-center justify-center rounded-full border-2 border-black {hasName
+									? 'bg-black text-white'
+									: ''}"
+							>
 								{#if hasName}<Check size={12} />{/if}
 							</span>
 							<span class={hasName ? '' : 'text-gray-500'}>add a project name</span>
 						</li>
 						<li class="flex items-center gap-2 text-sm">
-							<span class="w-5 h-5 rounded-full border-2 border-black flex items-center justify-center {hasDescription ? 'bg-black text-white' : ''}">
+							<span
+								class="flex h-5 w-5 items-center justify-center rounded-full border-2 border-black {hasDescription
+									? 'bg-black text-white'
+									: ''}"
+							>
 								{#if hasDescription}<Check size={12} />{/if}
 							</span>
-							<span class={hasDescription ? '' : 'text-gray-500'}>write a description (min {DESC_MIN} chars)</span>
+							<span class={hasDescription ? '' : 'text-gray-500'}
+								>write a description (min {DESC_MIN} chars)</span
+							>
 						</li>
 					</ul>
 				</div>
 			</div>
 
-			<div class="flex gap-3 mt-6">
+			<div class="mt-6 flex gap-3">
 				<button
 					onclick={handleClose}
 					disabled={loading || tutorialMode}
-					class="flex-1 px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					cancel
 				</button>
 				<button
 					onclick={handleSubmit}
 					disabled={loading || !allRequirementsMet}
-					class="flex-1 px-4 py-2 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+					class="flex-1 cursor-pointer rounded-full bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
 				>
 					{loading ? 'creating...' : 'create'}
 				</button>

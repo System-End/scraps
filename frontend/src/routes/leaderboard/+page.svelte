@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
-	import { getUser } from '$lib/auth-client'
+	import { onMount } from 'svelte';
+	import { getUser } from '$lib/auth-client';
 	import {
 		leaderboardStore,
 		leaderboardLoading,
@@ -11,43 +11,46 @@
 		viewsLeaderboardStore,
 		viewsLeaderboardLoading,
 		fetchViewsLeaderboard
-	} from '$lib/stores'
-	import { formatHours } from '$lib/utils'
+	} from '$lib/stores';
+	import { formatHours } from '$lib/utils';
 
-	let activeTab = $state<'scraps' | 'hours' | 'probability' | 'views'>('scraps')
-	let sortBy = $derived(activeTab === 'probability' || activeTab === 'views' ? 'scraps' : activeTab)
-	let leaderboard = $derived($leaderboardStore[sortBy as 'scraps' | 'hours'])
-	let probabilityLeaders = $derived($probabilityLeadersStore)
-	let viewsLeaderboard = $derived($viewsLeaderboardStore)
+	let activeTab = $state<'scraps' | 'hours' | 'probability' | 'views'>('scraps');
+	let sortBy = $derived(
+		activeTab === 'probability' || activeTab === 'views' ? 'scraps' : activeTab
+	);
+	let leaderboard = $derived($leaderboardStore[sortBy as 'scraps' | 'hours']);
+	let probabilityLeaders = $derived($probabilityLeadersStore);
+	let viewsLeaderboard = $derived($viewsLeaderboardStore);
 
 	function setActiveTab(value: 'scraps' | 'hours' | 'probability' | 'views') {
-		activeTab = value
+		activeTab = value;
 		if (value === 'probability') {
-			fetchProbabilityLeaders()
+			fetchProbabilityLeaders();
 		} else if (value === 'views') {
-			fetchViewsLeaderboard()
+			fetchViewsLeaderboard();
 		} else {
-			fetchLeaderboardData(value)
+			fetchLeaderboardData(value);
 		}
 	}
 
 	onMount(async () => {
-		await getUser()
-		fetchLeaderboardData('scraps')
-	})
+		await getUser();
+		fetchLeaderboardData('scraps');
+	});
 </script>
 
 <svelte:head>
 	<title>leaderboard - scraps</title>
 </svelte:head>
 
-<div class="pt-24 px-6 md:px-12 max-w-6xl mx-auto pb-24">
-	<h1 class="text-4xl md:text-5xl font-bold mb-2">leaderboard</h1>
-	<p class="text-lg text-gray-600 mb-8">top scrappers</p>
+<div class="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12">
+	<h1 class="mb-2 text-4xl font-bold md:text-5xl">leaderboard</h1>
+	<p class="mb-8 text-lg text-gray-600">top scrappers</p>
 
-	<div class="flex gap-2 mb-6 flex-wrap">
+	<div class="mb-6 flex flex-wrap gap-2">
 		<button
-			class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {activeTab === 'scraps'
+			class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {activeTab ===
+			'scraps'
 				? 'bg-black text-white'
 				: 'hover:border-dashed'}"
 			onclick={() => setActiveTab('scraps')}
@@ -55,7 +58,8 @@
 			scraps
 		</button>
 		<button
-			class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {activeTab === 'hours'
+			class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {activeTab ===
+			'hours'
 				? 'bg-black text-white'
 				: 'hover:border-dashed'}"
 			onclick={() => setActiveTab('hours')}
@@ -63,7 +67,8 @@
 			hours
 		</button>
 		<button
-			class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {activeTab === 'probability'
+			class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {activeTab ===
+			'probability'
 				? 'bg-black text-white'
 				: 'hover:border-dashed'}"
 			onclick={() => setActiveTab('probability')}
@@ -71,7 +76,8 @@
 			probability leaders
 		</button>
 		<button
-			class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {activeTab === 'views'
+			class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {activeTab ===
+			'views'
 				? 'bg-black text-white'
 				: 'hover:border-dashed'}"
 			onclick={() => setActiveTab('views')}
@@ -81,7 +87,7 @@
 	</div>
 
 	{#if activeTab === 'views'}
-		<div class="border-4 border-black rounded-2xl p-6">
+		<div class="rounded-2xl border-4 border-black p-6">
 			{#if $viewsLeaderboardLoading && viewsLeaderboard.length === 0}
 				<div class="text-center text-gray-500">loading...</div>
 			{:else if viewsLeaderboard.length === 0}
@@ -91,9 +97,9 @@
 					{#each viewsLeaderboard as project (project.id)}
 						<a
 							href="/projects/{project.id}"
-							class="border-4 border-black rounded-2xl p-4 hover:border-dashed transition-all block"
+							class="block rounded-2xl border-4 border-black p-4 transition-all hover:border-dashed"
 						>
-							<div class="flex items-center gap-2 mb-3">
+							<div class="mb-3 flex items-center gap-2">
 								<span class="text-2xl font-bold">
 									{#if project.rank === 1}
 										🥇
@@ -105,16 +111,18 @@
 										#{project.rank}
 									{/if}
 								</span>
-								<span class="font-bold text-xl truncate">{project.name}</span>
+								<span class="truncate text-xl font-bold">{project.name}</span>
 							</div>
 							{#if project.image}
 								<img
 									src={project.image}
 									alt={project.name}
-									class="w-full h-32 rounded-lg object-cover border-2 border-black mb-3"
+									class="mb-3 h-32 w-full rounded-lg border-2 border-black object-cover"
 								/>
 							{:else}
-								<div class="w-full h-32 rounded-lg bg-gray-200 border-2 border-black mb-3 flex items-center justify-center text-gray-400">
+								<div
+									class="mb-3 flex h-32 w-full items-center justify-center rounded-lg border-2 border-black bg-gray-200 text-gray-400"
+								>
 									no image
 								</div>
 							{/if}
@@ -125,7 +133,7 @@
 											<img
 												src={project.owner.avatar}
 												alt={project.owner.username}
-												class="w-6 h-6 rounded-full border-2 border-black"
+												class="h-6 w-6 rounded-full border-2 border-black"
 											/>
 										{/if}
 										<span class="text-sm text-gray-600">{project.owner.username}</span>
@@ -141,7 +149,7 @@
 			{/if}
 		</div>
 	{:else if activeTab === 'probability'}
-		<div class="border-4 border-black rounded-2xl p-6">
+		<div class="rounded-2xl border-4 border-black p-6">
 			{#if $probabilityLeadersLoading && probabilityLeaders.length === 0}
 				<div class="text-center text-gray-500">loading...</div>
 			{:else if probabilityLeaders.length === 0}
@@ -149,12 +157,12 @@
 			{:else}
 				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{#each probabilityLeaders as leader (leader.itemId)}
-						<div class="border-4 border-black rounded-2xl p-4 hover:border-dashed transition-all">
-							<div class="flex items-center gap-3 mb-3">
+						<div class="rounded-2xl border-4 border-black p-4 transition-all hover:border-dashed">
+							<div class="mb-3 flex items-center gap-3">
 								<img
 									src={leader.itemImage}
 									alt={leader.itemName}
-									class="w-12 h-12 rounded-lg object-cover border-2 border-black"
+									class="h-12 w-12 rounded-lg border-2 border-black object-cover"
 								/>
 								<div>
 									<div class="font-bold">{leader.itemName}</div>
@@ -162,17 +170,19 @@
 								</div>
 							</div>
 							{#if leader.topUser}
-								<a href="/users/{leader.topUser.id}" class="flex items-center gap-2 group">
+								<a href="/users/{leader.topUser.id}" class="group flex items-center gap-2">
 									<img
 										src={leader.topUser.avatar}
 										alt={leader.topUser.username}
-										class="w-8 h-8 rounded-full object-cover border-2 border-black"
+										class="h-8 w-8 rounded-full border-2 border-black object-cover"
 									/>
 									<span class="font-bold group-hover:underline">{leader.topUser.username}</span>
-									<span class="ml-auto font-bold text-green-600">{leader.effectiveProbability}%</span>
+									<span class="ml-auto font-bold text-green-600"
+										>{leader.effectiveProbability}%</span
+									>
 								</a>
 							{:else}
-								<div class="text-gray-500 text-sm">no boosts yet</div>
+								<div class="text-sm text-gray-500">no boosts yet</div>
 							{/if}
 						</div>
 					{/each}
@@ -180,11 +190,12 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="border-4 border-black rounded-2xl overflow-hidden">
+		<div class="overflow-hidden rounded-2xl border-4 border-black">
 			{#if $leaderboardLoading && leaderboard.length === 0}
 				<div class="p-8 text-center text-gray-500">loading...</div>
 			{:else}
-				<table class="w-full">
+				<!-- Desktop table -->
+				<table class="hidden w-full md:table">
 					<thead>
 						<tr class="border-b-4 border-black bg-black text-white">
 							<th class="px-4 py-4 text-left font-bold">rank</th>
@@ -197,10 +208,10 @@
 					<tbody>
 						{#each leaderboard as entry (entry.id)}
 							<tr
-								class="border-b-2 border-black/20 last:border-b-0 hover:bg-gray-50 transition-colors cursor-pointer"
-								onclick={() => window.location.href = `/users/${entry.id}`}
+								class="cursor-pointer border-b-2 border-black/20 transition-colors last:border-b-0 hover:bg-gray-50"
+								onclick={() => (window.location.href = `/users/${entry.id}`)}
 							>
-								<td class="px-4 py-4 font-bold text-2xl">
+								<td class="px-4 py-4 text-2xl font-bold">
 									{#if entry.rank === 1}
 										🥇
 									{:else if entry.rank === 2}
@@ -216,21 +227,58 @@
 										<img
 											src={entry.avatar}
 											alt={entry.username}
-											class="w-10 h-10 rounded-full object-cover border-2 border-black"
+											class="h-10 w-10 rounded-full border-2 border-black object-cover"
 										/>
-										<span class="font-bold text-lg hover:underline">{entry.username}</span>
+										<span class="text-lg font-bold hover:underline">{entry.username}</span>
 									</a>
 								</td>
 								<td class="px-4 py-4 text-right text-lg">{formatHours(entry.hours)}h</td>
 								<td class="px-4 py-4 text-right text-lg">{entry.projectCount}</td>
 								<td class="px-4 py-4 text-right text-lg">
 									<span class="font-bold">{entry.scraps}</span>
-									<span class="text-gray-500 text-sm ml-1">(earned: {entry.scrapsEarned})</span>
+									<span class="ml-1 text-sm text-gray-500">(earned: {entry.scrapsEarned})</span>
 								</td>
 							</tr>
 						{/each}
 					</tbody>
 				</table>
+
+				<!-- Mobile cards -->
+				<div class="divide-y-2 divide-black/20 md:hidden">
+					{#each leaderboard as entry (entry.id)}
+						<a
+							href="/users/{entry.id}"
+							class="flex cursor-pointer items-center gap-3 p-4 transition-colors hover:bg-gray-50"
+						>
+							<span class="w-8 shrink-0 text-2xl font-bold">
+								{#if entry.rank === 1}
+									🥇
+								{:else if entry.rank === 2}
+									🥈
+								{:else if entry.rank === 3}
+									🥉
+								{:else}
+									{entry.rank}
+								{/if}
+							</span>
+							<img
+								src={entry.avatar}
+								alt={entry.username}
+								class="h-10 w-10 shrink-0 rounded-full border-2 border-black object-cover"
+							/>
+							<div class="min-w-0 flex-1">
+								<p class="truncate font-bold">{entry.username}</p>
+								<p class="text-sm text-gray-500">
+									{formatHours(entry.hours)}h · {entry.projectCount} projects
+								</p>
+							</div>
+							<div class="shrink-0 text-right">
+								<p class="font-bold">{entry.scraps}</p>
+								<p class="text-xs text-gray-500">scraps</p>
+							</div>
+						</a>
+					{/each}
+				</div>
 			{/if}
 		</div>
 	{/if}

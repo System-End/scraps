@@ -1,29 +1,29 @@
 <script lang="ts">
-	import { X, Spool, Trophy, Heart, ShoppingBag } from '@lucide/svelte'
-	import { API_URL } from '$lib/config'
-	import { refreshUserScraps, userScrapsStore } from '$lib/auth-client'
-	import HeartButton from './HeartButton.svelte'
-	import { type ShopItem, updateShopItemHeart } from '$lib/stores'
+	import { X, Spool, Trophy, Heart, ShoppingBag } from '@lucide/svelte';
+	import { API_URL } from '$lib/config';
+	import { refreshUserScraps, userScrapsStore } from '$lib/auth-client';
+	import HeartButton from './HeartButton.svelte';
+	import { type ShopItem, updateShopItemHeart } from '$lib/stores';
 
 	interface LeaderboardUser {
-		userId: string
-		username: string
-		avatar: string
-		boostPercent: number
-		effectiveProbability: number
+		userId: string;
+		username: string;
+		avatar: string;
+		boostPercent: number;
+		effectiveProbability: number;
 	}
 
 	interface Buyer {
-		userId: string
-		username: string
-		avatar: string
-		purchasedAt: string
+		userId: string;
+		username: string;
+		avatar: string;
+		purchasedAt: string;
 	}
 
 	interface HeartUser {
-		userId: string
-		username: string
-		avatar: string
+		userId: string;
+		username: string;
+		avatar: string;
 	}
 
 	let {
@@ -32,84 +32,84 @@
 		onTryLuck,
 		onConsolation
 	}: {
-		item: ShopItem
-		onClose: () => void
-		onTryLuck: (orderId: number) => void
-		onConsolation: (orderId: number, rolled: number, needed: number) => void
-	} = $props()
+		item: ShopItem;
+		onClose: () => void;
+		onTryLuck: (orderId: number) => void;
+		onConsolation: (orderId: number, rolled: number, needed: number) => void;
+	} = $props();
 
-	let activeTab = $state<'leaderboard' | 'wishlist' | 'buyers'>('leaderboard')
-	let leaderboard = $state<LeaderboardUser[]>([])
-	let buyers = $state<Buyer[]>([])
-	let heartUsers = $state<HeartUser[]>([])
-	let loadingLeaderboard = $state(false)
-	let loadingBuyers = $state(false)
-	let loadingHearts = $state(false)
-	let tryingLuck = $state(false)
-	let showConfirmation = $state(false)
-	let localHearted = $state(item.userHearted)
-	let localHeartCount = $state(item.heartCount)
-	let canAfford = $derived($userScrapsStore >= item.price)
-	let alertMessage = $state<string | null>(null)
-	let alertType = $state<'error' | 'info'>('info')
+	let activeTab = $state<'leaderboard' | 'wishlist' | 'buyers'>('leaderboard');
+	let leaderboard = $state<LeaderboardUser[]>([]);
+	let buyers = $state<Buyer[]>([]);
+	let heartUsers = $state<HeartUser[]>([]);
+	let loadingLeaderboard = $state(false);
+	let loadingBuyers = $state(false);
+	let loadingHearts = $state(false);
+	let tryingLuck = $state(false);
+	let showConfirmation = $state(false);
+	let localHearted = $state(item.userHearted);
+	let localHeartCount = $state(item.heartCount);
+	let canAfford = $derived($userScrapsStore >= item.price);
+	let alertMessage = $state<string | null>(null);
+	let alertType = $state<'error' | 'info'>('info');
 
 	function getProbabilityColor(prob: number): string {
-		if (prob >= 70) return 'text-green-600'
-		if (prob >= 40) return 'text-yellow-600'
-		return 'text-red-600'
+		if (prob >= 70) return 'text-green-600';
+		if (prob >= 40) return 'text-yellow-600';
+		return 'text-red-600';
 	}
 
 	function getProbabilityBgColor(prob: number): string {
-		if (prob >= 70) return 'bg-green-100'
-		if (prob >= 40) return 'bg-yellow-100'
-		return 'bg-red-100'
+		if (prob >= 70) return 'bg-green-100';
+		if (prob >= 40) return 'bg-yellow-100';
+		return 'bg-red-100';
 	}
 
 	async function fetchLeaderboard() {
-		loadingLeaderboard = true
+		loadingLeaderboard = true;
 		try {
 			const response = await fetch(`${API_URL}/shop/items/${item.id}/leaderboard`, {
 				credentials: 'include'
-			})
+			});
 			if (response.ok) {
-				leaderboard = await response.json()
+				leaderboard = await response.json();
 			}
 		} catch (e) {
-			console.error('Failed to fetch leaderboard:', e)
+			console.error('Failed to fetch leaderboard:', e);
 		} finally {
-			loadingLeaderboard = false
+			loadingLeaderboard = false;
 		}
 	}
 
 	async function fetchBuyers() {
-		loadingBuyers = true
+		loadingBuyers = true;
 		try {
 			const response = await fetch(`${API_URL}/shop/items/${item.id}/buyers`, {
 				credentials: 'include'
-			})
+			});
 			if (response.ok) {
-				buyers = await response.json()
+				buyers = await response.json();
 			}
 		} catch (e) {
-			console.error('Failed to fetch buyers:', e)
+			console.error('Failed to fetch buyers:', e);
 		} finally {
-			loadingBuyers = false
+			loadingBuyers = false;
 		}
 	}
 
 	async function fetchHeartUsers() {
-		loadingHearts = true
+		loadingHearts = true;
 		try {
 			const response = await fetch(`${API_URL}/shop/items/${item.id}/hearts`, {
 				credentials: 'include'
-			})
+			});
 			if (response.ok) {
-				heartUsers = await response.json()
+				heartUsers = await response.json();
 			}
 		} catch (e) {
-			console.error('Failed to fetch heart users:', e)
+			console.error('Failed to fetch heart users:', e);
 		} finally {
-			loadingHearts = false
+			loadingHearts = false;
 		}
 	}
 
@@ -118,129 +118,151 @@
 			const response = await fetch(`${API_URL}/shop/items/${item.id}/heart`, {
 				method: 'POST',
 				credentials: 'include'
-			})
+			});
 			if (response.ok) {
-				const data = await response.json()
-				localHearted = data.hearted
-				localHeartCount = data.heartCount
+				const data = await response.json();
+				localHearted = data.hearted;
+				localHeartCount = data.heartCount;
 				// Sync with the store so the shop page updates
-				updateShopItemHeart(item.id, localHearted, localHeartCount)
+				updateShopItemHeart(item.id, localHearted, localHeartCount);
 			}
 		} catch (e) {
-			console.error('Failed to toggle heart:', e)
+			console.error('Failed to toggle heart:', e);
 		}
 	}
 
 	async function handleTryLuck() {
-		tryingLuck = true
+		tryingLuck = true;
 		try {
 			const response = await fetch(`${API_URL}/shop/items/${item.id}/try-luck`, {
 				method: 'POST',
 				credentials: 'include'
-			})
-			const data = await response.json()
+			});
+			const data = await response.json();
 
 			if (!response.ok) {
-				alertType = 'error'
-				alertMessage = data.error || 'Failed to try luck'
-				return
+				alertType = 'error';
+				alertMessage = data.error || 'Failed to try luck';
+				return;
 			}
 
-			await refreshUserScraps()
+			await refreshUserScraps();
 			if (data.won) {
-				onTryLuck(data.orderId)
+				onTryLuck(data.orderId);
 			} else {
-				onConsolation(data.consolationOrderId, data.rolled, Math.floor(data.effectiveProbability))
+				onConsolation(data.consolationOrderId, data.rolled, Math.floor(data.effectiveProbability));
 			}
 		} catch (e) {
-			console.error('Failed to try luck:', e)
-			alertType = 'error'
-			alertMessage = 'Something went wrong'
+			console.error('Failed to try luck:', e);
+			alertType = 'error';
+			alertMessage = 'Something went wrong';
 		} finally {
-			tryingLuck = false
-			showConfirmation = false
+			tryingLuck = false;
+			showConfirmation = false;
 		}
 	}
 
 	function handleBackdropClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) {
 			if (showConfirmation) {
-				showConfirmation = false
+				showConfirmation = false;
 			} else {
-				onClose()
+				onClose();
 			}
 		}
 	}
 
-	let leaderboardFetched = false
-	let buyersFetched = false
-	let heartsFetched = false
+	let leaderboardFetched = false;
+	let buyersFetched = false;
+	let heartsFetched = false;
 
 	$effect(() => {
 		if (activeTab === 'leaderboard' && !leaderboardFetched) {
-			leaderboardFetched = true
-			fetchLeaderboard()
+			leaderboardFetched = true;
+			fetchLeaderboard();
 		} else if (activeTab === 'buyers' && !buyersFetched) {
-			buyersFetched = true
-			fetchBuyers()
+			buyersFetched = true;
+			fetchBuyers();
 		} else if (activeTab === 'wishlist' && !heartsFetched) {
-			heartsFetched = true
-			fetchHeartUsers()
+			heartsFetched = true;
+			fetchHeartUsers();
 		}
-	})
+	});
 </script>
 
 <div
-	class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+	class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
 	onclick={handleBackdropClick}
-	onkeydown={(e) => e.key === 'Escape' && (showConfirmation ? (showConfirmation = false) : onClose())}
+	onkeydown={(e) =>
+		e.key === 'Escape' && (showConfirmation ? (showConfirmation = false) : onClose())}
 	role="dialog"
 	tabindex="-1"
 >
-	<div class="bg-white rounded-2xl w-full max-w-lg p-6 border-4 border-black max-h-[90vh] overflow-y-auto">
-		<div class="flex items-start justify-between mb-4">
+	<div
+		class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border-4 border-black bg-white p-6"
+	>
+		<div class="mb-4 flex items-start justify-between">
 			<h2 class="text-2xl font-bold">{item.name}</h2>
-			<button onclick={onClose} class="p-1 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+			<button
+				onclick={onClose}
+				class="cursor-pointer rounded-lg p-1 transition-colors hover:bg-gray-100"
+			>
 				<X size={24} />
 			</button>
 		</div>
 
-		<img src={item.image} alt={item.name} class="w-full h-48 object-contain mb-4 bg-gray-50 rounded-lg" />
+		<img
+			src={item.image}
+			alt={item.name}
+			class="mb-4 h-48 w-full rounded-lg bg-gray-50 object-contain"
+		/>
 
-		<p class="text-gray-600 mb-4">{item.description}</p>
+		<p class="mb-4 text-gray-600">{item.description}</p>
 
-		<div class="flex items-center justify-between mb-4">
+		<div class="mb-4 flex items-center justify-between">
 			<div class="flex items-center gap-4">
-				<span class="text-xl font-bold flex items-center gap-1">
+				<span class="flex items-center gap-1 text-xl font-bold">
 					<Spool size={20} />
 					{item.price}
 				</span>
 				<span class="text-sm text-gray-500">{item.count} left</span>
 			</div>
-			<HeartButton count={localHeartCount} hearted={localHearted} onclick={() => handleToggleHeart()} />
+			<HeartButton
+				count={localHeartCount}
+				hearted={localHearted}
+				onclick={() => handleToggleHeart()}
+			/>
 		</div>
 
-		<div class="flex gap-2 flex-wrap mb-4">
-			{#each item.category.split(',').map((c) => c.trim()).filter(Boolean) as cat}
-				<span class="text-xs px-2 py-1 bg-gray-100 rounded-full">{cat}</span>
+		<div class="mb-4 flex flex-wrap gap-2">
+			{#each item.category
+				.split(',')
+				.map((c) => c.trim())
+				.filter(Boolean) as cat}
+				<span class="rounded-full bg-gray-100 px-2 py-1 text-xs">{cat}</span>
 			{/each}
 		</div>
 
-		<div class="p-4 border-2 border-black rounded-lg mb-4 {getProbabilityBgColor(item.effectiveProbability)}">
-			<p class="text-sm font-bold mb-2">your chance</p>
+		<div
+			class="mb-4 rounded-lg border-2 border-black p-4 {getProbabilityBgColor(
+				item.effectiveProbability
+			)}"
+		>
+			<p class="mb-2 text-sm font-bold">your chance</p>
 			<p class="text-3xl font-bold {getProbabilityColor(item.effectiveProbability)}">
 				{item.effectiveProbability.toFixed(1)}%
 			</p>
-			<div class="text-xs text-gray-600 mt-2 flex gap-4">
+			<div class="mt-2 flex gap-4 text-xs text-gray-600">
 				<span>base: {item.baseProbability}%</span>
 				<span>your boost: +{item.userBoostPercent}%</span>
 			</div>
 		</div>
 
-		<div class="flex gap-2 mb-4">
+		<div class="mb-4 flex gap-2">
 			<button
 				onclick={() => (activeTab = 'leaderboard')}
-				class="flex-1 px-3 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1 {activeTab === 'leaderboard'
+				class="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-full border-4 border-black px-3 py-2 font-bold transition-all duration-200 {activeTab ===
+				'leaderboard'
 					? 'bg-black text-white'
 					: 'hover:border-dashed'}"
 			>
@@ -249,7 +271,8 @@
 			</button>
 			<button
 				onclick={() => (activeTab = 'wishlist')}
-				class="flex-1 px-3 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1 {activeTab === 'wishlist'
+				class="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-full border-4 border-black px-3 py-2 font-bold transition-all duration-200 {activeTab ===
+				'wishlist'
 					? 'bg-black text-white'
 					: 'hover:border-dashed'}"
 			>
@@ -258,7 +281,8 @@
 			</button>
 			<button
 				onclick={() => (activeTab = 'buyers')}
-				class="flex-1 px-3 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer flex items-center justify-center gap-1 {activeTab === 'buyers'
+				class="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-full border-4 border-black px-3 py-2 font-bold transition-all duration-200 {activeTab ===
+				'buyers'
 					? 'bg-black text-white'
 					: 'hover:border-dashed'}"
 			>
@@ -267,19 +291,19 @@
 			</button>
 		</div>
 
-		<div class="border-2 border-black rounded-lg p-4 mb-6 min-h-[120px]">
+		<div class="mb-6 min-h-[120px] rounded-lg border-2 border-black p-4">
 			{#if activeTab === 'leaderboard'}
 				{#if loadingLeaderboard}
-					<p class="text-gray-500 text-center">loading...</p>
+					<p class="text-center text-gray-500">loading...</p>
 				{:else if leaderboard.length === 0}
-					<p class="text-gray-500 text-center">no one has boosted yet</p>
+					<p class="text-center text-gray-500">no one has boosted yet</p>
 				{:else}
 					<div class="space-y-2">
 						{#each leaderboard as user, i}
 							<div class="flex items-center gap-3">
-								<span class="font-bold w-6">{i + 1}.</span>
-								<img src={user.avatar} alt={user.username} class="w-8 h-8 rounded-full" />
-								<span class="font-medium flex-1">{user.username}</span>
+								<span class="w-6 font-bold">{i + 1}.</span>
+								<img src={user.avatar} alt={user.username} class="h-8 w-8 rounded-full" />
+								<span class="flex-1 font-medium">{user.username}</span>
 								<span class="text-sm {getProbabilityColor(user.effectiveProbability)}">
 									{user.effectiveProbability.toFixed(1)}%
 								</span>
@@ -289,15 +313,15 @@
 				{/if}
 			{:else if activeTab === 'wishlist'}
 				<div class="text-center">
-					<p class="text-2xl font-bold mb-2">{localHeartCount}</p>
-					<p class="text-gray-600 mb-4">people want this item</p>
+					<p class="mb-2 text-2xl font-bold">{localHeartCount}</p>
+					<p class="mb-4 text-gray-600">people want this item</p>
 					{#if localHearted}
-						<p class="text-sm text-green-600 mb-4 font-medium">including you!</p>
+						<p class="mb-4 text-sm font-medium text-green-600">including you!</p>
 					{/if}
 					{#if loadingHearts}
-						<p class="text-gray-500 text-sm">loading...</p>
+						<p class="text-sm text-gray-500">loading...</p>
 					{:else if heartUsers.length > 0}
-						<div class="flex flex-wrap justify-center gap-2 mt-2">
+						<div class="mt-2 flex flex-wrap justify-center gap-2">
 							{#each heartUsers as heartUser, i}
 								<div
 									class="relative"
@@ -307,7 +331,7 @@
 										src={heartUser.avatar}
 										alt={heartUser.username}
 										title={heartUser.username}
-										class="w-10 h-10 rounded-full border-2 border-pink-300 shadow-md hover:scale-110 transition-transform cursor-pointer"
+										class="h-10 w-10 cursor-pointer rounded-full border-2 border-pink-300 shadow-md transition-transform hover:scale-110"
 									/>
 								</div>
 							{/each}
@@ -316,15 +340,15 @@
 				</div>
 			{:else if activeTab === 'buyers'}
 				{#if loadingBuyers}
-					<p class="text-gray-500 text-center">loading...</p>
+					<p class="text-center text-gray-500">loading...</p>
 				{:else if buyers.length === 0}
-					<p class="text-gray-500 text-center">no one has won this item yet</p>
+					<p class="text-center text-gray-500">no one has won this item yet</p>
 				{:else}
 					<div class="space-y-2">
 						{#each buyers as buyer}
 							<div class="flex items-center gap-3">
-								<img src={buyer.avatar} alt={buyer.username} class="w-8 h-8 rounded-full" />
-								<span class="font-medium flex-1">{buyer.username}</span>
+								<img src={buyer.avatar} alt={buyer.username} class="h-8 w-8 rounded-full" />
+								<span class="flex-1 font-medium">{buyer.username}</span>
 								<span class="text-xs text-gray-500">
 									{new Date(buyer.purchasedAt).toLocaleDateString()}
 								</span>
@@ -337,7 +361,7 @@
 
 		{#if item.count === 0}
 			<span
-				class="w-full px-4 py-3 border-4 border-dashed border-gray-300 text-gray-400 rounded-full font-bold text-lg text-center cursor-not-allowed block"
+				class="block w-full cursor-not-allowed rounded-full border-4 border-dashed border-gray-300 px-4 py-3 text-center text-lg font-bold text-gray-400"
 			>
 				sold out
 			</span>
@@ -345,7 +369,7 @@
 			<button
 				onclick={() => (showConfirmation = true)}
 				disabled={tryingLuck || !canAfford}
-				class="w-full px-4 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-lg"
+				class="w-full cursor-pointer rounded-full bg-black px-4 py-3 text-lg font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if !canAfford}
 					not enough scraps
@@ -358,32 +382,35 @@
 
 	{#if showConfirmation}
 		<div
-			class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4"
+			class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
 			onclick={(e) => e.target === e.currentTarget && (showConfirmation = false)}
 			onkeydown={(e) => e.key === 'Escape' && (showConfirmation = false)}
 			role="dialog"
 			tabindex="-1"
 		>
-			<div class="bg-white rounded-2xl w-full max-w-md p-6 border-4 border-black">
-				<h2 class="text-2xl font-bold mb-4">confirm try your luck</h2>
-				<p class="text-gray-600 mb-6">
-					are you sure you want to try your luck? this will cost <strong>{item.price} scraps</strong>.
-					<span class="block mt-2">
-						your chance: <strong class={getProbabilityColor(item.effectiveProbability)}>{item.effectiveProbability.toFixed(1)}%</strong>
+			<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
+				<h2 class="mb-4 text-2xl font-bold">confirm try your luck</h2>
+				<p class="mb-6 text-gray-600">
+					are you sure you want to try your luck? this will cost <strong>{item.price} scraps</strong
+					>.
+					<span class="mt-2 block">
+						your chance: <strong class={getProbabilityColor(item.effectiveProbability)}
+							>{item.effectiveProbability.toFixed(1)}%</strong
+						>
 					</span>
 				</p>
 				<div class="flex gap-3">
 					<button
 						onclick={() => (showConfirmation = false)}
 						disabled={tryingLuck}
-						class="flex-1 px-4 py-2 border-4 border-black rounded-full font-bold hover:border-dashed transition-all duration-200 disabled:opacity-50 cursor-pointer"
+						class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50"
 					>
 						cancel
 					</button>
 					<button
 						onclick={handleTryLuck}
 						disabled={tryingLuck}
-						class="flex-1 px-4 py-2 bg-black text-white rounded-full font-bold border-4 border-black hover:border-dashed transition-all duration-200 disabled:opacity-50 cursor-pointer"
+						class="flex-1 cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed disabled:opacity-50"
 					>
 						{tryingLuck ? 'trying...' : 'try luck'}
 					</button>
@@ -394,18 +421,18 @@
 
 	{#if alertMessage}
 		<div
-			class="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4"
+			class="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4"
 			onclick={(e) => e.target === e.currentTarget && (alertMessage = null)}
 			onkeydown={(e) => e.key === 'Escape' && (alertMessage = null)}
 			role="dialog"
 			tabindex="-1"
 		>
-			<div class="bg-white rounded-2xl w-full max-w-md p-6 border-4 border-black">
-				<h2 class="text-2xl font-bold mb-4">{alertType === 'error' ? 'error' : 'result'}</h2>
-				<p class="text-gray-600 mb-6">{alertMessage}</p>
+			<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
+				<h2 class="mb-4 text-2xl font-bold">{alertType === 'error' ? 'error' : 'result'}</h2>
+				<p class="mb-6 text-gray-600">{alertMessage}</p>
 				<button
 					onclick={() => (alertMessage = null)}
-					class="w-full px-4 py-2 bg-black text-white rounded-full font-bold border-4 border-black hover:border-dashed transition-all duration-200 cursor-pointer"
+					class="w-full cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed"
 				>
 					ok
 				</button>
@@ -416,7 +443,8 @@
 
 <style>
 	@keyframes float {
-		0%, 100% {
+		0%,
+		100% {
 			transform: translateY(0);
 		}
 		50% {
