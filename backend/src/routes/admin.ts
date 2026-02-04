@@ -444,6 +444,11 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
 
         if (!project[0]) return { error: 'Project not found' }
 
+        // Validate hours override doesn't exceed project hours
+        if (hoursOverride !== undefined && hoursOverride > (project[0].hours ?? 0)) {
+            return { error: `Hours override (${hoursOverride}) cannot exceed project hours (${project[0].hours})` }
+        }
+
         // Reject if project is deleted or not waiting for review
         if (project[0].deleted) {
             return { error: 'Cannot review a deleted project' }

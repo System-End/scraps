@@ -72,6 +72,12 @@
 	let hoursOverride = $state<number | undefined>(undefined)
 	let tierOverride = $state<number | undefined>(undefined)
 
+	let hoursOverrideError = $derived(
+		hoursOverride !== undefined && project && hoursOverride > project.hours
+			? `Hours override cannot exceed project hours (${project.hours}h)`
+			: null
+	)
+
 	let confirmAction = $state<'approved' | 'denied' | 'permanently_rejected' | null>(null)
 
 	let projectId = $derived(page.params.id)
@@ -421,10 +427,15 @@
 					<input
 						type="number"
 						step="0.1"
+						min="0"
+						max={project.hours}
 						bind:value={hoursOverride}
 						placeholder={String(project.hours)}
-						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
+						class="w-full px-4 py-2 border-2 rounded-lg focus:outline-none focus:border-dashed {hoursOverrideError ? 'border-red-500' : 'border-black'}"
 					/>
+					{#if hoursOverrideError}
+						<p class="text-red-500 text-sm mt-1">{hoursOverrideError}</p>
+					{/if}
 				</div>
 
 				<div>
@@ -465,24 +476,24 @@
 				<div class="flex gap-3 pt-4">
 					<button
 						onclick={() => requestConfirmation('approved')}
-						disabled={submitting}
-						class="flex-1 px-4 py-3 bg-green-600 text-white rounded-full font-bold border-4 border-black hover:border-dashed transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+						disabled={submitting || !!hoursOverrideError}
+						class="flex-1 px-4 py-3 bg-green-600 text-white rounded-full font-bold border-4 border-black hover:border-dashed transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
 					>
 						<Check size={20} />
 						<span>approve</span>
 					</button>
 					<button
 						onclick={() => requestConfirmation('denied')}
-						disabled={submitting}
-						class="flex-1 px-4 py-3 bg-yellow-500 text-white rounded-full font-bold border-4 border-black hover:border-dashed transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+						disabled={submitting || !!hoursOverrideError}
+						class="flex-1 px-4 py-3 bg-yellow-500 text-white rounded-full font-bold border-4 border-black hover:border-dashed transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
 					>
 						<X size={20} />
 						<span>reject</span>
 					</button>
 					<button
 						onclick={() => requestConfirmation('permanently_rejected')}
-						disabled={submitting}
-						class="flex-1 px-4 py-3 bg-red-600 text-white rounded-full font-bold border-4 border-black hover:border-dashed transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+						disabled={submitting || !!hoursOverrideError}
+						class="flex-1 px-4 py-3 bg-red-600 text-white rounded-full font-bold border-4 border-black hover:border-dashed transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
 					>
 						<Ban size={20} />
 						<span>permanently reject</span>
