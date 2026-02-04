@@ -152,17 +152,19 @@ admin.get('/users/:id', async ({ params, headers }) => {
 })
 
 // Update user role (admin only)
-admin.put('/users/:id/role', async ({ params, body, headers }) => {
+admin.put('/users/:id/role', async ({ params, body, headers, status }) => {
     const user = await requireAdmin(headers as Record<string, string>)
-    if (!user) return { error: 'Unauthorized' }
+    if (!user) {
+        return status(401, { error: 'Unauthorized' })
+    }
 
     const { role } = body as { role: string }
     if (!['member', 'reviewer', 'admin', 'banned'].includes(role)) {
-        return { error: 'Invalid role' }
+        return status(400, { error: 'Invalid role' })
     }
 
     if (user.id === parseInt(params.id)) {
-        return { error: 'Cannot change your own role' }
+        return status(400, { error: 'Cannot change your own role' })
     }
 
     try {
@@ -172,22 +174,27 @@ admin.put('/users/:id/role', async ({ params, body, headers }) => {
             .where(eq(usersTable.id, parseInt(params.id)))
             .returning()
 
-        return (updated[0] && { success: true }) || { error: "Not Found" }
+        if (!updated[0]) {
+            return status(404, { error: "Not Found" })
+        }
+        return { success: true }
     } catch (err) {
         console.error(err);
-        return { error: "Failed to update user role" };
+        return status(500, { error: "Failed to update user role" })
     }
 })
 
 // Update user internal notes
-admin.put('/users/:id/notes', async ({ params, body, headers }) => {
+admin.put('/users/:id/notes', async ({ params, body, headers, status }) => {
     const user = await requireReviewer(headers as Record<string, string>)
-    if (!user) return { error: 'Unauthorized' }
+    if (!user) {
+        return status(401, { error: 'Unauthorized' })
+    }
 
     const { internalNotes } = body as { internalNotes: string }
 
     if (typeof internalNotes != "string" || internalNotes.length > 2500) {
-        return { error: "Note is too long or it's malformed!" };
+        return status(400, { error: "Note is too long or it's malformed!" })
     }
 
     try {
@@ -197,33 +204,38 @@ admin.put('/users/:id/notes', async ({ params, body, headers }) => {
             .where(eq(usersTable.id, parseInt(params.id)))
             .returning()
 
-        return (updated[0] && { success: true }) || { error: "Not Found" }
+        if (!updated[0]) {
+            return status(404, { error: "Not Found" })
+        }
+        return { success: true }
     } catch (err) {
         console.error(err);
-        return { error: "Failed to update user internal notes" };
+        return status(500, { error: "Failed to update user internal notes" })
     }
 })
 
 // Give bonus scraps to user (admin only)
-admin.post('/users/:id/bonus', async ({ params, body, headers }) => {
+admin.post('/users/:id/bonus', async ({ params, body, headers, status }) => {
     try {
         const admin = await requireAdmin(headers as Record<string, string>)
-        if (!admin) return { error: 'Unauthorized' }
+        if (!admin) {
+            return status(401, { error: 'Unauthorized' })
+        }
 
         const { amount, reason } = body as { amount: number; reason: string }
 
         if (!amount || typeof amount !== 'number') {
-            return { error: 'Amount is required and must be a number' }
+            return status(400, { error: 'Amount is required and must be a number' })
         }
 
         if (Number(amount))
 
         if (!reason || typeof reason !== 'string' || reason.trim().length === 0) {
-            return { error: 'Reason is required' }
+            return status(400, { error: 'Reason is required' })
         }
 
         if (reason.length > 500) {
-            return { error: 'Reason is too long (max 500 characters)' }
+            return status(400, { error: 'Reason is too long (max 500 characters)' })
         }
 
         const targetUserId = parseInt(params.id)
@@ -234,7 +246,9 @@ admin.post('/users/:id/bonus', async ({ params, body, headers }) => {
             .where(eq(usersTable.id, targetUserId))
             .limit(1)
 
-        if (!targetUser[0]) return { error: 'User not found' }
+        if (!targetUser[0]) {
+            return status(404, { error: 'User not found' })
+        }
 
         const bonus = await db
             .insert(userBonusesTable)
@@ -255,7 +269,7 @@ admin.post('/users/:id/bonus', async ({ params, body, headers }) => {
         return bonus[0]
     } catch (err) {
         console.error(err)
-        return { error: 'Failed to create user bonus' }
+        return status(500, { error: 'Failed to create user bonus' })
     }
 })
 
@@ -519,9 +533,11 @@ admin.get('/shop/items', async ({ headers }) => {
     }
 })
 
-admin.post('/shop/items', async ({ headers, body }) => {
+admin.post('/shop/items', async ({ headers, body, status }) => {
     const user = await requireAdmin(headers as Record<string, string>)
-    if (!user) return { error: 'Unauthorized' }
+    if (!user) {
+        return status(401, { error: 'Unauthorized' })
+    }
 
     const { name, image, description, price, category, count, baseProbability, baseUpgradeCost, costMultiplier, boostAmount } = body as {
         name: string
@@ -537,15 +553,15 @@ admin.post('/shop/items', async ({ headers, body }) => {
     }
 
     if (!name?.trim() || !image?.trim() || !description?.trim() || !category?.trim()) {
-        return { error: 'All fields are required' }
+        return status(400, { error: 'All fields are required' })
     }
 
     if (typeof price !== 'number' || price < 0) {
-        return { error: 'Invalid price' }
+        return status(400, { error: 'Invalid price' })
     }
 
     if (baseProbability !== undefined && (typeof baseProbability !== 'number' || baseProbability < 0 || baseProbability > 100)) {
-        return { error: 'baseProbability must be between 0 and 100' }
+        return status(400, { error: 'baseProbability must be between 0 and 100' })
     }
 
     try {
@@ -567,14 +583,16 @@ admin.post('/shop/items', async ({ headers, body }) => {
         return { success: true };
     } catch (err) {
         console.error(err);
-        throw "Something went wrong while trying to create an shop item"
+        return status(500, { error: "Failed to create shop item" })
     }
 })
 
-admin.put('/shop/items/:id', async ({ params, headers, body }) => {
+admin.put('/shop/items/:id', async ({ params, headers, body, status }) => {
     try {
         const user = await requireAdmin(headers as Record<string, string>)
-        if (!user) return { error: 'Unauthorized' }
+        if (!user) {
+            return status(401, { error: 'Unauthorized' })
+        }
 
         const { name, image, description, price, category, count, baseProbability, baseUpgradeCost, costMultiplier, boostAmount } = body as {
             name?: string
@@ -590,7 +608,7 @@ admin.put('/shop/items/:id', async ({ params, headers, body }) => {
         }
 
         if (baseProbability !== undefined && (typeof baseProbability !== 'number' || baseProbability < 0 || baseProbability > 100)) {
-            return { error: 'baseProbability must be between 0 and 100' }
+            return status(400, { error: 'baseProbability must be between 0 and 100' })
         }
 
         const updateData: Record<string, unknown> = { updatedAt: new Date() }
@@ -612,18 +630,22 @@ admin.put('/shop/items/:id', async ({ params, headers, body }) => {
             .where(eq(shopItemsTable.id, parseInt(params.id)))
             .returning()
 
-        if (!updated[0]) return { error: 'Not found' }
+        if (!updated[0]) {
+            return status(404, { error: 'Not found' })
+        }
         return { success: true }
     } catch (err) {
         console.error(err)
-        return { error: 'Failed to update shop item' }
+        return status(500, { error: 'Failed to update shop item' })
     }
 })
 
-admin.delete('/shop/items/:id', async ({ params, headers }) => {
+admin.delete('/shop/items/:id', async ({ params, headers, status }) => {
     try {
         const user = await requireAdmin(headers as Record<string, string>)
-        if (!user) return { error: 'Unauthorized' }
+        if (!user) {
+            return status(401, { error: 'Unauthorized' })
+        }
 
         const itemId = parseInt(params.id)
 
@@ -638,15 +660,17 @@ admin.delete('/shop/items/:id', async ({ params, headers }) => {
         return { success: true }
     } catch (err) {
         console.error(err)
-        return { error: 'Failed to delete shop item' }
+        return status(500, { error: 'Failed to delete shop item' })
     }
 })
 
 // News admin endpoints (admin only)
-admin.get('/news', async ({ headers }) => {
+admin.get('/news', async ({ headers, status }) => {
     try {
         const user = await requireAdmin(headers as Record<string, string>)
-        if (!user) return { error: 'Unauthorized' }
+        if (!user) {
+            return status(401, { error: 'Unauthorized' })
+        }
 
         const items = await db
             .select()
@@ -656,14 +680,16 @@ admin.get('/news', async ({ headers }) => {
         return items
     } catch (err) {
         console.error(err)
-        return { error: 'Failed to fetch news' }
+        return status(500, { error: 'Failed to fetch news' })
     }
 })
 
-admin.post('/news', async ({ headers, body }) => {
+admin.post('/news', async ({ headers, body, status }) => {
     try {
         const user = await requireAdmin(headers as Record<string, string>)
-        if (!user) return { error: 'Unauthorized' }
+        if (!user) {
+            return status(401, { error: 'Unauthorized' })
+        }
 
         const { title, content, active } = body as {
             title: string
@@ -672,7 +698,7 @@ admin.post('/news', async ({ headers, body }) => {
         }
 
         if (!title?.trim() || !content?.trim()) {
-            return { error: 'Title and content are required' }
+            return status(400, { error: 'Title and content are required' })
         }
 
         const inserted = await db
@@ -694,14 +720,16 @@ admin.post('/news', async ({ headers, body }) => {
         return inserted[0]
     } catch (err) {
         console.error(err)
-        return { error: 'Failed to create news' }
+        return status(500, { error: 'Failed to create news' })
     }
 })
 
-admin.put('/news/:id', async ({ params, headers, body }) => {
+admin.put('/news/:id', async ({ params, headers, body, status }) => {
     try {
         const user = await requireAdmin(headers as Record<string, string>)
-        if (!user) return { error: 'Unauthorized' }
+        if (!user) {
+            return status(401, { error: 'Unauthorized' })
+        }
 
         const { title, content, active } = body as {
             title?: string
@@ -728,18 +756,22 @@ admin.put('/news/:id', async ({ params, headers, body }) => {
                 updatedAt: newsTable.updatedAt
             })
 
-        if (!updated[0]) return { error: 'Not found' }
+        if (!updated[0]) {
+            return status(404, { error: 'Not found' })
+        }
         return updated[0]
     } catch (err) {
         console.error(err)
-        return { error: 'Failed to update news' }
+        return status(500, { error: 'Failed to update news' })
     }
 })
 
-admin.delete('/news/:id', async ({ params, headers }) => {
+admin.delete('/news/:id', async ({ params, headers, status }) => {
     try {
         const user = await requireAdmin(headers as Record<string, string>)
-        if (!user) return { error: 'Unauthorized' }
+        if (!user) {
+            return status(401, { error: 'Unauthorized' })
+        }
 
         await db
             .delete(newsTable)
@@ -748,16 +780,18 @@ admin.delete('/news/:id', async ({ params, headers }) => {
         return { success: true }
     } catch (err) {
         console.error(err)
-        return { error: 'Failed to delete news' }
+        return status(500, { error: 'Failed to delete news' })
     }
 })
 
-admin.get('/orders', async ({ headers, query }) => {
+admin.get('/orders', async ({ headers, query, status }) => {
     try {
         const user = await requireAdmin(headers as Record<string, string>)
-        if (!user) return { error: 'Unauthorized' }
+        if (!user) {
+            return status(401, { error: 'Unauthorized' })
+        }
 
-        const status = query.status as string | undefined
+        const orderStatus = query.status as string | undefined
 
         let ordersQuery = db
             .select({
@@ -782,31 +816,33 @@ admin.get('/orders', async ({ headers, query }) => {
             .innerJoin(usersTable, eq(shopOrdersTable.userId, usersTable.id))
             .orderBy(desc(shopOrdersTable.createdAt))
 
-        if (status) {
-            ordersQuery = ordersQuery.where(eq(shopOrdersTable.status, status)) as typeof ordersQuery
+        if (orderStatus) {
+            ordersQuery = ordersQuery.where(eq(shopOrdersTable.status, orderStatus)) as typeof ordersQuery
         }
 
         return await ordersQuery
     } catch (err) {
         console.error(err)
-        return { error: 'Failed to fetch orders' }
+        return status(500, { error: 'Failed to fetch orders' })
     }
 })
 
-admin.patch('/orders/:id', async ({ params, body, headers }) => {
+admin.patch('/orders/:id', async ({ params, body, headers, status }) => {
     try {
         const user = await requireAdmin(headers as Record<string, string>)
-        if (!user) return { error: 'Unauthorized' }
+        if (!user) {
+            return status(401, { error: 'Unauthorized' })
+        }
 
-        const { status, notes, isFulfilled } = body as { status?: string; notes?: string; isFulfilled?: boolean }
+        const { status: orderStatus, notes, isFulfilled } = body as { status?: string; notes?: string; isFulfilled?: boolean }
 
         const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
-        if (status && !validStatuses.includes(status)) {
-            return { error: 'Invalid status' }
+        if (orderStatus && !validStatuses.includes(orderStatus)) {
+            return status(400, { error: 'Invalid status' })
         }
 
         const updateData: Record<string, unknown> = { updatedAt: new Date() }
-        if (status) updateData.status = status
+        if (orderStatus) updateData.status = orderStatus
         if (notes !== undefined) updateData.notes = notes
         if (isFulfilled !== undefined) updateData.isFulfilled = isFulfilled
 
@@ -827,11 +863,13 @@ admin.patch('/orders/:id', async ({ params, body, headers }) => {
                 createdAt: shopOrdersTable.createdAt
             })
 
-        if (!updated[0]) return { error: 'Not found' }
+        if (!updated[0]) {
+            return status(404, { error: 'Not found' })
+        }
         return updated[0]
     } catch (err) {
         console.error(err)
-        return { error: 'Failed to update order' }
+        return status(500, { error: 'Failed to update order' })
     }
 })
 
