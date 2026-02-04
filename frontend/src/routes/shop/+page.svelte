@@ -5,7 +5,7 @@
 	import AddressSelectModal from '$lib/components/AddressSelectModal.svelte'
 	import { API_URL } from '$lib/config'
 	import { getUser } from '$lib/auth-client'
-	import { X, Spool, PackageCheck } from '@lucide/svelte'
+	import { X, Spool, PackageCheck, Clock } from '@lucide/svelte'
 	import {
 		shopItemsStore,
 		shopLoading,
@@ -13,6 +13,13 @@
 		updateShopItemHeart,
 		type ShopItem
 	} from '$lib/stores'
+
+	const PHI = (1 + Math.sqrt(5)) / 2
+	const MULTIPLIER = 10
+
+	function estimateHours(scraps: number): number {
+		return Math.round(scraps / (PHI * MULTIPLIER) * 10) / 10
+	}
 
 	let selectedCategories = $state<Set<string>>(new Set())
 	let sortBy = $state<'default' | 'favorites' | 'probability'>('default')
@@ -258,6 +265,7 @@
 						<p class="text-sm text-gray-600 mb-2">{item.description}</p>
 						<div class="mb-3">
 							<span class="text-lg font-bold flex items-center gap-1"><Spool size={18} />{item.price}</span>
+							<span class="text-xs text-gray-500 flex items-center gap-1 mt-1"><Clock size={14} />~{estimateHours(item.price)}h</span>
 							<div class="flex gap-1 flex-wrap mt-2">
 								{#each item.category.split(',').map((c) => c.trim()).filter(Boolean) as cat}
 									<span class="text-xs px-2 py-1 bg-gray-100 rounded-full">{cat}</span>
