@@ -87,10 +87,12 @@ admin.get('/users', async ({ headers, query }) => {
 })
 
 // Get single user details (for admin/users/[id] page)
-admin.get('/users/:id', async ({ params, headers }) => {
+admin.get('/users/:id', async ({ params, headers, status }) => {
     try {
         const user = await requireReviewer(headers as Record<string, string>)
-        if (!user) return { error: 'Unauthorized' }
+        if (!user) {
+            return status(401, { error: 'Unauthorized' })
+        }
 
         const targetUserId = parseInt(params.id)
 
@@ -100,6 +102,7 @@ admin.get('/users/:id', async ({ params, headers }) => {
                 username: usersTable.username,
                 avatar: usersTable.avatar,
                 slackId: usersTable.slackId,
+                email: usersTable.email,
                 role: usersTable.role,
                 internalNotes: usersTable.internalNotes,
                 createdAt: usersTable.createdAt
@@ -134,6 +137,7 @@ admin.get('/users/:id', async ({ params, headers }) => {
                 username: targetUser[0].username,
                 avatar: targetUser[0].avatar,
                 slackId: targetUser[0].slackId,
+                email: user.role === 'admin' ? targetUser[0].email : undefined,
                 scraps: scrapsBalance.balance,
                 role: targetUser[0].role,
                 internalNotes: targetUser[0].internalNotes,
@@ -147,7 +151,7 @@ admin.get('/users/:id', async ({ params, headers }) => {
         }
     } catch (err) {
         console.error(err)
-        return { error: 'Failed to fetch user details' }
+        return status(500, { error: 'Failed to fetch user details' })
     }
 })
 
@@ -561,7 +565,7 @@ admin.post('/shop/items', async ({ headers, body, status }) => {
     }
 
     if (baseProbability !== undefined && (typeof baseProbability !== 'number' || !Number.isInteger(baseProbability) || baseProbability < 0 || baseProbability > 100)) {
-        return status(400, { error: 'baseProbability must be an integer between 0 and 100' })
+        return status(400, { error: 'Base probability must be an integer between 0 and 100' })
     }
 
     try {
@@ -608,7 +612,7 @@ admin.put('/shop/items/:id', async ({ params, headers, body, status }) => {
         }
 
         if (baseProbability !== undefined && (typeof baseProbability !== 'number' || !Number.isInteger(baseProbability) || baseProbability < 0 || baseProbability > 100)) {
-            return status(400, { error: 'baseProbability must be an integer between 0 and 100' })
+            return status(400, { error: 'Base probability must be an integer between 0 and 100' })
         }
 
         const updateData: Record<string, unknown> = { updatedAt: new Date() }
