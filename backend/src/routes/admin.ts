@@ -27,10 +27,12 @@ async function requireAdmin(headers: Record<string, string>) {
 }
 
 // Get all users (reviewers see limited info)
-admin.get('/users', async ({ headers, query }) => {
+admin.get('/users', async ({ headers, query, status }) => {
     try {
         const user = await requireReviewer(headers as Record<string, string>)
-        if (!user) return { error: 'Unauthorized' }
+        if (!user) {
+            return status(401, { error: 'Unauthorized' })
+        }
 
         const page = parseInt(query.page as string) || 1
         const limit = Math.min(parseInt(query.limit as string) || 20, 100)
@@ -51,6 +53,7 @@ admin.get('/users', async ({ headers, query }) => {
                 username: usersTable.username,
                 avatar: usersTable.avatar,
                 slackId: usersTable.slackId,
+                email: usersTable.email,
                 role: usersTable.role,
                 internalNotes: usersTable.internalNotes,
                 createdAt: usersTable.createdAt,
@@ -68,6 +71,7 @@ admin.get('/users', async ({ headers, query }) => {
                 username: u.username,
                 avatar: u.avatar,
                 slackId: u.slackId,
+                email: user.role === 'admin' ? u.email : undefined,
                 scraps: Number(u.scrapsEarned) - Number(u.scrapsSpent),
                 role: u.role,
                 internalNotes: u.internalNotes,
@@ -82,7 +86,7 @@ admin.get('/users', async ({ headers, query }) => {
         }
     } catch (err) {
         console.error(err)
-        return { error: 'Failed to fetch users' }
+        return status(500, { error: 'Failed to fetch users' })
     }
 })
 
