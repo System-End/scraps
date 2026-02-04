@@ -171,61 +171,60 @@
 	<p class="text-lg text-gray-600 mb-8">items up for grabs</p>
 
 	<!-- Filters & Sort -->
-	<div class="flex flex-col md:flex-row gap-4 mb-8 md:items-start justify-between">
+	<div class="flex flex-wrap gap-2 items-center mb-8">
 		<!-- Category Filter -->
-		<div class="flex gap-2 flex-wrap items-center flex-1">
-			{#each categories as category}
-				<button
-					onclick={() => toggleCategory(category)}
-					class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {selectedCategories.has(category)
-						? 'bg-black text-white'
-						: 'hover:border-dashed'}"
-				>
-					{category}
-				</button>
-			{/each}
-			{#if selectedCategories.size > 0}
-				<button
-					onclick={clearFilters}
-					class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer hover:border-dashed flex items-center gap-2"
-				>
-					<X size={16} />
-					clear
-				</button>
-			{/if}
-		</div>
+		<span class="text-sm font-bold self-center mr-2">tags:</span>
+		{#each categories as category}
+			<button
+				onclick={() => toggleCategory(category)}
+				class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {selectedCategories.has(category)
+					? 'bg-black text-white'
+					: 'hover:border-dashed'}"
+			>
+				{category}
+			</button>
+		{/each}
+		{#if selectedCategories.size > 0}
+			<button
+				onclick={clearFilters}
+				class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer hover:border-dashed flex items-center gap-2"
+			>
+				<X size={16} />
+				clear
+			</button>
+		{/if}
+
+		<span class="mx-4 border-l-2 border-gray-300 h-8"></span>
 
 		<!-- Sort Options -->
-		<div class="flex gap-2 items-center shrink-0">
-			<span class="font-bold">sort:</span>
-			<button
-				onclick={() => (sortBy = 'default')}
-				class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {sortBy ===
-				'default'
-					? 'bg-black text-white'
-					: 'hover:border-dashed'}"
-			>
-				default
-			</button>
-			<button
-				onclick={() => (sortBy = 'favorites')}
-				class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {sortBy ===
-				'favorites'
-					? 'bg-black text-white'
-					: 'hover:border-dashed'}"
-			>
-				favorites
-			</button>
-			<button
-				onclick={() => (sortBy = 'probability')}
-				class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {sortBy ===
-				'probability'
-					? 'bg-black text-white'
-					: 'hover:border-dashed'}"
-			>
-				probability
-			</button>
-		</div>
+		<span class="text-sm font-bold self-center mr-2">sort:</span>
+		<button
+			onclick={() => (sortBy = 'default')}
+			class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {sortBy ===
+			'default'
+				? 'bg-black text-white'
+				: 'hover:border-dashed'}"
+		>
+			default
+		</button>
+		<button
+			onclick={() => (sortBy = 'favorites')}
+			class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {sortBy ===
+			'favorites'
+				? 'bg-black text-white'
+				: 'hover:border-dashed'}"
+		>
+			favorites
+		</button>
+		<button
+			onclick={() => (sortBy = 'probability')}
+			class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {sortBy ===
+			'probability'
+				? 'bg-black text-white'
+				: 'hover:border-dashed'}"
+		>
+			probability
+		</button>
 	</div>
 
 	<!-- Loading State -->

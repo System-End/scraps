@@ -87,9 +87,14 @@
 							<span class="font-bold text-lg truncate">{project.name}</span>
 							<span class="text-gray-500 text-sm shrink-0">{formatHours(project.hours)}h</span>
 						</div>
-						<span class="text-xs px-2 py-0.5 rounded-full {project.status === 'shipped' ? 'bg-green-100' : project.status === 'waiting_for_review' ? 'bg-yellow-100' : 'bg-gray-100'}">
-							{project.status.replace(/_/g, ' ')}
-						</span>
+						<div class="flex items-center justify-between">
+							<span class="text-xs px-2 py-0.5 rounded-full bg-gray-100">
+								tier {project.tier}
+							</span>
+							<span class="text-xs px-2 py-0.5 rounded-full {project.status === 'shipped' ? 'bg-green-100' : project.status === 'waiting_for_review' ? 'bg-yellow-100' : 'bg-gray-100'}">
+								{project.status.replace(/_/g, ' ')}
+							</span>
+						</div>
 					</div>
 				</a>
 			{/each}

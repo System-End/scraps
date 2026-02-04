@@ -12,6 +12,7 @@ export interface Project {
 	githubUrl: string | null
 	hackatimeProject: string | null
 	hours: number
+	tier: number
 	status: string
 }
 
@@ -57,11 +58,30 @@ export interface ProbabilityLeader {
 	effectiveProbability: number
 }
 
+export interface ViewsLeaderEntry {
+	rank: number
+	id: number
+	name: string
+	image: string | null
+	views: number
+	owner: {
+		id: number
+		username: string | null
+		avatar: string | null
+	} | null
+}
+
 export interface NewsItem {
 	id: number
 	title: string
 	content: string
 	createdAt: string
+}
+
+export interface ErrorState {
+	title?: string
+	message: string
+	details?: string
 }
 
 // Stores
@@ -76,6 +96,8 @@ export const leaderboardStore = writable<{ hours: LeaderboardEntry[]; scraps: Le
 })
 export const newsStore = writable<NewsItem[]>([])
 export const probabilityLeadersStore = writable<ProbabilityLeader[]>([])
+export const viewsLeaderboardStore = writable<ViewsLeaderEntry[]>([])
+export const errorStore = writable<ErrorState | null>(null)
 
 // Loading states
 export const projectsLoading = writable(true)
@@ -83,6 +105,7 @@ export const shopLoading = writable(true)
 export const leaderboardLoading = writable(true)
 export const newsLoading = writable(true)
 export const probabilityLeadersLoading = writable(true)
+export const viewsLeaderboardLoading = writable(true)
 
 // Track if this is a fresh page load (refresh/external) vs SPA navigation
 let isInitialLoad = true
@@ -115,11 +138,13 @@ export function invalidateAllStores() {
 	leaderboardStore.set({ hours: [], scraps: [] })
 	newsStore.set([])
 	probabilityLeadersStore.set([])
+	viewsLeaderboardStore.set([])
 	projectsLoading.set(true)
 	shopLoading.set(true)
 	leaderboardLoading.set(true)
 	newsLoading.set(true)
 	probabilityLeadersLoading.set(true)
+	viewsLeaderboardLoading.set(true)
 }
 
 // Fetch functions
@@ -242,6 +267,30 @@ export async function fetchProbabilityLeaders(force = false) {
 	return []
 }
 
+export async function fetchViewsLeaderboard(force = false) {
+	if (!browser) return
+
+	const current = get(viewsLeaderboardStore)
+	if (current.length > 0 && !force && !get(viewsLeaderboardLoading)) return current
+
+	viewsLeaderboardLoading.set(true)
+	try {
+		const response = await fetch(`${API_URL}/leaderboard/views`, {
+			credentials: 'include'
+		})
+		if (response.ok) {
+			const data = await response.json()
+			viewsLeaderboardStore.set(data)
+			return data
+		}
+	} catch (e) {
+		console.error('Failed to fetch views leaderboard:', e)
+	} finally {
+		viewsLeaderboardLoading.set(false)
+	}
+	return []
+}
+
 // Background prefetch for common data
 export async function prefetchUserData() {
 	if (!browser) return
@@ -274,4 +323,42 @@ export function updateShopItemHeart(itemId: number, hearted: boolean, heartCount
 			return item
 		})
 	)
+}
+
+// Error helpers
+export function showError(error: ErrorState | string) {
+	if (typeof error === 'string') {
+		errorStore.set({ message: error })
+	} else {
+		errorStore.set(error)
+	}
+}
+
+export function clearError() {
+	errorStore.set(null)
+}
+
+export async function handleApiError(response: Response, fallbackMessage = 'something went wrong') {
+	let message = fallbackMessage
+	let details: string | undefined
+
+	try {
+		const data = await response.json()
+		if (data.error) {
+			message = data.error
+		} else if (data.message) {
+			message = data.message
+		}
+	} catch {
+		if (response.status >= 500) {
+			message = 'server error - please try again later'
+			details = `status ${response.status}`
+		}
+	}
+
+	showError({
+		title: response.status >= 500 ? 'server error' : 'error',
+		message,
+		details
+	})
 }

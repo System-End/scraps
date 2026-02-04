@@ -19,8 +19,16 @@
 		playableUrl: string | null
 		hackatimeProject: string | null
 		hours: number
+		tier: number
 		status: string
 	}
+
+	const TIERS = [
+		{ value: 1, description: 'simple projects, tutorials, small scripts' },
+		{ value: 2, description: 'moderate complexity, multi-file projects' },
+		{ value: 3, description: 'complex features, APIs, integrations' },
+		{ value: 4, description: 'full applications, major undertakings' }
+	]
 
 	interface HackatimeProject {
 		name: string
@@ -42,6 +50,7 @@
 	let selectedHackatimeName = $state<string | null>(null)
 	let loadingProjects = $state(false)
 	let showDropdown = $state(false)
+	let selectedTier = $state(1)
 
 	const NAME_MAX = 50
 	const DESC_MIN = 20
@@ -71,6 +80,7 @@
 			}
 			project = responseData.project
 			imagePreview = project?.image || null
+			selectedTier = project?.tier || 1
 			if (project?.hackatimeProject) {
 				const parts = project.hackatimeProject.split('/')
 				selectedHackatimeName = parts.length > 1 ? parts.slice(1).join('/') : parts[0]
@@ -180,7 +190,8 @@
 					image: project.image,
 					githubUrl: project.githubUrl,
 					playableUrl: project.playableUrl,
-					hackatimeProject: hackatimeValue
+					hackatimeProject: hackatimeValue,
+					tier: selectedTier
 				})
 			})
 
@@ -378,20 +389,37 @@
 						{/if}
 					</div>
 				</div>
+
+				<!-- Tier Selector -->
+				<div>
+					<label class="block text-sm font-bold mb-2">project tier</label>
+					<div class="grid grid-cols-2 gap-2">
+						{#each TIERS as tier}
+							<button
+								type="button"
+								onclick={() => (selectedTier = tier.value)}
+								class="px-3 py-2 border-2 border-black rounded-lg font-bold transition-all duration-200 cursor-pointer text-left {selectedTier === tier.value ? 'bg-black text-white' : 'hover:border-dashed'}"
+							>
+								<span>tier {tier.value}</span>
+								<p class="text-xs mt-1 {selectedTier === tier.value ? 'text-gray-300' : 'text-gray-500'}">{tier.description}</p>
+							</button>
+						{/each}
+					</div>
+				</div>
 			</div>
 
 			<!-- Actions -->
 			<div class="flex gap-4 mt-8">
 				<a
 					href="/projects/{data.id}"
-					class="flex-1 px-4 py-3 border-4 border-black rounded-full font-bold text-center hover:border-dashed transition-all duration-200 cursor-pointer"
+					class="w-1/2 px-4 py-3 border-4 border-black rounded-full font-bold text-center hover:border-dashed transition-all duration-200 cursor-pointer flex items-center justify-center"
 				>
 					cancel
 				</a>
 				<button
 					onclick={handleSave}
 					disabled={saving || !canSave}
-					class="flex-1 px-4 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+					class="w-1/2 px-4 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
 				>
 					<Save size={18} />
 					{saving ? 'saving...' : 'save changes'}

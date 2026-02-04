@@ -6,6 +6,7 @@
 	import Navbar from '$lib/components/Navbar.svelte'
 	import Footer from '$lib/components/Footer.svelte'
 	import Tutorial from '$lib/components/Tutorial.svelte'
+	import ErrorModal from '$lib/components/ErrorModal.svelte'
 	import { handleNavigation, prefetchUserData } from '$lib/stores'
 	import { getUser, type User } from '$lib/auth-client'
 
@@ -57,3 +58,5 @@
 {#if showTutorial}
 	<Tutorial onComplete={handleTutorialComplete} />
 {/if}
+
+<ErrorModal />

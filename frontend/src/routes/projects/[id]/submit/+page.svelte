@@ -19,7 +19,15 @@
 		hackatimeProject: string | null
 		hours: number
 		status: string
+		tier: number
 	}
+
+	const TIERS = [
+		{ value: 1, description: 'simple projects, tutorials, small scripts' },
+		{ value: 2, description: 'moderate complexity, multi-file projects' },
+		{ value: 3, description: 'complex features, APIs, integrations' },
+		{ value: 4, description: 'full applications, major undertakings' }
+	]
 
 	interface HackatimeProject {
 		name: string
@@ -37,6 +45,7 @@
 	let selectedHackatimeName = $state<string | null>(null)
 	let loadingProjects = $state(false)
 	let showDropdown = $state(false)
+	let selectedTier = $state(1)
 
 	const NAME_MAX = 50
 	const DESC_MIN = 20
@@ -76,6 +85,7 @@
 				const parts = project.hackatimeProject.split('/')
 				selectedHackatimeName = parts.length > 1 ? parts.slice(1).join('/') : parts[0]
 			}
+			selectedTier = project?.tier ?? 1
 			fetchHackatimeProjects()
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load project'
@@ -137,7 +147,8 @@
 					image: project.image,
 					githubUrl: project.githubUrl,
 					playableUrl: project.playableUrl,
-					hackatimeProject: hackatimeValue
+					hackatimeProject: hackatimeValue,
+					tier: selectedTier
 				})
 			})
 
@@ -302,6 +313,26 @@
 							</div>
 						{/if}
 					</div>
+				</div>
+			</div>
+
+			<!-- Tier Selection -->
+			<div class="mb-6">
+				<label class="block text-sm font-bold mb-2">project tier <span class="text-red-500">*</span></label>
+				<p class="text-xs text-gray-500 mb-3">select the complexity tier that best matches your project</p>
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+					{#each TIERS as tier}
+						<button
+							type="button"
+							onclick={() => (selectedTier = tier.value)}
+							class="px-4 py-3 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer text-left {selectedTier === tier.value ? 'bg-black text-white' : 'hover:border-dashed'}"
+						>
+							<div class="flex items-center justify-between">
+								<span>tier {tier.value}</span>
+							</div>
+							<p class="text-xs mt-1 {selectedTier === tier.value ? 'text-gray-300' : 'text-gray-500'}">{tier.description}</p>
+						</button>
+					{/each}
 				</div>
 			</div>
 

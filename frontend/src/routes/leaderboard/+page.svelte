@@ -7,19 +7,25 @@
 		fetchLeaderboard as fetchLeaderboardData,
 		probabilityLeadersStore,
 		probabilityLeadersLoading,
-		fetchProbabilityLeaders
+		fetchProbabilityLeaders,
+		viewsLeaderboardStore,
+		viewsLeaderboardLoading,
+		fetchViewsLeaderboard
 	} from '$lib/stores'
 	import { formatHours } from '$lib/utils'
 
-	let activeTab = $state<'scraps' | 'hours' | 'probability'>('scraps')
-	let sortBy = $derived(activeTab === 'probability' ? 'scraps' : activeTab)
+	let activeTab = $state<'scraps' | 'hours' | 'probability' | 'views'>('scraps')
+	let sortBy = $derived(activeTab === 'probability' || activeTab === 'views' ? 'scraps' : activeTab)
 	let leaderboard = $derived($leaderboardStore[sortBy as 'scraps' | 'hours'])
 	let probabilityLeaders = $derived($probabilityLeadersStore)
+	let viewsLeaderboard = $derived($viewsLeaderboardStore)
 
-	function setActiveTab(value: 'scraps' | 'hours' | 'probability') {
+	function setActiveTab(value: 'scraps' | 'hours' | 'probability' | 'views') {
 		activeTab = value
 		if (value === 'probability') {
 			fetchProbabilityLeaders()
+		} else if (value === 'views') {
+			fetchViewsLeaderboard()
 		} else {
 			fetchLeaderboardData(value)
 		}
@@ -64,9 +70,77 @@
 		>
 			probability leaders
 		</button>
+		<button
+			class="px-4 py-2 border-4 border-black rounded-full font-bold transition-all duration-200 cursor-pointer {activeTab === 'views'
+				? 'bg-black text-white'
+				: 'hover:border-dashed'}"
+			onclick={() => setActiveTab('views')}
+		>
+			most viewed
+		</button>
 	</div>
 
-	{#if activeTab === 'probability'}
+	{#if activeTab === 'views'}
+		<div class="border-4 border-black rounded-2xl p-6">
+			{#if $viewsLeaderboardLoading && viewsLeaderboard.length === 0}
+				<div class="text-center text-gray-500">loading...</div>
+			{:else if viewsLeaderboard.length === 0}
+				<div class="text-center text-gray-500">no projects yet</div>
+			{:else}
+				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+					{#each viewsLeaderboard as project (project.id)}
+						<a
+							href="/projects/{project.id}"
+							class="border-4 border-black rounded-2xl p-4 hover:border-dashed transition-all block"
+						>
+							<div class="flex items-center gap-2 mb-3">
+								<span class="text-2xl font-bold">
+									{#if project.rank === 1}
+										🥇
+									{:else if project.rank === 2}
+										🥈
+									{:else if project.rank === 3}
+										🥉
+									{:else}
+										#{project.rank}
+									{/if}
+								</span>
+								<span class="font-bold text-xl truncate">{project.name}</span>
+							</div>
+							{#if project.image}
+								<img
+									src={project.image}
+									alt={project.name}
+									class="w-full h-32 rounded-lg object-cover border-2 border-black mb-3"
+								/>
+							{:else}
+								<div class="w-full h-32 rounded-lg bg-gray-200 border-2 border-black mb-3 flex items-center justify-center text-gray-400">
+									no image
+								</div>
+							{/if}
+							<div class="flex items-center justify-between">
+								{#if project.owner}
+									<div class="flex items-center gap-2">
+										{#if project.owner.avatar}
+											<img
+												src={project.owner.avatar}
+												alt={project.owner.username}
+												class="w-6 h-6 rounded-full border-2 border-black"
+											/>
+										{/if}
+										<span class="text-sm text-gray-600">{project.owner.username}</span>
+									</div>
+								{:else}
+									<span class="text-sm text-gray-400">unknown</span>
+								{/if}
+								<span class="font-bold">{project.views.toLocaleString()} views</span>
+							</div>
+						</a>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	{:else if activeTab === 'probability'}
 		<div class="border-4 border-black rounded-2xl p-6">
 			{#if $probabilityLeadersLoading && probabilityLeaders.length === 0}
 				<div class="text-center text-gray-500">loading...</div>

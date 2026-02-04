@@ -10,7 +10,8 @@
 		ArrowRight,
 		X,
 		LayoutDashboard,
-		Plus
+		Plus,
+		Layers
 	} from '@lucide/svelte'
 	import { API_URL } from '$lib/config'
 	import { refreshUserScraps } from '$lib/auth-client'
@@ -122,6 +123,12 @@
 			description:
 				'when you\'re ready to ship, click "review & submit" to submit your project. once approved, you\'ll earn scraps based on your coding time!',
 			highlight: 'submit-button'
+		},
+		{
+			title: 'project tiers',
+			description:
+				'when submitting, you can select a tier (1-4) based on your project\'s complexity. higher tiers earn more scraps per hour.',
+			highlight: null
 		},
 		{
 			title: 'earn scraps',
@@ -400,8 +407,10 @@
 			{:else if currentStep === 6}
 				<ShoppingBag size={32} />
 			{:else if currentStep === 7}
-				<Flame size={32} />
+				<Layers size={32} />
 			{:else if currentStep === 8}
+				<Flame size={32} />
+			{:else if currentStep === 9}
 				<Trophy size={32} />
 			{:else}
 				<Gift size={32} />

@@ -1,5 +1,5 @@
 import { Elysia } from 'elysia'
-import { eq, and, sql, desc, inArray, or, isNull } from 'drizzle-orm'
+import { eq, and, sql, desc, inArray, or, isNull, ilike } from 'drizzle-orm'
 import { db } from '../db'
 import { projectsTable } from '../schemas/projects'
 import { reviewsTable } from '../schemas/reviews'
@@ -47,6 +47,95 @@ function parseHackatimeProject(hackatimeProject: string | null): { slackId: stri
 }
 
 const projects = new Elysia({ prefix: '/projects' })
+
+// Public explore endpoint - returns minimal data for browsing
+projects.get('/explore', async ({ query }) => {
+    const page = parseInt(query.page as string) || 1
+    const limit = Math.min(parseInt(query.limit as string) || 20, 50)
+    const offset = (page - 1) * limit
+    const search = (query.search as string)?.trim() || ''
+    const tier = query.tier ? parseInt(query.tier as string) : null
+    const status = query.status as string || null
+
+    const conditions = [
+        or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
+        or(eq(projectsTable.status, 'shipped'), eq(projectsTable.status, 'in_progress'))
+    ]
+
+    if (search) {
+        conditions.push(
+            or(
+                ilike(projectsTable.name, `%${search}%`),
+                ilike(projectsTable.description, `%${search}%`)
+            )!
+        )
+    }
+
+    if (tier && tier >= 1 && tier <= 4) {
+        conditions.push(eq(projectsTable.tier, tier))
+    }
+
+    if (status === 'shipped' || status === 'in_progress') {
+        // Replace the default status condition with specific one
+        conditions[1] = eq(projectsTable.status, status)
+    }
+
+    const whereClause = and(...conditions)
+
+    const [projectsList, countResult] = await Promise.all([
+        db.select({
+            id: projectsTable.id,
+            name: projectsTable.name,
+            description: projectsTable.description,
+            image: projectsTable.image,
+            hours: projectsTable.hours,
+            tier: projectsTable.tier,
+            status: projectsTable.status,
+            views: projectsTable.views,
+            userId: projectsTable.userId
+        })
+        .from(projectsTable)
+        .where(whereClause)
+        .orderBy(desc(projectsTable.updatedAt))
+        .limit(limit)
+        .offset(offset),
+        db.select({ count: sql<number>`count(*)` })
+        .from(projectsTable)
+        .where(whereClause)
+    ])
+
+    // Fetch usernames for all projects
+    const userIds = [...new Set(projectsList.map(p => p.userId))]
+    let users: { id: number; username: string | null }[] = []
+    if (userIds.length > 0) {
+        users = await db
+            .select({ id: usersTable.id, username: usersTable.username })
+            .from(usersTable)
+            .where(inArray(usersTable.id, userIds))
+    }
+
+    const total = Number(countResult[0]?.count || 0)
+
+    return {
+        data: projectsList.map(p => ({
+            id: p.id,
+            name: p.name,
+            description: p.description.substring(0, 150) + (p.description.length > 150 ? '...' : ''),
+            image: p.image,
+            hours: p.hours,
+            tier: p.tier,
+            status: p.status,
+            views: p.views,
+            username: users.find(u => u.id === p.userId)?.username || null
+        })),
+        pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit)
+        }
+    }
+})
 
 projects.get('/', async ({ headers, query }) => {
     const user = await getUserFromSession(headers as Record<string, string>)
@@ -102,6 +191,14 @@ projects.get('/:id', async ({ params, headers }) => {
     // If not owner, only show shipped or in_progress projects
     if (!isOwner && project[0].status !== 'shipped' && project[0].status !== 'in_progress') {
         return { error: 'Not found' }
+    }
+
+    // Increment view count if not owner
+    if (!isOwner) {
+        await db
+            .update(projectsTable)
+            .set({ views: sql`${projectsTable.views} + 1` })
+            .where(eq(projectsTable.id, parseInt(params.id)))
     }
 
     const projectOwner = await db
@@ -207,8 +304,11 @@ projects.get('/:id', async ({ params, headers }) => {
             hackatimeProject: isOwner ? project[0].hackatimeProject : undefined,
             hours: project[0].hoursOverride ?? project[0].hours,
             hoursOverride: isOwner ? project[0].hoursOverride : undefined,
+            tier: project[0].tier,
+            tierOverride: isOwner ? project[0].tierOverride : undefined,
             status: project[0].status,
             scrapsAwarded: project[0].scrapsAwarded,
+            views: project[0].views,
             createdAt: project[0].createdAt,
             updatedAt: project[0].updatedAt
         },
@@ -228,6 +328,7 @@ projects.post('/', async ({ body, headers }) => {
         image?: string
         githubUrl?: string
         hackatimeProject?: string
+        tier?: number
     }
 
     let hours = 0
@@ -235,6 +336,8 @@ projects.post('/', async ({ body, headers }) => {
     if (parsed) {
         hours = await fetchHackatimeHours(parsed.slackId, parsed.projectName)
     }
+
+    const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : 1
 
     const newProject = await db
         .insert(projectsTable)
@@ -245,7 +348,8 @@ projects.post('/', async ({ body, headers }) => {
             image: data.image || null,
             githubUrl: data.githubUrl || null,
             hackatimeProject: data.hackatimeProject || null,
-            hours
+            hours,
+            tier
         })
         .returning()
 
@@ -283,6 +387,7 @@ projects.put('/:id', async ({ params, body, headers }) => {
         githubUrl?: string | null
         playableUrl?: string | null
         hackatimeProject?: string | null
+        tier?: number
     }
 
     let hours = 0
@@ -290,6 +395,8 @@ projects.put('/:id', async ({ params, body, headers }) => {
     if (parsed) {
         hours = await fetchHackatimeHours(parsed.slackId, parsed.projectName)
     }
+
+    const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : undefined
 
     const updated = await db
         .update(projectsTable)
@@ -301,6 +408,7 @@ projects.put('/:id', async ({ params, body, headers }) => {
             playableUrl: data.playableUrl,
             hackatimeProject: data.hackatimeProject,
             hours,
+            tier,
             updatedAt: new Date()
         })
         .where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id)))

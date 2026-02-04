@@ -39,8 +39,12 @@
 		status: string
 		hours: number
 		hoursOverride: number | null
+		tier: number
+		tierOverride: number | null
 		deleted: number | null
 	}
+
+
 
 	interface User {
 		id: number
@@ -66,6 +70,7 @@
 	let internalJustification = $state('')
 	let userInternalNotes = $state('')
 	let hoursOverride = $state<number | undefined>(undefined)
+	let tierOverride = $state<number | undefined>(undefined)
 
 	let confirmAction = $state<'approved' | 'denied' | 'permanently_rejected' | null>(null)
 
@@ -157,6 +162,7 @@
 					feedbackForAuthor,
 					internalJustification: internalJustification || undefined,
 					hoursOverride: hoursOverride !== undefined ? hoursOverride : undefined,
+					tierOverride: tierOverride !== undefined ? tierOverride : undefined,
 					userInternalNotes: userInternalNotes || undefined
 				})
 			})
@@ -274,6 +280,7 @@
 				{#if project.hackatimeProject}
 					<span class="px-3 py-1 bg-gray-100 rounded-full font-bold border-2 border-black">hackatime: {project.hackatimeProject}</span>
 				{/if}
+				<span class="px-3 py-1 bg-gray-100 rounded-full font-bold border-2 border-black">tier {project.tier}</span>
 			</div>
 
 			<div class="flex flex-wrap gap-3 mt-4">
@@ -298,7 +305,7 @@
 						href={project.playableUrl}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="inline-flex items-center gap-2 px-4 py-2 border-4 border-dashed border-black rounded-full font-bold hover:border-solid transition-all duration-200 cursor-pointer"
+						class="inline-flex items-center gap-2 px-4 py-2 border-4 border-solid border-black rounded-full font-bold hover:border-dashed transition-all duration-200 cursor-pointer"
 					>
 						<Globe size={18} />
 						<span>try it out</span>
@@ -418,6 +425,19 @@
 						placeholder={String(project.hours)}
 						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
 					/>
+				</div>
+
+				<div>
+					<label class="block text-sm font-bold mb-1">tier override</label>
+					<select
+						bind:value={tierOverride}
+						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed cursor-pointer"
+					>
+						<option value={undefined}>use user's tier (tier {project.tier})</option>
+						{#each [1, 2, 3, 4] as tier}
+							<option value={tier}>tier {tier}</option>
+						{/each}
+					</select>
 				</div>
 
 				<div>

@@ -16,7 +16,8 @@
 		Users,
 		ShoppingBag,
 		Newspaper,
-		PackageCheck
+		PackageCheck,
+		Compass
 	} from '@lucide/svelte'
 	import { logout, getUser, userScrapsStore } from '$lib/auth-client'
 
@@ -222,6 +223,17 @@
 	{:else}
 		<!-- Dashboard nav for logged-in users - centered -->
 		<div class="flex items-center gap-2">
+			<a
+				href="/explore"
+				class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath ===
+				'/explore'
+					? 'bg-black text-white border-black'
+					: 'border-black hover:border-dashed'}"
+			>
+				<Compass size={18} />
+				<span class="text-lg font-bold">explore</span>
+			</a>
+
 			<a
 				href="/dashboard"
 				class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath ===

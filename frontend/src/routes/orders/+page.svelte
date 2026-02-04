@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
-	import { ArrowLeft, Package, CheckCircle, Clock, Truck, MapPin, Origami } from '@lucide/svelte'
+	import { ArrowLeft, Package, CheckCircle, Clock, Truck, MapPin, Origami, Spool } from '@lucide/svelte'
 	import { API_URL } from '$lib/config'
 	import { getUser } from '$lib/auth-client'
 
@@ -218,8 +218,9 @@
 							</div>
 
 							<div class="mt-3 flex flex-wrap gap-4 text-sm">
-								<span class="text-gray-600">
-									<span class="font-bold">{order.totalPrice}</span> scraps
+								<span class="text-gray-600 font-bold flex items-center gap-1">
+									<Spool size={16} />
+									{order.totalPrice}
 								</span>
 								{#if order.quantity > 1}
 									<span class="text-gray-600">qty: {order.quantity}</span>

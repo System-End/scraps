@@ -8,8 +8,16 @@ import { userBonusesTable } from '../schemas/users'
 export const PHI = (1 + Math.sqrt(5)) / 2
 export const MULTIPLIER = 10
 
-export function calculateScrapsFromHours(hours: number): number {
-	return Math.floor(hours * PHI * MULTIPLIER)
+export const TIER_MULTIPLIERS: Record<number, number> = {
+	1: 0.75,
+	2: 1.0,
+	3: 1.25,
+	4: 1.5
+}
+
+export function calculateScrapsFromHours(hours: number, tier: number = 1): number {
+	const tierMultiplier = TIER_MULTIPLIERS[tier] ?? 1.0
+	return Math.floor(hours * PHI * MULTIPLIER * tierMultiplier)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

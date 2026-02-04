@@ -28330,9 +28330,12 @@ var projectsTable = pgTable("projects", {
   hackatimeProject: varchar("hackatime_project"),
   hours: real().default(0),
   hoursOverride: real("hours_override"),
+  tier: integer().notNull().default(1),
+  tierOverride: integer("tier_override"),
   status: varchar().notNull().default("in_progress"),
   deleted: integer("deleted").default(0),
   scrapsAwarded: integer("scraps_awarded").notNull().default(0),
+  views: integer().notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
@@ -28586,6 +28589,9 @@ projects.get("/:id", async ({ params, headers }) => {
   if (!isOwner && project[0].status !== "shipped" && project[0].status !== "in_progress") {
     return { error: "Not found" };
   }
+  if (!isOwner) {
+    await db.update(projectsTable).set({ views: sql`${projectsTable.views} + 1` }).where(eq(projectsTable.id, parseInt(params.id)));
+  }
   const projectOwner = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
   let activity = [];
   if (isOwner) {
@@ -28650,8 +28656,11 @@ projects.get("/:id", async ({ params, headers }) => {
       hackatimeProject: isOwner ? project[0].hackatimeProject : undefined,
       hours: project[0].hoursOverride ?? project[0].hours,
       hoursOverride: isOwner ? project[0].hoursOverride : undefined,
+      tier: project[0].tier,
+      tierOverride: isOwner ? project[0].tierOverride : undefined,
       status: project[0].status,
       scrapsAwarded: project[0].scrapsAwarded,
+      views: project[0].views,
       createdAt: project[0].createdAt,
       updatedAt: project[0].updatedAt
     },
@@ -28670,6 +28679,7 @@ projects.post("/", async ({ body, headers }) => {
   if (parsed) {
     hours = await fetchHackatimeHours(parsed.slackId, parsed.projectName);
   }
+  const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : 1;
   const newProject = await db.insert(projectsTable).values({
     userId: user.id,
     name: data.name,
@@ -28677,7 +28687,8 @@ projects.post("/", async ({ body, headers }) => {
     image: data.image || null,
     githubUrl: data.githubUrl || null,
     hackatimeProject: data.hackatimeProject || null,
-    hours
+    hours,
+    tier
   }).returning();
   await db.insert(activityTable).values({
     userId: user.id,
@@ -28702,6 +28713,7 @@ projects.put("/:id", async ({ params, body, headers }) => {
   if (parsed) {
     hours = await fetchHackatimeHours(parsed.slackId, parsed.projectName);
   }
+  const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : undefined;
   const updated = await db.update(projectsTable).set({
     name: data.name,
     description: data.description,
@@ -28710,6 +28722,7 @@ projects.put("/:id", async ({ params, body, headers }) => {
     playableUrl: data.playableUrl,
     hackatimeProject: data.hackatimeProject,
     hours,
+    tier,
     updatedAt: new Date
   }).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).returning();
   return updated[0] || { error: "Not found" };
@@ -28804,80 +28817,6 @@ news.get("/latest", async () => {
 });
 var news_default = news;
 
-// src/routes/items.ts
-var items = new Elysia({
-  prefix: "/items"
-});
-items.get("/", async () => {
-  return [
-    {
-      id: 1,
-      name: "esp32",
-      description: "a tiny microcontroller",
-      image: "/hero.png",
-      chance: 15,
-      category: "hardware"
-    },
-    {
-      id: 2,
-      name: "arduino nano",
-      description: "compact arduino board",
-      image: "/hero.png",
-      chance: 10,
-      category: "hardware"
-    },
-    {
-      id: 3,
-      name: "breadboard",
-      description: "for prototyping",
-      image: "/hero.png",
-      chance: 20,
-      category: "hardware"
-    },
-    {
-      id: 4,
-      name: "resistor pack",
-      description: "assorted resistors",
-      image: "/hero.png",
-      chance: 25,
-      category: "hardware"
-    },
-    {
-      id: 5,
-      name: "vermont fudge",
-      description: "delicious!",
-      image: "/hero.png",
-      chance: 5,
-      category: "food"
-    },
-    {
-      id: 6,
-      name: "rare sticker",
-      description: "limited edition",
-      image: "/hero.png",
-      chance: 8,
-      category: "sticker"
-    },
-    {
-      id: 7,
-      name: "postcard",
-      description: "from hq",
-      image: "/hero.png",
-      chance: 12,
-      category: "misc"
-    },
-    {
-      id: 8,
-      name: "sensor kit",
-      description: "various sensors",
-      image: "/hero.png",
-      chance: 5,
-      category: "hardware"
-    }
-  ];
-});
-var items_default = items;
-
 // src/schemas/shop.ts
 var shopItemsTable = pgTable("shop_items", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -28948,8 +28887,15 @@ var shopPenaltiesTable = pgTable("shop_penalties", {
 // src/lib/scraps.ts
 var PHI = (1 + Math.sqrt(5)) / 2;
 var MULTIPLIER = 10;
-function calculateScrapsFromHours(hours) {
-  return Math.floor(hours * PHI * MULTIPLIER);
+var TIER_MULTIPLIERS = {
+  1: 0.75,
+  2: 1,
+  3: 1.25,
+  4: 1.5
+};
+function calculateScrapsFromHours(hours, tier = 1) {
+  const tierMultiplier = TIER_MULTIPLIERS[tier] ?? 1;
+  return Math.floor(hours * PHI * MULTIPLIER * tierMultiplier);
 }
 async function getUserScrapsBalance(userId, txOrDb = db) {
   const earnedResult = await txOrDb.select({
@@ -28974,7 +28920,13 @@ async function getUserScrapsBalance(userId, txOrDb = db) {
   return { earned, spent, balance };
 }
 async function canAfford(userId, cost, txOrDb = db) {
+  if (cost < 0)
+    return false;
+  if (!Number.isFinite(cost))
+    return false;
   const { balance } = await getUserScrapsBalance(userId, txOrDb);
+  if (!Number.isFinite(balance))
+    return false;
   return balance >= cost;
 }
 
@@ -29192,7 +29144,7 @@ var user_default = user;
 var shop = new Elysia({ prefix: "/shop" });
 shop.get("/items", async ({ headers }) => {
   const user2 = await getUserFromSession(headers);
-  const items2 = await db.select({
+  const items = await db.select({
     id: shopItemsTable.id,
     name: shopItemsTable.name,
     image: shopItemsTable.image,
@@ -29221,7 +29173,7 @@ shop.get("/items", async ({ headers }) => {
     const heartedIds = new Set(userHearts.map((h) => h.shopItemId));
     const boostMap = new Map(userBoosts.map((b) => [b.shopItemId, Number(b.boostPercent)]));
     const penaltyMap = new Map(userPenalties.map((p) => [p.shopItemId, p.probabilityMultiplier]));
-    return items2.map((item) => {
+    return items.map((item) => {
       const userBoostPercent = boostMap.get(item.id) ?? 0;
       const penaltyMultiplier = penaltyMap.get(item.id) ?? 100;
       const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100);
@@ -29235,7 +29187,7 @@ shop.get("/items", async ({ headers }) => {
       };
     });
   }
-  return items2.map((item) => ({
+  return items.map((item) => ({
     ...item,
     heartCount: Number(item.heartCount) || 0,
     userBoostPercent: 0,
@@ -29246,7 +29198,7 @@ shop.get("/items", async ({ headers }) => {
 shop.get("/items/:id", async ({ params, headers }) => {
   const user2 = await getUserFromSession(headers);
   const itemId = parseInt(params.id);
-  const items2 = await db.select({
+  const items = await db.select({
     id: shopItemsTable.id,
     name: shopItemsTable.name,
     image: shopItemsTable.image,
@@ -29262,10 +29214,10 @@ shop.get("/items/:id", async ({ params, headers }) => {
     updatedAt: shopItemsTable.updatedAt,
     heartCount: sql`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = ${shopItemsTable.id})`.as("heart_count")
   }).from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
-  if (items2.length === 0) {
+  if (items.length === 0) {
     return { error: "Item not found" };
   }
-  const item = items2[0];
+  const item = items[0];
   let hearted = false;
   let userBoostPercent = 0;
   let penaltyMultiplier = 100;
@@ -29346,11 +29298,11 @@ shop.post("/items/:id/purchase", async ({ params, body, headers }) => {
   if (quantity < 1 || !Number.isInteger(quantity)) {
     return { error: "Invalid quantity" };
   }
-  const items2 = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
-  if (items2.length === 0) {
+  const items = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
+  if (items.length === 0) {
     return { error: "Item not found" };
   }
-  const item = items2[0];
+  const item = items[0];
   if (item.count < quantity) {
     return { error: "Not enough stock available" };
   }
@@ -29433,11 +29385,11 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
   if (!Number.isInteger(itemId)) {
     return { error: "Invalid item id" };
   }
-  const items2 = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
-  if (items2.length === 0) {
+  const items = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
+  if (items.length === 0) {
     return { error: "Item not found" };
   }
-  const item = items2[0];
+  const item = items[0];
   if (item.count < 1) {
     return { error: "Out of stock" };
   }
@@ -29539,11 +29491,11 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
   if (!Number.isInteger(itemId)) {
     return { error: "Invalid item id" };
   }
-  const items2 = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
-  if (items2.length === 0) {
+  const items = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
+  if (items.length === 0) {
     return { error: "Item not found" };
   }
-  const item = items2[0];
+  const item = items[0];
   try {
     const result = await db.transaction(async (tx) => {
       await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user2.id} FOR UPDATE`);
@@ -29592,11 +29544,11 @@ shop.get("/items/:id/leaderboard", async ({ params }) => {
   if (!Number.isInteger(itemId)) {
     return { error: "Invalid item id" };
   }
-  const items2 = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
-  if (items2.length === 0) {
+  const items = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
+  if (items.length === 0) {
     return { error: "Item not found" };
   }
-  const item = items2[0];
+  const item = items[0];
   const leaderboard = await db.select({
     userId: refineryOrdersTable.userId,
     username: usersTable.username,
@@ -29762,8 +29714,31 @@ leaderboard.get("/", async ({ query }) => {
     sortBy: t.Optional(t.Union([t.Literal("hours"), t.Literal("scraps")]))
   })
 });
+leaderboard.get("/views", async () => {
+  const results = await db.select({
+    id: projectsTable.id,
+    name: projectsTable.name,
+    image: projectsTable.image,
+    views: projectsTable.views,
+    userId: projectsTable.userId
+  }).from(projectsTable).where(and(eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))).orderBy(desc(projectsTable.views)).limit(10);
+  const userIds = [...new Set(results.map((p) => p.userId))];
+  let users = [];
+  if (userIds.length > 0) {
+    users = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(sql`${usersTable.id} IN ${userIds}`);
+  }
+  const userMap = new Map(users.map((u) => [u.id, u]));
+  return results.map((project, index) => ({
+    rank: index + 1,
+    id: project.id,
+    name: project.name,
+    image: project.image,
+    views: project.views,
+    owner: userMap.get(project.userId) ?? null
+  }));
+});
 leaderboard.get("/probability-leaders", async () => {
-  const items2 = await db.select({
+  const items = await db.select({
     id: shopItemsTable.id,
     name: shopItemsTable.name,
     image: shopItemsTable.image,
@@ -29798,7 +29773,7 @@ leaderboard.get("/probability-leaders", async () => {
     avatar: usersTable.avatar
   }).from(usersTable) : [];
   const userMap = new Map(users.map((u) => [u.id, u]));
-  const result = items2.map((item) => {
+  const result = items.map((item) => {
     let topUser = null;
     let topProbability = item.baseProbability;
     for (const userId of userIds) {
@@ -29940,462 +29915,625 @@ async function requireAdmin(headers) {
     return null;
   return user2;
 }
-admin.get("/users", async ({ headers, query }) => {
-  const user2 = await requireReviewer(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  const page = parseInt(query.page) || 1;
-  const limit = Math.min(parseInt(query.limit) || 20, 100);
-  const offset = (page - 1) * limit;
-  const search = query.search?.trim() || "";
-  const searchCondition = search ? or(sql`${usersTable.username} ILIKE ${"%" + search + "%"}`, sql`${usersTable.email} ILIKE ${"%" + search + "%"}`, sql`${usersTable.slackId} ILIKE ${"%" + search + "%"}`) : undefined;
-  const [users, countResult] = await Promise.all([
-    db.select({
+admin.get("/users", async ({ headers, query, status: status2 }) => {
+  try {
+    const user2 = await requireReviewer(headers);
+    if (!user2) {
+      return status2(401, { error: "Unauthorized" });
+    }
+    const page = parseInt(query.page) || 1;
+    const limit = Math.min(parseInt(query.limit) || 20, 100);
+    const offset = (page - 1) * limit;
+    const search = query.search?.trim() || "";
+    const searchCondition = search ? or(sql`${usersTable.username} ILIKE ${"%" + search + "%"}`, sql`${usersTable.email} ILIKE ${"%" + search + "%"}`, sql`${usersTable.slackId} ILIKE ${"%" + search + "%"}`) : undefined;
+    const [users, countResult] = await Promise.all([
+      db.select({
+        id: usersTable.id,
+        username: usersTable.username,
+        avatar: usersTable.avatar,
+        slackId: usersTable.slackId,
+        email: usersTable.email,
+        role: usersTable.role,
+        internalNotes: usersTable.internalNotes,
+        createdAt: usersTable.createdAt,
+        scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as("scraps_earned"),
+        scrapsSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_spent")
+      }).from(usersTable).where(searchCondition).orderBy(desc(usersTable.createdAt)).limit(limit).offset(offset),
+      db.select({ count: sql`count(*)` }).from(usersTable).where(searchCondition)
+    ]);
+    const total = Number(countResult[0]?.count || 0);
+    return {
+      data: users.map((u) => ({
+        id: u.id,
+        username: u.username,
+        avatar: u.avatar,
+        slackId: u.slackId,
+        email: user2.role === "admin" ? u.email : undefined,
+        scraps: Number(u.scrapsEarned) - Number(u.scrapsSpent),
+        role: u.role,
+        internalNotes: u.internalNotes,
+        createdAt: u.createdAt
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to fetch users" });
+  }
+});
+admin.get("/users/:id", async ({ params, headers, status: status2 }) => {
+  try {
+    const user2 = await requireReviewer(headers);
+    if (!user2) {
+      return status2(401, { error: "Unauthorized" });
+    }
+    const targetUserId = parseInt(params.id);
+    const targetUser = await db.select({
       id: usersTable.id,
       username: usersTable.username,
       avatar: usersTable.avatar,
       slackId: usersTable.slackId,
+      email: usersTable.email,
       role: usersTable.role,
       internalNotes: usersTable.internalNotes,
-      createdAt: usersTable.createdAt,
-      scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as("scraps_earned"),
-      scrapsSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_spent")
-    }).from(usersTable).where(searchCondition).orderBy(desc(usersTable.createdAt)).limit(limit).offset(offset),
-    db.select({ count: sql`count(*)` }).from(usersTable).where(searchCondition)
-  ]);
-  const total = Number(countResult[0]?.count || 0);
-  return {
-    data: users.map((u) => ({
-      id: u.id,
-      username: u.username,
-      avatar: u.avatar,
-      slackId: u.slackId,
-      scraps: Number(u.scrapsEarned) - Number(u.scrapsSpent),
-      role: u.role,
-      internalNotes: u.internalNotes,
-      createdAt: u.createdAt
-    })),
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit)
-    }
-  };
+      createdAt: usersTable.createdAt
+    }).from(usersTable).where(eq(usersTable.id, targetUserId)).limit(1);
+    if (!targetUser[0])
+      return { error: "User not found" };
+    const projects2 = await db.select().from(projectsTable).where(eq(projectsTable.userId, targetUserId)).orderBy(desc(projectsTable.updatedAt));
+    const projectStats = {
+      total: projects2.length,
+      shipped: projects2.filter((p) => p.status === "shipped").length,
+      inProgress: projects2.filter((p) => p.status === "in_progress").length,
+      waitingForReview: projects2.filter((p) => p.status === "waiting_for_review").length,
+      rejected: projects2.filter((p) => p.status === "permanently_rejected").length
+    };
+    const totalHours = projects2.reduce((sum, p) => sum + (p.hoursOverride ?? p.hours ?? 0), 0);
+    const scrapsBalance = await getUserScrapsBalance(targetUserId) || 0;
+    return {
+      user: {
+        id: targetUser[0].id,
+        username: targetUser[0].username,
+        avatar: targetUser[0].avatar,
+        slackId: targetUser[0].slackId,
+        email: user2.role === "admin" ? targetUser[0].email : undefined,
+        scraps: scrapsBalance.balance,
+        role: targetUser[0].role,
+        internalNotes: targetUser[0].internalNotes,
+        createdAt: targetUser[0].createdAt
+      },
+      projects: projects2,
+      stats: {
+        ...projectStats,
+        totalHours
+      }
+    };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to fetch user details" });
+  }
 });
-admin.get("/users/:id", async ({ params, headers }) => {
-  const user2 = await requireReviewer(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  const targetUserId = parseInt(params.id);
-  const targetUser = await db.select({
-    id: usersTable.id,
-    username: usersTable.username,
-    avatar: usersTable.avatar,
-    slackId: usersTable.slackId,
-    role: usersTable.role,
-    internalNotes: usersTable.internalNotes,
-    createdAt: usersTable.createdAt
-  }).from(usersTable).where(eq(usersTable.id, targetUserId)).limit(1);
-  if (!targetUser[0])
-    return { error: "User not found" };
-  const projects2 = await db.select().from(projectsTable).where(eq(projectsTable.userId, targetUserId)).orderBy(desc(projectsTable.updatedAt));
-  const projectStats = {
-    total: projects2.length,
-    shipped: projects2.filter((p) => p.status === "shipped").length,
-    inProgress: projects2.filter((p) => p.status === "in_progress").length,
-    waitingForReview: projects2.filter((p) => p.status === "waiting_for_review").length,
-    rejected: projects2.filter((p) => p.status === "permanently_rejected").length
-  };
-  const totalHours = projects2.reduce((sum, p) => sum + (p.hoursOverride ?? p.hours ?? 0), 0);
-  const scrapsBalance = await getUserScrapsBalance(targetUserId);
-  return {
-    user: {
-      id: targetUser[0].id,
-      username: targetUser[0].username,
-      avatar: targetUser[0].avatar,
-      slackId: targetUser[0].slackId,
-      scraps: scrapsBalance.balance,
-      role: targetUser[0].role,
-      internalNotes: targetUser[0].internalNotes,
-      createdAt: targetUser[0].createdAt
-    },
-    projects: projects2,
-    stats: {
-      ...projectStats,
-      totalHours
-    }
-  };
-});
-admin.put("/users/:id/role", async ({ params, body, headers }) => {
+admin.put("/users/:id/role", async ({ params, body, headers, status: status2 }) => {
   const user2 = await requireAdmin(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
+  if (!user2) {
+    return status2(401, { error: "Unauthorized" });
+  }
   const { role } = body;
   if (!["member", "reviewer", "admin", "banned"].includes(role)) {
-    return { error: "Invalid role" };
+    return status2(400, { error: "Invalid role" });
   }
-  const updated = await db.update(usersTable).set({ role, updatedAt: new Date }).where(eq(usersTable.id, parseInt(params.id))).returning();
-  return updated[0] || { error: "Not found" };
+  if (user2.id === parseInt(params.id)) {
+    return status2(400, { error: "Cannot change your own role" });
+  }
+  try {
+    const updated = await db.update(usersTable).set({ role, updatedAt: new Date }).where(eq(usersTable.id, parseInt(params.id))).returning();
+    if (!updated[0]) {
+      return status2(404, { error: "Not Found" });
+    }
+    return { success: true };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to update user role" });
+  }
 });
-admin.put("/users/:id/notes", async ({ params, body, headers }) => {
+admin.put("/users/:id/notes", async ({ params, body, headers, status: status2 }) => {
   const user2 = await requireReviewer(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
+  if (!user2) {
+    return status2(401, { error: "Unauthorized" });
+  }
   const { internalNotes } = body;
   if (typeof internalNotes != "string" || internalNotes.length > 2500) {
-    return { error: "Note is too long or it's malformed!" };
+    return status2(400, { error: "Note is too long or it's malformed!" });
   }
-  const updated = await db.update(usersTable).set({ internalNotes, updatedAt: new Date }).where(eq(usersTable.id, parseInt(params.id))).returning();
-  return updated[0] || { error: "Not found" };
+  try {
+    const updated = await db.update(usersTable).set({ internalNotes, updatedAt: new Date }).where(eq(usersTable.id, parseInt(params.id))).returning();
+    if (!updated[0]) {
+      return status2(404, { error: "Not Found" });
+    }
+    return { success: true };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to update user internal notes" });
+  }
 });
-admin.post("/users/:id/bonus", async ({ params, body, headers }) => {
-  const admin2 = await requireAdmin(headers);
-  if (!admin2)
-    return { error: "Unauthorized" };
-  const { amount, reason } = body;
-  if (!amount || typeof amount !== "number") {
-    return { error: "Amount is required and must be a number" };
+admin.post("/users/:id/bonus", async ({ params, body, headers, status: status2 }) => {
+  try {
+    const admin2 = await requireAdmin(headers);
+    if (!admin2) {
+      return status2(401, { error: "Unauthorized" });
+    }
+    const { amount, reason } = body;
+    if (!amount || typeof amount !== "number") {
+      return status2(400, { error: "Amount is required and must be a number" });
+    }
+    if (Number(amount)) {
+      if (!reason || typeof reason !== "string" || reason.trim().length === 0) {
+        return status2(400, { error: "Reason is required" });
+      }
+    }
+    if (reason.length > 500) {
+      return status2(400, { error: "Reason is too long (max 500 characters)" });
+    }
+    const targetUserId = parseInt(params.id);
+    const targetUser = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, targetUserId)).limit(1);
+    if (!targetUser[0]) {
+      return status2(404, { error: "User not found" });
+    }
+    const bonus = await db.insert(userBonusesTable).values({
+      userId: targetUserId,
+      amount,
+      reason: reason.trim(),
+      givenBy: admin2.id
+    }).returning({
+      id: userBonusesTable.id,
+      amount: userBonusesTable.amount,
+      reason: userBonusesTable.reason,
+      givenBy: userBonusesTable.givenBy,
+      createdAt: userBonusesTable.createdAt
+    });
+    return bonus[0];
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to create user bonus" });
   }
-  if (!reason || typeof reason !== "string" || reason.trim().length === 0) {
-    return { error: "Reason is required" };
-  }
-  if (reason.length > 500) {
-    return { error: "Reason is too long (max 500 characters)" };
-  }
-  const targetUserId = parseInt(params.id);
-  const targetUser = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.id, targetUserId)).limit(1);
-  if (!targetUser[0])
-    return { error: "User not found" };
-  const bonus = await db.insert(userBonusesTable).values({
-    userId: targetUserId,
-    amount,
-    reason: reason.trim(),
-    givenBy: admin2.id
-  }).returning();
-  return bonus[0];
 });
 admin.get("/users/:id/bonuses", async ({ params, headers }) => {
-  const user2 = await requireAdmin(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  const targetUserId = parseInt(params.id);
-  const bonuses = await db.select({
-    id: userBonusesTable.id,
-    amount: userBonusesTable.amount,
-    reason: userBonusesTable.reason,
-    givenBy: userBonusesTable.givenBy,
-    givenByUsername: usersTable.username,
-    createdAt: userBonusesTable.createdAt
-  }).from(userBonusesTable).leftJoin(usersTable, eq(userBonusesTable.givenBy, usersTable.id)).where(eq(userBonusesTable.userId, targetUserId)).orderBy(desc(userBonusesTable.createdAt));
-  return bonuses;
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2)
+      return { error: "Unauthorized" };
+    const targetUserId = parseInt(params.id);
+    const bonuses = await db.select({
+      id: userBonusesTable.id,
+      amount: userBonusesTable.amount,
+      reason: userBonusesTable.reason,
+      givenBy: userBonusesTable.givenBy,
+      givenByUsername: usersTable.username,
+      createdAt: userBonusesTable.createdAt
+    }).from(userBonusesTable).leftJoin(usersTable, eq(userBonusesTable.givenBy, usersTable.id)).where(eq(userBonusesTable.userId, targetUserId)).orderBy(desc(userBonusesTable.createdAt));
+    return bonuses;
+  } catch (err) {
+    console.error(err);
+    return { error: "Failed to fetch user bonuses" };
+  }
 });
 admin.get("/reviews", async ({ headers, query }) => {
-  const user2 = await requireReviewer(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  const page = parseInt(query.page) || 1;
-  const limit = Math.min(parseInt(query.limit) || 20, 100);
-  const offset = (page - 1) * limit;
-  const [projects2, countResult] = await Promise.all([
-    db.select().from(projectsTable).where(eq(projectsTable.status, "waiting_for_review")).orderBy(desc(projectsTable.updatedAt)).limit(limit).offset(offset),
-    db.select({ count: sql`count(*)` }).from(projectsTable).where(eq(projectsTable.status, "waiting_for_review"))
-  ]);
-  const total = Number(countResult[0]?.count || 0);
-  return {
-    data: projects2,
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit)
-    }
-  };
+  try {
+    const user2 = await requireReviewer(headers);
+    if (!user2)
+      return { error: "Unauthorized" };
+    const page = parseInt(query.page) || 1;
+    const limit = Math.min(parseInt(query.limit) || 20, 100);
+    const offset = (page - 1) * limit;
+    const [projects2, countResult] = await Promise.all([
+      db.select().from(projectsTable).where(eq(projectsTable.status, "waiting_for_review")).orderBy(desc(projectsTable.updatedAt)).limit(limit).offset(offset),
+      db.select({ count: sql`count(*)` }).from(projectsTable).where(eq(projectsTable.status, "waiting_for_review"))
+    ]);
+    const total = Number(countResult[0]?.count || 0);
+    return {
+      data: projects2,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  } catch (err) {
+    console.error(err);
+    return { error: "Failed to fetch reviews" };
+  }
 });
 admin.get("/reviews/:id", async ({ params, headers }) => {
   const user2 = await requireReviewer(headers);
   if (!user2)
     return { error: "Unauthorized" };
-  const project = await db.select().from(projectsTable).where(eq(projectsTable.id, parseInt(params.id))).limit(1);
-  if (project.length <= 0)
-    return { error: "Project not found!" };
-  const projectUser = await db.select({
-    id: usersTable.id,
-    username: usersTable.username,
-    avatar: usersTable.avatar,
-    internalNotes: usersTable.internalNotes
-  }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
-  const reviews = await db.select().from(reviewsTable).where(eq(reviewsTable.projectId, parseInt(params.id)));
-  const reviewerIds = reviews.map((r) => r.reviewerId);
-  let reviewers = [];
-  if (reviewerIds.length > 0) {
-    reviewers = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
+  try {
+    const project = await db.select().from(projectsTable).where(eq(projectsTable.id, parseInt(params.id))).limit(1);
+    if (project.length <= 0)
+      return { error: "Project not found!" };
+    const projectUser = await db.select({
+      id: usersTable.id,
+      username: usersTable.username,
+      avatar: usersTable.avatar,
+      internalNotes: usersTable.internalNotes
+    }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
+    const reviews = await db.select().from(reviewsTable).where(eq(reviewsTable.projectId, parseInt(params.id)));
+    const reviewerIds = reviews.map((r) => r.reviewerId);
+    let reviewers = [];
+    if (reviewerIds.length > 0) {
+      reviewers = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
+    }
+    return {
+      project: project[0],
+      user: projectUser[0] ? {
+        id: projectUser[0].id,
+        username: projectUser[0].username,
+        avatar: projectUser[0].avatar,
+        internalNotes: projectUser[0].internalNotes
+      } : null,
+      reviews: reviews.map((r) => {
+        const reviewer = reviewers.find((rv) => rv.id === r.reviewerId);
+        return {
+          ...r,
+          reviewerName: reviewer?.username,
+          reviewerAvatar: reviewer?.avatar,
+          reviewerId: r.reviewerId
+        };
+      })
+    };
+  } catch (err) {
+    console.error(err);
+    return { error: "Something went wrong while trying to get project" };
   }
-  return {
-    project: project[0],
-    user: projectUser[0] ? {
-      id: projectUser[0].id,
-      username: projectUser[0].username,
-      avatar: projectUser[0].avatar,
-      internalNotes: projectUser[0].internalNotes
-    } : null,
-    reviews: reviews.map((r) => {
-      const reviewer = reviewers.find((rv) => rv.id === r.reviewerId);
-      return {
-        ...r,
-        reviewerName: reviewer?.username,
-        reviewerAvatar: reviewer?.avatar,
-        reviewerId: r.reviewerId
-      };
-    })
-  };
 });
 admin.post("/reviews/:id", async ({ params, body, headers }) => {
-  const user2 = await requireReviewer(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  const { action, feedbackForAuthor, internalJustification, hoursOverride, userInternalNotes } = body;
-  if (!["approved", "denied", "permanently_rejected"].includes(action)) {
-    return { error: "Invalid action" };
-  }
-  if (!feedbackForAuthor?.trim()) {
-    return { error: "Feedback for author is required" };
-  }
-  const projectId = parseInt(params.id);
-  const project = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1);
-  if (!project[0])
-    return { error: "Project not found" };
-  if (project[0].deleted) {
-    return { error: "Cannot review a deleted project" };
-  }
-  if (project[0].status !== "waiting_for_review") {
-    return { error: "Project is not marked for review" };
-  }
-  await db.insert(reviewsTable).values({
-    projectId,
-    reviewerId: user2.id,
-    action,
-    feedbackForAuthor,
-    internalJustification
-  });
-  let newStatus = "in_progress";
-  switch (action) {
-    case "approved":
-      newStatus = "shipped";
-      break;
-    case "denied":
-      newStatus = "in_progress";
-      break;
-    case "permanently_rejected":
-      newStatus = "permanently_rejected";
-      break;
-    default:
-      newStatus = "in_progress";
-  }
-  const updateData = {
-    status: newStatus,
-    updatedAt: new Date
-  };
-  if (hoursOverride !== undefined) {
-    updateData.hoursOverride = hoursOverride;
-  }
-  let scrapsAwarded = 0;
-  if (action === "approved") {
-    const hours = hoursOverride ?? project[0].hours ?? 0;
-    scrapsAwarded = calculateScrapsFromHours(hours);
-    updateData.scrapsAwarded = scrapsAwarded;
-  }
-  await db.update(projectsTable).set(updateData).where(eq(projectsTable.id, projectId));
-  if (action === "approved" && scrapsAwarded > 0) {
-    await db.insert(activityTable).values({
-      userId: project[0].userId,
-      projectId,
-      action: `earned ${scrapsAwarded} scraps`
-    });
-  }
-  if (userInternalNotes !== undefined) {
-    if (userInternalNotes.length <= 2500) {
-      await db.update(usersTable).set({ internalNotes: userInternalNotes, updatedAt: new Date }).where(eq(usersTable.id, project[0].userId));
+  try {
+    const user2 = await requireReviewer(headers);
+    if (!user2)
+      return { error: "Unauthorized" };
+    const { action, feedbackForAuthor, internalJustification, hoursOverride, tierOverride, userInternalNotes } = body;
+    if (!["approved", "denied", "permanently_rejected"].includes(action)) {
+      return { error: "Invalid action" };
     }
+    if (!feedbackForAuthor?.trim()) {
+      return { error: "Feedback for author is required" };
+    }
+    const projectId = parseInt(params.id);
+    const project = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1);
+    if (!project[0])
+      return { error: "Project not found" };
+    if (project[0].deleted) {
+      return { error: "Cannot review a deleted project" };
+    }
+    if (project[0].status !== "waiting_for_review") {
+      return { error: "Project is not marked for review" };
+    }
+    await db.insert(reviewsTable).values({
+      projectId,
+      reviewerId: user2.id,
+      action,
+      feedbackForAuthor,
+      internalJustification
+    });
+    let newStatus = "in_progress";
+    switch (action) {
+      case "approved":
+        newStatus = "shipped";
+        break;
+      case "denied":
+        newStatus = "in_progress";
+        break;
+      case "permanently_rejected":
+        newStatus = "permanently_rejected";
+        break;
+      default:
+        newStatus = "in_progress";
+    }
+    const updateData = {
+      status: newStatus,
+      updatedAt: new Date
+    };
+    if (hoursOverride !== undefined) {
+      updateData.hoursOverride = hoursOverride;
+    }
+    if (tierOverride !== undefined) {
+      updateData.tierOverride = tierOverride;
+    }
+    let scrapsAwarded = 0;
+    if (action === "approved") {
+      const hours = hoursOverride ?? project[0].hours ?? 0;
+      const tier = tierOverride ?? project[0].tier ?? 1;
+      scrapsAwarded = calculateScrapsFromHours(hours, tier);
+      updateData.scrapsAwarded = scrapsAwarded;
+    }
+    await db.update(projectsTable).set(updateData).where(eq(projectsTable.id, projectId));
+    if (action === "approved" && scrapsAwarded > 0) {
+      await db.insert(activityTable).values({
+        userId: project[0].userId,
+        projectId,
+        action: `earned ${scrapsAwarded} scraps`
+      });
+    }
+    if (userInternalNotes !== undefined) {
+      if (userInternalNotes.length <= 2500) {
+        await db.update(usersTable).set({ internalNotes: userInternalNotes, updatedAt: new Date }).where(eq(usersTable.id, project[0].userId));
+      }
+    }
+    return { success: true };
+  } catch (err) {
+    console.error(err);
+    return { error: "Failed to submit review" };
   }
-  return { success: true };
 });
 admin.get("/shop/items", async ({ headers }) => {
-  const user2 = await requireAdmin(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  const items2 = await db.select().from(shopItemsTable).orderBy(desc(shopItemsTable.createdAt));
-  return items2;
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2)
+      return { error: "Unauthorized" };
+    const items = await db.select().from(shopItemsTable).orderBy(desc(shopItemsTable.createdAt));
+    return items;
+  } catch (err) {
+    console.error(err);
+    return { error: "Failed to fetch shop items" };
+  }
 });
-admin.post("/shop/items", async ({ headers, body }) => {
+admin.post("/shop/items", async ({ headers, body, status: status2 }) => {
   const user2 = await requireAdmin(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
+  if (!user2) {
+    return status2(401, { error: "Unauthorized" });
+  }
   const { name, image, description, price, category, count, baseProbability, baseUpgradeCost, costMultiplier, boostAmount } = body;
   if (!name?.trim() || !image?.trim() || !description?.trim() || !category?.trim()) {
-    return { error: "All fields are required" };
+    return status2(400, { error: "All fields are required" });
   }
   if (typeof price !== "number" || price < 0) {
-    return { error: "Invalid price" };
+    return status2(400, { error: "Invalid price" });
   }
-  if (baseProbability !== undefined && (typeof baseProbability !== "number" || baseProbability < 0 || baseProbability > 100)) {
-    return { error: "baseProbability must be between 0 and 100" };
+  if (baseProbability !== undefined && (typeof baseProbability !== "number" || !Number.isInteger(baseProbability) || baseProbability < 0 || baseProbability > 100)) {
+    return status2(400, { error: "Base probability must be an integer between 0 and 100" });
   }
-  const inserted = await db.insert(shopItemsTable).values({
-    name: name.trim(),
-    image: image.trim(),
-    description: description.trim(),
-    price,
-    category: category.trim(),
-    count: count || 0,
-    baseProbability: baseProbability ?? 50,
-    baseUpgradeCost: baseUpgradeCost ?? 10,
-    costMultiplier: costMultiplier ?? 115,
-    boostAmount: boostAmount ?? 1
-  }).returning();
-  return inserted[0];
-});
-admin.put("/shop/items/:id", async ({ params, headers, body }) => {
-  const user2 = await requireAdmin(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  const { name, image, description, price, category, count, baseProbability, baseUpgradeCost, costMultiplier, boostAmount } = body;
-  if (baseProbability !== undefined && (typeof baseProbability !== "number" || baseProbability < 0 || baseProbability > 100)) {
-    return { error: "baseProbability must be between 0 and 100" };
+  try {
+    await db.insert(shopItemsTable).values({
+      name: name.trim(),
+      image: image.trim(),
+      description: description.trim(),
+      price,
+      category: category.trim(),
+      count: count || 0,
+      baseProbability: baseProbability ?? 50,
+      baseUpgradeCost: baseUpgradeCost ?? 10,
+      costMultiplier: costMultiplier ?? 115,
+      boostAmount: boostAmount ?? 1
+    });
+    return { success: true };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to create shop item" });
   }
-  const updateData = { updatedAt: new Date };
-  if (name !== undefined)
-    updateData.name = name.trim();
-  if (image !== undefined)
-    updateData.image = image.trim();
-  if (description !== undefined)
-    updateData.description = description.trim();
-  if (price !== undefined)
-    updateData.price = price;
-  if (category !== undefined)
-    updateData.category = category.trim();
-  if (count !== undefined)
-    updateData.count = count;
-  if (baseProbability !== undefined)
-    updateData.baseProbability = baseProbability;
-  if (baseUpgradeCost !== undefined)
-    updateData.baseUpgradeCost = baseUpgradeCost;
-  if (costMultiplier !== undefined)
-    updateData.costMultiplier = costMultiplier;
-  if (boostAmount !== undefined)
-    updateData.boostAmount = boostAmount;
-  const updated = await db.update(shopItemsTable).set(updateData).where(eq(shopItemsTable.id, parseInt(params.id))).returning();
-  return updated[0] || { error: "Not found" };
 });
-admin.delete("/shop/items/:id", async ({ params, headers }) => {
-  const user2 = await requireAdmin(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  const itemId = parseInt(params.id);
-  await db.delete(shopHeartsTable).where(eq(shopHeartsTable.shopItemId, itemId));
-  await db.delete(shopItemsTable).where(eq(shopItemsTable.id, itemId));
-  return { success: true };
-});
-admin.get("/news", async ({ headers }) => {
-  const user2 = await requireAdmin(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  const items2 = await db.select().from(newsTable).orderBy(desc(newsTable.createdAt));
-  return items2;
-});
-admin.post("/news", async ({ headers, body }) => {
-  const user2 = await requireAdmin(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  const { title, content, active } = body;
-  if (!title?.trim() || !content?.trim()) {
-    return { error: "Title and content are required" };
+admin.put("/shop/items/:id", async ({ params, headers, body, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2) {
+      return status2(401, { error: "Unauthorized" });
+    }
+    const { name, image, description, price, category, count, baseProbability, baseUpgradeCost, costMultiplier, boostAmount } = body;
+    if (baseProbability !== undefined && (typeof baseProbability !== "number" || !Number.isInteger(baseProbability) || baseProbability < 0 || baseProbability > 100)) {
+      return status2(400, { error: "Base probability must be an integer between 0 and 100" });
+    }
+    const updateData = { updatedAt: new Date };
+    if (name !== undefined)
+      updateData.name = name.trim();
+    if (image !== undefined)
+      updateData.image = image.trim();
+    if (description !== undefined)
+      updateData.description = description.trim();
+    if (price !== undefined)
+      updateData.price = price;
+    if (category !== undefined)
+      updateData.category = category.trim();
+    if (count !== undefined)
+      updateData.count = count;
+    if (baseProbability !== undefined)
+      updateData.baseProbability = baseProbability;
+    if (baseUpgradeCost !== undefined)
+      updateData.baseUpgradeCost = baseUpgradeCost;
+    if (costMultiplier !== undefined)
+      updateData.costMultiplier = costMultiplier;
+    if (boostAmount !== undefined)
+      updateData.boostAmount = boostAmount;
+    const updated = await db.update(shopItemsTable).set(updateData).where(eq(shopItemsTable.id, parseInt(params.id))).returning();
+    if (!updated[0]) {
+      return status2(404, { error: "Not found" });
+    }
+    return { success: true };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to update shop item" });
   }
-  const inserted = await db.insert(newsTable).values({
-    title: title.trim(),
-    content: content.trim(),
-    active: active ?? true
-  }).returning();
-  return inserted[0];
 });
-admin.put("/news/:id", async ({ params, headers, body }) => {
-  const user2 = await requireAdmin(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  const { title, content, active } = body;
-  const updateData = { updatedAt: new Date };
-  if (title !== undefined)
-    updateData.title = title.trim();
-  if (content !== undefined)
-    updateData.content = content.trim();
-  if (active !== undefined)
-    updateData.active = active;
-  const updated = await db.update(newsTable).set(updateData).where(eq(newsTable.id, parseInt(params.id))).returning();
-  return updated[0] || { error: "Not found" };
-});
-admin.delete("/news/:id", async ({ params, headers }) => {
-  const user2 = await requireAdmin(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  await db.delete(newsTable).where(eq(newsTable.id, parseInt(params.id)));
-  return { success: true };
-});
-admin.get("/orders", async ({ headers, query }) => {
-  const user2 = await requireAdmin(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  const status2 = query.status;
-  let ordersQuery = db.select({
-    id: shopOrdersTable.id,
-    quantity: shopOrdersTable.quantity,
-    pricePerItem: shopOrdersTable.pricePerItem,
-    totalPrice: shopOrdersTable.totalPrice,
-    status: shopOrdersTable.status,
-    orderType: shopOrdersTable.orderType,
-    notes: shopOrdersTable.notes,
-    isFulfilled: shopOrdersTable.isFulfilled,
-    shippingAddress: shopOrdersTable.shippingAddress,
-    createdAt: shopOrdersTable.createdAt,
-    itemId: shopItemsTable.id,
-    itemName: shopItemsTable.name,
-    itemImage: shopItemsTable.image,
-    userId: usersTable.id,
-    username: usersTable.username
-  }).from(shopOrdersTable).innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id)).innerJoin(usersTable, eq(shopOrdersTable.userId, usersTable.id)).orderBy(desc(shopOrdersTable.createdAt));
-  if (status2) {
-    ordersQuery = ordersQuery.where(eq(shopOrdersTable.status, status2));
+admin.delete("/shop/items/:id", async ({ params, headers, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2) {
+      return status2(401, { error: "Unauthorized" });
+    }
+    const itemId = parseInt(params.id);
+    await db.delete(shopHeartsTable).where(eq(shopHeartsTable.shopItemId, itemId));
+    await db.delete(shopItemsTable).where(eq(shopItemsTable.id, itemId));
+    return { success: true };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to delete shop item" });
   }
-  return await ordersQuery;
 });
-admin.patch("/orders/:id", async ({ params, body, headers }) => {
-  const user2 = await requireAdmin(headers);
-  if (!user2)
-    return { error: "Unauthorized" };
-  const { status: status2, notes, isFulfilled } = body;
-  const validStatuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
-  if (status2 && !validStatuses.includes(status2)) {
-    return { error: "Invalid status" };
+admin.get("/news", async ({ headers, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2) {
+      return status2(401, { error: "Unauthorized" });
+    }
+    const items = await db.select().from(newsTable).orderBy(desc(newsTable.createdAt));
+    return items;
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to fetch news" });
   }
-  const updateData = { updatedAt: new Date };
-  if (status2)
-    updateData.status = status2;
-  if (notes !== undefined)
-    updateData.notes = notes;
-  if (isFulfilled !== undefined)
-    updateData.isFulfilled = isFulfilled;
-  const updated = await db.update(shopOrdersTable).set(updateData).where(eq(shopOrdersTable.id, parseInt(params.id))).returning({
-    id: shopOrdersTable.id,
-    status: shopOrdersTable.status,
-    notes: shopOrdersTable.notes,
-    isFulfilled: shopOrdersTable.isFulfilled,
-    updatedAt: shopOrdersTable.updatedAt
-  });
-  return updated[0] || { error: "Not found" };
+});
+admin.post("/news", async ({ headers, body, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2) {
+      return status2(401, { error: "Unauthorized" });
+    }
+    const { title, content, active } = body;
+    if (!title?.trim() || !content?.trim()) {
+      return status2(400, { error: "Title and content are required" });
+    }
+    const inserted = await db.insert(newsTable).values({
+      title: title.trim(),
+      content: content.trim(),
+      active: active ?? true
+    }).returning({
+      id: newsTable.id,
+      title: newsTable.title,
+      content: newsTable.content,
+      active: newsTable.active,
+      createdAt: newsTable.createdAt,
+      updatedAt: newsTable.updatedAt
+    });
+    return inserted[0];
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to create news" });
+  }
+});
+admin.put("/news/:id", async ({ params, headers, body, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2) {
+      return status2(401, { error: "Unauthorized" });
+    }
+    const { title, content, active } = body;
+    const updateData = { updatedAt: new Date };
+    if (title !== undefined)
+      updateData.title = title.trim();
+    if (content !== undefined)
+      updateData.content = content.trim();
+    if (active !== undefined)
+      updateData.active = active;
+    const updated = await db.update(newsTable).set(updateData).where(eq(newsTable.id, parseInt(params.id))).returning({
+      id: newsTable.id,
+      title: newsTable.title,
+      content: newsTable.content,
+      active: newsTable.active,
+      createdAt: newsTable.createdAt,
+      updatedAt: newsTable.updatedAt
+    });
+    if (!updated[0]) {
+      return status2(404, { error: "Not found" });
+    }
+    return updated[0];
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to update news" });
+  }
+});
+admin.delete("/news/:id", async ({ params, headers, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2) {
+      return status2(401, { error: "Unauthorized" });
+    }
+    await db.delete(newsTable).where(eq(newsTable.id, parseInt(params.id)));
+    return { success: true };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to delete news" });
+  }
+});
+admin.get("/orders", async ({ headers, query, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2) {
+      return status2(401, { error: "Unauthorized" });
+    }
+    const orderStatus = query.status;
+    let ordersQuery = db.select({
+      id: shopOrdersTable.id,
+      quantity: shopOrdersTable.quantity,
+      pricePerItem: shopOrdersTable.pricePerItem,
+      totalPrice: shopOrdersTable.totalPrice,
+      status: shopOrdersTable.status,
+      orderType: shopOrdersTable.orderType,
+      notes: shopOrdersTable.notes,
+      isFulfilled: shopOrdersTable.isFulfilled,
+      shippingAddress: shopOrdersTable.shippingAddress,
+      createdAt: shopOrdersTable.createdAt,
+      itemId: shopItemsTable.id,
+      itemName: shopItemsTable.name,
+      itemImage: shopItemsTable.image,
+      userId: usersTable.id,
+      username: usersTable.username
+    }).from(shopOrdersTable).innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id)).innerJoin(usersTable, eq(shopOrdersTable.userId, usersTable.id)).orderBy(desc(shopOrdersTable.createdAt));
+    if (orderStatus) {
+      ordersQuery = ordersQuery.where(eq(shopOrdersTable.status, orderStatus));
+    }
+    return await ordersQuery;
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to fetch orders" });
+  }
+});
+admin.patch("/orders/:id", async ({ params, body, headers, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2) {
+      return status2(401, { error: "Unauthorized" });
+    }
+    const { status: orderStatus, notes, isFulfilled } = body;
+    const validStatuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
+    if (orderStatus && !validStatuses.includes(orderStatus)) {
+      return status2(400, { error: "Invalid status" });
+    }
+    const updateData = { updatedAt: new Date };
+    if (orderStatus)
+      updateData.status = orderStatus;
+    if (notes !== undefined)
+      updateData.notes = notes;
+    if (isFulfilled !== undefined)
+      updateData.isFulfilled = isFulfilled;
+    const updated = await db.update(shopOrdersTable).set(updateData).where(eq(shopOrdersTable.id, parseInt(params.id))).returning({
+      id: shopOrdersTable.id,
+      quantity: shopOrdersTable.quantity,
+      pricePerItem: shopOrdersTable.pricePerItem,
+      totalPrice: shopOrdersTable.totalPrice,
+      status: shopOrdersTable.status,
+      orderType: shopOrdersTable.orderType,
+      notes: shopOrdersTable.notes,
+      isFulfilled: shopOrdersTable.isFulfilled,
+      shippingAddress: shopOrdersTable.shippingAddress,
+      createdAt: shopOrdersTable.createdAt
+    });
+    if (!updated[0]) {
+      return status2(404, { error: "Not found" });
+    }
+    return updated[0];
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to update order" });
+  }
 });
 var admin_default = admin;
 
 // src/index.ts
-var api = new Elysia().use(auth_default).use(projects_default).use(news_default).use(items_default).use(user_default).use(shop_default).use(leaderboard_default).use(hackatime_default).use(upload_default).use(admin_default).get("/", () => "if you dm @notaroomba abt finding this you may get cool stickers");
+var api = new Elysia().use(auth_default).use(projects_default).use(news_default).use(user_default).use(shop_default).use(leaderboard_default).use(hackatime_default).use(upload_default).use(admin_default).get("/", () => "if you dm @notaroomba abt finding this you may get cool stickers");
 var app = new Elysia().use(cors({
   origin: [config.frontendUrl],
   credentials: true

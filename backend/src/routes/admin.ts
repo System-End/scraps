@@ -416,11 +416,12 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
         const user = await requireReviewer(headers as Record<string, string>)
         if (!user) return { error: 'Unauthorized' }
 
-        const { action, feedbackForAuthor, internalJustification, hoursOverride, userInternalNotes } = body as {
+        const { action, feedbackForAuthor, internalJustification, hoursOverride, tierOverride, userInternalNotes } = body as {
             action: 'approved' | 'denied' | 'permanently_rejected'
             feedbackForAuthor: string
             internalJustification?: string
             hoursOverride?: number
+            tierOverride?: number
             userInternalNotes?: string
         }
 
@@ -486,10 +487,15 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
             updateData.hoursOverride = hoursOverride
         }
 
+        if (tierOverride !== undefined) {
+            updateData.tierOverride = tierOverride
+        }
+
         let scrapsAwarded = 0
         if (action === 'approved') {
             const hours = hoursOverride ?? project[0].hours ?? 0
-            scrapsAwarded = calculateScrapsFromHours(hours)
+            const tier = tierOverride ?? project[0].tier ?? 1
+            scrapsAwarded = calculateScrapsFromHours(hours, tier)
             updateData.scrapsAwarded = scrapsAwarded
         }
 

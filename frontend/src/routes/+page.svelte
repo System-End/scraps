@@ -221,7 +221,7 @@
 	<div class="prose prose-lg">
 		<p class="text-xl font-bold mb-4">tl;dr</p>
 
-		<p class="mb-2"><strong>ys:</strong> any project <Superscript number={3} tooltip="silly, nonsensical, or fun" /></p>
+		<p class="mb-2"><strong>ys:</strong> any project <Superscript number={3} tooltip="optionally silly, nonsensical, or fun" /></p>
 
 		<p class="mb-6">
 			<strong>ws:</strong> random items from hq<Superscript number={4} tooltip="(including stickers)" /> (more hours, more stuff)
@@ -237,7 +237,7 @@
 		<p class="text-xl font-bold mb-4">but how, you may ask?</p>
 
 		<p class="mb-6">
-			well, it's simple: you just ship any projects that are extra silly, nonsensical, or fun<Superscript number={8} tooltip="or literally any project" />, and
+			well, it's simple: you just ship any projects that are slightly silly, nonsensical, or fun<Superscript number={8} tooltip="or literally any project" />, and
 			you will earn scraps for the time you put in! track your time with <a
 				href="https://hackatime.hackclub.com"
 				target="_blank"

@@ -77,6 +77,44 @@ leaderboard.get('/', async ({ query }) => {
 	})
 })
 
+leaderboard.get('/views', async () => {
+	const results = await db
+		.select({
+			id: projectsTable.id,
+			name: projectsTable.name,
+			image: projectsTable.image,
+			views: projectsTable.views,
+			userId: projectsTable.userId
+		})
+		.from(projectsTable)
+		.where(and(
+			eq(projectsTable.status, 'shipped'),
+			or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
+		))
+		.orderBy(desc(projectsTable.views))
+		.limit(10)
+
+	const userIds = [...new Set(results.map(p => p.userId))]
+	let users: { id: number; username: string | null; avatar: string | null }[] = []
+	if (userIds.length > 0) {
+		users = await db
+			.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar })
+			.from(usersTable)
+			.where(sql`${usersTable.id} IN ${userIds}`)
+	}
+
+	const userMap = new Map(users.map(u => [u.id, u]))
+
+	return results.map((project, index) => ({
+		rank: index + 1,
+		id: project.id,
+		name: project.name,
+		image: project.image,
+		views: project.views,
+		owner: userMap.get(project.userId) ?? null
+	}))
+})
+
 leaderboard.get('/probability-leaders', async () => {
 	const items = await db
 		.select({

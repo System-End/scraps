@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
-	import { ArrowLeft, Pencil, Send, Clock, CheckCircle, XCircle, AlertCircle, Github, AlertTriangle, PlaneTakeoff, Plus, Globe, Spool } from '@lucide/svelte'
+	import { ArrowLeft, Pencil, Send, Clock, CheckCircle, XCircle, AlertCircle, Github, AlertTriangle, PlaneTakeoff, Plus, Globe, Spool, Eye } from '@lucide/svelte'
 	import { getUser } from '$lib/auth-client'
 	import { API_URL } from '$lib/config'
 	import { formatHours } from '$lib/utils'
@@ -20,11 +20,15 @@
 		hackatimeProject?: string | null
 		hours: number
 		hoursOverride?: number | null
+		tier: number
 		status: string
 		scrapsAwarded: number
+		views: number
 		createdAt: string
 		updatedAt: string
 	}
+
+
 
 	interface Owner {
 		id: number
@@ -185,7 +189,7 @@
 
 			<!-- Content -->
 			<div class="p-6">
-				<div class="flex items-start justify-between gap-4 mb-4">
+				<div class="flex items-start justify-between gap-4 mb-2">
 					<h1 class="text-3xl md:text-4xl font-bold">{project.name}</h1>
 					{#if project.status === 'shipped'}
 						<span class="px-3 py-1 rounded-full text-sm font-bold border-2 bg-green-100 text-green-700 border-green-600 flex items-center gap-1 shrink-0">
@@ -204,6 +208,11 @@
 						</span>
 					{/if}
 				</div>
+				<div class="flex items-center gap-2 mb-4">
+					<span class="px-3 py-1 rounded-full text-sm font-bold border-2 bg-gray-100 text-gray-700 border-gray-400">
+						tier {project.tier}
+					</span>
+				</div>
 
 				{#if project.description}
 					<p class="text-lg text-gray-700 mb-4">{project.description}</p>
@@ -211,10 +220,10 @@
 					<p class="text-lg text-gray-400 italic mb-4">no description yet</p>
 				{/if}
 
-				<div class="flex flex-wrap items-center gap-3">
+				<div class="flex flex-wrap items-center gap-3 mb-3">
 					<span class="px-4 py-2 bg-white rounded-full font-bold border-4 border-black flex items-center gap-2">
-						<Clock size={18} />
-						{formatHours(project.hours)}h
+						<Eye size={18} />
+						{project.views.toLocaleString()} views
 					</span>
 					{#if project.scrapsAwarded > 0}
 						<span class="px-4 py-2 bg-green-100 text-green-700 rounded-full font-bold border-4 border-green-600 flex items-center gap-2">
@@ -222,6 +231,12 @@
 							+{project.scrapsAwarded} scraps earned
 						</span>
 					{/if}
+				</div>
+				<div class="flex flex-wrap items-center gap-3">
+					<span class="px-4 py-2 bg-white rounded-full font-bold border-4 border-black flex items-center gap-2">
+						<Clock size={18} />
+						{formatHours(project.hours)}h
+					</span>
 					{#if project.githubUrl}
 						<a
 							href={project.githubUrl}
@@ -243,7 +258,7 @@
 							href={project.playableUrl}
 							target="_blank"
 							rel="noopener noreferrer"
-							class="px-4 py-2 border-4 border-dashed border-black rounded-full font-bold hover:border-solid transition-all duration-200 cursor-pointer flex items-center gap-2"
+							class="px-4 py-2 border-4 border-solid border-black rounded-full font-bold hover:border-dashed transition-all duration-200 cursor-pointer flex items-center gap-2"
 						>
 							<Globe size={18} />
 							try it out

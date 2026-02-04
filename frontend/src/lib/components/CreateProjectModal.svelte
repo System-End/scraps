@@ -57,6 +57,14 @@
 	let showDropdown = $state(false)
 	let loading = $state(false)
 	let error = $state<string | null>(null)
+	let selectedTier = $state(1)
+
+	const TIERS = [
+		{ value: 1, description: 'simple projects, tutorials, small scripts' },
+		{ value: 2, description: 'moderate complexity, multi-file projects' },
+		{ value: 3, description: 'complex features, APIs, integrations' },
+		{ value: 4, description: 'full applications, major undertakings' }
+	]
 
 	const NAME_MAX = 50
 	const DESC_MIN = 20
@@ -152,6 +160,7 @@
 		imagePreview = null
 		selectedHackatimeProject = null
 		showDropdown = false
+		selectedTier = 1
 		error = null
 	}
 
@@ -181,7 +190,8 @@
 					description,
 					image: imageUrl || null,
 					githubUrl: finalGithubUrl,
-					hackatimeProject: hackatimeValue
+					hackatimeProject: hackatimeValue,
+					tier: selectedTier
 				})
 			})
 
@@ -352,6 +362,23 @@
 						placeholder="https://github.com/user/repo"
 						class="w-full px-4 py-2 border-2 border-black rounded-lg focus:outline-none focus:border-dashed"
 					/>
+				</div>
+
+				<!-- Tier Selector -->
+				<div>
+					<label class="block text-sm font-bold mb-1">project tier</label>
+					<div class="grid grid-cols-2 gap-2">
+						{#each TIERS as tier}
+							<button
+								type="button"
+								onclick={() => (selectedTier = tier.value)}
+								class="px-3 py-2 border-2 border-black rounded-lg font-bold transition-all duration-200 cursor-pointer text-left {selectedTier === tier.value ? 'bg-black text-white' : 'hover:border-dashed'}"
+							>
+								<span>tier {tier.value}</span>
+								<p class="text-xs mt-1 {selectedTier === tier.value ? 'text-gray-300' : 'text-gray-500'}">{tier.description}</p>
+							</button>
+						{/each}
+					</div>
 				</div>
 
 				<!-- Requirements Checklist -->
