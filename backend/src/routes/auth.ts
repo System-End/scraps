@@ -1,4 +1,4 @@
-import { Elysia } from "elysia"
+import { Elysia, t } from "elysia"
 import {
     getAuthorizationUrl,
     exchangeCodeForTokens,
@@ -10,10 +10,27 @@ import {
 } from "../lib/auth"
 import { config } from "../config"
 import { getUserScrapsBalance } from "../lib/scraps"
+import { db } from "../db"
+import { userEmailsTable } from "../schemas"
+import { eq } from "drizzle-orm"
 
 const FRONTEND_URL = config.frontendUrl
 
 const authRoutes = new Elysia({ prefix: "/auth" })
+
+// POST /auth/collect-email - Store email before redirecting to auth
+authRoutes.post("/collect-email", async ({ body }) => {
+    const { email } = body as { email: string }
+    console.log("[AUTH] Collecting email:", email)
+    
+    await db.insert(userEmailsTable).values({ email })
+    
+    return { success: true }
+}, {
+    body: t.Object({
+        email: t.String({ format: 'email' })
+    })
+})
 
 // GET /auth/login - Redirect to Hack Club Auth
 authRoutes.get("/login", ({ redirect }) => {
@@ -53,7 +70,22 @@ authRoutes.get("/callback", async ({ query, redirect, cookie }) => {
             verificationStatus: identity.verification_status
         })
 
+        // Check verification status BEFORE creating user
+        if (identity.verification_status === 'needs_submission') {
+            console.log("[AUTH] User needs to verify identity")
+            return redirect(`${FRONTEND_URL}/auth/error?reason=needs-verification`)
+        }
+
+        if (identity.verification_status === 'ineligible') {
+            console.log("[AUTH] User is ineligible")
+            return redirect(`${FRONTEND_URL}/auth/error?reason=not-eligible`)
+        }
+
         const user = await createOrUpdateUser(identity, tokens)
+        
+        // Delete the collected email since user completed auth
+        await db.delete(userEmailsTable).where(eq(userEmailsTable.email, identity.primary_email))
+        console.log("[AUTH] Deleted collected email:", identity.primary_email)
         
         if (user.role === 'banned') {
             console.log("[AUTH] Banned user attempted login:", { userId: user.id, username: user.username })

@@ -25,6 +25,8 @@
 		}
 	})
 
+	let hideNavbar = $derived($page.url.pathname.startsWith('/auth/error'))
+
 	// Prefetch data on initial load if user is logged in
 	onMount(async () => {
 		user = await getUser()
@@ -48,7 +50,9 @@
 </svelte:head>
 
 <div class="min-h-dvh flex flex-col">
-	<Navbar />
+	{#if !hideNavbar}
+		<Navbar />
+	{/if}
 	<main class="flex-1">
 		{@render children()}
 	</main>

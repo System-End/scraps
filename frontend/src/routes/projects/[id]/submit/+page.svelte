@@ -163,9 +163,15 @@
 				credentials: 'include'
 			})
 
+			const submitData = await submitResponse.json().catch(() => ({}))
+			
+			if (submitData.error === 'ineligible' && submitData.redirectTo) {
+				goto(submitData.redirectTo)
+				return
+			}
+
 			if (!submitResponse.ok) {
-				const responseData = await submitResponse.json().catch(() => ({}))
-				throw new Error(responseData.message || 'Failed to submit project')
+				throw new Error(submitData.message || 'Failed to submit project')
 			}
 
 			goto(`/projects/${project.id}`)

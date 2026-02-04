@@ -5,29 +5,37 @@ import { projectsTable } from '../schemas/projects'
 import { reviewsTable } from '../schemas/reviews'
 import { usersTable } from '../schemas/users'
 import { activityTable } from '../schemas/activity'
-import { getUserFromSession } from '../lib/auth'
+import { getUserFromSession, fetchUserIdentity } from '../lib/auth'
 
 const HACKATIME_API = 'https://hackatime.hackclub.com/api/v1'
+const SCRAPS_START_DATE = '2026-02-03'
 
-interface HackatimeProject {
+interface HackatimeStatsProject {
     name: string
     total_seconds: number
 }
 
-interface HackatimeResponse {
-    projects: HackatimeProject[]
+interface HackatimeStatsResponse {
+    data: {
+        projects: HackatimeStatsProject[]
+    }
 }
 
 async function fetchHackatimeHours(slackId: string, projectName: string): Promise<number> {
     try {
-        const url = `${HACKATIME_API}/users/${encodeURIComponent(slackId)}/projects/details`
+        const params = new URLSearchParams({
+            features: 'projects',
+            start_date: SCRAPS_START_DATE,
+            filter_by_project: projectName
+        })
+        const url = `${HACKATIME_API}/users/${encodeURIComponent(slackId)}/stats?${params}`
         const response = await fetch(url, {
             headers: { 'Accept': 'application/json' }
         })
         if (!response.ok) return 0
         
-        const data: HackatimeResponse = await response.json()
-        const project = data.projects.find(p => p.name === projectName)
+        const data: HackatimeStatsResponse = await response.json()
+        const project = data.data?.projects?.find(p => p.name === projectName)
         if (!project) return 0
         
         return Math.round(project.total_seconds / 3600 * 10) / 10
@@ -442,6 +450,22 @@ projects.delete("/:id", async ({ params, headers }) => {
 projects.post("/:id/submit", async ({ params, headers }) => {
     const user = await getUserFromSession(headers as Record<string, string>)
     if (!user) return { error: "Unauthorized" }
+
+    // Check verification status before allowing submission
+    if (user.accessToken) {
+        const meResponse = await fetchUserIdentity(user.accessToken)
+        if (meResponse) {
+            const { identity } = meResponse
+            // Update stored verification status
+            await db.update(usersTable)
+                .set({ verificationStatus: identity.verification_status })
+                .where(eq(usersTable.id, user.id))
+            
+            if (identity.verification_status === 'ineligible') {
+                return { error: "ineligible", redirectTo: "/auth/error?reason=not-eligible" }
+            }
+        }
+    }
 
     const project = await db
         .select()

@@ -26,6 +26,39 @@ async function requireAdmin(headers: Record<string, string>) {
     return user
 }
 
+// Get admin stats (info page)
+admin.get('/stats', async ({ headers, status }) => {
+    const user = await requireReviewer(headers as Record<string, string>)
+    if (!user) {
+        return status(401, { error: 'Unauthorized' })
+    }
+
+    const [usersCount, projectsCount, totalHoursResult] = await Promise.all([
+        db.select({ count: sql<number>`count(*)` }).from(usersTable),
+        db.select({ count: sql<number>`count(*)` })
+            .from(projectsTable)
+            .where(or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)),
+        db.select({ total: sql<number>`COALESCE(SUM(COALESCE(${projectsTable.hoursOverride}, ${projectsTable.hours})), 0)` })
+            .from(projectsTable)
+            .where(and(
+                eq(projectsTable.status, 'shipped'),
+                or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)
+            ))
+    ])
+
+    const totalUsers = Number(usersCount[0]?.count || 0)
+    const totalProjects = Number(projectsCount[0]?.count || 0)
+    const totalHours = Number(totalHoursResult[0]?.total || 0)
+    const weightedGrants = Math.round(totalHours / 10 * 100) / 100
+
+    return {
+        totalUsers,
+        totalProjects,
+        totalHours: Math.round(totalHours * 10) / 10,
+        weightedGrants
+    }
+})
+
 // Get all users (reviewers see limited info)
 admin.get('/users', async ({ headers, query, status }) => {
     try {

@@ -21,6 +21,9 @@ export const usersTable = pgTable('users', {
   role: varchar().notNull().default('member'),
   internalNotes: text('internal_notes'),
 
+  // verification status from Hack Club Auth
+  verificationStatus: varchar('verification_status'),
+
   // tutorial status
   tutorialCompleted: boolean('tutorial_completed').notNull().default(false),
 

@@ -2,19 +2,28 @@ import { Elysia } from 'elysia'
 import { getUserFromSession } from '../lib/auth'
 
 const HACKATIME_API = 'https://hackatime.hackclub.com/api/v1'
+const SCRAPS_START_DATE = '2026-02-03'
 
-interface HackatimeProject {
+interface HackatimeStatsProject {
+	name: string
+	total_seconds: number
+}
+
+interface HackatimeDetailsProject {
 	name: string
 	total_seconds: number
 	languages: string[]
 	repo_url: string | null
-	total_heartbeats: number
-	first_heartbeat: string
-	last_heartbeat: string
 }
 
-interface HackatimeResponse {
-	projects: HackatimeProject[]
+interface HackatimeStatsResponse {
+	data: {
+		projects: HackatimeStatsProject[]
+	}
+}
+
+interface HackatimeDetailsResponse {
+	projects: HackatimeDetailsProject[]
 }
 
 const hackatime = new Elysia({ prefix: '/hackatime' })
@@ -28,33 +37,51 @@ hackatime.get('/projects', async ({ headers }) => {
 		return { error: 'No Slack ID found for user', projects: [] }
 	}
 
-	const url = `${HACKATIME_API}/users/${encodeURIComponent(user.slackId)}/projects/details`
-	console.log('[HACKATIME] Fetching projects:', { userId: user.id, slackId: user.slackId, url })
+	const statsParams = new URLSearchParams({
+		features: 'projects',
+		start_date: SCRAPS_START_DATE
+	})
+	const statsUrl = `${HACKATIME_API}/users/${encodeURIComponent(user.slackId)}/stats?${statsParams}`
+	const detailsUrl = `${HACKATIME_API}/users/${encodeURIComponent(user.slackId)}/projects/details`
+	console.log('[HACKATIME] Fetching projects:', { userId: user.id, slackId: user.slackId, statsUrl })
 
 	try {
-		const response = await fetch(url, {
-			headers: {
-				'Accept': 'application/json'
-			}
-		})
+		// Fetch both stats (for hours after start date) and details (for repo URLs and languages)
+		const [statsResponse, detailsResponse] = await Promise.all([
+			fetch(statsUrl, { headers: { 'Accept': 'application/json' } }),
+			fetch(detailsUrl, { headers: { 'Accept': 'application/json' } })
+		])
 
-		if (!response.ok) {
-			const errorText = await response.text()
-			console.log('[HACKATIME] API error:', { status: response.status, body: errorText })
+		if (!statsResponse.ok) {
+			const errorText = await statsResponse.text()
+			console.log('[HACKATIME] Stats API error:', { status: statsResponse.status, body: errorText })
 			return { projects: [] }
 		}
 
-		const data: HackatimeResponse = await response.json()
-		console.log('[HACKATIME] Projects fetched:', data.projects?.length || 0)
+		const statsData: HackatimeStatsResponse = await statsResponse.json()
+		const detailsData: HackatimeDetailsResponse = detailsResponse.ok 
+			? await detailsResponse.json() 
+			: { projects: [] }
+
+		const projects = statsData.data?.projects || []
+		console.log('[HACKATIME] Projects fetched:', projects.length)
+
+		// Create a map of project details for quick lookup
+		const detailsMap = new Map(
+			detailsData.projects?.map(p => [p.name, p]) || []
+		)
 
 		return {
 			slackId: user.slackId,
-			projects: data.projects.map((p) => ({
-				name: p.name,
-				hours: Math.round(p.total_seconds / 3600 * 10) / 10,
-				repoUrl: p.repo_url,
-				languages: p.languages
-			}))
+			projects: projects.map((p) => {
+				const details = detailsMap.get(p.name)
+				return {
+					name: p.name,
+					hours: Math.round(p.total_seconds / 3600 * 10) / 10,
+					repoUrl: details?.repo_url || null,
+					languages: details?.languages || []
+				}
+			})
 		}
 	} catch (error) {
 		console.error('[HACKATIME] Error fetching projects:', error)

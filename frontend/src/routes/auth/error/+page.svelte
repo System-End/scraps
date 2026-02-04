@@ -4,10 +4,16 @@
 
 	let reason = $derived(page.url.searchParams.get('reason') || 'unknown')
 
-	const errorMessages: Record<string, { title: string; description: string }> = {
+	const errorMessages: Record<string, { title: string; description: string; redirectUrl?: string; redirectText?: string }> = {
+		'needs-verification': {
+			title: 'verify your identity',
+			description: 'you need to verify your identity with hack club auth before you can use scraps. click below to complete verification.',
+			redirectUrl: 'https://auth.hackclub.com',
+			redirectText: 'verify with hack club auth'
+		},
 		'not-eligible': {
 			title: 'not eligible for ysws',
-			description: 'your hack club account is not currently eligible for you ship we ship programs. this might be because your account needs to be verified first.'
+			description: 'your hack club account is not currently eligible for you ship we ship programs. please ask for help in the hack club slack.'
 		},
 		'auth-failed': {
 			title: 'authentication failed',
@@ -44,14 +50,25 @@
 			>
 				go back home
 			</a>
-			<a
-				href="https://hackclub.com/slack"
-				target="_blank"
-				rel="noopener noreferrer"
-				class="px-6 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all cursor-pointer"
-			>
-				get help on slack
-			</a>
+			{#if errorInfo.redirectUrl}
+				<a
+					href={errorInfo.redirectUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="px-6 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all cursor-pointer"
+				>
+					{errorInfo.redirectText}
+				</a>
+			{:else}
+				<a
+					href="https://hackclub.com/slack"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="px-6 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all cursor-pointer"
+				>
+					get help on slack
+				</a>
+			{/if}
 		</div>
 	</div>
 </div>

@@ -5,8 +5,38 @@
 	import { login } from '$lib/auth-client'
 	import { API_URL } from '$lib/config'
 
-	function handleLogin() {
-		login()
+	let email = $state('')
+	let emailError = $state('')
+	let isSubmitting = $state(false)
+
+	function isValidEmail(email: string): boolean {
+		return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+	}
+
+	async function handleLogin() {
+		emailError = ''
+
+		if (!email.trim()) {
+			emailError = 'please enter your email'
+			return
+		}
+
+		if (!isValidEmail(email)) {
+			emailError = 'please enter a valid email'
+			return
+		}
+
+		isSubmitting = true
+		try {
+			await fetch(`${API_URL}/auth/collect-email`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ email })
+			})
+			login()
+		} catch {
+			login()
+		}
 	}
 
 	interface ShopItem {
@@ -138,13 +168,25 @@
 		</p>
 
 		<!-- Auth Section -->
-		<button
-			onclick={handleLogin}
-			class="flex items-center cursor-pointer justify-center gap-2 px-8 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all"
-		>
-			<Origami size={18} />
-			<span>start scrapping</span>
-		</button>
+		<div class="flex flex-col gap-2">
+			<input
+				type="email"
+				bind:value={email}
+				placeholder="your email"
+				class="px-4 py-3 border-2 border-black rounded-full focus:outline-none focus:border-dashed w-full"
+			/>
+			{#if emailError}
+				<p class="text-red-500 text-sm px-4">{emailError}</p>
+			{/if}
+			<button
+				onclick={handleLogin}
+				disabled={isSubmitting}
+				class="flex items-center cursor-pointer justify-center gap-2 px-8 py-3 bg-black text-white rounded-full font-bold hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+			>
+				<Origami size={18} />
+				<span>start scrapping</span>
+			</button>
+		</div>
 	</div>
 </div>
 

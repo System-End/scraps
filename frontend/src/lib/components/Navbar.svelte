@@ -17,7 +17,8 @@
 		ShoppingBag,
 		Newspaper,
 		PackageCheck,
-		Compass
+		Compass,
+		BarChart3
 	} from '@lucide/svelte'
 	import { logout, getUser, userScrapsStore } from '$lib/auth-client'
 
@@ -169,6 +170,16 @@
 					<div class="w-16 h-6 bg-gray-200 rounded animate-pulse"></div>
 				</div>
 			{:else}
+				<a
+					href="/admin"
+					class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath === '/admin'
+						? 'bg-black text-white border-black'
+						: 'border-black hover:border-dashed'}"
+				>
+					<BarChart3 size={18} />
+					<span class="text-lg font-bold">info</span>
+				</a>
+
 				<a
 					href="/admin/reviews"
 					class="flex items-center gap-2 px-6 py-2 border-4 rounded-full transition-all duration-300 cursor-pointer {currentPath.startsWith('/admin/reviews')
@@ -345,7 +356,7 @@
 
 {#if isReviewer}
 	<a
-		href={isInAdminSection ? '/dashboard' : '/admin/reviews'}
+		href={isInAdminSection ? '/dashboard' : '/admin'}
 		class="fixed bottom-6 left-6 z-50 flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-full font-bold hover:bg-red-700 transition-all duration-200 border-4 border-red-800 cursor-pointer"
 	>
 		<Shield size={20} />

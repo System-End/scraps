@@ -28305,6 +28305,7 @@ var usersTable = pgTable("users", {
   idToken: text("id_token"),
   role: varchar().notNull().default("member"),
   internalNotes: text("internal_notes"),
+  verificationStatus: varchar("verification_status"),
   tutorialCompleted: boolean("tutorial_completed").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
@@ -28469,7 +28470,8 @@ async function createOrUpdateUser(identity, tokens) {
     avatar: avatarUrl,
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
-    idToken: tokens.id_token
+    idToken: tokens.id_token,
+    verificationStatus: identity.verification_status
   }).onConflictDoUpdate({
     target: usersTable.sub,
     set: {
@@ -28480,6 +28482,7 @@ async function createOrUpdateUser(identity, tokens) {
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       idToken: tokens.id_token,
+      verificationStatus: identity.verification_status,
       updatedAt: new Date
     }
   }).returning();
@@ -28527,16 +28530,22 @@ async function checkUserEligibility(accessToken) {
 
 // src/routes/projects.ts
 var HACKATIME_API = "https://hackatime.hackclub.com/api/v1";
+var SCRAPS_START_DATE = "2026-02-03";
 async function fetchHackatimeHours(slackId, projectName) {
   try {
-    const url = `${HACKATIME_API}/users/${encodeURIComponent(slackId)}/projects/details`;
+    const params = new URLSearchParams({
+      features: "projects",
+      start_date: SCRAPS_START_DATE,
+      filter_by_project: projectName
+    });
+    const url = `${HACKATIME_API}/users/${encodeURIComponent(slackId)}/stats?${params}`;
     const response = await fetch(url, {
       headers: { Accept: "application/json" }
     });
     if (!response.ok)
       return 0;
     const data = await response.json();
-    const project = data.projects.find((p) => p.name === projectName);
+    const project = data.data?.projects?.find((p) => p.name === projectName);
     if (!project)
       return 0;
     return Math.round(project.total_seconds / 3600 * 10) / 10;
@@ -28556,6 +28565,67 @@ function parseHackatimeProject(hackatimeProject) {
   };
 }
 var projects = new Elysia({ prefix: "/projects" });
+projects.get("/explore", async ({ query }) => {
+  const page = parseInt(query.page) || 1;
+  const limit = Math.min(parseInt(query.limit) || 20, 50);
+  const offset = (page - 1) * limit;
+  const search = query.search?.trim() || "";
+  const tier = query.tier ? parseInt(query.tier) : null;
+  const status2 = query.status || null;
+  const conditions = [
+    or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
+    or(eq(projectsTable.status, "shipped"), eq(projectsTable.status, "in_progress"))
+  ];
+  if (search) {
+    conditions.push(or(ilike(projectsTable.name, `%${search}%`), ilike(projectsTable.description, `%${search}%`)));
+  }
+  if (tier && tier >= 1 && tier <= 4) {
+    conditions.push(eq(projectsTable.tier, tier));
+  }
+  if (status2 === "shipped" || status2 === "in_progress") {
+    conditions[1] = eq(projectsTable.status, status2);
+  }
+  const whereClause = and(...conditions);
+  const [projectsList, countResult] = await Promise.all([
+    db.select({
+      id: projectsTable.id,
+      name: projectsTable.name,
+      description: projectsTable.description,
+      image: projectsTable.image,
+      hours: projectsTable.hours,
+      tier: projectsTable.tier,
+      status: projectsTable.status,
+      views: projectsTable.views,
+      userId: projectsTable.userId
+    }).from(projectsTable).where(whereClause).orderBy(desc(projectsTable.updatedAt)).limit(limit).offset(offset),
+    db.select({ count: sql`count(*)` }).from(projectsTable).where(whereClause)
+  ]);
+  const userIds = [...new Set(projectsList.map((p) => p.userId))];
+  let users = [];
+  if (userIds.length > 0) {
+    users = await db.select({ id: usersTable.id, username: usersTable.username }).from(usersTable).where(inArray(usersTable.id, userIds));
+  }
+  const total = Number(countResult[0]?.count || 0);
+  return {
+    data: projectsList.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description.substring(0, 150) + (p.description.length > 150 ? "..." : ""),
+      image: p.image,
+      hours: p.hours,
+      tier: p.tier,
+      status: p.status,
+      views: p.views,
+      username: users.find((u) => u.id === p.userId)?.username || null
+    })),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+});
 projects.get("/", async ({ headers, query }) => {
   const user = await getUserFromSession(headers);
   if (!user)
@@ -28745,6 +28815,16 @@ projects.post("/:id/submit", async ({ params, headers }) => {
   const user = await getUserFromSession(headers);
   if (!user)
     return { error: "Unauthorized" };
+  if (user.accessToken) {
+    const meResponse = await fetchUserIdentity(user.accessToken);
+    if (meResponse) {
+      const { identity } = meResponse;
+      await db.update(usersTable).set({ verificationStatus: identity.verification_status }).where(eq(usersTable.id, user.id));
+      if (identity.verification_status === "ineligible") {
+        return { error: "ineligible", redirectTo: "/auth/error?reason=not-eligible" };
+      }
+    }
+  }
   const project = await db.select().from(projectsTable).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).limit(1);
   if (!project[0])
     return { error: "Not found" };
@@ -28808,11 +28888,11 @@ var news = new Elysia({
   prefix: "/news"
 });
 news.get("/", async () => {
-  const items = await db.select().from(newsTable).orderBy(desc(newsTable.createdAt));
+  const items = await db.select().from(newsTable).where(eq(newsTable.active, true)).orderBy(desc(newsTable.createdAt));
   return items;
 });
 news.get("/latest", async () => {
-  const items = await db.select().from(newsTable).orderBy(desc(newsTable.createdAt)).limit(1);
+  const items = await db.select().from(newsTable).where(eq(newsTable.active, true)).orderBy(desc(newsTable.createdAt)).limit(1);
   return items[0] || null;
 });
 var news_default = news;
@@ -28929,10 +29009,25 @@ async function canAfford(userId, cost, txOrDb = db) {
     return false;
   return balance >= cost;
 }
-
+// src/schemas/user-emails.ts
+var userEmailsTable = pgTable("user_emails", {
+  id: serial().primaryKey(),
+  email: varchar().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
 // src/routes/auth.ts
 var FRONTEND_URL = config.frontendUrl;
 var authRoutes = new Elysia({ prefix: "/auth" });
+authRoutes.post("/collect-email", async ({ body }) => {
+  const { email } = body;
+  console.log("[AUTH] Collecting email:", email);
+  await db.insert(userEmailsTable).values({ email });
+  return { success: true };
+}, {
+  body: t.Object({
+    email: t.String({ format: "email" })
+  })
+});
 authRoutes.get("/login", ({ redirect: redirect2 }) => {
   console.log("[AUTH] Login initiated");
   return redirect2(getAuthorizationUrl());
@@ -28964,9 +29059,19 @@ authRoutes.get("/callback", async ({ query, redirect: redirect2, cookie }) => {
       verificationStatus: identity.verification_status
     });
     const user = await createOrUpdateUser(identity, tokens);
+    await db.delete(userEmailsTable).where(eq(userEmailsTable.email, identity.primary_email));
+    console.log("[AUTH] Deleted collected email:", identity.primary_email);
     if (user.role === "banned") {
       console.log("[AUTH] Banned user attempted login:", { userId: user.id, username: user.username });
       return redirect2("https://fraud.land");
+    }
+    if (identity.verification_status === "needs_submission") {
+      console.log("[AUTH] User needs to verify identity:", { userId: user.id });
+      return redirect2(`${FRONTEND_URL}/auth/error?reason=needs-verification`);
+    }
+    if (identity.verification_status === "ineligible") {
+      console.log("[AUTH] User is ineligible:", { userId: user.id });
+      return redirect2(`${FRONTEND_URL}/auth/error?reason=not-eligible`);
     }
     const sessionToken = await createSession(user.id);
     console.log("[AUTH] User authenticated successfully:", { userId: user.id, username: user.username });
@@ -29058,10 +29163,15 @@ user.post("/complete-tutorial", async ({ headers }) => {
   if (userData.tutorialCompleted) {
     return { success: true, alreadyCompleted: true };
   }
+  const existingBonus = await db.select({ id: userBonusesTable.id }).from(userBonusesTable).where(and(eq(userBonusesTable.userId, userData.id), eq(userBonusesTable.reason, "tutorial_completion"))).limit(1);
+  if (existingBonus.length > 0) {
+    await db.update(usersTable).set({ tutorialCompleted: true, updatedAt: new Date }).where(eq(usersTable.id, userData.id));
+    return { success: true, alreadyCompleted: true };
+  }
   await db.update(usersTable).set({ tutorialCompleted: true, updatedAt: new Date }).where(eq(usersTable.id, userData.id));
   await db.insert(userBonusesTable).values({
     userId: userData.id,
-    type: "tutorial_bonus",
+    reason: "tutorial_completion",
     amount: 10
   });
   return { success: true, bonusAwarded: 10 };
@@ -29805,6 +29915,7 @@ var leaderboard_default = leaderboard;
 
 // src/routes/hackatime.ts
 var HACKATIME_API2 = "https://hackatime.hackclub.com/api/v1";
+var SCRAPS_START_DATE2 = "2026-02-03";
 var hackatime = new Elysia({ prefix: "/hackatime" });
 hackatime.get("/projects", async ({ headers }) => {
   const user2 = await getUserFromSession(headers);
@@ -29814,29 +29925,39 @@ hackatime.get("/projects", async ({ headers }) => {
     console.log("[HACKATIME] No slackId found for user:", user2.id);
     return { error: "No Slack ID found for user", projects: [] };
   }
-  const url = `${HACKATIME_API2}/users/${encodeURIComponent(user2.slackId)}/projects/details`;
-  console.log("[HACKATIME] Fetching projects:", { userId: user2.id, slackId: user2.slackId, url });
+  const statsParams = new URLSearchParams({
+    features: "projects",
+    start_date: SCRAPS_START_DATE2
+  });
+  const statsUrl = `${HACKATIME_API2}/users/${encodeURIComponent(user2.slackId)}/stats?${statsParams}`;
+  const detailsUrl = `${HACKATIME_API2}/users/${encodeURIComponent(user2.slackId)}/projects/details`;
+  console.log("[HACKATIME] Fetching projects:", { userId: user2.id, slackId: user2.slackId, statsUrl });
   try {
-    const response = await fetch(url, {
-      headers: {
-        Accept: "application/json"
-      }
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log("[HACKATIME] API error:", { status: response.status, body: errorText });
+    const [statsResponse, detailsResponse] = await Promise.all([
+      fetch(statsUrl, { headers: { Accept: "application/json" } }),
+      fetch(detailsUrl, { headers: { Accept: "application/json" } })
+    ]);
+    if (!statsResponse.ok) {
+      const errorText = await statsResponse.text();
+      console.log("[HACKATIME] Stats API error:", { status: statsResponse.status, body: errorText });
       return { projects: [] };
     }
-    const data = await response.json();
-    console.log("[HACKATIME] Projects fetched:", data.projects?.length || 0);
+    const statsData = await statsResponse.json();
+    const detailsData = detailsResponse.ok ? await detailsResponse.json() : { projects: [] };
+    const projects2 = statsData.data?.projects || [];
+    console.log("[HACKATIME] Projects fetched:", projects2.length);
+    const detailsMap = new Map(detailsData.projects?.map((p) => [p.name, p]) || []);
     return {
       slackId: user2.slackId,
-      projects: data.projects.map((p) => ({
-        name: p.name,
-        hours: Math.round(p.total_seconds / 3600 * 10) / 10,
-        repoUrl: p.repo_url,
-        languages: p.languages
-      }))
+      projects: projects2.map((p) => {
+        const details = detailsMap.get(p.name);
+        return {
+          name: p.name,
+          hours: Math.round(p.total_seconds / 3600 * 10) / 10,
+          repoUrl: details?.repo_url || null,
+          languages: details?.languages || []
+        };
+      })
     };
   } catch (error) {
     console.error("[HACKATIME] Error fetching projects:", error);
@@ -29915,6 +30036,27 @@ async function requireAdmin(headers) {
     return null;
   return user2;
 }
+admin.get("/stats", async ({ headers, status: status2 }) => {
+  const user2 = await requireReviewer(headers);
+  if (!user2) {
+    return status2(401, { error: "Unauthorized" });
+  }
+  const [usersCount, projectsCount, totalHoursResult] = await Promise.all([
+    db.select({ count: sql`count(*)` }).from(usersTable),
+    db.select({ count: sql`count(*)` }).from(projectsTable).where(or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)),
+    db.select({ total: sql`COALESCE(SUM(COALESCE(${projectsTable.hoursOverride}, ${projectsTable.hours})), 0)` }).from(projectsTable).where(and(eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)))
+  ]);
+  const totalUsers = Number(usersCount[0]?.count || 0);
+  const totalProjects = Number(projectsCount[0]?.count || 0);
+  const totalHours = Number(totalHoursResult[0]?.total || 0);
+  const weightedGrants = Math.round(totalHours / 10 * 100) / 100;
+  return {
+    totalUsers,
+    totalProjects,
+    totalHours: Math.round(totalHours * 10) / 10,
+    weightedGrants
+  };
+});
 admin.get("/users", async ({ headers, query, status: status2 }) => {
   try {
     const user2 = await requireReviewer(headers);
@@ -30208,6 +30350,9 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
     const project = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1);
     if (!project[0])
       return { error: "Project not found" };
+    if (hoursOverride !== undefined && hoursOverride > (project[0].hours ?? 0)) {
+      return { error: `Hours override (${hoursOverride}) cannot exceed project hours (${project[0].hours})` };
+    }
     if (project[0].deleted) {
       return { error: "Cannot review a deleted project" };
     }

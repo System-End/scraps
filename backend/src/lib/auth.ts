@@ -89,7 +89,8 @@ export async function fetchUserIdentity(accessToken: string): Promise<HackClubMe
 }
 
 export async function createOrUpdateUser(identity: HackClubIdentity, tokens: OIDCTokenResponse) {
-    if (!identity.ysws_eligible) {
+    // Only block if explicitly false (undefined means pending verification)
+    if (identity.ysws_eligible === false) {
         throw new Error("not-eligible")
     }
 
@@ -116,7 +117,8 @@ export async function createOrUpdateUser(identity: HackClubIdentity, tokens: OID
             avatar: avatarUrl,
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token,
-            idToken: tokens.id_token
+            idToken: tokens.id_token,
+            verificationStatus: identity.verification_status
         })
         .onConflictDoUpdate({
             target: usersTable.sub,
@@ -128,6 +130,7 @@ export async function createOrUpdateUser(identity: HackClubIdentity, tokens: OID
                 accessToken: tokens.access_token,
                 refreshToken: tokens.refresh_token,
                 idToken: tokens.id_token,
+                verificationStatus: identity.verification_status,
                 updatedAt: new Date()
             }
         })
