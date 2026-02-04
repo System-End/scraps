@@ -1,5 +1,5 @@
 import { Elysia } from "elysia"
-import { desc } from "drizzle-orm"
+import { desc, eq } from "drizzle-orm"
 import { db } from "../db"
 import { newsTable } from "../schemas/news"
 
@@ -12,6 +12,7 @@ news.get("/", async () => {
     const items = await db
         .select()
         .from(newsTable)
+        .where(eq(newsTable.active, true))
         .orderBy(desc(newsTable.createdAt))
 
     return items
@@ -22,6 +23,7 @@ news.get("/latest", async () => {
     const items = await db
         .select()
         .from(newsTable)
+        .where(eq(newsTable.active, true))
         .orderBy(desc(newsTable.createdAt))
         .limit(1)
 
