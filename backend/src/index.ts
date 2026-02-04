@@ -3,7 +3,6 @@ import { cors } from '@elysiajs/cors'
 import { config } from './config'
 import projects from './routes/projects'
 import news from './routes/news'
-import items from './routes/items'
 import authRoutes from './routes/auth'
 import user from './routes/user'
 import shop from './routes/shop'
@@ -16,7 +15,6 @@ const api = new Elysia()
     .use(authRoutes)
     .use(projects)
     .use(news)
-    .use(items)
     .use(user)
     .use(shop)
     .use(leaderboard)

@@ -560,8 +560,8 @@ admin.post('/shop/items', async ({ headers, body, status }) => {
         return status(400, { error: 'Invalid price' })
     }
 
-    if (baseProbability !== undefined && (typeof baseProbability !== 'number' || baseProbability < 0 || baseProbability > 100)) {
-        return status(400, { error: 'baseProbability must be between 0 and 100' })
+    if (baseProbability !== undefined && (typeof baseProbability !== 'number' || !Number.isInteger(baseProbability) || baseProbability < 0 || baseProbability > 100)) {
+        return status(400, { error: 'baseProbability must be an integer between 0 and 100' })
     }
 
     try {
@@ -607,8 +607,8 @@ admin.put('/shop/items/:id', async ({ params, headers, body, status }) => {
             boostAmount?: number
         }
 
-        if (baseProbability !== undefined && (typeof baseProbability !== 'number' || baseProbability < 0 || baseProbability > 100)) {
-            return status(400, { error: 'baseProbability must be between 0 and 100' })
+        if (baseProbability !== undefined && (typeof baseProbability !== 'number' || !Number.isInteger(baseProbability) || baseProbability < 0 || baseProbability > 100)) {
+            return status(400, { error: 'baseProbability must be an integer between 0 and 100' })
         }
 
         const updateData: Record<string, unknown> = { updatedAt: new Date() }

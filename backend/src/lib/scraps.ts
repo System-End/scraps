@@ -61,6 +61,12 @@ export async function getUserScrapsBalance(userId: number, txOrDb: DbOrTx = db):
 }
 
 export async function canAfford(userId: number, cost: number, txOrDb: DbOrTx = db): Promise<boolean> {
+	if (cost < 0) return false
+	if (!Number.isFinite(cost)) return false
+
 	const { balance } = await getUserScrapsBalance(userId, txOrDb)
+
+	if (!Number.isFinite(balance)) return false
+
 	return balance >= cost
 }
