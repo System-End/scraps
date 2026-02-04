@@ -229,8 +229,11 @@
 		if (highlight === 'navbar' || highlight === 'dashboard' || highlight === 'shop' || highlight === 'refinery' || highlight === 'leaderboard' || highlight === 'scraps-counter') {
 			return 'bottom'
 		}
-		if (highlight === 'new-project-button' || highlight === 'create-project-modal' || highlight === 'submit-button') {
+		if (highlight === 'create-project-modal' || highlight === 'submit-button') {
 			return 'left'
+		}
+		if (highlight === 'new-project-button') {
+			return 'right'
 		}
 		return 'center'
 	})
@@ -357,7 +360,7 @@
 	<!-- Tutorial card -->
 	<div
 		data-tutorial-card
-		class="bg-white rounded-2xl w-full max-w-lg border-4 border-black pointer-events-auto {currentStepData.highlight === 'create-project-modal' ? 'z-[300]' : ''} {cardOffset ? 'fixed' : 'relative mx-4'} {!cardOffset && cardPosition === 'bottom' ? 'mt-auto mb-8' : !cardOffset && cardPosition === 'bottom-center' ? 'mt-auto mb-8' : !cardOffset && cardPosition === 'top' ? 'mb-auto mt-8' : !cardOffset && cardPosition === 'left' ? 'mr-auto ml-8' : ''}"
+		class="bg-white rounded-2xl w-full max-w-lg border-4 border-black pointer-events-auto {currentStepData.highlight === 'create-project-modal' ? 'z-[300]' : ''} {cardOffset ? 'fixed' : 'relative mx-4'} {!cardOffset && cardPosition === 'bottom' ? 'mt-auto mb-8' : !cardOffset && cardPosition === 'bottom-center' ? 'mt-auto mb-8' : !cardOffset && cardPosition === 'top' ? 'mb-auto mt-8' : !cardOffset && cardPosition === 'left' ? 'mr-auto ml-8' : !cardOffset && cardPosition === 'right' ? 'ml-auto mr-8' : ''}"
 		style={cardOffset ? `left: ${cardOffset.x}px; top: ${cardOffset.y}px;` : ''}
 	>
 		<!-- Drag handle -->

@@ -1,5 +1,5 @@
 import { Elysia } from 'elysia'
-import { eq, inArray, sql } from 'drizzle-orm'
+import { eq, inArray, sql, and } from 'drizzle-orm'
 import { getUserFromSession, checkUserEligibility } from '../lib/auth'
 import { db } from '../db'
 import { usersTable, userBonusesTable } from '../schemas/users'
@@ -49,6 +49,25 @@ user.post('/complete-tutorial', async ({ headers }) => {
         return { success: true, alreadyCompleted: true }
     }
 
+    // Check for existing tutorial bonus to prevent duplicates
+    const existingBonus = await db
+        .select({ id: userBonusesTable.id })
+        .from(userBonusesTable)
+        .where(and(
+            eq(userBonusesTable.userId, userData.id),
+            eq(userBonusesTable.reason, 'tutorial_completion')
+        ))
+        .limit(1)
+
+    if (existingBonus.length > 0) {
+        // Mark tutorial as completed but don't award bonus again
+        await db
+            .update(usersTable)
+            .set({ tutorialCompleted: true, updatedAt: new Date() })
+            .where(eq(usersTable.id, userData.id))
+        return { success: true, alreadyCompleted: true }
+    }
+
     await db
         .update(usersTable)
         .set({ tutorialCompleted: true, updatedAt: new Date() })
@@ -56,7 +75,7 @@ user.post('/complete-tutorial', async ({ headers }) => {
 
     await db.insert(userBonusesTable).values({
         userId: userData.id,
-        type: 'tutorial_bonus',
+        reason: 'tutorial_completion',
         amount: 10
     })
 
