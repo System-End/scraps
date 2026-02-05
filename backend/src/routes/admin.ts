@@ -65,6 +65,7 @@ admin.get('/stats', async ({ headers, status }) => {
     const inProgressHours = Number(inProgressHoursResult[0]?.total || 0)
     const weightedGrants = Math.round(totalHours / 10 * 100) / 100
     const pendingWeightedGrants = Math.round(pendingHours / 10 * 100) / 100
+    const inProgressWeightedGrants = Math.round(inProgressHours / 10 * 100) / 100
 
     return {
         totalUsers,
@@ -73,7 +74,8 @@ admin.get('/stats', async ({ headers, status }) => {
         weightedGrants,
         pendingHours: Math.round(pendingHours * 10) / 10,
         pendingWeightedGrants,
-        inProgressHours: Math.round(inProgressHours * 10) / 10
+        inProgressHours: Math.round(inProgressHours * 10) / 10,
+        inProgressWeightedGrants
     }
 })
 

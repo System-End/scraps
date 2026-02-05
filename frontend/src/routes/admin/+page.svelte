@@ -13,6 +13,7 @@
 		pendingHours: number;
 		pendingWeightedGrants: number;
 		inProgressHours: number;
+		inProgressWeightedGrants: number;
 	}
 
 	let stats = $state<Stats | null>(null);
@@ -103,6 +104,21 @@
 				<div>
 					<p class="text-sm font-bold text-gray-500">in progress hours</p>
 					<p class="text-4xl font-bold text-yellow-600">{stats.inProgressHours.toLocaleString()}h</p>
+				</div>
+			</div>
+
+			<div class="flex items-center gap-4 rounded-2xl border-4 border-yellow-500 bg-yellow-50 p-6">
+				<div
+					class="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-500 text-white"
+				>
+					<Scale size={32} />
+				</div>
+				<div>
+					<p class="text-sm font-bold text-gray-500">in progress weighted grants</p>
+					<p class="text-4xl font-bold text-yellow-600">
+						{stats.inProgressWeightedGrants.toLocaleString()}
+					</p>
+					<p class="text-xs text-gray-400">in progress hours ÷ 10</p>
 				</div>
 			</div>
 
