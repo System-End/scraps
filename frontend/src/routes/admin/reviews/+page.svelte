@@ -6,6 +6,7 @@
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
+	import { t } from '$lib/i18n';
 
 	interface Project {
 		id: number;
@@ -73,18 +74,18 @@
 </script>
 
 <svelte:head>
-	<title>reviews - admin - scraps</title>
+	<title>{$t.nav.reviews} - {$t.nav.admin} - scraps</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12">
-	<h1 class="mb-2 text-4xl font-bold md:text-5xl">review queue</h1>
-	<p class="mb-8 text-lg text-gray-600">projects waiting for review</p>
+	<h1 class="mb-2 text-4xl font-bold md:text-5xl">{$t.admin.reviewQueue}</h1>
+	<p class="mb-8 text-lg text-gray-600">{$t.admin.projectsWaitingForReview}</p>
 
 	{#if loading}
-		<div class="py-12 text-center text-gray-500">loading...</div>
+		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>
 	{:else if projects.length === 0}
 		<div class="py-12 text-center">
-			<p class="text-xl text-gray-500">no projects waiting for review</p>
+			<p class="text-xl text-gray-500">{$t.admin.noProjectsWaitingForReview}</p>
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -122,7 +123,10 @@
 					<ChevronLeft size={20} />
 				</button>
 				<span class="font-bold">
-					page {pagination.page} of {pagination.totalPages}
+					{$t.admin.page}
+					{pagination.page}
+					{$t.admin.of}
+					{pagination.totalPages}
 				</span>
 				<button
 					onclick={() => goToPage(pagination!.page + 1)}

@@ -92,6 +92,7 @@ user.get('/profile/:id', async ({ params, headers }) => {
             id: usersTable.id,
             username: usersTable.username,
             avatar: usersTable.avatar,
+            role: usersTable.role,
             createdAt: usersTable.createdAt
         })
         .from(usersTable)
@@ -158,9 +159,11 @@ user.get('/profile/:id', async ({ params, headers }) => {
             id: targetUser[0].id,
             username: targetUser[0].username,
             avatar: targetUser[0].avatar,
+            role: targetUser[0].role,
             scraps: scrapsBalance.balance,
             createdAt: targetUser[0].createdAt
         },
+        isAdmin: currentUser.role === 'admin',
         projects: visibleProjects.map(p => ({
             id: p.id,
             name: p.name,

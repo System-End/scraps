@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { ChevronLeft, ChevronRight } from '@lucide/svelte';
 	import { newsStore, newsLoading, fetchNews } from '$lib/stores';
+	import { t, locale } from '$lib/i18n';
 
 	let currentIndex = $state(0);
 	let isPaused = $state(false);
@@ -33,7 +34,7 @@
 	}
 
 	function formatDate(dateString: string) {
-		return new Date(dateString).toLocaleDateString('en-US', {
+		return new Date(dateString).toLocaleDateString($locale === 'es' ? 'es-ES' : 'en-US', {
 			month: 'short',
 			day: 'numeric',
 			year: 'numeric'
@@ -50,20 +51,20 @@
 		aria-label="News carousel"
 	>
 		<div class="mb-2 flex items-center justify-between">
-			<h2 class="text-lg font-bold">news</h2>
+			<h2 class="text-lg font-bold">{$t.news.title}</h2>
 			{#if $newsStore.length > 1}
 				<div class="flex items-center gap-2">
 					<button
 						onclick={prev}
 						class="cursor-pointer rounded p-1 transition-colors hover:bg-gray-100"
-						aria-label="Previous news"
+						aria-label={$t.news.previousNews}
 					>
 						<ChevronLeft size={20} />
 					</button>
 					<button
 						onclick={next}
 						class="cursor-pointer rounded p-1 transition-colors hover:bg-gray-100"
-						aria-label="Next news"
+						aria-label={$t.news.nextNews}
 					>
 						<ChevronRight size={20} />
 					</button>
@@ -72,7 +73,7 @@
 		</div>
 
 		{#if $newsStore.length === 0}
-			<p class="text-gray-500">no news right now</p>
+			<p class="text-gray-500">{$t.news.noNewsRightNow}</p>
 		{:else}
 			<div class="relative h-20 overflow-hidden">
 				{#each $newsStore as item, index (item.id)}
@@ -99,7 +100,7 @@
 							currentIndex
 								? 'w-6 bg-black'
 								: 'bg-gray-300 hover:bg-gray-400'}"
-							aria-label="Go to news {index + 1}"
+							aria-label="{$t.news.goToNews} {index + 1}"
 						></button>
 					{/each}
 				</div>

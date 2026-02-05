@@ -4,6 +4,7 @@
 	import { Check, X, Package, Clock, Truck, CheckCircle, XCircle } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
+	import { t } from '$lib/i18n';
 
 	interface ShippingAddress {
 		firstName: string;
@@ -161,14 +162,14 @@
 </script>
 
 <svelte:head>
-	<title>orders - admin - scraps</title>
+	<title>{$t.nav.orders} - {$t.nav.admin} - scraps</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12">
 	<div class="mb-8 flex items-center justify-between">
 		<div>
-			<h1 class="mb-2 text-4xl font-bold md:text-5xl">orders</h1>
-			<p class="text-lg text-gray-600">manage shop orders and fulfillment</p>
+			<h1 class="mb-2 text-4xl font-bold md:text-5xl">{$t.nav.orders}</h1>
+			<p class="text-lg text-gray-600">{$t.admin.manageOrdersAndFulfillment}</p>
 		</div>
 	</div>
 
@@ -181,7 +182,7 @@
 				? 'bg-black text-white'
 				: 'hover:border-dashed'}"
 		>
-			all ({orders.length})
+			{$t.admin.all} ({orders.length})
 		</button>
 		<button
 			onclick={() => (filter = 'pending')}
@@ -190,7 +191,7 @@
 				? 'bg-black text-white'
 				: 'hover:border-dashed'}"
 		>
-			pending ({orders.filter((o) => !o.isFulfilled).length})
+			{$t.admin.pending} ({orders.filter((o) => !o.isFulfilled).length})
 		</button>
 		<button
 			onclick={() => (filter = 'fulfilled')}
@@ -199,12 +200,12 @@
 				? 'bg-black text-white'
 				: 'hover:border-dashed'}"
 		>
-			fulfilled ({orders.filter((o) => o.isFulfilled).length})
+			{$t.admin.fulfilled} ({orders.filter((o) => o.isFulfilled).length})
 		</button>
 	</div>
 
 	{#if loading}
-		<div class="py-12 text-center text-gray-500">loading...</div>
+		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>
 	{:else if filteredOrders.length === 0}
 		<div class="py-12 text-center text-gray-500">no orders found</div>
 	{:else}
@@ -296,10 +297,10 @@
 							>
 								{#if order.isFulfilled}
 									<X size={16} />
-									unfulfill
+									{$t.admin.unfulfill}
 								{:else}
 									<Check size={16} />
-									fulfill
+									{$t.admin.fulfill}
 								{/if}
 							</button>
 						</div>

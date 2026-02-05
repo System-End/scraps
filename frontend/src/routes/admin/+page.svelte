@@ -4,6 +4,7 @@
 	import { Users, FolderKanban, Clock, Scale, Hourglass } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
+	import { t } from '$lib/i18n';
 
 	interface Stats {
 		totalUsers: number;
@@ -42,16 +43,16 @@
 </script>
 
 <svelte:head>
-	<title>admin info - scraps</title>
+	<title>{$t.admin.adminInfo} - scraps</title>
 </svelte:head>
 
 <div class="mx-auto max-w-4xl px-6 pt-24 pb-24 md:px-12">
-	<h1 class="mb-8 text-4xl font-bold md:text-5xl">admin info</h1>
+	<h1 class="mb-8 text-4xl font-bold md:text-5xl">{$t.admin.adminInfo}</h1>
 
 	{#if loading}
-		<div class="py-12 text-center text-gray-500">loading stats...</div>
+		<div class="py-12 text-center text-gray-500">{$t.admin.loadingStats}</div>
 	{:else if error}
-		<div class="py-12 text-center text-red-600">{error}</div>
+		<div class="py-12 text-center text-red-600">{$t.common.error}: {error}</div>
 	{:else if stats}
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 			<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
@@ -103,7 +104,9 @@
 				</div>
 				<div>
 					<p class="text-sm font-bold text-gray-500">in progress hours</p>
-					<p class="text-4xl font-bold text-yellow-600">{stats.inProgressHours.toLocaleString()}h</p>
+					<p class="text-4xl font-bold text-yellow-600">
+						{stats.inProgressHours.toLocaleString()}h
+					</p>
 				</div>
 			</div>
 
@@ -123,9 +126,7 @@
 			</div>
 
 			<div class="flex items-center gap-4 rounded-2xl border-4 border-blue-500 bg-blue-50 p-6">
-				<div
-					class="flex h-16 w-16 items-center justify-center rounded-full bg-blue-500 text-white"
-				>
+				<div class="flex h-16 w-16 items-center justify-center rounded-full bg-blue-500 text-white">
 					<Hourglass size={32} />
 				</div>
 				<div>
@@ -135,9 +136,7 @@
 			</div>
 
 			<div class="flex items-center gap-4 rounded-2xl border-4 border-blue-500 bg-blue-50 p-6">
-				<div
-					class="flex h-16 w-16 items-center justify-center rounded-full bg-blue-500 text-white"
-				>
+				<div class="flex h-16 w-16 items-center justify-center rounded-full bg-blue-500 text-white">
 					<Scale size={32} />
 				</div>
 				<div>

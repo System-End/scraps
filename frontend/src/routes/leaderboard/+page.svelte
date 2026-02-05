@@ -10,6 +10,7 @@
 		fetchProbabilityLeaders
 	} from '$lib/stores';
 	import { formatHours } from '$lib/utils';
+	import { t } from '$lib/i18n';
 
 	let activeTab = $state<'scraps' | 'hours' | 'probability'>('scraps');
 	let sortBy = $derived(activeTab === 'probability' ? 'scraps' : activeTab);
@@ -32,12 +33,12 @@
 </script>
 
 <svelte:head>
-	<title>leaderboard - scraps</title>
+	<title>{$t.leaderboard.leaderboard} - {$t.common.scraps}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12">
-	<h1 class="mb-2 text-4xl font-bold md:text-5xl">leaderboard</h1>
-	<p class="mb-8 text-lg text-gray-600">top scrappers</p>
+	<h1 class="mb-2 text-4xl font-bold md:text-5xl">{$t.leaderboard.leaderboard}</h1>
+	<p class="mb-8 text-lg text-gray-600">{$t.leaderboard.topScrappers}</p>
 
 	<div class="mb-6 flex flex-wrap gap-2">
 		<button
@@ -47,7 +48,7 @@
 				: 'hover:border-dashed'}"
 			onclick={() => setActiveTab('scraps')}
 		>
-			scraps
+			{$t.leaderboard.scraps}
 		</button>
 		<button
 			class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {activeTab ===
@@ -56,7 +57,7 @@
 				: 'hover:border-dashed'}"
 			onclick={() => setActiveTab('hours')}
 		>
-			hours
+			{$t.leaderboard.hours}
 		</button>
 		<button
 			class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {activeTab ===
@@ -65,16 +66,16 @@
 				: 'hover:border-dashed'}"
 			onclick={() => setActiveTab('probability')}
 		>
-			probability leaders
+			{$t.leaderboard.probabilityLeaders}
 		</button>
 	</div>
 
 	{#if activeTab === 'probability'}
 		<div class="rounded-2xl border-4 border-black p-6">
 			{#if $probabilityLeadersLoading && probabilityLeaders.length === 0}
-				<div class="text-center text-gray-500">loading...</div>
+				<div class="text-center text-gray-500">{$t.common.loading}</div>
 			{:else if probabilityLeaders.length === 0}
-				<div class="text-center text-gray-500">no probability leaders yet</div>
+				<div class="text-center text-gray-500">{$t.leaderboard.noProbabilityLeadersYet}</div>
 			{:else}
 				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{#each probabilityLeaders as leader (leader.itemId)}
@@ -87,7 +88,9 @@
 								/>
 								<div>
 									<div class="font-bold">{leader.itemName}</div>
-									<div class="text-sm text-gray-500">base: {leader.baseProbability}%</div>
+									<div class="text-sm text-gray-500">
+										{$t.leaderboard.base}: {leader.baseProbability}%
+									</div>
 								</div>
 							</div>
 							{#if leader.topUser}
@@ -103,7 +106,7 @@
 									>
 								</a>
 							{:else}
-								<div class="text-sm text-gray-500">no boosts yet</div>
+								<div class="text-sm text-gray-500">{$t.leaderboard.noBoostsYet}</div>
 							{/if}
 						</div>
 					{/each}
@@ -113,17 +116,17 @@
 	{:else}
 		<div class="overflow-hidden rounded-2xl border-4 border-black">
 			{#if $leaderboardLoading && leaderboard.length === 0}
-				<div class="p-8 text-center text-gray-500">loading...</div>
+				<div class="p-8 text-center text-gray-500">{$t.common.loading}</div>
 			{:else}
 				<!-- Desktop table -->
 				<table class="hidden w-full md:table">
 					<thead>
 						<tr class="border-b-4 border-black bg-black text-white">
-							<th class="px-4 py-4 text-left font-bold">rank</th>
-							<th class="px-4 py-4 text-left font-bold">user</th>
-							<th class="px-4 py-4 text-right font-bold">hours</th>
-							<th class="px-4 py-4 text-right font-bold">projects</th>
-							<th class="px-4 py-4 text-right font-bold">scraps</th>
+							<th class="px-4 py-4 text-left font-bold">{$t.leaderboard.rank}</th>
+							<th class="px-4 py-4 text-left font-bold">{$t.leaderboard.user}</th>
+							<th class="px-4 py-4 text-right font-bold">{$t.leaderboard.hours}</th>
+							<th class="px-4 py-4 text-right font-bold">{$t.leaderboard.projects}</th>
+							<th class="px-4 py-4 text-right font-bold">{$t.leaderboard.scraps}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -157,7 +160,9 @@
 								<td class="px-4 py-4 text-right text-lg">{entry.projectCount}</td>
 								<td class="px-4 py-4 text-right text-lg">
 									<span class="font-bold">{entry.scraps}</span>
-									<span class="ml-1 text-sm text-gray-500">(earned: {entry.scrapsEarned})</span>
+									<span class="ml-1 text-sm text-gray-500"
+										>({$t.leaderboard.earned}: {entry.scrapsEarned})</span
+									>
 								</td>
 							</tr>
 						{/each}
@@ -190,12 +195,13 @@
 							<div class="min-w-0 flex-1">
 								<p class="truncate font-bold">{entry.username}</p>
 								<p class="text-sm text-gray-500">
-									{formatHours(entry.hours)}h · {entry.projectCount} projects
+									{formatHours(entry.hours)}h · {entry.projectCount}
+									{$t.leaderboard.projects}
 								</p>
 							</div>
 							<div class="shrink-0 text-right">
 								<p class="font-bold">{entry.scraps}</p>
-								<p class="text-xs text-gray-500">scraps</p>
+								<p class="text-xs text-gray-500">{$t.leaderboard.scraps}</p>
 							</div>
 						</a>
 					{/each}

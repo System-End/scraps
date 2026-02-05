@@ -28572,6 +28572,7 @@ projects.get("/explore", async ({ query }) => {
   const search = query.search?.trim() || "";
   const tier = query.tier ? parseInt(query.tier) : null;
   const status2 = query.status || null;
+  const sortBy = query.sortBy || "default";
   const conditions = [
     or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
     or(eq(projectsTable.status, "shipped"), eq(projectsTable.status, "in_progress"))
@@ -28586,6 +28587,14 @@ projects.get("/explore", async ({ query }) => {
     conditions[1] = eq(projectsTable.status, status2);
   }
   const whereClause = and(...conditions);
+  let orderClause;
+  if (sortBy === "views") {
+    orderClause = desc(projectsTable.views);
+  } else if (sortBy === "random") {
+    orderClause = sql`RANDOM()`;
+  } else {
+    orderClause = desc(projectsTable.updatedAt);
+  }
   const [projectsList, countResult] = await Promise.all([
     db.select({
       id: projectsTable.id,
@@ -28597,7 +28606,7 @@ projects.get("/explore", async ({ query }) => {
       status: projectsTable.status,
       views: projectsTable.views,
       userId: projectsTable.userId
-    }).from(projectsTable).where(whereClause).orderBy(desc(projectsTable.updatedAt)).limit(limit).offset(offset),
+    }).from(projectsTable).where(whereClause).orderBy(orderClause).limit(limit).offset(offset),
     db.select({ count: sql`count(*)` }).from(projectsTable).where(whereClause)
   ]);
   const userIds = [...new Set(projectsList.map((p) => p.userId))];
@@ -29113,7 +29122,7 @@ authRoutes.get("/me", async ({ headers }) => {
       await db.insert(userBonusesTable).values({
         userId: user.id,
         reason: "tutorial_completion",
-        amount: 10
+        amount: 5
       });
       console.log("[AUTH] Auto-awarded tutorial bonus for user:", user.id);
     }
@@ -29189,9 +29198,9 @@ user.post("/complete-tutorial", async ({ headers }) => {
   await db.insert(userBonusesTable).values({
     userId: userData.id,
     reason: "tutorial_completion",
-    amount: 10
+    amount: 5
   });
-  return { success: true, bonusAwarded: 10 };
+  return { success: true, bonusAwarded: 5 };
 });
 user.get("/profile/:id", async ({ params, headers }) => {
   const currentUser = await getUserFromSession(headers);
@@ -29201,6 +29210,7 @@ user.get("/profile/:id", async ({ params, headers }) => {
     id: usersTable.id,
     username: usersTable.username,
     avatar: usersTable.avatar,
+    role: usersTable.role,
     createdAt: usersTable.createdAt
   }).from(usersTable).where(eq(usersTable.id, parseInt(params.id))).limit(1);
   if (!targetUser[0])
@@ -29236,9 +29246,11 @@ user.get("/profile/:id", async ({ params, headers }) => {
       id: targetUser[0].id,
       username: targetUser[0].username,
       avatar: targetUser[0].avatar,
+      role: targetUser[0].role,
       scraps: scrapsBalance.balance,
       createdAt: targetUser[0].createdAt
     },
+    isAdmin: currentUser.role === "admin",
     projects: visibleProjects.map((p) => ({
       id: p.id,
       name: p.name,
@@ -29285,8 +29297,9 @@ shop.get("/items", async ({ headers }) => {
     boostAmount: shopItemsTable.boostAmount,
     createdAt: shopItemsTable.createdAt,
     updatedAt: shopItemsTable.updatedAt,
-    heartCount: sql`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = ${shopItemsTable.id})`.as("heart_count")
+    heartCount: sql`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = shop_items.id)`.as("heart_count")
   }).from(shopItemsTable);
+  items.forEach((item) => console.log(item.name + " " + item.heartCount));
   if (user2) {
     const userHearts = await db.select({ shopItemId: shopHeartsTable.shopItemId }).from(shopHeartsTable).where(eq(shopHeartsTable.userId, user2.id));
     const userBoosts = await db.select({
@@ -29324,6 +29337,7 @@ shop.get("/items", async ({ headers }) => {
     heartCount: Number(item.heartCount) || 0,
     userBoostPercent: 0,
     upgradeCount: 0,
+    adjustedBaseProbability: item.baseProbability,
     effectiveProbability: Math.min(item.baseProbability, 100),
     userHearted: false,
     nextUpgradeCost: item.baseUpgradeCost
@@ -29346,7 +29360,7 @@ shop.get("/items/:id", async ({ params, headers }) => {
     boostAmount: shopItemsTable.boostAmount,
     createdAt: shopItemsTable.createdAt,
     updatedAt: shopItemsTable.updatedAt,
-    heartCount: sql`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = ${shopItemsTable.id})`.as("heart_count")
+    heartCount: sql`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = shop_items.id)`.as("heart_count")
   }).from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
   if (items.length === 0) {
     return { error: "Item not found" };
@@ -29817,11 +29831,11 @@ leaderboard.get("/", async ({ query }) => {
       id: usersTable.id,
       username: usersTable.username,
       avatar: usersTable.avatar,
-      scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as("scraps_earned"),
+      scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0)`.as("scraps_earned"),
       scrapsSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_spent"),
       hours: sql`COALESCE(SUM(${projectsTable.hours}), 0)`.as("total_hours"),
       projectCount: sql`COUNT(${projectsTable.id})`.as("project_count")
-    }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))).groupBy(usersTable.id).orderBy(desc(sql`total_hours`)).limit(10);
+    }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), sql`${projectsTable.status} != 'permanently_rejected'`)).groupBy(usersTable.id).orderBy(desc(sql`total_hours`)).limit(10);
     return results2.map((user2, index) => ({
       rank: index + 1,
       id: user2.id,
@@ -29837,11 +29851,11 @@ leaderboard.get("/", async ({ query }) => {
     id: usersTable.id,
     username: usersTable.username,
     avatar: usersTable.avatar,
-    scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as("scraps_earned"),
+    scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0)`.as("scraps_earned"),
     scrapsSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_spent"),
     hours: sql`COALESCE(SUM(${projectsTable.hours}), 0)`.as("total_hours"),
     projectCount: sql`COUNT(${projectsTable.id})`.as("project_count")
-  }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))).groupBy(usersTable.id).orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`)).limit(10);
+  }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), sql`${projectsTable.status} != 'permanently_rejected'`)).groupBy(usersTable.id).orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`)).limit(10);
   return results.map((user2, index) => ({
     rank: index + 1,
     id: user2.id,
@@ -30074,20 +30088,30 @@ admin.get("/stats", async ({ headers, status: status2 }) => {
   if (!user2) {
     return status2(401, { error: "Unauthorized" });
   }
-  const [usersCount, projectsCount, totalHoursResult] = await Promise.all([
+  const [usersCount, projectsCount, totalHoursResult, pendingHoursResult, inProgressHoursResult] = await Promise.all([
     db.select({ count: sql`count(*)` }).from(usersTable),
     db.select({ count: sql`count(*)` }).from(projectsTable).where(or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)),
-    db.select({ total: sql`COALESCE(SUM(COALESCE(${projectsTable.hoursOverride}, ${projectsTable.hours})), 0)` }).from(projectsTable).where(and(eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)))
+    db.select({ total: sql`COALESCE(SUM(COALESCE(${projectsTable.hoursOverride}, ${projectsTable.hours})), 0)` }).from(projectsTable).where(and(eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`))),
+    db.select({ total: sql`COALESCE(SUM(COALESCE(${projectsTable.hoursOverride}, ${projectsTable.hours})), 0)` }).from(projectsTable).where(and(eq(projectsTable.status, "waiting_for_review"), or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`))),
+    db.select({ total: sql`COALESCE(SUM(COALESCE(${projectsTable.hoursOverride}, ${projectsTable.hours})), 0)` }).from(projectsTable).where(and(eq(projectsTable.status, "in_progress"), or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)))
   ]);
   const totalUsers = Number(usersCount[0]?.count || 0);
   const totalProjects = Number(projectsCount[0]?.count || 0);
   const totalHours = Number(totalHoursResult[0]?.total || 0);
+  const pendingHours = Number(pendingHoursResult[0]?.total || 0);
+  const inProgressHours = Number(inProgressHoursResult[0]?.total || 0);
   const weightedGrants = Math.round(totalHours / 10 * 100) / 100;
+  const pendingWeightedGrants = Math.round(pendingHours / 10 * 100) / 100;
+  const inProgressWeightedGrants = Math.round(inProgressHours / 10 * 100) / 100;
   return {
     totalUsers,
     totalProjects,
     totalHours: Math.round(totalHours * 10) / 10,
-    weightedGrants
+    weightedGrants,
+    pendingHours: Math.round(pendingHours * 10) / 10,
+    pendingWeightedGrants,
+    inProgressHours: Math.round(inProgressHours * 10) / 10,
+    inProgressWeightedGrants
   };
 });
 admin.get("/users", async ({ headers, query, status: status2 }) => {

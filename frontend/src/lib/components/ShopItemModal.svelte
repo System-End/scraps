@@ -4,6 +4,7 @@
 	import { refreshUserScraps, userScrapsStore } from '$lib/auth-client';
 	import HeartButton from './HeartButton.svelte';
 	import { type ShopItem, updateShopItemHeart } from '$lib/stores';
+	import { t } from '$lib/i18n';
 
 	interface LeaderboardUser {
 		userId: string;
@@ -143,7 +144,7 @@
 
 			if (!response.ok) {
 				alertType = 'error';
-				alertMessage = data.error || 'Failed to try luck';
+				alertMessage = data.error || $t.shop.failedToTryLuck;
 				return;
 			}
 
@@ -156,7 +157,7 @@
 		} catch (e) {
 			console.error('Failed to try luck:', e);
 			alertType = 'error';
-			alertMessage = 'Something went wrong';
+			alertMessage = $t.shop.somethingWentWrong;
 		} finally {
 			tryingLuck = false;
 			showConfirmation = false;
@@ -226,7 +227,7 @@
 					<Spool size={20} />
 					{rollCost}
 				</span>
-				<span class="text-sm text-gray-500">{item.count} left</span>
+				<span class="text-sm text-gray-500">{item.count} {$t.shop.left}</span>
 			</div>
 			<HeartButton
 				count={localHeartCount}
@@ -249,16 +250,16 @@
 				item.effectiveProbability
 			)}"
 		>
-			<p class="mb-2 text-sm font-bold">your chance</p>
+			<p class="mb-2 text-sm font-bold">{$t.shop.yourChance}</p>
 			<p class="text-3xl font-bold {getProbabilityColor(item.effectiveProbability)}">
 				{item.effectiveProbability.toFixed(1)}%
 			</p>
 			<div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
-				<span>base: {item.baseProbability}%</span>
-				<span>your boost: +{item.userBoostPercent}%</span>
+				<span>{$t.shop.base}: {item.baseProbability}%</span>
+				<span>{$t.shop.yourBoost}: +{item.userBoostPercent}%</span>
 				{#if item.adjustedBaseProbability < item.baseProbability}
 					<span class="text-red-500"
-						>previous buy: -{item.baseProbability - item.adjustedBaseProbability}%</span
+						>{$t.shop.previousBuy}: -{item.baseProbability - item.adjustedBaseProbability}%</span
 					>
 				{/if}
 			</div>
@@ -273,7 +274,7 @@
 					: 'hover:border-dashed'}"
 			>
 				<Trophy size={16} />
-				leaderboard
+				{$t.shop.leaderboard}
 			</button>
 			<button
 				onclick={() => (activeTab = 'wishlist')}
@@ -283,7 +284,7 @@
 					: 'hover:border-dashed'}"
 			>
 				<Heart size={16} />
-				wishlist ({localHeartCount})
+				{$t.shop.wishlist} ({localHeartCount})
 			</button>
 			<button
 				onclick={() => (activeTab = 'buyers')}
@@ -293,16 +294,16 @@
 					: 'hover:border-dashed'}"
 			>
 				<ShoppingBag size={16} />
-				buyers
+				{$t.shop.buyers}
 			</button>
 		</div>
 
 		<div class="mb-6 min-h-[120px] rounded-lg border-2 border-black p-4">
 			{#if activeTab === 'leaderboard'}
 				{#if loadingLeaderboard}
-					<p class="text-center text-gray-500">loading...</p>
+					<p class="text-center text-gray-500">{$t.common.loading}</p>
 				{:else if leaderboard.length === 0}
-					<p class="text-center text-gray-500">no one has boosted yet</p>
+					<p class="text-center text-gray-500">{$t.shop.noOneHasBoostedYet}</p>
 				{:else}
 					<div class="space-y-2">
 						{#each leaderboard as user, i}
@@ -320,12 +321,12 @@
 			{:else if activeTab === 'wishlist'}
 				<div class="text-center">
 					<p class="mb-2 text-2xl font-bold">{localHeartCount}</p>
-					<p class="mb-4 text-gray-600">people want this item</p>
+					<p class="mb-4 text-gray-600">{$t.shop.peopleWantThisItem}</p>
 					{#if localHearted}
-						<p class="mb-4 text-sm font-medium text-green-600">including you!</p>
+						<p class="mb-4 text-sm font-medium text-green-600">{$t.shop.includingYou}</p>
 					{/if}
 					{#if loadingHearts}
-						<p class="text-sm text-gray-500">loading...</p>
+						<p class="text-sm text-gray-500">{$t.common.loading}</p>
 					{:else if heartUsers.length > 0}
 						<div class="mt-2 flex flex-wrap justify-center gap-2">
 							{#each heartUsers as heartUser, i}
@@ -346,9 +347,9 @@
 				</div>
 			{:else if activeTab === 'buyers'}
 				{#if loadingBuyers}
-					<p class="text-center text-gray-500">loading...</p>
+					<p class="text-center text-gray-500">{$t.common.loading}</p>
 				{:else if buyers.length === 0}
-					<p class="text-center text-gray-500">no one has won this item yet</p>
+					<p class="text-center text-gray-500">{$t.shop.noOneHasWonYet}</p>
 				{:else}
 					<div class="space-y-2">
 						{#each buyers as buyer}
@@ -369,7 +370,7 @@
 			<span
 				class="block w-full cursor-not-allowed rounded-full border-4 border-dashed border-gray-300 px-4 py-3 text-center text-lg font-bold text-gray-400"
 			>
-				sold out
+				{$t.shop.soldOut}
 			</span>
 		{:else}
 			<button
@@ -378,9 +379,9 @@
 				class="w-full cursor-pointer rounded-full bg-black px-4 py-3 text-lg font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if !canAfford}
-					not enough scraps
+					{$t.shop.notEnoughScraps}
 				{:else}
-					try your luck
+					{$t.shop.tryYourLuck}
 				{/if}
 			</button>
 		{/if}
@@ -395,11 +396,12 @@
 			tabindex="-1"
 		>
 			<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
-				<h2 class="mb-4 text-2xl font-bold">confirm try your luck</h2>
+				<h2 class="mb-4 text-2xl font-bold">{$t.shop.confirmTryYourLuck}</h2>
 				<p class="mb-6 text-gray-600">
-					are you sure you want to try your luck? this will cost <strong>{rollCost} scraps</strong>.
+					{$t.shop.confirmTryLuckMessage} <strong>{rollCost} {$t.common.scraps}</strong>.
 					<span class="mt-2 block">
-						your chance: <strong class={getProbabilityColor(item.effectiveProbability)}
+						{$t.shop.yourChanceLabel}
+						<strong class={getProbabilityColor(item.effectiveProbability)}
 							>{item.effectiveProbability.toFixed(1)}%</strong
 						>
 					</span>
@@ -410,14 +412,14 @@
 						disabled={tryingLuck}
 						class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50"
 					>
-						cancel
+						{$t.common.cancel}
 					</button>
 					<button
 						onclick={handleTryLuck}
 						disabled={tryingLuck}
 						class="flex-1 cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed disabled:opacity-50"
 					>
-						{tryingLuck ? 'trying...' : 'try luck'}
+						{tryingLuck ? $t.common.trying : $t.common.tryLuck}
 					</button>
 				</div>
 			</div>
@@ -433,13 +435,15 @@
 			tabindex="-1"
 		>
 			<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
-				<h2 class="mb-4 text-2xl font-bold">{alertType === 'error' ? 'error' : 'result'}</h2>
+				<h2 class="mb-4 text-2xl font-bold">
+					{alertType === 'error' ? $t.common.error : $t.common.result}
+				</h2>
 				<p class="mb-6 text-gray-600">{alertMessage}</p>
 				<button
 					onclick={() => (alertMessage = null)}
 					class="w-full cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed"
 				>
-					ok
+					{$t.common.ok}
 				</button>
 			</div>
 		</div>

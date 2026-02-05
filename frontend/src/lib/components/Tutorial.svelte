@@ -18,6 +18,7 @@
 	import { goto, preloadData } from '$app/navigation';
 	import { tutorialActiveStore } from '$lib/stores';
 	import { onMount, onDestroy } from 'svelte';
+	import { t } from '$lib/i18n';
 
 	let { onComplete }: { onComplete: () => void } = $props();
 
@@ -78,92 +79,57 @@
 		window.removeEventListener('mouseup', handleDragEnd);
 	});
 
-	const steps = [
+	const stepConfigs = [
+		{ titleKey: 'welcomeTitle', descKey: 'welcomeDesc', highlight: null },
+		{ titleKey: 'navigationTitle', descKey: 'navigationDesc', highlight: 'navbar' },
+		{ titleKey: 'createProjectsTitle', descKey: 'createProjectsDesc', highlight: 'dashboard' },
 		{
-			title: 'welcome to scraps!',
-			description:
-				"scraps is a program where you earn rewards for building cool projects. let's walk through how it works!",
-			highlight: null
-		},
-		{
-			title: 'navigation',
-			description:
-				'use the navbar to navigate between dashboard (your projects), shop (spend scraps), refinery (boost odds), and leaderboard (see top builders).',
-			highlight: 'navbar'
-		},
-		{
-			title: 'create projects',
-			description:
-				'start by creating projects on your dashboard. link them to Hackatime (hackatime.hackclub.com) to automatically track your coding time.',
-			highlight: 'dashboard'
-		},
-		{
-			title: 'create your first project',
-			description:
-				'click the "new project" button on the right to open the project creation modal.',
+			titleKey: 'createFirstProjectTitle',
+			descKey: 'createFirstProjectDesc',
 			highlight: 'new-project-button',
 			waitForClick: true
 		},
 		{
-			title: 'fill in project details',
-			description:
-				'we\'ve pre-filled some example text for you. feel free to customize it or just click "create" to continue!',
+			titleKey: 'fillDetailsTitle',
+			descKey: 'fillDetailsDesc',
 			highlight: 'create-project-modal',
 			waitForEvent: 'tutorial:project-created'
 		},
 		{
-			title: 'your project page',
-			description:
-				'great job! this is your project page. you can see details, edit your project, and submit it for review when ready.',
+			titleKey: 'projectPageTitle',
+			descKey: 'projectPageDesc',
 			highlight: null,
 			position: 'bottom-center'
 		},
-		{
-			title: 'submit for review',
-			description:
-				'when you\'re ready to ship, click "review & submit" to submit your project. once approved, you\'ll earn scraps based on your coding time!',
-			highlight: 'submit-button'
-		},
-		{
-			title: 'project tiers',
-			description:
-				"when submitting, you can select a tier (1-4) based on your project's complexity. higher tiers earn more scraps per hour.",
-			highlight: null
-		},
-		{
-			title: 'earn scraps',
-			description:
-				'you earn scraps for the time you put in. the more you build, the more you earn! your scraps balance is shown here.',
-			highlight: 'scraps-counter'
-		},
-		{
-			title: 'the shop',
-			description:
-				'spend your scraps in the shop to try your luck at winning prizes. each item has a base probability of success.',
-			highlight: 'shop'
-		},
-		{
-			title: 'the refinery',
-			description:
-				'invest scraps in the refinery to boost your probability for specific items. higher probability = better odds!',
-			highlight: 'refinery'
-		},
-		{
-			title: 'strategy time',
-			description:
-				'you have a choice: try your luck at base probability OR invest in the refinery first to boost your odds. choose wisely!',
-			highlight: null
-		},
-		{
-			title: "you're ready!",
-			description: "here's 5 bonus scraps to get you started. now go build something awesome!",
-			highlight: null
-		}
+		{ titleKey: 'submitReviewTitle', descKey: 'submitReviewDesc', highlight: 'submit-button' },
+		{ titleKey: 'projectTiersTitle', descKey: 'projectTiersDesc', highlight: null },
+		{ titleKey: 'earnScrapsTitle', descKey: 'earnScrapsDesc', highlight: 'scraps-counter' },
+		{ titleKey: 'shopTitle', descKey: 'shopDesc', highlight: 'shop' },
+		{ titleKey: 'refineryTitle', descKey: 'refineryDesc', highlight: 'refinery' },
+		{ titleKey: 'strategyTitle', descKey: 'strategyDesc', highlight: null },
+		{ titleKey: 'readyTitle', descKey: 'readyDesc', highlight: null }
 	];
+
+	let steps = $derived(
+		stepConfigs.map((config) => ({
+			title:
+				$t.tutorial.steps[config.titleKey as keyof typeof $t.tutorial.steps] || config.titleKey,
+			description:
+				$t.tutorial.steps[config.descKey as keyof typeof $t.tutorial.steps] || config.descKey,
+			highlight: config.highlight,
+			waitForClick: (config as { waitForClick?: boolean }).waitForClick,
+			waitForEvent: (config as { waitForEvent?: string }).waitForEvent,
+			position: (config as { position?: string }).position
+		}))
+	);
 
 	let currentStepData = $derived(steps[currentStep]);
 	let isLastStep = $derived(currentStep === steps.length - 1);
-	let stepProgress = $derived(`step ${currentStep + 1} of ${steps.length}`);
+	let stepProgress = $derived(
+		$t.tutorial.stepOf
+			.replace('{current}', String(currentStep + 1))
+			.replace('{total}', String(steps.length))
+	);
 
 	function getHighlightPosition(highlight: string | null): {
 		top: number;
@@ -414,7 +380,7 @@
 			<button
 				onclick={skip}
 				class="cursor-pointer rounded-full p-2 transition-all duration-200 hover:bg-gray-100"
-				aria-label="Skip tutorial"
+				aria-label={$t.tutorial.skipTutorial}
 			>
 				<X size={20} />
 			</button>
@@ -472,7 +438,7 @@
 					rel="noopener noreferrer"
 					class="mb-4 inline-block font-bold text-black underline hover:no-underline"
 				>
-					set up hackatime →
+					{$t.tutorial.setUpHackatime}
 				</a>
 			{/if}
 
@@ -483,21 +449,21 @@
 					disabled={loading}
 					class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					skip
+					{$t.tutorial.skip}
 				</button>
 				{#if currentStepData.waitForClick}
 					<div
 						class="flex flex-1 items-center justify-center gap-2 rounded-full bg-gray-200 px-4 py-2 font-bold text-gray-600"
 					>
 						<ArrowRight size={18} />
-						<span>click the button to continue</span>
+						<span>{$t.tutorial.clickToContinue}</span>
 					</div>
 				{:else if (currentStepData as { waitForEvent?: string }).waitForEvent}
 					<div
 						class="flex flex-1 items-center justify-center gap-2 rounded-full bg-gray-200 px-4 py-2 font-bold text-gray-600"
 					>
 						<ArrowRight size={18} />
-						<span>complete the form to continue</span>
+						<span>{$t.tutorial.completeFormToContinue}</span>
 					</div>
 				{:else}
 					<button
@@ -506,12 +472,12 @@
 						class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{#if loading}
-							<span>completing...</span>
+							<span>{$t.tutorial.completing}</span>
 						{:else if isLastStep}
 							<Gift size={18} />
-							<span>claim 5 scraps</span>
+							<span>{$t.tutorial.claimScraps}</span>
 						{:else}
-							<span>next</span>
+							<span>{$t.tutorial.next}</span>
 							<ArrowRight size={18} />
 						{/if}
 					</button>

@@ -9,10 +9,14 @@
 		AlertTriangle,
 		Heart,
 		Flame,
-		Origami
+		Origami,
+		Pencil,
+		Shield,
+		X
 	} from '@lucide/svelte';
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
+	import { t } from '$lib/i18n';
 
 	let { data } = $props();
 
@@ -47,6 +51,7 @@
 		id: number;
 		username: string;
 		avatar: string | null;
+		role: 'admin' | 'reviewer' | 'member' | 'banned';
 		scraps: number;
 		createdAt: string;
 	}
@@ -67,6 +72,10 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let filter = $state<FilterType>('all');
+	let isAdmin = $state(false);
+	let showRoleModal = $state(false);
+	let selectedRole = $state<'admin' | 'reviewer' | 'member' | 'banned'>('member');
+	let savingRole = $state(false);
 
 	let filteredProjects = $derived(
 		filter === 'all'
@@ -88,6 +97,7 @@
 				heartedItems = result.heartedItems || [];
 				refinements = result.refinements || [];
 				stats = result.stats;
+				isAdmin = result.isAdmin || false;
 			} else {
 				error = 'User not found';
 			}
@@ -98,6 +108,49 @@
 			loading = false;
 		}
 	});
+
+	function openRoleModal() {
+		if (profileUser) {
+			selectedRole = profileUser.role;
+			showRoleModal = true;
+		}
+	}
+
+	async function updateRole() {
+		if (!profileUser) return;
+		savingRole = true;
+		try {
+			const response = await fetch(`${API_URL}/admin/users/${profileUser.id}/role`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ role: selectedRole })
+			});
+			if (response.ok) {
+				profileUser = { ...profileUser, role: selectedRole };
+				showRoleModal = false;
+			} else {
+				console.error('Failed to update role');
+			}
+		} catch (e) {
+			console.error('Failed to update role:', e);
+		} finally {
+			savingRole = false;
+		}
+	}
+
+	function getRoleColor(role: string): string {
+		switch (role) {
+			case 'admin':
+				return 'bg-red-100 text-red-700 border-red-300';
+			case 'reviewer':
+				return 'bg-purple-100 text-purple-700 border-purple-300';
+			case 'banned':
+				return 'bg-gray-100 text-gray-700 border-gray-300';
+			default:
+				return 'bg-blue-100 text-blue-700 border-blue-300';
+		}
+	}
 </script>
 
 <svelte:head>
@@ -110,11 +163,11 @@
 		class="mb-8 inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
 	>
 		<ArrowLeft size={20} />
-		back to leaderboard
+		{$t.profile.backToLeaderboard}
 	</a>
 
 	{#if loading}
-		<div class="py-12 text-center text-gray-500">loading...</div>
+		<div class="py-12 text-center text-gray-500">{$t.profile.loading}</div>
 	{:else if error}
 		<div class="py-12 text-center text-gray-500">{error}</div>
 	{:else if profileUser}
@@ -133,16 +186,37 @@
 					></div>
 				{/if}
 				<div class="min-w-0 flex-1 text-center sm:text-left">
-					<h1 class="mb-1 truncate text-2xl font-bold sm:mb-2 sm:text-3xl">
-						{profileUser.username || 'unknown'}
-					</h1>
+					<div
+						class="mb-1 flex flex-wrap items-center justify-center gap-2 sm:mb-2 sm:justify-start"
+					>
+						<h1 class="truncate text-2xl font-bold sm:text-3xl">
+							{profileUser.username || 'unknown'}
+						</h1>
+						<span
+							class="rounded-full border px-2 py-0.5 text-xs font-bold {getRoleColor(
+								profileUser.role
+							)}"
+						>
+							{$t.profile.roles[profileUser.role]}
+						</span>
+						{#if isAdmin}
+							<button
+								onclick={openRoleModal}
+								class="flex cursor-pointer items-center gap-1 rounded-full border-2 border-black px-2 py-0.5 text-xs font-bold transition-all hover:border-dashed"
+							>
+								<Pencil size={12} />
+								{$t.profile.editRole}
+							</button>
+						{/if}
+					</div>
 					<p class="text-sm text-gray-500">
-						joined {new Date(profileUser.createdAt).toLocaleDateString()}
+						{$t.profile.joined}
+						{new Date(profileUser.createdAt).toLocaleDateString()}
 					</p>
 				</div>
 				<div class="shrink-0 text-center sm:text-right">
 					<p class="text-3xl font-bold sm:text-4xl">{profileUser.scraps}</p>
-					<p class="text-sm text-gray-500">scraps</p>
+					<p class="text-sm text-gray-500">{$t.profile.scraps}</p>
 				</div>
 			</div>
 		</div>
@@ -152,15 +226,15 @@
 			<div class="mb-6 grid grid-cols-3 gap-2 sm:gap-4">
 				<div class="rounded-2xl border-4 border-black p-2 text-center sm:p-4">
 					<p class="text-xl font-bold text-green-600 sm:text-3xl">{stats.projectCount}</p>
-					<p class="text-xs text-gray-500 sm:text-sm">shipped</p>
+					<p class="text-xs text-gray-500 sm:text-sm">{$t.profile.shipped}</p>
 				</div>
 				<div class="rounded-2xl border-4 border-black p-2 text-center sm:p-4">
 					<p class="text-xl font-bold text-yellow-600 sm:text-3xl">{stats.inProgressCount}</p>
-					<p class="text-xs text-gray-500 sm:text-sm">in progress</p>
+					<p class="text-xs text-gray-500 sm:text-sm">{$t.profile.inProgress}</p>
 				</div>
 				<div class="rounded-2xl border-4 border-black p-2 text-center sm:p-4">
 					<p class="text-xl font-bold sm:text-3xl">{stats.totalHours}h</p>
-					<p class="text-xs text-gray-500 sm:text-sm">total hours</p>
+					<p class="text-xs text-gray-500 sm:text-sm">{$t.profile.totalHours}</p>
 				</div>
 			</div>
 		{/if}
@@ -170,7 +244,7 @@
 			<div class="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
 				<div class="flex items-center gap-2">
 					<Origami size={20} />
-					<h2 class="text-xl font-bold">projects ({filteredProjects.length})</h2>
+					<h2 class="text-xl font-bold">{$t.profile.projects} ({filteredProjects.length})</h2>
 				</div>
 				<div class="flex gap-2 overflow-x-auto">
 					<button
@@ -180,7 +254,7 @@
 							? 'bg-black text-white'
 							: 'hover:border-dashed'}"
 					>
-						all
+						{$t.profile.all}
 					</button>
 					<button
 						onclick={() => (filter = 'shipped')}
@@ -189,7 +263,7 @@
 							? 'bg-black text-white'
 							: 'hover:border-dashed'}"
 					>
-						shipped
+						{$t.profile.shipped}
 					</button>
 					<button
 						onclick={() => (filter = 'in_progress')}
@@ -198,12 +272,12 @@
 							? 'bg-black text-white'
 							: 'hover:border-dashed'}"
 					>
-						in progress
+						{$t.profile.inProgress}
 					</button>
 				</div>
 			</div>
 			{#if filteredProjects.length === 0}
-				<p class="text-gray-500">no projects found</p>
+				<p class="text-gray-500">{$t.profile.noProjectsFound}</p>
 			{:else}
 				<div class="grid gap-4">
 					{#each filteredProjects as project}
@@ -233,21 +307,21 @@
 												class="flex items-center gap-1 rounded-full border border-green-600 bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700"
 											>
 												<CheckCircle size={12} />
-												shipped
+												{$t.profile.shipped}
 											</span>
 										{:else if project.status === 'waiting_for_review'}
 											<span
 												class="flex items-center gap-1 rounded-full border border-blue-600 bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700"
 											>
 												<Clock size={12} />
-												under review
+												{$t.profile.underReview}
 											</span>
 										{:else}
 											<span
 												class="flex items-center gap-1 rounded-full border border-yellow-600 bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-700"
 											>
 												<AlertTriangle size={12} />
-												in progress
+												{$t.profile.inProgress}
 											</span>
 										{/if}
 									</div>
@@ -271,7 +345,7 @@
 												class="flex cursor-pointer items-center gap-1 transition-colors hover:text-black"
 											>
 												<Github size={14} />
-												github
+												{$t.profile.github}
 											</span>
 										{/if}
 									</div>
@@ -288,7 +362,7 @@
 			<div class="mt-6 rounded-2xl border-4 border-black p-6">
 				<div class="mb-4 flex items-center gap-2">
 					<Heart size={20} class="fill-red-500 text-red-500" />
-					<h2 class="text-xl font-bold">wishlist ({heartedItems.length})</h2>
+					<h2 class="text-xl font-bold">{$t.profile.wishlist} ({heartedItems.length})</h2>
 				</div>
 				<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
 					{#each heartedItems as item}
@@ -309,10 +383,10 @@
 		<div class="mt-6 rounded-2xl border-4 border-black p-6">
 			<div class="mb-4 flex items-center gap-2">
 				<Flame size={20} class="text-orange-500" />
-				<h2 class="text-xl font-bold">refinements</h2>
+				<h2 class="text-xl font-bold">{$t.profile.refinements}</h2>
 			</div>
 			{#if refinements.length === 0}
-				<p class="py-4 text-center text-gray-500">no refinements to show</p>
+				<p class="py-4 text-center text-gray-500">{$t.profile.noRefinements}</p>
 			{:else}
 				<div class="space-y-3">
 					{#each refinements.sort((a, b) => b.totalBoost - a.totalBoost) as refinement}
@@ -333,3 +407,72 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Role Edit Modal -->
+{#if showRoleModal && profileUser}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+		onclick={(e) => e.target === e.currentTarget && (showRoleModal = false)}
+		onkeydown={(e) => e.key === 'Escape' && (showRoleModal = false)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
+			<div class="mb-4 flex items-center justify-between">
+				<div class="flex items-center gap-2">
+					<Shield size={20} />
+					<h2 class="text-xl font-bold">{$t.profile.changeRole}</h2>
+				</div>
+				<button
+					onclick={() => (showRoleModal = false)}
+					class="cursor-pointer rounded-lg p-1 transition-colors hover:bg-gray-100"
+				>
+					<X size={20} />
+				</button>
+			</div>
+
+			<p class="mb-4 text-gray-600">
+				{profileUser.username}
+			</p>
+
+			<div class="mb-6 space-y-2">
+				{#each ['admin', 'reviewer', 'member', 'banned'] as role}
+					<button
+						onclick={() => (selectedRole = role as typeof selectedRole)}
+						class="flex w-full cursor-pointer items-center gap-3 rounded-xl border-4 px-4 py-3 text-left font-bold transition-all {selectedRole ===
+						role
+							? 'border-black bg-black text-white'
+							: 'border-black hover:border-dashed'}"
+					>
+						<span
+							class="h-3 w-3 rounded-full {role === 'admin'
+								? 'bg-red-500'
+								: role === 'reviewer'
+									? 'bg-purple-500'
+									: role === 'banned'
+										? 'bg-gray-500'
+										: 'bg-blue-500'}"
+						></span>
+						{$t.profile.roles[role as keyof typeof $t.profile.roles]}
+					</button>
+				{/each}
+			</div>
+
+			<div class="flex gap-3">
+				<button
+					onclick={() => (showRoleModal = false)}
+					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{$t.common.cancel}
+				</button>
+				<button
+					onclick={updateRole}
+					disabled={savingRole || selectedRole === profileUser.role}
+					class="flex-1 cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{savingRole ? $t.common.saving : $t.profile.updateRole}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

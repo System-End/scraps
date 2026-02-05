@@ -22,6 +22,7 @@
 	import { formatHours } from '$lib/utils';
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
 	import { tutorialActiveStore } from '$lib/stores';
+	import { t } from '$lib/i18n';
 
 	let { data } = $props();
 
@@ -127,11 +128,11 @@
 	function getReviewLabel(action: string) {
 		switch (action) {
 			case 'approved':
-				return 'approved';
+				return $t.project.approved;
 			case 'denied':
-				return 'changes requested';
+				return $t.project.changesRequested;
 			case 'permanently_rejected':
-				return 'permanently rejected';
+				return $t.project.permanentlyRejected;
 			default:
 				return action;
 		}
@@ -159,7 +160,7 @@
 			class="mb-8 inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
 		>
 			<ArrowLeft size={20} />
-			back to dashboard
+			{$t.project.backToDashboard}
 		</a>
 	{:else if owner}
 		<a
@@ -167,7 +168,7 @@
 			class="mb-8 inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
 		>
 			<ArrowLeft size={20} />
-			back to {owner.username}'s profile
+			{$t.project.backToProfile.replace('{username}', owner.username || '')}
 		</a>
 	{:else}
 		<a
@@ -175,18 +176,18 @@
 			class="mb-8 inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
 		>
 			<ArrowLeft size={20} />
-			back
+			{$t.project.back}
 		</a>
 	{/if}
 
 	{#if loading}
 		<div class="py-12 text-center">
-			<p class="text-lg text-gray-500">loading project...</p>
+			<p class="text-lg text-gray-500">{$t.project.loadingProject}</p>
 		</div>
 	{:else if error && !project}
 		<div class="py-12 text-center">
 			<p class="text-lg text-red-600">{error}</p>
-			<a href="/dashboard" class="mt-4 inline-block font-bold underline">go back</a>
+			<a href="/dashboard" class="mt-4 inline-block font-bold underline">{$t.project.goBack}</a>
 		</div>
 	{:else if project}
 		<!-- Project Header -->
@@ -209,21 +210,21 @@
 							class="flex shrink-0 items-center gap-1 rounded-full border-2 border-green-600 bg-green-100 px-3 py-1 text-sm font-bold text-green-700"
 						>
 							<CheckCircle size={14} />
-							shipped
+							{$t.project.shipped}
 						</span>
 					{:else if project.status === 'waiting_for_review'}
 						<span
 							class="flex shrink-0 items-center gap-1 rounded-full border-2 border-yellow-600 bg-yellow-100 px-3 py-1 text-sm font-bold text-yellow-700"
 						>
 							<Clock size={14} />
-							awaiting review
+							{$t.project.awaitingReview}
 						</span>
 					{:else}
 						<span
 							class="flex shrink-0 items-center gap-1 rounded-full border-2 border-yellow-600 bg-yellow-100 px-3 py-1 text-sm font-bold text-yellow-700"
 						>
 							<AlertTriangle size={14} />
-							in progress
+							{$t.project.inProgress}
 						</span>
 					{/if}
 				</div>
@@ -231,14 +232,14 @@
 					<span
 						class="rounded-full border-2 border-gray-400 bg-gray-100 px-3 py-1 text-sm font-bold text-gray-700"
 					>
-						tier {project.tier}
+						{$t.project.tier.replace('{value}', String(project.tier))}
 					</span>
 				</div>
 
 				{#if project.description}
 					<p class="mb-4 text-lg text-gray-700">{project.description}</p>
 				{:else}
-					<p class="mb-4 text-lg text-gray-400 italic">no description yet</p>
+					<p class="mb-4 text-lg text-gray-400 italic">{$t.project.noDescriptionYet}</p>
 				{/if}
 
 				<div class="mb-3 flex flex-wrap items-center gap-3">
@@ -246,14 +247,14 @@
 						class="flex items-center gap-2 rounded-full border-4 border-black bg-white px-4 py-2 font-bold"
 					>
 						<Eye size={18} />
-						{project.views.toLocaleString()} views
+						{$t.project.views.replace('{count}', project.views.toLocaleString())}
 					</span>
 					{#if project.scrapsAwarded > 0}
 						<span
 							class="flex items-center gap-2 rounded-full border-4 border-green-600 bg-green-100 px-4 py-2 font-bold text-green-700"
 						>
 							<Spool size={18} />
-							+{project.scrapsAwarded} scraps earned
+							{$t.project.scrapsEarned.replace('{count}', String(project.scrapsAwarded))}
 						</span>
 					{/if}
 				</div>
@@ -272,14 +273,14 @@
 							class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
 						>
 							<Github size={18} />
-							view on github
+							{$t.project.viewOnGithub}
 						</a>
 					{:else}
 						<span
 							class="flex cursor-not-allowed items-center gap-2 rounded-full border-4 border-dashed border-gray-300 px-4 py-2 font-bold text-gray-400"
 						>
 							<Github size={18} />
-							view on github
+							{$t.project.viewOnGithub}
 						</span>
 					{/if}
 					{#if project.playableUrl}
@@ -290,14 +291,14 @@
 							class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-solid border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
 						>
 							<Globe size={18} />
-							try it out
+							{$t.project.tryItOut}
 						</a>
 					{:else}
 						<span
 							class="flex cursor-not-allowed items-center gap-2 rounded-full border-4 border-dashed border-gray-300 px-4 py-2 font-bold text-gray-400"
 						>
 							<Globe size={18} />
-							try it out
+							{$t.project.tryItOut}
 						</span>
 					{/if}
 				</div>
@@ -307,7 +308,7 @@
 		<!-- Owner Info (for non-owners) -->
 		{#if !isOwner && owner}
 			<div class="mb-8 rounded-2xl border-4 border-black p-6">
-				<h2 class="mb-4 text-xl font-bold">created by</h2>
+				<h2 class="mb-4 text-xl font-bold">{$t.project.createdBy}</h2>
 				<a
 					href="/users/{owner.id}"
 					class="flex cursor-pointer items-center gap-4 transition-all duration-200 hover:opacity-80"
@@ -317,7 +318,7 @@
 					{:else}
 						<div class="h-12 w-12 rounded-full border-2 border-black bg-gray-200"></div>
 					{/if}
-					<span class="text-lg font-bold">{owner.username || 'unknown'}</span>
+					<span class="text-lg font-bold">{owner.username || $t.project.unknown}</span>
 				</a>
 			</div>
 		{/if}
@@ -330,7 +331,7 @@
 						class="flex flex-1 items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
 					>
 						<Pencil size={18} />
-						edit project
+						{$t.project.editProject}
 					</span>
 				{:else}
 					<a
@@ -338,7 +339,7 @@
 						class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black px-4 py-3 text-center text-sm font-bold transition-all duration-200 hover:border-dashed sm:px-6 sm:text-base"
 					>
 						<Pencil size={18} />
-						edit project
+						{$t.project.editProject}
 					</a>
 				{/if}
 				{#if project.status === 'waiting_for_review'}
@@ -346,14 +347,21 @@
 						class="flex flex-1 items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
 					>
 						<Send size={18} />
-						awaiting review
+						{$t.project.awaitingReview}
 					</span>
 				{:else if project.status === 'shipped'}
 					<span
 						class="flex flex-1 items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
 					>
 						<Send size={18} />
-						shipped
+						{$t.project.shipped}
+					</span>
+				{:else if project.status === 'permanently_rejected'}
+					<span
+						class="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full border-4 border-black bg-red-100 px-4 py-3 text-center text-sm font-bold text-red-600 sm:px-6 sm:text-base"
+					>
+						<XCircle size={18} />
+						{$t.project.permanentlyRejected}
 					</span>
 				{:else if $tutorialActiveStore}
 					<span
@@ -361,7 +369,7 @@
 						class="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full border-4 border-black bg-black px-4 py-3 text-sm font-bold text-white sm:px-6 sm:text-base"
 					>
 						<Send size={18} />
-						review & submit
+						{$t.project.reviewAndSubmit}
 					</span>
 				{:else}
 					<a
@@ -370,7 +378,7 @@
 						class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-black px-4 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 sm:px-6 sm:text-base"
 					>
 						<Send size={18} />
-						review & submit
+						{$t.project.reviewAndSubmit}
 					</a>
 				{/if}
 			</div>
@@ -383,12 +391,12 @@
 
 			<!-- Activity Timeline (only for owner) -->
 			<div>
-				<h2 class="mb-6 text-2xl font-bold">activity</h2>
+				<h2 class="mb-6 text-2xl font-bold">{$t.project.activity}</h2>
 
 				{#if activity.length === 0}
 					<div class="rounded-2xl border-4 border-dashed border-gray-300 p-8 text-center">
-						<p class="text-gray-500">no activity yet</p>
-						<p class="mt-2 text-sm text-gray-400">submit your project to get started</p>
+						<p class="text-gray-500">{$t.project.noActivityYet}</p>
+						<p class="mt-2 text-sm text-gray-400">{$t.project.submitToGetStarted}</p>
 					</div>
 				{:else}
 					<div class="relative">
@@ -432,7 +440,8 @@
 															></div>
 														{/if}
 														<span
-															>reviewed by <strong>{entry.reviewer.username || 'reviewer'}</strong
+															>{$t.project.reviewedBy}
+															<strong>{entry.reviewer.username || $t.project.reviewer}</strong
 															></span
 														>
 													</a>
@@ -459,7 +468,7 @@
 											<PlaneTakeoff size={16} class="text-gray-500" />
 										</div>
 										<span class="text-sm text-gray-500"
-											>submitted for review · {formatDate(entry.createdAt)}</span
+											>{$t.project.submittedForReview} · {formatDate(entry.createdAt)}</span
 										>
 									</div>
 								{:else if entry.type === 'created'}
@@ -470,7 +479,7 @@
 											<Plus size={16} class="text-gray-500" />
 										</div>
 										<span class="text-sm text-gray-500"
-											>project created · {formatDate(entry.createdAt)}</span
+											>{$t.project.projectCreated} · {formatDate(entry.createdAt)}</span
 										>
 									</div>
 								{/if}

@@ -2,6 +2,7 @@
 	import { ChevronDown, ExternalLink } from '@lucide/svelte';
 	import { API_URL } from '$lib/config';
 	import { onMount } from 'svelte';
+	import { t } from '$lib/i18n';
 
 	interface Address {
 		id: string;
@@ -73,7 +74,7 @@
 	function getSelectedAddressLabel(): string {
 		const addr = addresses.find((a) => a.id === selectedAddressId);
 		if (addr) return `${addr.first_name} ${addr.last_name}, ${addr.city}`;
-		return 'select an address';
+		return $t.address.selectAnAddress;
 	}
 
 	async function handleSubmit() {
@@ -106,13 +107,13 @@
 
 			if (!response.ok) {
 				const data = await response.json().catch(() => ({}));
-				throw new Error(data.message || 'Failed to save address');
+				throw new Error(data.message || $t.address.failedToSaveAddress);
 			}
 
 			onComplete();
 			onClose();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to save address';
+			error = e instanceof Error ? e.message : $t.address.failedToSaveAddress;
 		} finally {
 			loading = false;
 		}
@@ -128,17 +129,17 @@
 		class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border-4 border-black bg-white p-6"
 	>
 		<div class="mb-6">
-			<h2 class="text-2xl font-bold">shipping address</h2>
+			<h2 class="text-2xl font-bold">{$t.address.shippingAddress}</h2>
 		</div>
 
 		{#if header}
 			{@render header()}
 		{:else}
 			<div class="mb-6 rounded-lg border-2 border-black bg-gray-50 p-4">
-				<p class="text-lg font-bold">🎉 congratulations!</p>
+				<p class="text-lg font-bold">{$t.address.congratulations}</p>
 				<p class="mt-1 text-gray-600">
-					you won <span class="font-bold">{itemName}</span>! select your shipping address to receive
-					it.
+					{$t.address.youWon} <span class="font-bold">{itemName}</span>! {$t.address
+						.selectShippingAddress}
 				</p>
 			</div>
 		{/if}
@@ -151,10 +152,10 @@
 
 		<div class="space-y-4">
 			{#if loadingAddresses}
-				<div class="py-4 text-center text-gray-500">loading addresses...</div>
+				<div class="py-4 text-center text-gray-500">{$t.address.loadingAddresses}</div>
 			{:else if addresses.length > 0}
 				<div>
-					<label class="mb-1 block text-sm font-bold">your addresses</label>
+					<label class="mb-1 block text-sm font-bold">{$t.address.yourAddresses}</label>
 					<div class="relative">
 						<button
 							type="button"
@@ -186,7 +187,8 @@
 										<span class="font-medium"
 											>{addr.first_name}
 											{addr.last_name}
-											{#if addr.primary}<span class="text-xs text-gray-500">(primary)</span
+											{#if addr.primary}<span class="text-xs text-gray-500"
+													>({$t.address.primary})</span
 												>{/if}</span
 										>
 										<span class="block text-sm text-gray-500">{addr.line_1}, {addr.city}</span>
@@ -199,7 +201,7 @@
 
 				{#if selectedAddress}
 					<div class="rounded-lg border-2 border-black bg-gray-50 p-4">
-						<p class="mb-2 text-sm font-bold">selected address:</p>
+						<p class="mb-2 text-sm font-bold">{$t.address.selectedAddress}</p>
 						<p class="text-sm">{selectedAddress.first_name} {selectedAddress.last_name}</p>
 						<p class="text-sm">{selectedAddress.line_1}</p>
 						{#if selectedAddress.line_2}
@@ -223,11 +225,11 @@
 					class="inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-black"
 				>
 					<ExternalLink size={14} />
-					manage addresses on hack club auth
+					{$t.address.manageAddresses}
 				</a>
 			{:else}
 				<div class="py-6 text-center">
-					<p class="mb-4 text-gray-600">you don't have any saved addresses yet.</p>
+					<p class="mb-4 text-gray-600">{$t.address.noSavedAddresses}</p>
 					<a
 						href="https://auth.hackclub.com"
 						target="_blank"
@@ -235,10 +237,10 @@
 						class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-gray-800"
 					>
 						<ExternalLink size={16} />
-						add an address on hack club
+						{$t.address.addAddress}
 					</a>
 					<p class="mt-4 text-sm text-gray-500">
-						after adding an address, refresh this page to select it.
+						{$t.address.afterAddingAddress}
 					</p>
 				</div>
 			{/if}
@@ -251,7 +253,7 @@
 					disabled={loading || !canSubmit}
 					class="w-full cursor-pointer rounded-full bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					{loading ? 'saving...' : 'confirm shipping address'}
+					{loading ? $t.common.saving : $t.address.confirmShippingAddress}
 				</button>
 			</div>
 		{/if}

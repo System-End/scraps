@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
+
 	let {
 		title,
 		message,
-		confirmText = 'confirm',
-		cancelText = 'cancel',
+		confirmText = $t.common.confirm,
+		cancelText = $t.common.cancel,
 		confirmStyle = 'primary',
 		loading = false,
 		onConfirm,
@@ -62,7 +64,7 @@
 				{cancelText}
 			</button>
 			<button onclick={onConfirm} disabled={loading} class={getConfirmClass()}>
-				{loading ? 'loading...' : confirmText}
+				{loading ? $t.common.loading : confirmText}
 			</button>
 		</div>
 	</div>

@@ -13,6 +13,7 @@
 		updateShopItemHeart,
 		type ShopItem
 	} from '$lib/stores';
+	import { t } from '$lib/i18n';
 
 	const PHI = (1 + Math.sqrt(5)) / 2;
 	const MULTIPLIER = 10;
@@ -167,14 +168,14 @@
 </svelte:head>
 
 <div class="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12">
-	<h1 class="mb-2 text-4xl font-bold md:text-5xl">shop</h1>
-	<p class="mb-8 text-lg text-gray-600">items up for grabs</p>
+	<h1 class="mb-2 text-4xl font-bold md:text-5xl">{$t.nav.shop}</h1>
+	<p class="mb-8 text-lg text-gray-600">{$t.shop.itemsUpForGrabs}</p>
 
 	<!-- Filters & Sort -->
 	<div class="mb-8 space-y-3">
 		<!-- Category Filter -->
 		<div class="flex flex-wrap items-center gap-2">
-			<span class="mr-2 self-center text-sm font-bold">tags:</span>
+			<span class="mr-2 self-center text-sm font-bold">{$t.shop.tags}</span>
 			{#each categories as category}
 				<button
 					onclick={() => toggleCategory(category)}
@@ -193,14 +194,14 @@
 					class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-3 py-1.5 text-sm font-bold transition-all duration-200 hover:border-dashed sm:px-4 sm:py-2"
 				>
 					<X size={16} />
-					clear
+					{$t.shop.clear}
 				</button>
 			{/if}
 		</div>
 
 		<!-- Sort Options -->
 		<div class="flex flex-wrap items-center gap-2">
-			<span class="mr-2 self-center text-sm font-bold">sort:</span>
+			<span class="mr-2 self-center text-sm font-bold">{$t.shop.sort}</span>
 			<button
 				onclick={() => (sortBy = 'default')}
 				class="cursor-pointer rounded-full border-4 border-black px-3 py-1.5 text-sm font-bold transition-all duration-200 sm:px-4 sm:py-2 {sortBy ===
@@ -208,7 +209,7 @@
 					? 'bg-black text-white'
 					: 'hover:border-dashed'}"
 			>
-				default
+				{$t.shop.default}
 			</button>
 			<button
 				onclick={() => (sortBy = 'favorites')}
@@ -217,7 +218,7 @@
 					? 'bg-black text-white'
 					: 'hover:border-dashed'}"
 			>
-				favorites
+				{$t.shop.favorites}
 			</button>
 			<button
 				onclick={() => (sortBy = 'probability')}
@@ -226,7 +227,7 @@
 					? 'bg-black text-white'
 					: 'hover:border-dashed'}"
 			>
-				probability
+				{$t.shop.probability}
 			</button>
 		</div>
 	</div>
@@ -234,11 +235,11 @@
 	<!-- Loading State -->
 	{#if $shopLoading}
 		<div class="py-12 text-center">
-			<p class="text-gray-600">Loading items...</p>
+			<p class="text-gray-600">{$t.shop.loadingItems}</p>
 		</div>
 	{:else if $shopItemsStore.length === 0}
 		<div class="py-12 text-center">
-			<p class="text-gray-600">No items available</p>
+			<p class="text-gray-600">{$t.shop.noItemsAvailable}</p>
 		</div>
 	{:else}
 		<!-- Items Grid -->
@@ -257,7 +258,7 @@
 							<div
 								class="translate-x-6 translate-y-3 rotate-45 transform bg-red-600 px-8 py-1 text-xs font-bold text-white shadow-md"
 							>
-								sold out
+								{$t.shop.soldOut}
 							</div>
 						</div>
 					{/if}
@@ -268,7 +269,7 @@
 								item.effectiveProbability
 							)} {getProbabilityColor(item.effectiveProbability)}"
 						>
-							{item.effectiveProbability.toFixed(0)}% chance
+							{item.effectiveProbability.toFixed(0)}% {$t.shop.chance}
 						</span>
 					</div>
 					<div class={item.count === 0 ? 'opacity-50' : ''}>
@@ -292,7 +293,7 @@
 						</div>
 						<div class="flex items-center justify-between">
 							<span class="text-xs {item.count === 0 ? 'font-bold text-red-500' : 'text-gray-500'}"
-								>{item.count === 0 ? 'sold out' : `${item.count} left`}</span
+								>{item.count === 0 ? $t.shop.soldOut : `${item.count} ${$t.shop.left}`}</span
 							>
 							<HeartButton
 								count={item.heartCount}
@@ -334,7 +335,7 @@
 {#if consolationOrderId}
 	<AddressSelectModal
 		orderId={consolationOrderId}
-		itemName="consolation scrap paper"
+		itemName={$t.shop.consolationScrapPaper}
 		onClose={() => {
 			consolationOrderId = null;
 			consolationRolled = null;
@@ -348,13 +349,14 @@
 	>
 		{#snippet header()}
 			<div class="mb-4 rounded-xl border-2 border-yellow-400 bg-yellow-50 p-4">
-				<p class="font-bold text-yellow-800">better luck next time!</p>
+				<p class="font-bold text-yellow-800">{$t.shop.betterLuckNextTime}</p>
 				<p class="mt-1 text-sm text-yellow-700">
-					you rolled {consolationRolled} but needed {consolationNeeded} or less.
+					{$t.shop.youRolledButNeeded
+						.replace('{rolled}', String(consolationRolled))
+						.replace('{needed}', String(consolationNeeded))}
 				</p>
 				<p class="mt-2 text-sm text-yellow-700">
-					as a consolation, we'll send you a random scrap of paper from hack club hq! just tell us
-					where to ship it.
+					{$t.shop.consolationMessage}
 				</p>
 			</div>
 		{/snippet}
@@ -366,5 +368,5 @@
 	class="fixed right-4 bottom-6 z-40 flex cursor-pointer items-center gap-2 rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-gray-800 sm:right-6 sm:px-6 sm:py-3"
 >
 	<PackageCheck size={20} />
-	<span class="hidden sm:inline">my orders</span>
+	<span class="hidden sm:inline">{$t.shop.myOrders}</span>
 </a>

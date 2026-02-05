@@ -4,6 +4,7 @@
 	import { Plus, Pencil, Trash2, X, Eye, EyeOff } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
+	import { t } from '$lib/i18n';
 
 	interface NewsItem {
 		id: number;
@@ -167,28 +168,28 @@
 </script>
 
 <svelte:head>
-	<title>news editor - admin - scraps</title>
+	<title>{$t.nav.news} - {$t.nav.admin} - scraps</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12">
 	<div class="mb-8 flex items-center justify-between">
 		<div>
-			<h1 class="mb-2 text-4xl font-bold md:text-5xl">news</h1>
-			<p class="text-lg text-gray-600">manage announcements and updates</p>
+			<h1 class="mb-2 text-4xl font-bold md:text-5xl">{$t.nav.news}</h1>
+			<p class="text-lg text-gray-600">{$t.admin.manageAnnouncementsAndUpdates}</p>
 		</div>
 		<button
 			onclick={openCreateModal}
 			class="flex cursor-pointer items-center gap-2 rounded-full bg-black px-6 py-3 font-bold text-white transition-all duration-200 hover:bg-gray-800"
 		>
 			<Plus size={20} />
-			add news
+			{$t.admin.addNews}
 		</button>
 	</div>
 
 	{#if loading}
-		<div class="py-12 text-center text-gray-500">loading...</div>
+		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>
 	{:else if items.length === 0}
-		<div class="py-12 text-center text-gray-500">no news yet</div>
+		<div class="py-12 text-center text-gray-500">{$t.news.noNewsRightNow}</div>
 	{:else}
 		<div class="grid gap-4">
 			{#each items as item}
@@ -242,7 +243,7 @@
 			class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border-4 border-black bg-white p-6"
 		>
 			<div class="mb-6 flex items-center justify-between">
-				<h2 class="text-2xl font-bold">{editingItem ? 'edit news' : 'add news'}</h2>
+				<h2 class="text-2xl font-bold">{editingItem ? $t.admin.editNews : $t.admin.addNews}</h2>
 				<button
 					onclick={closeModal}
 					class="cursor-pointer rounded-lg p-2 transition-colors hover:bg-gray-100"
@@ -295,14 +296,14 @@
 					disabled={saving}
 					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50"
 				>
-					cancel
+					{$t.common.cancel}
 				</button>
 				<button
 					onclick={handleSubmit}
 					disabled={saving}
 					class="flex-1 cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
 				>
-					{saving ? 'saving...' : editingItem ? 'save' : 'create'}
+					{saving ? $t.common.saving : editingItem ? $t.common.save : $t.common.create}
 				</button>
 			</div>
 		</div>
@@ -318,7 +319,7 @@
 		tabindex="-1"
 	>
 		<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
-			<h2 class="mb-4 text-2xl font-bold">confirm delete</h2>
+			<h2 class="mb-4 text-2xl font-bold">{$t.admin.confirmDelete}</h2>
 			<p class="mb-6 text-gray-600">
 				are you sure you want to delete this news item? <span class="mt-2 block text-red-600"
 					>this action cannot be undone.</span
@@ -329,13 +330,13 @@
 					onclick={() => (deleteConfirmId = null)}
 					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
 				>
-					cancel
+					{$t.common.cancel}
 				</button>
 				<button
 					onclick={confirmDelete}
 					class="flex-1 cursor-pointer rounded-full border-4 border-black bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed"
 				>
-					delete
+					{$t.common.delete}
 				</button>
 			</div>
 		</div>

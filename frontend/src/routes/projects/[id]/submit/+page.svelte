@@ -5,6 +5,7 @@
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
+	import { t } from '$lib/i18n';
 
 	let { data } = $props();
 
@@ -23,10 +24,10 @@
 	}
 
 	const TIERS = [
-		{ value: 1, description: 'simple projects, tutorials, small scripts' },
-		{ value: 2, description: 'moderate complexity, multi-file projects' },
-		{ value: 3, description: 'complex features, APIs, integrations' },
-		{ value: 4, description: 'full applications, major undertakings' }
+		{ value: 1, descriptionKey: 'tier1' as const },
+		{ value: 2, descriptionKey: 'tier2' as const },
+		{ value: 3, descriptionKey: 'tier3' as const },
+		{ value: 4, descriptionKey: 'tier4' as const }
 	];
 
 	interface HackatimeProject {
@@ -199,23 +200,23 @@
 		class="mb-8 inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
 	>
 		<ArrowLeft size={20} />
-		back to project
+		{$t.project.backToProject}
 	</a>
 
 	{#if loading}
 		<div class="py-12 text-center">
-			<p class="text-lg text-gray-500">loading project...</p>
+			<p class="text-lg text-gray-500">{$t.project.loadingProject}</p>
 		</div>
 	{:else if error && !project}
 		<div class="py-12 text-center">
 			<p class="text-lg text-red-600">{error}</p>
-			<a href="/dashboard" class="mt-4 inline-block font-bold underline">go back</a>
+			<a href="/dashboard" class="mt-4 inline-block font-bold underline">{$t.project.goBack}</a>
 		</div>
 	{:else if project}
 		<div class="rounded-2xl border-4 border-black bg-white p-6">
-			<h1 class="mb-2 text-3xl font-bold">submit for review</h1>
+			<h1 class="mb-2 text-3xl font-bold">{$t.project.submitForReview}</h1>
 			<p class="mb-6 text-gray-600">
-				make sure your project meets all requirements before submitting
+				{$t.project.submitRequirementsHint}
 			</p>
 
 			{#if error}
@@ -226,7 +227,7 @@
 
 			<!-- Project Image Preview -->
 			<div class="mb-6">
-				<label class="mb-2 block text-sm font-bold">project image</label>
+				<label class="mb-2 block text-sm font-bold">{$t.project.projectImage}</label>
 				{#if project.image}
 					<img
 						src={project.image}
@@ -237,9 +238,7 @@
 					<div
 						class="flex h-48 w-full items-center justify-center rounded-lg border-2 border-black bg-gray-200 text-gray-400"
 					>
-						no image - <a href="/projects/{project.id}/edit" class="ml-1 underline"
-							>add one in edit</a
-						>
+						{$t.project.noImageAddOne}
 					</div>
 				{/if}
 			</div>
@@ -249,7 +248,7 @@
 				<!-- Name -->
 				<div>
 					<label for="name" class="mb-2 block text-sm font-bold"
-						>name <span class="text-red-500">*</span></label
+						>{$t.project.name} <span class="text-red-500">*</span></label
 					>
 					<input
 						id="name"
@@ -264,7 +263,7 @@
 				<!-- Description -->
 				<div>
 					<label for="description" class="mb-2 block text-sm font-bold"
-						>description <span class="text-red-500">*</span></label
+						>{$t.project.description} <span class="text-red-500">*</span></label
 					>
 					<textarea
 						id="description"
@@ -285,7 +284,7 @@
 				<!-- GitHub URL -->
 				<div>
 					<label for="githubUrl" class="mb-2 block text-sm font-bold"
-						>github url <span class="text-red-500">*</span></label
+						>{$t.project.githubUrl} <span class="text-red-500">*</span></label
 					>
 					<input
 						id="githubUrl"
@@ -299,7 +298,7 @@
 				<!-- Playable URL -->
 				<div>
 					<label for="playableUrl" class="mb-2 block text-sm font-bold"
-						>playable url <span class="text-red-500">*</span></label
+						>{$t.project.playableUrl} <span class="text-red-500">*</span></label
 					>
 					<input
 						id="playableUrl"
@@ -308,13 +307,13 @@
 						placeholder="https://yourproject.com or https://replit.com/..."
 						class="w-full rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
 					/>
-					<p class="mt-1 text-xs text-gray-500">a link where reviewers can try your project</p>
+					<p class="mt-1 text-xs text-gray-500">{$t.project.playableUrlHint}</p>
 				</div>
 
 				<!-- Hackatime Project Dropdown -->
 				<div>
 					<label class="mb-2 block text-sm font-bold"
-						>hackatime project <span class="text-red-500">*</span></label
+						>{$t.project.hackatimeProject} <span class="text-red-500">*</span></label
 					>
 					<div class="relative">
 						<button
@@ -323,14 +322,14 @@
 							class="flex w-full cursor-pointer items-center justify-between rounded-lg border-2 border-black px-4 py-3 text-left focus:border-dashed focus:outline-none"
 						>
 							{#if loadingProjects}
-								<span class="text-gray-500">loading projects...</span>
+								<span class="text-gray-500">{$t.project.loadingProjects}</span>
 							{:else if selectedHackatimeName}
 								<span
 									>{selectedHackatimeName}
 									<span class="text-gray-500">({formatHours(project.hours)}h)</span></span
 								>
 							{:else}
-								<span class="text-gray-500">select a project</span>
+								<span class="text-gray-500">{$t.project.selectAProject}</span>
 							{/if}
 							<ChevronDown
 								size={20}
@@ -343,7 +342,7 @@
 								class="absolute top-full right-0 left-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border-2 border-black bg-white"
 							>
 								{#if hackatimeProjects.length === 0}
-									<div class="px-4 py-2 text-sm text-gray-500">no projects found</div>
+									<div class="px-4 py-2 text-sm text-gray-500">{$t.project.noProjectsFound}</div>
 								{:else}
 									{#each hackatimeProjects as hp}
 										<button
@@ -365,10 +364,10 @@
 			<!-- Tier Selection -->
 			<div class="mb-6">
 				<label class="mb-2 block text-sm font-bold"
-					>project tier <span class="text-red-500">*</span></label
+					>{$t.project.projectTier} <span class="text-red-500">*</span></label
 				>
 				<p class="mb-3 text-xs text-gray-500">
-					select the complexity tier that best matches your project
+					{$t.project.selectComplexityTier}
 				</p>
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 					{#each TIERS as tier}
@@ -381,14 +380,14 @@
 								: 'hover:border-dashed'}"
 						>
 							<div class="flex items-center justify-between">
-								<span>tier {tier.value}</span>
+								<span>{$t.project.tier.replace('{value}', String(tier.value))}</span>
 							</div>
 							<p
 								class="mt-1 text-xs {selectedTier === tier.value
 									? 'text-gray-300'
 									: 'text-gray-500'}"
 							>
-								{tier.description}
+								{$t.project.tierDescriptions[tier.descriptionKey]}
 							</p>
 						</button>
 					{/each}
@@ -397,7 +396,7 @@
 
 			<!-- Requirements Checklist -->
 			<div class="mb-6 rounded-lg border-2 border-black p-4">
-				<p class="mb-3 font-bold">requirements checklist</p>
+				<p class="mb-3 font-bold">{$t.project.requirementsChecklist}</p>
 				<ul class="space-y-2">
 					<li class="flex items-center gap-2 text-sm">
 						<span
@@ -407,7 +406,7 @@
 						>
 							{#if hasImage}<Check size={12} />{/if}
 						</span>
-						<span class={hasImage ? '' : 'text-gray-500'}>project image uploaded</span>
+						<span class={hasImage ? '' : 'text-gray-500'}>{$t.project.projectImageUploaded}</span>
 					</li>
 					<li class="flex items-center gap-2 text-sm">
 						<span
@@ -417,7 +416,9 @@
 						>
 							{#if hasName}<Check size={12} />{/if}
 						</span>
-						<span class={hasName ? '' : 'text-gray-500'}>project name (max {NAME_MAX} chars)</span>
+						<span class={hasName ? '' : 'text-gray-500'}
+							>{$t.project.projectName.replace('{max}', String(NAME_MAX))}</span
+						>
 					</li>
 					<li class="flex items-center gap-2 text-sm">
 						<span
@@ -428,7 +429,9 @@
 							{#if hasDescription}<Check size={12} />{/if}
 						</span>
 						<span class={hasDescription ? '' : 'text-gray-500'}
-							>description ({DESC_MIN}-{DESC_MAX} chars)</span
+							>{$t.project.descriptionRequirement
+								.replace('{min}', String(DESC_MIN))
+								.replace('{max}', String(DESC_MAX))}</span
 						>
 					</li>
 					<li class="flex items-center gap-2 text-sm">
@@ -439,7 +442,8 @@
 						>
 							{#if hasGithub}<Check size={12} />{/if}
 						</span>
-						<span class={hasGithub ? '' : 'text-gray-500'}>github repository linked</span>
+						<span class={hasGithub ? '' : 'text-gray-500'}>{$t.project.githubRepositoryLinked}</span
+						>
 					</li>
 					<li class="flex items-center gap-2 text-sm">
 						<span
@@ -449,7 +453,9 @@
 						>
 							{#if hasPlayableUrl}<Check size={12} />{/if}
 						</span>
-						<span class={hasPlayableUrl ? '' : 'text-gray-500'}>playable url provided</span>
+						<span class={hasPlayableUrl ? '' : 'text-gray-500'}
+							>{$t.project.playableUrlProvided}</span
+						>
 					</li>
 					<li class="flex items-center gap-2 text-sm">
 						<span
@@ -459,7 +465,9 @@
 						>
 							{#if hasHackatime}<Check size={12} />{/if}
 						</span>
-						<span class={hasHackatime ? '' : 'text-gray-500'}>hackatime project selected</span>
+						<span class={hasHackatime ? '' : 'text-gray-500'}
+							>{$t.project.hackatimeProjectSelected}</span
+						>
 					</li>
 				</ul>
 			</div>
@@ -470,7 +478,7 @@
 					href="/projects/{data.id}"
 					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-3 text-center font-bold transition-all duration-200 hover:border-dashed"
 				>
-					cancel
+					{$t.common.cancel}
 				</a>
 				<button
 					onclick={handleSubmit}
@@ -478,7 +486,7 @@
 					class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-black px-4 py-3 font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
 				>
 					<Send size={18} />
-					{submitting ? 'submitting...' : 'submit for review'}
+					{submitting ? $t.project.submitting : $t.project.submitForReview}
 				</button>
 			</div>
 		</div>

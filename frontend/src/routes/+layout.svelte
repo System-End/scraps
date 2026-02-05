@@ -51,7 +51,10 @@
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="mobile-web-app-capable" content="yes" />
-	<meta name="description" content="Build projects, earn scraps, test your luck, get prizes. A Hack Club program for teen coders." />
+	<meta
+		name="description"
+		content="Build projects, earn scraps, test your luck, get prizes. A Hack Club program for teen coders."
+	/>
 	<meta name="author" content="Hack Club" />
 	<meta name="keywords" content="hack club, scraps, ysws, projects, coding, prizes" />
 	<meta name="theme-color" content="#000000" />
@@ -59,13 +62,19 @@
 	<meta property="og:locale" content="en_US" />
 	<meta property="og:site_name" content="scraps - Hack Club" />
 	<meta property="og:title" content="scraps - Hack Club" />
-	<meta property="og:description" content="Build projects, earn scraps, test your luck, get prizes. A Hack Club program for teen coders." />
+	<meta
+		property="og:description"
+		content="Build projects, earn scraps, test your luck, get prizes. A Hack Club program for teen coders."
+	/>
 	<meta property="og:image" content={favicon} />
 	<meta name="twitter:card" content="summary" />
 	<meta name="twitter:site" content="@hackclub" />
 	<meta name="twitter:creator" content="@hackclub" />
 	<meta name="twitter:title" content="scraps - Hack Club" />
-	<meta name="twitter:description" content="Build projects, earn scraps, test your luck, get prizes. A Hack Club program for teen coders." />
+	<meta
+		name="twitter:description"
+		content="Build projects, earn scraps, test your luck, get prizes. A Hack Club program for teen coders."
+	/>
 	<meta name="twitter:image" content={favicon} />
 </svelte:head>
 

@@ -14,6 +14,7 @@
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
+	import { t } from '$lib/i18n';
 
 	let { data } = $props();
 
@@ -267,13 +268,13 @@
 		class="mb-8 inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
 	>
 		<ArrowLeft size={20} />
-		back to users
+		{$t.project.back}
 	</a>
 
 	{#if loading}
-		<div class="py-12 text-center text-gray-500">loading...</div>
+		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>
 	{:else if !targetUser}
-		<div class="py-12 text-center text-gray-500">user not found</div>
+		<div class="py-12 text-center text-gray-500">{$t.profile.userNotFound}</div>
 	{:else}
 		<!-- User Header -->
 		<div class="mb-6 rounded-2xl border-4 border-black p-6">
@@ -308,7 +309,7 @@
 				</div>
 				<div class="text-right">
 					<p class="text-4xl font-bold">{targetUser.scraps}</p>
-					<p class="text-sm text-gray-500">scraps</p>
+					<p class="text-sm text-gray-500">{$t.common.scraps}</p>
 					{#if currentUser?.role === 'admin'}
 						<button
 							onclick={() => (showBonusModal = true)}
@@ -386,16 +387,16 @@
 					disabled={saving}
 					class="cursor-pointer rounded-full bg-black px-6 py-2 font-bold text-white transition-all hover:bg-gray-800 disabled:opacity-50"
 				>
-					{saving ? 'saving...' : 'save changes'}
+					{saving ? $t.common.saving : $t.project.saveChanges}
 				</button>
 			</div>
 		</div>
 
 		<!-- Projects -->
 		<div class="rounded-2xl border-4 border-black p-6">
-			<h2 class="mb-4 text-xl font-bold">projects ({projects.length})</h2>
+			<h2 class="mb-4 text-xl font-bold">{$t.profile.projects} ({projects.length})</h2>
 			{#if projects.length === 0}
-				<p class="text-gray-500">no projects yet</p>
+				<p class="text-gray-500">{$t.profile.noProjectsFound}</p>
 			{:else}
 				<div class="space-y-3">
 					{#each projects as project}
@@ -538,14 +539,14 @@
 					disabled={savingBonus}
 					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50"
 				>
-					cancel
+					{$t.common.cancel}
 				</button>
 				<button
 					onclick={saveBonus}
 					disabled={savingBonus || !bonusAmount || !bonusReason.trim()}
 					class="flex-1 cursor-pointer rounded-full bg-green-500 px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					{savingBonus ? 'saving...' : 'give bonus'}
+					{savingBonus ? $t.common.saving : 'give bonus'}
 				</button>
 			</div>
 		</div>

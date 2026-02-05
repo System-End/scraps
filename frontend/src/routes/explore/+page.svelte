@@ -4,6 +4,7 @@
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
+	import { t } from '$lib/i18n';
 
 	interface ExploreProject {
 		id: number;
@@ -38,15 +39,6 @@
 	let searchTimeout: ReturnType<typeof setTimeout>;
 
 	const TIERS = [1, 2, 3, 4];
-	const STATUSES = [
-		{ value: 'shipped', label: 'shipped' },
-		{ value: 'in_progress', label: 'in progress' }
-	];
-	const SORT_OPTIONS = [
-		{ value: 'default', label: 'recent' },
-		{ value: 'views', label: 'most viewed' },
-		{ value: 'random', label: 'random' }
-	] as const;
 
 	async function fetchProjects() {
 		loading = true;
@@ -114,11 +106,11 @@
 </script>
 
 <svelte:head>
-	<title>explore - scraps</title>
+	<title>{$t.explore.explore} - scraps</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12">
-	<h1 class="mb-8 text-4xl font-bold md:text-5xl">explore</h1>
+	<h1 class="mb-8 text-4xl font-bold md:text-5xl">{$t.explore.explore}</h1>
 
 	<!-- Search & Filters -->
 	<div class="mb-8 space-y-3">
@@ -129,14 +121,14 @@
 				type="text"
 				bind:value={searchQuery}
 				oninput={handleSearch}
-				placeholder="search projects..."
+				placeholder={$t.explore.searchPlaceholder}
 				class="w-full rounded-full border-4 border-black py-3 pr-4 pl-12 focus:border-dashed focus:outline-none"
 			/>
 		</div>
 
 		<!-- Tier filters -->
 		<div class="flex flex-wrap items-center gap-2">
-			<span class="mr-2 self-center text-sm font-bold">tier:</span>
+			<span class="mr-2 self-center text-sm font-bold">{$t.explore.tier}</span>
 			{#each TIERS as tier}
 				<button
 					onclick={() => toggleTier(tier)}
@@ -152,34 +144,57 @@
 
 		<!-- Status filters -->
 		<div class="flex flex-wrap items-center gap-2">
-			<span class="mr-2 self-center text-sm font-bold">status:</span>
-			{#each STATUSES as status}
-				<button
-					onclick={() => toggleStatus(status.value)}
-					class="cursor-pointer rounded-full border-4 border-black px-3 py-1.5 text-sm font-bold transition-all duration-200 sm:px-4 sm:py-2 {selectedStatus ===
-					status.value
-						? 'bg-black text-white'
-						: 'hover:border-dashed'}"
-				>
-					{status.label}
-				</button>
-			{/each}
+			<span class="mr-2 self-center text-sm font-bold">{$t.explore.status}</span>
+			<button
+				onclick={() => toggleStatus('shipped')}
+				class="cursor-pointer rounded-full border-4 border-black px-3 py-1.5 text-sm font-bold transition-all duration-200 sm:px-4 sm:py-2 {selectedStatus ===
+				'shipped'
+					? 'bg-black text-white'
+					: 'hover:border-dashed'}"
+			>
+				{$t.explore.shipped}
+			</button>
+			<button
+				onclick={() => toggleStatus('in_progress')}
+				class="cursor-pointer rounded-full border-4 border-black px-3 py-1.5 text-sm font-bold transition-all duration-200 sm:px-4 sm:py-2 {selectedStatus ===
+				'in_progress'
+					? 'bg-black text-white'
+					: 'hover:border-dashed'}"
+			>
+				{$t.explore.inProgress}
+			</button>
 		</div>
 
 		<!-- Sort options -->
 		<div class="flex flex-wrap items-center gap-2">
-			<span class="mr-2 self-center text-sm font-bold">sort:</span>
-			{#each SORT_OPTIONS as option}
-				<button
-					onclick={() => setSortBy(option.value)}
-					class="cursor-pointer rounded-full border-4 border-black px-3 py-1.5 text-sm font-bold transition-all duration-200 sm:px-4 sm:py-2 {sortBy ===
-					option.value
-						? 'bg-black text-white'
-						: 'hover:border-dashed'}"
-				>
-					{option.label}
-				</button>
-			{/each}
+			<span class="mr-2 self-center text-sm font-bold">{$t.explore.sort}</span>
+			<button
+				onclick={() => setSortBy('default')}
+				class="cursor-pointer rounded-full border-4 border-black px-3 py-1.5 text-sm font-bold transition-all duration-200 sm:px-4 sm:py-2 {sortBy ===
+				'default'
+					? 'bg-black text-white'
+					: 'hover:border-dashed'}"
+			>
+				{$t.explore.recent}
+			</button>
+			<button
+				onclick={() => setSortBy('views')}
+				class="cursor-pointer rounded-full border-4 border-black px-3 py-1.5 text-sm font-bold transition-all duration-200 sm:px-4 sm:py-2 {sortBy ===
+				'views'
+					? 'bg-black text-white'
+					: 'hover:border-dashed'}"
+			>
+				{$t.explore.mostViewed}
+			</button>
+			<button
+				onclick={() => setSortBy('random')}
+				class="cursor-pointer rounded-full border-4 border-black px-3 py-1.5 text-sm font-bold transition-all duration-200 sm:px-4 sm:py-2 {sortBy ===
+				'random'
+					? 'bg-black text-white'
+					: 'hover:border-dashed'}"
+			>
+				{$t.explore.random}
+			</button>
 			{#if selectedTier || selectedStatus || sortBy !== 'default'}
 				<button
 					onclick={() => {
@@ -192,7 +207,7 @@
 					class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-3 py-1.5 text-sm font-bold transition-all duration-200 hover:border-dashed sm:px-4 sm:py-2"
 				>
 					<X size={16} />
-					clear
+					{$t.explore.clear}
 				</button>
 			{/if}
 		</div>
@@ -200,13 +215,13 @@
 
 	<!-- Results -->
 	{#if loading}
-		<div class="py-12 text-center text-gray-500">loading projects...</div>
+		<div class="py-12 text-center text-gray-500">{$t.explore.loadingProjects}</div>
 	{:else if error}
 		<div class="py-12 text-center text-red-600">{error}</div>
 	{:else if projects.length === 0}
 		<div class="rounded-2xl border-4 border-dashed border-gray-300 p-12 text-center">
-			<p class="text-lg text-gray-500">no projects found</p>
-			<p class="mt-2 text-sm text-gray-400">try adjusting your filters or search query</p>
+			<p class="text-lg text-gray-500">{$t.explore.noProjectsFound}</p>
+			<p class="mt-2 text-sm text-gray-400">{$t.explore.tryAdjustingFilters}</p>
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -235,7 +250,9 @@
 						</div>
 						<p class="line-clamp-2 flex-1 text-sm text-gray-600">{project.description}</p>
 						<div class="mt-3 flex items-center justify-between text-sm">
-							<span class="text-gray-500">by {project.username || 'anonymous'}</span>
+							<span class="text-gray-500"
+								>{$t.explore.by} {project.username || $t.explore.anonymous}</span
+							>
 							<div class="flex items-center gap-3">
 								<span class="text-gray-500">{formatHours(project.hours)}h</span>
 								<span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs">tier {project.tier}</span
@@ -259,7 +276,7 @@
 					disabled={currentPage === 1}
 					class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					prev
+					{$t.explore.prev}
 				</button>
 				<span class="self-center px-4 py-2 font-bold">
 					{currentPage} / {pagination.totalPages}
@@ -269,7 +286,7 @@
 					disabled={currentPage === pagination.totalPages}
 					class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					next
+					{$t.explore.next}
 				</button>
 			</div>
 		{/if}
