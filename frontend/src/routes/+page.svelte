@@ -171,13 +171,13 @@
 	<div class="w-full px-6 py-4 md:absolute md:right-1/4 md:bottom-1/5 md:w-auto md:max-w-lg md:p-0">
 		<h1 class="mb-4 text-6xl font-bold md:text-8xl">scraps</h1>
 		<p class="mb-1 text-lg md:text-xl">
-			<strong>ys:</strong> any project<Superscript
+			<strong>you ship:</strong> any project<Superscript
 				number={1}
 				tooltip="silly, nonsensical, or fun"
 			/>
 		</p>
 		<p class="mb-6 text-lg md:text-xl">
-			<strong>ws:</strong> a chance to win somthing amazing<Superscript
+			<strong>we ship:</strong> a chance to win something amazing<Superscript
 				number={2}
 				tooltip="(including rare stickers)"
 			/>
@@ -282,14 +282,14 @@
 		<p class="mb-4 text-xl font-bold">tl;dr</p>
 
 		<p class="mb-2">
-			<strong>you ship:</strong> any project <Superscript
+			<strong>ys:</strong> any project <Superscript
 				number={3}
 				tooltip="optionally silly, nonsensical, or fun"
 			/>
 		</p>
 
 		<p class="mb-6">
-			<strong>we ship:</strong> random items from hq<Superscript
+			<strong>ws:</strong> random items from hq<Superscript
 				number={4}
 				tooltip="(including stickers)"
 			/> (more hours, more stuff)
