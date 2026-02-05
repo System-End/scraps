@@ -159,10 +159,10 @@
 			<div
 				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
 			>
-				<p class="mb-2 text-lg font-bold">what are project tiers?</p>
+				<p class="mb-2 text-lg font-bold">how long does review take?</p>
 				<p class="text-gray-600">
-					tiers 1-4 based on complexity. tier 1 = 0.8x, tier 2 = 1x, tier 3 = 1.25x, tier 4 = 1.5x
-					multiplier.
+					project reviews typically take a few days. you'll be notified when your project is
+					approved!
 				</p>
 			</div>
 

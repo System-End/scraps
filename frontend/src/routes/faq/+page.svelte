@@ -29,7 +29,12 @@
 		},
 		{
 			question: 'what are project tiers?',
-			answer: 'projects are assigned tiers (1-4) based on complexity and quality. higher tiers earn more scraps per hour: tier 1 = 0.8x, tier 2 = 1x, tier 3 = 1.25x, tier 4 = 1.5x multiplier.'
+			answer: `projects are assigned tiers (1-4) based on complexity and quality. higher tiers earn more scraps per hour:<br><br>
+				<strong>tier 1 (0.8x)</strong> - simple projects, tutorials, small scripts<br>
+				<strong>tier 2 (1x)</strong> - moderate complexity, multi-file projects<br>
+				<strong>tier 3 (1.25x)</strong> - complex features, APIs, integrations<br>
+				<strong>tier 4 (1.5x)</strong> - full applications, major undertakings<br><br>
+				when submitting your project, select the tier that best matches your project's scope. reviewers may adjust the tier during review.`
 		},
 		{
 			question: 'how long does review take?',

@@ -1,19 +1,26 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { Origami } from '@lucide/svelte';
 	import Superscript from '$lib/components/Superscript.svelte';
-	import { login } from '$lib/auth-client';
+	import { login, getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 
 	let email = $state('');
 	let emailError = $state('');
 	let isSubmitting = $state(false);
+	let isLoggedIn = $state(false);
 
 	function isValidEmail(email: string): boolean {
 		return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 	}
 
 	async function handleLogin() {
+		if (isLoggedIn) {
+			goto('/dashboard');
+			return;
+		}
+
 		emailError = '';
 
 		if (!email.trim()) {
@@ -92,6 +99,9 @@
 	let totalSetWidth = $derived(scrapItems.length * (ITEM_WIDTH + GAP));
 
 	onMount(async () => {
+		const user = await getUser();
+		isLoggedIn = !!user;
+
 		try {
 			const response = await fetch(`${API_URL}/shop/items`);
 			if (response.ok) {
@@ -175,14 +185,16 @@
 
 		<!-- Auth Section -->
 		<div class="flex flex-col gap-2">
-			<input
-				type="email"
-				bind:value={email}
-				placeholder="your email"
-				class="w-full rounded-full border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
-			/>
-			{#if emailError}
-				<p class="px-4 text-sm text-red-500">{emailError}</p>
+			{#if !isLoggedIn}
+				<input
+					type="email"
+					bind:value={email}
+					placeholder="your email"
+					class="w-full rounded-full border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+				/>
+				{#if emailError}
+					<p class="px-4 text-sm text-red-500">{emailError}</p>
+				{/if}
 			{/if}
 			<button
 				onclick={handleLogin}
@@ -190,7 +202,7 @@
 				class="flex cursor-pointer items-center justify-center gap-2 rounded-full bg-black px-8 py-3 font-bold text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				<Origami size={18} />
-				<span>start scrapping</span>
+				<span>{isLoggedIn ? 'go to dashboard' : 'start scrapping'}</span>
 			</button>
 		</div>
 	</div>
