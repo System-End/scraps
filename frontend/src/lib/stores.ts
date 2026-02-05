@@ -31,7 +31,9 @@ export interface ShopItem {
 	costMultiplier: number;
 	boostAmount: number;
 	userBoostPercent: number;
+	upgradeCount: number;
 	effectiveProbability: number;
+	nextUpgradeCost: number | null;
 }
 
 export interface LeaderboardEntry {

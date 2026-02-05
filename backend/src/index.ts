@@ -10,6 +10,7 @@ import leaderboard from './routes/leaderboard'
 import hackatime from './routes/hackatime'
 import upload from './routes/upload'
 import admin from './routes/admin'
+import { startHackatimeSync } from './lib/hackatime-sync'
 
 const api = new Elysia()
     .use(authRoutes)
@@ -34,3 +35,6 @@ const app = new Elysia()
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
 )
+
+// Start background hackatime sync
+startHackatimeSync()

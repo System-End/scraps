@@ -7,12 +7,6 @@
 	let upgrading = $state<number | null>(null);
 	let alertMessage = $state<string | null>(null);
 
-	function calculateNextCost(item: ShopItem): number {
-		return Math.floor(
-			item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, item.userBoostPercent)
-		);
-	}
-
 	function getProbabilityColor(probability: number): string {
 		if (probability >= 70) return 'text-green-600';
 		if (probability >= 40) return 'text-yellow-600';
@@ -40,7 +34,8 @@
 						? {
 								...i,
 								userBoostPercent: data.boostPercent,
-								effectiveProbability: data.effectiveProbability
+								effectiveProbability: data.effectiveProbability,
+								nextUpgradeCost: data.nextCost
 							}
 						: i
 				)
@@ -74,8 +69,8 @@
 	{:else if probabilityItems.length > 0}
 		<div class="space-y-6">
 			{#each probabilityItems as item (item.id)}
-				{@const nextCost = calculateNextCost(item)}
-				{@const maxed = item.effectiveProbability >= 100}
+				{@const nextCost = item.nextUpgradeCost}
+				{@const maxed = item.effectiveProbability >= 100 || nextCost === null}
 				<div
 					class="rounded-2xl border-4 border-black p-4 transition-all hover:border-dashed sm:p-6"
 				>
@@ -116,7 +111,7 @@
 									class="inline-block rounded-full bg-gray-200 px-4 py-2 font-bold text-gray-600"
 									>maxed</span
 								>
-							{:else}
+							{:else if nextCost !== null}
 								<button
 									onclick={() => upgradeProbability(item)}
 									disabled={upgrading === item.id || $userScrapsStore < nextCost}

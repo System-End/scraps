@@ -4,7 +4,7 @@ import { db } from '../db'
 import { usersTable, userBonusesTable } from '../schemas/users'
 import { projectsTable } from '../schemas/projects'
 import { reviewsTable } from '../schemas/reviews'
-import { shopItemsTable, shopOrdersTable, shopHeartsTable } from '../schemas/shop'
+import { shopItemsTable, shopOrdersTable, shopHeartsTable, shopRollsTable, refineryOrdersTable, shopPenaltiesTable } from '../schemas/shop'
 import { newsTable } from '../schemas/news'
 import { activityTable } from '../schemas/activity'
 import { getUserFromSession } from '../lib/auth'
@@ -701,13 +701,15 @@ admin.delete('/shop/items/:id', async ({ params, headers, status }) => {
 
         const itemId = parseInt(params.id)
 
-        await db
-            .delete(shopHeartsTable)
-            .where(eq(shopHeartsTable.shopItemId, itemId))
+        // Delete all related records first (cascade manually)
+        await db.delete(shopHeartsTable).where(eq(shopHeartsTable.shopItemId, itemId))
+        await db.delete(shopRollsTable).where(eq(shopRollsTable.shopItemId, itemId))
+        await db.delete(refineryOrdersTable).where(eq(refineryOrdersTable.shopItemId, itemId))
+        await db.delete(shopPenaltiesTable).where(eq(shopPenaltiesTable.shopItemId, itemId))
+        await db.delete(shopOrdersTable).where(eq(shopOrdersTable.shopItemId, itemId))
 
-        await db
-            .delete(shopItemsTable)
-            .where(eq(shopItemsTable.id, itemId))
+        // Now delete the item itself
+        await db.delete(shopItemsTable).where(eq(shopItemsTable.id, itemId))
 
         return { success: true }
     } catch (err) {

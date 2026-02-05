@@ -12,7 +12,8 @@ import { config } from "../config"
 import { getUserScrapsBalance } from "../lib/scraps"
 import { db } from "../db"
 import { userEmailsTable } from "../schemas"
-import { eq } from "drizzle-orm"
+import { userBonusesTable } from "../schemas/users"
+import { eq, and } from "drizzle-orm"
 
 const FRONTEND_URL = config.frontendUrl
 
@@ -123,6 +124,28 @@ authRoutes.get("/me", async ({ headers }) => {
     if (user.role === 'banned') {
         return { user: null, banned: true }
     }
+
+    // Auto-award tutorial bonus if tutorial is completed but bonus wasn't given
+    if (user.tutorialCompleted) {
+        const existingBonus = await db
+            .select({ id: userBonusesTable.id })
+            .from(userBonusesTable)
+            .where(and(
+                eq(userBonusesTable.userId, user.id),
+                eq(userBonusesTable.reason, 'tutorial_completion')
+            ))
+            .limit(1)
+
+        if (existingBonus.length === 0) {
+            await db.insert(userBonusesTable).values({
+                userId: user.id,
+                reason: 'tutorial_completion',
+                amount: 10
+            })
+            console.log("[AUTH] Auto-awarded tutorial bonus for user:", user.id)
+        }
+    }
+
     const scrapsBalance = await getUserScrapsBalance(user.id)
     return {
         user: {

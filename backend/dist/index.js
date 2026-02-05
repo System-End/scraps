@@ -28449,7 +28449,7 @@ async function fetchUserIdentity(accessToken) {
   }
 }
 async function createOrUpdateUser(identity, tokens) {
-  if (!identity.ysws_eligible) {
+  if (identity.ysws_eligible === false) {
     throw new Error("not-eligible");
   }
   let username = null;
@@ -28967,12 +28967,18 @@ var shopPenaltiesTable = pgTable("shop_penalties", {
 // src/lib/scraps.ts
 var PHI = (1 + Math.sqrt(5)) / 2;
 var MULTIPLIER = 10;
+var SCRAPS_PER_HOUR = PHI * MULTIPLIER;
+var DOLLARS_PER_HOUR = 5;
+var SCRAPS_PER_DOLLAR = SCRAPS_PER_HOUR / DOLLARS_PER_HOUR;
 var TIER_MULTIPLIERS = {
-  1: 0.75,
+  1: 0.8,
   2: 1,
   3: 1.25,
   4: 1.5
 };
+function calculateRollCost(basePrice, baseProbability) {
+  return Math.max(1, Math.round(basePrice * (baseProbability / 100)));
+}
 function calculateScrapsFromHours(hours, tier = 1) {
   const tierMultiplier = TIER_MULTIPLIERS[tier] ?? 1;
   return Math.floor(hours * PHI * MULTIPLIER * tierMultiplier);
@@ -29058,20 +29064,20 @@ authRoutes.get("/callback", async ({ query, redirect: redirect2, cookie }) => {
       yswsEligible: identity.ysws_eligible,
       verificationStatus: identity.verification_status
     });
+    if (identity.verification_status === "needs_submission") {
+      console.log("[AUTH] User needs to verify identity");
+      return redirect2(`${FRONTEND_URL}/auth/error?reason=needs-verification`);
+    }
+    if (identity.verification_status === "ineligible") {
+      console.log("[AUTH] User is ineligible");
+      return redirect2(`${FRONTEND_URL}/auth/error?reason=not-eligible`);
+    }
     const user = await createOrUpdateUser(identity, tokens);
     await db.delete(userEmailsTable).where(eq(userEmailsTable.email, identity.primary_email));
     console.log("[AUTH] Deleted collected email:", identity.primary_email);
     if (user.role === "banned") {
       console.log("[AUTH] Banned user attempted login:", { userId: user.id, username: user.username });
       return redirect2("https://fraud.land");
-    }
-    if (identity.verification_status === "needs_submission") {
-      console.log("[AUTH] User needs to verify identity:", { userId: user.id });
-      return redirect2(`${FRONTEND_URL}/auth/error?reason=needs-verification`);
-    }
-    if (identity.verification_status === "ineligible") {
-      console.log("[AUTH] User is ineligible:", { userId: user.id });
-      return redirect2(`${FRONTEND_URL}/auth/error?reason=not-eligible`);
     }
     const sessionToken = await createSession(user.id);
     console.log("[AUTH] User authenticated successfully:", { userId: user.id, username: user.username });
@@ -29100,6 +29106,17 @@ authRoutes.get("/me", async ({ headers }) => {
     return { user: null };
   if (user.role === "banned") {
     return { user: null, banned: true };
+  }
+  if (user.tutorialCompleted) {
+    const existingBonus = await db.select({ id: userBonusesTable.id }).from(userBonusesTable).where(and(eq(userBonusesTable.userId, user.id), eq(userBonusesTable.reason, "tutorial_completion"))).limit(1);
+    if (existingBonus.length === 0) {
+      await db.insert(userBonusesTable).values({
+        userId: user.id,
+        reason: "tutorial_completion",
+        amount: 10
+      });
+      console.log("[AUTH] Auto-awarded tutorial bonus for user:", user.id);
+    }
   }
   const scrapsBalance = await getUserScrapsBalance(user.id);
   return {
@@ -29274,26 +29291,31 @@ shop.get("/items", async ({ headers }) => {
     const userHearts = await db.select({ shopItemId: shopHeartsTable.shopItemId }).from(shopHeartsTable).where(eq(shopHeartsTable.userId, user2.id));
     const userBoosts = await db.select({
       shopItemId: refineryOrdersTable.shopItemId,
-      boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+      boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`,
+      upgradeCount: sql`COUNT(*)`
     }).from(refineryOrdersTable).where(eq(refineryOrdersTable.userId, user2.id)).groupBy(refineryOrdersTable.shopItemId);
     const userPenalties = await db.select({
       shopItemId: shopPenaltiesTable.shopItemId,
       probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier
     }).from(shopPenaltiesTable).where(eq(shopPenaltiesTable.userId, user2.id));
     const heartedIds = new Set(userHearts.map((h) => h.shopItemId));
-    const boostMap = new Map(userBoosts.map((b) => [b.shopItemId, Number(b.boostPercent)]));
+    const boostMap = new Map(userBoosts.map((b) => [b.shopItemId, { boostPercent: Number(b.boostPercent), upgradeCount: Number(b.upgradeCount) }]));
     const penaltyMap = new Map(userPenalties.map((p) => [p.shopItemId, p.probabilityMultiplier]));
     return items.map((item) => {
-      const userBoostPercent = boostMap.get(item.id) ?? 0;
+      const boostData = boostMap.get(item.id) ?? { boostPercent: 0, upgradeCount: 0 };
       const penaltyMultiplier = penaltyMap.get(item.id) ?? 100;
       const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100);
+      const maxBoost = 100 - adjustedBaseProbability;
+      const nextUpgradeCost = boostData.boostPercent >= maxBoost ? null : Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, boostData.upgradeCount));
       return {
         ...item,
         heartCount: Number(item.heartCount) || 0,
-        userBoostPercent,
+        userBoostPercent: boostData.boostPercent,
+        upgradeCount: boostData.upgradeCount,
         adjustedBaseProbability,
-        effectiveProbability: Math.min(adjustedBaseProbability + userBoostPercent, 100),
-        userHearted: heartedIds.has(item.id)
+        effectiveProbability: Math.min(adjustedBaseProbability + boostData.boostPercent, 100),
+        userHearted: heartedIds.has(item.id),
+        nextUpgradeCost
       };
     });
   }
@@ -29301,8 +29323,10 @@ shop.get("/items", async ({ headers }) => {
     ...item,
     heartCount: Number(item.heartCount) || 0,
     userBoostPercent: 0,
+    upgradeCount: 0,
     effectiveProbability: Math.min(item.baseProbability, 100),
-    userHearted: false
+    userHearted: false,
+    nextUpgradeCost: item.baseUpgradeCost
   }));
 });
 shop.get("/items/:id", async ({ params, headers }) => {
@@ -29523,6 +29547,12 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
       const penaltyMultiplier = penaltyResult.length > 0 ? penaltyResult[0].probabilityMultiplier : 100;
       const adjustedBaseProbability = Math.floor(currentItem[0].baseProbability * penaltyMultiplier / 100);
       const effectiveProbability = Math.min(adjustedBaseProbability + boostPercent, 100);
+      const rollCost = calculateRollCost(currentItem[0].price, currentItem[0].baseProbability);
+      const canAffordRoll = await canAfford(user2.id, rollCost, tx);
+      if (!canAffordRoll) {
+        const { balance } = await getUserScrapsBalance(user2.id, tx);
+        throw { type: "insufficient_funds", balance, cost: rollCost };
+      }
       const rolled = Math.floor(Math.random() * 100) + 1;
       const won = rolled <= effectiveProbability;
       await tx.insert(shopRollsTable).values({
@@ -29541,8 +29571,8 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
           userId: user2.id,
           shopItemId: itemId,
           quantity: 1,
-          pricePerItem: item.price,
-          totalPrice: item.price,
+          pricePerItem: rollCost,
+          totalPrice: rollCost,
           shippingAddress: null,
           status: "pending",
           orderType: "luck_win"
@@ -29562,29 +29592,29 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
             probabilityMultiplier: 50
           });
         }
-        return { won: true, orderId: newOrder[0].id, effectiveProbability, rolled };
+        return { won: true, orderId: newOrder[0].id, effectiveProbability, rolled, rollCost };
       }
       const consolationOrder = await tx.insert(shopOrdersTable).values({
         userId: user2.id,
         shopItemId: itemId,
         quantity: 1,
-        pricePerItem: item.price,
-        totalPrice: item.price,
+        pricePerItem: rollCost,
+        totalPrice: rollCost,
         shippingAddress: null,
         status: "pending",
         orderType: "consolation",
         notes: `Consolation scrap paper - rolled ${rolled}, needed ${effectiveProbability} or less`
       }).returning();
-      return { won: false, effectiveProbability, rolled, consolationOrderId: consolationOrder[0].id };
+      return { won: false, effectiveProbability, rolled, rollCost, consolationOrderId: consolationOrder[0].id };
     });
     if (result.won) {
-      return { success: true, won: true, orderId: result.orderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, refineryReset: true, probabilityHalved: true };
+      return { success: true, won: true, orderId: result.orderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, rollCost: result.rollCost, refineryReset: true, probabilityHalved: true };
     }
-    return { success: true, won: false, consolationOrderId: result.consolationOrderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled };
+    return { success: true, won: false, consolationOrderId: result.consolationOrderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, rollCost: result.rollCost };
   } catch (e) {
     const err = e;
     if (err.type === "insufficient_funds") {
-      return { error: "Insufficient scraps", required: item.price, available: err.balance };
+      return { error: "Insufficient scraps", required: err.cost, available: err.balance };
     }
     if (err.type === "out_of_stock") {
       return { error: "Out of stock" };
@@ -29620,7 +29650,9 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
       if (currentBoost >= maxBoost) {
         throw { type: "max_probability" };
       }
-      const cost = Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, currentBoost));
+      const upgradeCountResult = await tx.select({ count: sql`COUNT(*)` }).from(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
+      const upgradeCount = Number(upgradeCountResult[0]?.count) || 0;
+      const cost = Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, upgradeCount));
       const affordable = await canAfford(user2.id, cost, tx);
       if (!affordable) {
         const { balance } = await getUserScrapsBalance(user2.id, tx);
@@ -29634,7 +29666,8 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
         cost,
         boostAmount
       });
-      const nextCost = newBoost >= maxBoost ? null : Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, newBoost));
+      const newUpgradeCount = upgradeCount + 1;
+      const nextCost = newBoost >= maxBoost ? null : Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, newUpgradeCount));
       return { boostPercent: newBoost, boostAmount, nextCost, effectiveProbability: Math.min(adjustedBaseProbability + newBoost, 100) };
     });
     return result;
@@ -30511,6 +30544,10 @@ admin.delete("/shop/items/:id", async ({ params, headers, status: status2 }) => 
     }
     const itemId = parseInt(params.id);
     await db.delete(shopHeartsTable).where(eq(shopHeartsTable.shopItemId, itemId));
+    await db.delete(shopRollsTable).where(eq(shopRollsTable.shopItemId, itemId));
+    await db.delete(refineryOrdersTable).where(eq(refineryOrdersTable.shopItemId, itemId));
+    await db.delete(shopPenaltiesTable).where(eq(shopPenaltiesTable.shopItemId, itemId));
+    await db.delete(shopOrdersTable).where(eq(shopOrdersTable.shopItemId, itemId));
     await db.delete(shopItemsTable).where(eq(shopItemsTable.id, itemId));
     return { success: true };
   } catch (err) {
@@ -30677,6 +30714,83 @@ admin.patch("/orders/:id", async ({ params, body, headers, status: status2 }) =>
 });
 var admin_default = admin;
 
+// src/lib/hackatime-sync.ts
+var HACKATIME_API3 = "https://hackatime.hackclub.com/api/v1";
+var SCRAPS_START_DATE3 = "2026-02-03";
+var SYNC_INTERVAL_MS = 2 * 60 * 1000;
+async function fetchHackatimeHours2(slackId, projectName) {
+  try {
+    const params = new URLSearchParams({
+      features: "projects",
+      start_date: SCRAPS_START_DATE3,
+      filter_by_project: projectName
+    });
+    const url = `${HACKATIME_API3}/users/${encodeURIComponent(slackId)}/stats?${params}`;
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" }
+    });
+    if (!response.ok)
+      return -1;
+    const data = await response.json();
+    const project = data.data?.projects?.find((p) => p.name === projectName);
+    if (!project)
+      return 0;
+    return Math.round(project.total_seconds / 3600 * 10) / 10;
+  } catch {
+    return -1;
+  }
+}
+function parseHackatimeProject2(hackatimeProject) {
+  if (!hackatimeProject)
+    return null;
+  const slashIndex = hackatimeProject.indexOf("/");
+  if (slashIndex === -1)
+    return null;
+  return {
+    slackId: hackatimeProject.substring(0, slashIndex),
+    projectName: hackatimeProject.substring(slashIndex + 1)
+  };
+}
+async function syncAllProjects() {
+  console.log("[HACKATIME-SYNC] Starting sync...");
+  const startTime = Date.now();
+  try {
+    const projects2 = await db.select({
+      id: projectsTable.id,
+      hackatimeProject: projectsTable.hackatimeProject,
+      hours: projectsTable.hours
+    }).from(projectsTable).where(and(isNotNull(projectsTable.hackatimeProject), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))));
+    let updated = 0;
+    let errors = 0;
+    for (const project of projects2) {
+      const parsed = parseHackatimeProject2(project.hackatimeProject);
+      if (!parsed)
+        continue;
+      const hours = await fetchHackatimeHours2(parsed.slackId, parsed.projectName);
+      if (hours < 0) {
+        errors++;
+        continue;
+      }
+      if (hours !== project.hours) {
+        await db.update(projectsTable).set({ hours, updatedAt: new Date }).where(eq(projectsTable.id, project.id));
+        updated++;
+      }
+    }
+    const elapsed = Date.now() - startTime;
+    console.log(`[HACKATIME-SYNC] Completed: ${projects2.length} projects, ${updated} updated, ${errors} errors, ${elapsed}ms`);
+  } catch (error) {
+    console.error("[HACKATIME-SYNC] Error:", error);
+  }
+}
+var syncInterval = null;
+function startHackatimeSync() {
+  if (syncInterval)
+    return;
+  console.log("[HACKATIME-SYNC] Starting background sync (every 2 minutes)");
+  syncAllProjects();
+  syncInterval = setInterval(syncAllProjects, SYNC_INTERVAL_MS);
+}
+
 // src/index.ts
 var api = new Elysia().use(auth_default).use(projects_default).use(news_default).use(user_default).use(shop_default).use(leaderboard_default).use(hackatime_default).use(upload_default).use(admin_default).get("/", () => "if you dm @notaroomba abt finding this you may get cool stickers");
 var app = new Elysia().use(cors({
@@ -30684,3 +30798,4 @@ var app = new Elysia().use(cors({
   credentials: true
 })).use(api).listen(config.port);
 console.log(`\uD83E\uDD8A Elysia is running at ${app.server?.hostname}:${app.server?.port}`);
+startHackatimeSync();

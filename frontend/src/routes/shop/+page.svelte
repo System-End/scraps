@@ -244,6 +244,7 @@
 		<!-- Items Grid -->
 		<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
 			{#each sortedItems as item (item.id)}
+				{@const rollCost = Math.max(1, Math.round(item.price * (item.baseProbability / 100)))}
 				<button
 					onclick={() => (selectedItem = item)}
 					class="relative cursor-pointer overflow-hidden rounded-2xl border-4 border-black p-4 text-left transition-all hover:border-dashed {item.count ===
@@ -275,10 +276,10 @@
 						<p class="mb-2 text-sm text-gray-600">{item.description}</p>
 						<div class="mb-3">
 							<span class="flex items-center gap-1 text-lg font-bold"
-								><Spool size={18} />{item.price}</span
+								><Spool size={18} />{rollCost}</span
 							>
 							<span class="mt-1 flex items-center gap-1 text-xs text-gray-500"
-								><Clock size={14} />~{estimateHours(item.price)}h</span
+								><Clock size={14} />~{estimateHours(rollCost)}h</span
 							>
 							<div class="mt-2 flex flex-wrap gap-1">
 								{#each item.category

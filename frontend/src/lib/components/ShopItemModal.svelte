@@ -49,7 +49,8 @@
 	let showConfirmation = $state(false);
 	let localHearted = $state(item.userHearted);
 	let localHeartCount = $state(item.heartCount);
-	let canAfford = $derived($userScrapsStore >= item.price);
+	let rollCost = $derived(Math.max(1, Math.round(item.price * (item.baseProbability / 100))));
+	let canAfford = $derived($userScrapsStore >= rollCost);
 	let alertMessage = $state<string | null>(null);
 	let alertType = $state<'error' | 'info'>('info');
 
@@ -223,7 +224,7 @@
 			<div class="flex items-center gap-4">
 				<span class="flex items-center gap-1 text-xl font-bold">
 					<Spool size={20} />
-					{item.price}
+					{rollCost}
 				</span>
 				<span class="text-sm text-gray-500">{item.count} left</span>
 			</div>
@@ -391,8 +392,7 @@
 			<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
 				<h2 class="mb-4 text-2xl font-bold">confirm try your luck</h2>
 				<p class="mb-6 text-gray-600">
-					are you sure you want to try your luck? this will cost <strong>{item.price} scraps</strong
-					>.
+					are you sure you want to try your luck? this will cost <strong>{rollCost} scraps</strong>.
 					<span class="mt-2 block">
 						your chance: <strong class={getProbabilityColor(item.effectiveProbability)}
 							>{item.effectiveProbability.toFixed(1)}%</strong

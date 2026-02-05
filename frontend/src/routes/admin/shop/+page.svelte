@@ -46,17 +46,66 @@
 	let formBoostAmount = $state(1);
 	let formMonetaryValue = $state(0);
 	let formError = $state<string | null>(null);
+	let errorModal = $state<string | null>(null);
 
 	const PHI = (1 + Math.sqrt(5)) / 2;
 	const SCRAPS_PER_HOUR = PHI * 10;
 	const DOLLARS_PER_HOUR = 5;
 	const SCRAPS_PER_DOLLAR = SCRAPS_PER_HOUR / DOLLARS_PER_HOUR;
 
+	function calculatePricing(monetaryValue: number, stockCount: number) {
+		const price = Math.round(monetaryValue * SCRAPS_PER_DOLLAR);
+
+		// Rarity based on price and stock
+		const priceRarityFactor = Math.max(0, 1 - monetaryValue / 100);
+		const stockRarityFactor = Math.min(1, stockCount / 20);
+		const baseProbability = Math.max(
+			5,
+			Math.min(80, Math.round((priceRarityFactor * 0.4 + stockRarityFactor * 0.6) * 80))
+		);
+
+		// Roll cost = price * (baseProbability / 100) - fixed
+		const rollCost = Math.max(1, Math.round(price * (baseProbability / 100)));
+		// Total budget = 1.5x price, upgrade budget = 1.5x price - rollCost
+		const upgradeBudget = Math.max(0, price * 1.5 - rollCost);
+		const probabilityGap = 100 - baseProbability;
+
+		const targetUpgrades = Math.max(5, Math.min(20, Math.ceil(monetaryValue / 5)));
+		const boostAmount = Math.max(1, Math.round(probabilityGap / targetUpgrades));
+		const actualUpgrades = Math.ceil(probabilityGap / boostAmount);
+
+		const costMultiplier = 110;
+		const multiplierDecimal = costMultiplier / 100;
+
+		let baseUpgradeCost: number;
+		if (actualUpgrades <= 0 || upgradeBudget <= 0) {
+			baseUpgradeCost = Math.round(price * 0.05) || 1;
+		} else {
+			const seriesSum =
+				(Math.pow(multiplierDecimal, actualUpgrades) - 1) / (multiplierDecimal - 1);
+			baseUpgradeCost = Math.max(1, Math.round(upgradeBudget / seriesSum));
+		}
+
+		return { price, baseProbability, baseUpgradeCost, costMultiplier, boostAmount };
+	}
+
+	function recalculatePricing() {
+		const pricing = calculatePricing(formMonetaryValue, formCount);
+		formPrice = pricing.price;
+		formBaseProbability = pricing.baseProbability;
+		formBaseUpgradeCost = pricing.baseUpgradeCost;
+		formCostMultiplier = pricing.costMultiplier;
+		formBoostAmount = pricing.boostAmount;
+	}
+
 	function updateFromMonetary(value: number) {
 		formMonetaryValue = value;
-		formPrice = Math.round(value * SCRAPS_PER_DOLLAR);
-		formBaseUpgradeCost = Math.round(formPrice * 0.1) || 1;
-		formBaseProbability = Math.max(0.1, Math.min(100, Math.round((100 - value * 2) * 10) / 10));
+		recalculatePricing();
+	}
+
+	function updateFromStock(value: number) {
+		formCount = value;
+		recalculatePricing();
 	}
 	let deleteConfirmId = $state<number | null>(null);
 
@@ -185,9 +234,13 @@
 			});
 			if (response.ok) {
 				await fetchItems();
+			} else {
+				const data = await response.json();
+				errorModal = data.error || 'Failed to delete item';
 			}
 		} catch (e) {
 			console.error('Failed to delete:', e);
+			errorModal = 'Failed to delete item';
 		} finally {
 			deleteConfirmId = null;
 		}
@@ -348,9 +401,30 @@
 						class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
 					/>
 					<p class="mt-1 text-xs text-gray-500">
-						= {formPrice} scraps · {formBaseProbability}% base probability · {formBaseUpgradeCost} upgrade
-						cost · ~{(formPrice / SCRAPS_PER_HOUR).toFixed(1)} hrs
+						= {formPrice} scraps · {formBaseProbability}% base · +{formBoostAmount}%/upgrade ·
+						~{(formPrice / SCRAPS_PER_HOUR).toFixed(1)} hrs to earn
 					</p>
+					{#if formPrice > 0}
+						{@const rollCost = Math.max(1, Math.round(formPrice * (formBaseProbability / 100)))}
+						{@const probabilityGap = 100 - formBaseProbability}
+						{@const upgradesNeeded = Math.ceil(probabilityGap / formBoostAmount)}
+						{@const multiplierDecimal = formCostMultiplier / 100}
+						{@const totalUpgradeCost =
+							formBaseUpgradeCost *
+							((Math.pow(multiplierDecimal, upgradesNeeded) - 1) / (multiplierDecimal - 1))}
+						{@const totalCost = totalUpgradeCost + rollCost}
+						{@const maxBudget = formPrice * 1.5}
+						<p class="mt-1 text-xs text-gray-500">
+							roll cost: {rollCost} scraps · upgrades to 100%: {Math.round(totalUpgradeCost)} scraps
+						</p>
+						<p
+							class="mt-1 text-xs {totalCost > maxBudget ? 'font-bold text-red-600' : 'text-gray-500'}"
+						>
+							total: {Math.round(totalCost)} scraps ({upgradesNeeded} upgrades + roll) ·
+							budget: {Math.round(maxBudget)} (1.5×)
+							{#if totalCost > maxBudget}· ⚠️ over budget!{/if}
+						</p>
+					{/if}
 				</div>
 
 				<div class="grid grid-cols-2 gap-4">
@@ -359,10 +433,12 @@
 						<input
 							id="count"
 							type="number"
-							bind:value={formCount}
+							value={formCount}
+							oninput={(e) => updateFromStock(parseInt(e.currentTarget.value) || 0)}
 							min="0"
 							class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
 						/>
+						<p class="mt-1 text-xs text-gray-500">affects rarity calculation</p>
 					</div>
 					<div>
 						<label for="category" class="mb-1 block text-sm font-bold">categories</label>
@@ -484,6 +560,27 @@
 					delete
 				</button>
 			</div>
+		</div>
+	</div>
+{/if}
+
+{#if errorModal}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+		onclick={(e) => e.target === e.currentTarget && (errorModal = null)}
+		onkeydown={(e) => e.key === 'Escape' && (errorModal = null)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
+			<h2 class="mb-4 text-2xl font-bold">error</h2>
+			<p class="mb-6 text-gray-600">{errorModal}</p>
+			<button
+				onclick={() => (errorModal = null)}
+				class="w-full cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed"
+			>
+				ok
+			</button>
 		</div>
 	</div>
 {/if}

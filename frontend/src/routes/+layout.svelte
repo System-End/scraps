@@ -44,10 +44,21 @@
 	}
 </script>
 
-<svelte:head
-	><link rel="icon" href={favicon} />
+<svelte:head>
+	<link rel="icon" href={favicon} />
+	<link rel="apple-touch-icon" href={favicon} />
 	<title>scraps</title>
-	<meta name="description" content="a ysws where you get scraps from hack club hq" />
+	<meta name="description" content="scraps - earn scraps by building projects and spend them in the shop to win prizes from hack club hq" />
+	<meta name="keywords" content="hack club, scraps, ysws, projects, coding, prizes" />
+	<meta name="author" content="Hack Club" />
+	<meta property="og:title" content="scraps" />
+	<meta property="og:description" content="earn scraps by building projects and spend them in the shop to win prizes from hack club hq" />
+	<meta property="og:type" content="website" />
+	<meta property="og:image" content={favicon} />
+	<meta name="twitter:card" content="summary" />
+	<meta name="twitter:title" content="scraps" />
+	<meta name="twitter:description" content="earn scraps by building projects and spend them in the shop to win prizes from hack club hq" />
+	<meta name="theme-color" content="#000000" />
 </svelte:head>
 
 <div class="flex min-h-dvh flex-col">

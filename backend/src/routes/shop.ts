@@ -4,7 +4,7 @@ import { db } from '../db'
 import { shopItemsTable, shopHeartsTable, shopOrdersTable, shopRollsTable, refineryOrdersTable, shopPenaltiesTable } from '../schemas/shop'
 import { usersTable } from '../schemas/users'
 import { getUserFromSession } from '../lib/auth'
-import { getUserScrapsBalance, canAfford } from '../lib/scraps'
+import { getUserScrapsBalance, canAfford, calculateRollCost } from '../lib/scraps'
 
 const shop = new Elysia({ prefix: '/shop' })
 
@@ -39,7 +39,8 @@ shop.get('/items', async ({ headers }) => {
 		const userBoosts = await db
 			.select({
 				shopItemId: refineryOrdersTable.shopItemId,
-				boostPercent: sql<number>`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
+				boostPercent: sql<number>`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`,
+				upgradeCount: sql<number>`COUNT(*)`
 			})
 			.from(refineryOrdersTable)
 			.where(eq(refineryOrdersTable.userId, user.id))
@@ -54,20 +55,26 @@ shop.get('/items', async ({ headers }) => {
 			.where(eq(shopPenaltiesTable.userId, user.id))
 
 		const heartedIds = new Set(userHearts.map(h => h.shopItemId))
-		const boostMap = new Map(userBoosts.map(b => [b.shopItemId, Number(b.boostPercent)]))
+		const boostMap = new Map(userBoosts.map(b => [b.shopItemId, { boostPercent: Number(b.boostPercent), upgradeCount: Number(b.upgradeCount) }]))
 		const penaltyMap = new Map(userPenalties.map(p => [p.shopItemId, p.probabilityMultiplier]))
 
 		return items.map(item => {
-			const userBoostPercent = boostMap.get(item.id) ?? 0
+			const boostData = boostMap.get(item.id) ?? { boostPercent: 0, upgradeCount: 0 }
 			const penaltyMultiplier = penaltyMap.get(item.id) ?? 100
 			const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100)
+			const maxBoost = 100 - adjustedBaseProbability
+			const nextUpgradeCost = boostData.boostPercent >= maxBoost
+				? null
+				: Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, boostData.upgradeCount))
 			return {
 				...item,
 				heartCount: Number(item.heartCount) || 0,
-				userBoostPercent,
+				userBoostPercent: boostData.boostPercent,
+				upgradeCount: boostData.upgradeCount,
 				adjustedBaseProbability,
-				effectiveProbability: Math.min(adjustedBaseProbability + userBoostPercent, 100),
-				userHearted: heartedIds.has(item.id)
+				effectiveProbability: Math.min(adjustedBaseProbability + boostData.boostPercent, 100),
+				userHearted: heartedIds.has(item.id),
+				nextUpgradeCost
 			}
 		})
 	}
@@ -76,8 +83,10 @@ shop.get('/items', async ({ headers }) => {
 		...item,
 		heartCount: Number(item.heartCount) || 0,
 		userBoostPercent: 0,
+		upgradeCount: 0,
 		effectiveProbability: Math.min(item.baseProbability, 100),
-		userHearted: false
+		userHearted: false,
+		nextUpgradeCost: item.baseUpgradeCost
 	}))
 })
 
@@ -438,6 +447,16 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 			const adjustedBaseProbability = Math.floor(currentItem[0].baseProbability * penaltyMultiplier / 100)
 			const effectiveProbability = Math.min(adjustedBaseProbability + boostPercent, 100)
 
+			// Calculate roll cost based on BASE probability (fixed, doesn't change with upgrades)
+			const rollCost = calculateRollCost(currentItem[0].price, currentItem[0].baseProbability)
+
+			// Check if user can afford the roll cost
+			const canAffordRoll = await canAfford(user.id, rollCost, tx)
+			if (!canAffordRoll) {
+				const { balance } = await getUserScrapsBalance(user.id, tx)
+				throw { type: 'insufficient_funds', balance, cost: rollCost }
+			}
+
 			const rolled = Math.floor(Math.random() * 100) + 1
 			const won = rolled <= effectiveProbability
 
@@ -465,8 +484,8 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 						userId: user.id,
 						shopItemId: itemId,
 						quantity: 1,
-						pricePerItem: item.price,
-						totalPrice: item.price,
+						pricePerItem: rollCost,
+						totalPrice: rollCost,
 						shippingAddress: null,
 						status: 'pending',
 						orderType: 'luck_win'
@@ -511,7 +530,7 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 						})
 				}
 
-				return { won: true, orderId: newOrder[0].id, effectiveProbability, rolled }
+				return { won: true, orderId: newOrder[0].id, effectiveProbability, rolled, rollCost }
 			}
 
 			// Create consolation order for scrap paper when user loses
@@ -521,8 +540,8 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 					userId: user.id,
 					shopItemId: itemId,
 					quantity: 1,
-					pricePerItem: item.price,
-					totalPrice: item.price,
+					pricePerItem: rollCost,
+					totalPrice: rollCost,
 					shippingAddress: null,
 					status: 'pending',
 					orderType: 'consolation',
@@ -530,17 +549,17 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 				})
 				.returning()
 
-			return { won: false, effectiveProbability, rolled, consolationOrderId: consolationOrder[0].id }
+			return { won: false, effectiveProbability, rolled, rollCost, consolationOrderId: consolationOrder[0].id }
 		})
 
 		if (result.won) {
-			return { success: true, won: true, orderId: result.orderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, refineryReset: true, probabilityHalved: true }
+			return { success: true, won: true, orderId: result.orderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, rollCost: result.rollCost, refineryReset: true, probabilityHalved: true }
 		}
-		return { success: true, won: false, consolationOrderId: result.consolationOrderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled }
+		return { success: true, won: false, consolationOrderId: result.consolationOrderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, rollCost: result.rollCost }
 	} catch (e) {
-		const err = e as { type?: string; balance?: number }
+		const err = e as { type?: string; balance?: number; cost?: number }
 		if (err.type === 'insufficient_funds') {
-			return { error: 'Insufficient scraps', required: item.price, available: err.balance }
+			return { error: 'Insufficient scraps', required: err.cost, available: err.balance }
 		}
 		if (err.type === 'out_of_stock') {
 			return { error: 'Out of stock' }
@@ -606,7 +625,17 @@ shop.post('/items/:id/upgrade-probability', async ({ params, headers }) => {
 				throw { type: 'max_probability' }
 			}
 
-			const cost = Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, currentBoost))
+			// Count number of upgrades purchased (not total boost %)
+			const upgradeCountResult = await tx
+				.select({ count: sql<number>`COUNT(*)` })
+				.from(refineryOrdersTable)
+				.where(and(
+					eq(refineryOrdersTable.userId, user.id),
+					eq(refineryOrdersTable.shopItemId, itemId)
+				))
+			const upgradeCount = Number(upgradeCountResult[0]?.count) || 0
+
+			const cost = Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, upgradeCount))
 
 			const affordable = await canAfford(user.id, cost, tx)
 			if (!affordable) {
@@ -625,9 +654,10 @@ shop.post('/items/:id/upgrade-probability', async ({ params, headers }) => {
 				boostAmount
 			})
 
+			const newUpgradeCount = upgradeCount + 1
 			const nextCost = newBoost >= maxBoost
 				? null
-				: Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, newBoost))
+				: Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, newUpgradeCount))
 
 			return { boostPercent: newBoost, boostAmount, nextCost, effectiveProbability: Math.min(adjustedBaseProbability + newBoost, 100) }
 		})
