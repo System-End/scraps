@@ -33,7 +33,7 @@ admin.get('/stats', async ({ headers, status }) => {
         return status(401, { error: 'Unauthorized' })
     }
 
-    const [usersCount, projectsCount, totalHoursResult, pendingHoursResult] = await Promise.all([
+    const [usersCount, projectsCount, totalHoursResult, pendingHoursResult, inProgressHoursResult] = await Promise.all([
         db.select({ count: sql<number>`count(*)` }).from(usersTable),
         db.select({ count: sql<number>`count(*)` })
             .from(projectsTable)
@@ -49,6 +49,12 @@ admin.get('/stats', async ({ headers, status }) => {
             .where(and(
                 eq(projectsTable.status, 'waiting_for_review'),
                 or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)
+            )),
+        db.select({ total: sql<number>`COALESCE(SUM(COALESCE(${projectsTable.hoursOverride}, ${projectsTable.hours})), 0)` })
+            .from(projectsTable)
+            .where(and(
+                eq(projectsTable.status, 'in_progress'),
+                or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)
             ))
     ])
 
@@ -56,6 +62,7 @@ admin.get('/stats', async ({ headers, status }) => {
     const totalProjects = Number(projectsCount[0]?.count || 0)
     const totalHours = Number(totalHoursResult[0]?.total || 0)
     const pendingHours = Number(pendingHoursResult[0]?.total || 0)
+    const inProgressHours = Number(inProgressHoursResult[0]?.total || 0)
     const weightedGrants = Math.round(totalHours / 10 * 100) / 100
     const pendingWeightedGrants = Math.round(pendingHours / 10 * 100) / 100
 
@@ -65,7 +72,8 @@ admin.get('/stats', async ({ headers, status }) => {
         totalHours: Math.round(totalHours * 10) / 10,
         weightedGrants,
         pendingHours: Math.round(pendingHours * 10) / 10,
-        pendingWeightedGrants
+        pendingWeightedGrants,
+        inProgressHours: Math.round(inProgressHours * 10) / 10
     }
 })
 

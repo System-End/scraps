@@ -12,6 +12,7 @@
 		weightedGrants: number;
 		pendingHours: number;
 		pendingWeightedGrants: number;
+		inProgressHours: number;
 	}
 
 	let stats = $state<Stats | null>(null);
@@ -100,20 +101,32 @@
 					<Hourglass size={32} />
 				</div>
 				<div>
-					<p class="text-sm font-bold text-gray-500">pending hours</p>
-					<p class="text-4xl font-bold text-yellow-600">{stats.pendingHours.toLocaleString()}h</p>
+					<p class="text-sm font-bold text-gray-500">in progress hours</p>
+					<p class="text-4xl font-bold text-yellow-600">{stats.inProgressHours.toLocaleString()}h</p>
 				</div>
 			</div>
 
-			<div class="flex items-center gap-4 rounded-2xl border-4 border-yellow-500 bg-yellow-50 p-6">
+			<div class="flex items-center gap-4 rounded-2xl border-4 border-blue-500 bg-blue-50 p-6">
 				<div
-					class="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-500 text-white"
+					class="flex h-16 w-16 items-center justify-center rounded-full bg-blue-500 text-white"
+				>
+					<Hourglass size={32} />
+				</div>
+				<div>
+					<p class="text-sm font-bold text-gray-500">pending review hours</p>
+					<p class="text-4xl font-bold text-blue-600">{stats.pendingHours.toLocaleString()}h</p>
+				</div>
+			</div>
+
+			<div class="flex items-center gap-4 rounded-2xl border-4 border-blue-500 bg-blue-50 p-6">
+				<div
+					class="flex h-16 w-16 items-center justify-center rounded-full bg-blue-500 text-white"
 				>
 					<Scale size={32} />
 				</div>
 				<div>
 					<p class="text-sm font-bold text-gray-500">pending weighted grants</p>
-					<p class="text-4xl font-bold text-yellow-600">
+					<p class="text-4xl font-bold text-blue-600">
 						{stats.pendingWeightedGrants.toLocaleString()}
 					</p>
 					<p class="text-xs text-gray-400">pending hours ÷ 10</p>
