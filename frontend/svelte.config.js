@@ -12,8 +12,7 @@ const config = {
 		}),
 		prerender: {
 			handleUnseenRoutes: 'ignore'
-		},
-		trailingSlash: 'never'
+		}
 	}
 };
 
