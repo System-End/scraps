@@ -156,7 +156,7 @@
 		},
 		{
 			title: "you're ready!",
-			description: "here's 10 bonus scraps to get you started. now go build something awesome!",
+			description: "here's 5 bonus scraps to get you started. now go build something awesome!",
 			highlight: null
 		}
 	];
@@ -509,7 +509,7 @@
 							<span>completing...</span>
 						{:else if isLastStep}
 							<Gift size={18} />
-							<span>claim 10 scraps</span>
+							<span>claim 5 scraps</span>
 						{:else}
 							<span>next</span>
 							<ArrowRight size={18} />

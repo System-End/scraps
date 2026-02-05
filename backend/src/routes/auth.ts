@@ -140,7 +140,7 @@ authRoutes.get("/me", async ({ headers }) => {
             await db.insert(userBonusesTable).values({
                 userId: user.id,
                 reason: 'tutorial_completion',
-                amount: 10
+                amount: 5
             })
             console.log("[AUTH] Auto-awarded tutorial bonus for user:", user.id)
         }

@@ -76,10 +76,10 @@ user.post('/complete-tutorial', async ({ headers }) => {
     await db.insert(userBonusesTable).values({
         userId: userData.id,
         reason: 'tutorial_completion',
-        amount: 10
+        amount: 5
     })
 
-    return { success: true, bonusAwarded: 10 }
+    return { success: true, bonusAwarded: 5 }
 })
 
 // Public profile - anyone logged in can view
