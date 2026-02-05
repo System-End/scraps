@@ -27,6 +27,7 @@ export interface ShopItem {
 	heartCount: number;
 	userHearted: boolean;
 	baseProbability: number;
+	adjustedBaseProbability: number;
 	baseUpgradeCost: number;
 	costMultiplier: number;
 	boostAmount: number;

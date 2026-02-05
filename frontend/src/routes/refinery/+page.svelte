@@ -100,7 +100,7 @@
 										{item.effectiveProbability}%
 									</span>
 									<span class="text-xs text-gray-600 sm:text-sm">
-										({item.baseProbability}% + {item.userBoostPercent}%)
+										({item.baseProbability}% + {item.userBoostPercent}%{#if item.adjustedBaseProbability < item.baseProbability}<span class="text-red-500"> - {item.baseProbability - item.adjustedBaseProbability}% from previous buy</span>{/if})
 									</span>
 								</div>
 							</div>

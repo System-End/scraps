@@ -84,6 +84,7 @@ shop.get('/items', async ({ headers }) => {
 		heartCount: Number(item.heartCount) || 0,
 		userBoostPercent: 0,
 		upgradeCount: 0,
+		adjustedBaseProbability: item.baseProbability,
 		effectiveProbability: Math.min(item.baseProbability, 100),
 		userHearted: false,
 		nextUpgradeCost: item.baseUpgradeCost

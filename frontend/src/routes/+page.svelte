@@ -270,14 +270,14 @@
 		<p class="mb-4 text-xl font-bold">tl;dr</p>
 
 		<p class="mb-2">
-			<strong>ys:</strong> any project <Superscript
+			<strong>you ship:</strong> any project <Superscript
 				number={3}
 				tooltip="optionally silly, nonsensical, or fun"
 			/>
 		</p>
 
 		<p class="mb-6">
-			<strong>ws:</strong> random items from hq<Superscript
+			<strong>we ship:</strong> random items from hq<Superscript
 				number={4}
 				tooltip="(including stickers)"
 			/> (more hours, more stuff)
@@ -336,34 +336,64 @@
 			/>! this includes some of the rarest and most sought-after stickers from hack club.
 		</p>
 
-		<p class="mb-4 text-xl font-bold">how does the shop work?</p>
+		<p class="mb-6 text-xl font-bold">frequently asked questions</p>
 
-		<p class="mb-6">
-			here's where it gets interesting. each item in the shop has a <strong>base probability</strong
+		<div class="grid gap-4 sm:grid-cols-2">
+			<div
+				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
 			>
-			(like 50%). when you "try your luck," you spend scraps and roll the dice<Superscript
-				number={11}
-				tooltip="totally not gambling"
-			/>. if you roll under your probability, you win the item!
-		</p>
+				<p class="mb-2 text-lg font-bold">who is eligible?</p>
+				<p class="text-gray-600">
+					scraps is for high schoolers! you need to be 13-18 years old to participate.
+				</p>
+			</div>
 
-		<p class="mb-6">
-			but wait, there's more! you can visit <strong>the refinery</strong> to boost your odds. spend scraps
-			to increase your probability for any item. the catch? each upgrade costs more than the last.
-		</p>
+			<div
+				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
+			>
+				<p class="mb-2 text-lg font-bold">how much does it cost?</p>
+				<p class="text-gray-600">
+					100% free - all the prizes are donated to us or paid for by hack club!
+				</p>
+			</div>
 
-		<p class="mb-6">
-			so you have a choice: <strong>gamble at low odds</strong> and maybe get lucky, or
-			<strong>invest in the refinery</strong> until your chances are high enough that winning is almost
-			guaranteed. the strategy is up to you!
-		</p>
+			<div
+				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
+			>
+				<p class="mb-2 text-lg font-bold">what types of projects count?</p>
+				<p class="text-gray-600">
+					all kinds of technical projects as long as it's open-source on github!
+				</p>
+			</div>
 
-		<p class="mb-6">
-			one catch: <strong
-				>every time you win an item, your base probability for that item gets halved</strong
-			>. so winning becomes harder each time, but the refinery is always there to help you boost
-			your odds back up!
-		</p>
+			<div
+				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
+			>
+				<p class="mb-2 text-lg font-bold">how many projects can i build?</p>
+				<p class="text-gray-600">there's no limit! build as much as you can!</p>
+			</div>
+
+			<div
+				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed sm:col-span-2"
+			>
+				<p class="mb-2 text-lg font-bold">is this legit?</p>
+				<p class="text-gray-600">
+					yup! hack club has run programs like <a
+						href="https://highseas.hackclub.com/"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="cursor-pointer underline hover:no-underline">high seas</a
+					>
+					and
+					<a
+						href="https://summer.hackclub.com/"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="cursor-pointer underline hover:no-underline">summer of making</a
+					> — both gave out similar prizes for building personal projects.
+				</p>
+			</div>
+		</div>
 	</div>
 </div>
 

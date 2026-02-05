@@ -117,6 +117,72 @@
 
 	<!-- News Carousel -->
 	<NewsCarousel />
+
+	<!-- FAQ Section -->
+	<div class="mt-12">
+		<h2 class="mb-6 text-3xl font-bold">faq</h2>
+		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+			<div
+				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
+			>
+				<p class="mb-2 text-lg font-bold">how does the shop work?</p>
+				<p class="text-gray-600">
+					spend scraps to roll for prizes. each item has a probability of winning - boost your odds
+					in the refinery!
+				</p>
+			</div>
+
+			<div
+				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
+			>
+				<p class="mb-2 text-lg font-bold">what is hackatime?</p>
+				<p class="text-gray-600">
+					<a
+						href="https://hackatime.hackclub.com"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="underline hover:no-underline">hackatime</a
+					> is hack club's time tracking tool that automatically logs your coding hours.
+				</p>
+			</div>
+
+			<div
+				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
+			>
+				<p class="mb-2 text-lg font-bold">what is the refinery?</p>
+				<p class="text-gray-600">
+					spend scraps to increase your probability of winning an item. each upgrade boosts your
+					chances!
+				</p>
+			</div>
+
+			<div
+				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
+			>
+				<p class="mb-2 text-lg font-bold">what are project tiers?</p>
+				<p class="text-gray-600">
+					tiers 1-4 based on complexity. tier 1 = 0.8x, tier 2 = 1x, tier 3 = 1.25x, tier 4 = 1.5x
+					multiplier.
+				</p>
+			</div>
+
+			<div
+				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
+			>
+				<p class="mb-2 text-lg font-bold">what happens if i lose a roll?</p>
+				<p class="text-gray-600">
+					you receive consolation scrap paper. your refinery upgrades are kept, so try again!
+				</p>
+			</div>
+
+			<a
+				href="/faq"
+				class="flex items-center justify-center rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
+			>
+				<p class="text-lg font-bold">more questions? →</p>
+			</a>
+		</div>
+	</div>
 </div>
 
 <CreateProjectModal

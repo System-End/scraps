@@ -253,9 +253,14 @@
 			<p class="text-3xl font-bold {getProbabilityColor(item.effectiveProbability)}">
 				{item.effectiveProbability.toFixed(1)}%
 			</p>
-			<div class="mt-2 flex gap-4 text-xs text-gray-600">
+			<div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
 				<span>base: {item.baseProbability}%</span>
 				<span>your boost: +{item.userBoostPercent}%</span>
+				{#if item.adjustedBaseProbability < item.baseProbability}
+					<span class="text-red-500"
+						>previous buy: -{item.baseProbability - item.adjustedBaseProbability}%</span
+					>
+				{/if}
 			</div>
 		</div>
 
