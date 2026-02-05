@@ -32,6 +32,7 @@
 	let searchQuery = $state('');
 	let selectedTier = $state<number | null>(null);
 	let selectedStatus = $state<string | null>(null);
+	let sortBy = $state<'default' | 'views' | 'random'>('default');
 	let currentPage = $state(1);
 
 	let searchTimeout: ReturnType<typeof setTimeout>;
@@ -41,6 +42,11 @@
 		{ value: 'shipped', label: 'shipped' },
 		{ value: 'in_progress', label: 'in progress' }
 	];
+	const SORT_OPTIONS = [
+		{ value: 'default', label: 'recent' },
+		{ value: 'views', label: 'most viewed' },
+		{ value: 'random', label: 'random' }
+	] as const;
 
 	async function fetchProjects() {
 		loading = true;
@@ -53,6 +59,7 @@
 			if (searchQuery.trim()) params.set('search', searchQuery.trim());
 			if (selectedTier) params.set('tier', selectedTier.toString());
 			if (selectedStatus) params.set('status', selectedStatus);
+			if (sortBy !== 'default') params.set('sortBy', sortBy);
 
 			const response = await fetch(`${API_URL}/projects/explore?${params}`, {
 				credentials: 'include'
@@ -90,6 +97,12 @@
 
 	function toggleStatus(status: string) {
 		selectedStatus = selectedStatus === status ? null : status;
+		currentPage = 1;
+		fetchProjects();
+	}
+
+	function setSortBy(value: 'default' | 'views' | 'random') {
+		sortBy = value;
 		currentPage = 1;
 		fetchProjects();
 	}
@@ -151,11 +164,28 @@
 					{status.label}
 				</button>
 			{/each}
-			{#if selectedTier || selectedStatus}
+		</div>
+
+		<!-- Sort options -->
+		<div class="flex flex-wrap items-center gap-2">
+			<span class="mr-2 self-center text-sm font-bold">sort:</span>
+			{#each SORT_OPTIONS as option}
+				<button
+					onclick={() => setSortBy(option.value)}
+					class="cursor-pointer rounded-full border-4 border-black px-3 py-1.5 text-sm font-bold transition-all duration-200 sm:px-4 sm:py-2 {sortBy ===
+					option.value
+						? 'bg-black text-white'
+						: 'hover:border-dashed'}"
+				>
+					{option.label}
+				</button>
+			{/each}
+			{#if selectedTier || selectedStatus || sortBy !== 'default'}
 				<button
 					onclick={() => {
 						selectedTier = null;
 						selectedStatus = null;
+						sortBy = 'default';
 						currentPage = 1;
 						fetchProjects();
 					}}

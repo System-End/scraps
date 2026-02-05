@@ -26,9 +26,10 @@ shop.get('/items', async ({ headers }) => {
 			boostAmount: shopItemsTable.boostAmount,
 			createdAt: shopItemsTable.createdAt,
 			updatedAt: shopItemsTable.updatedAt,
-			heartCount: sql<number>`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = ${shopItemsTable.id})`.as('heart_count')
+			heartCount: sql<number>`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = shop_items.id)`.as('heart_count')
 		})
 		.from(shopItemsTable)
+		items.forEach(item => console.log(item.name + " " + item.heartCount))
 
 	if (user) {
 		const userHearts = await db
@@ -110,7 +111,7 @@ shop.get('/items/:id', async ({ params, headers }) => {
 			boostAmount: shopItemsTable.boostAmount,
 			createdAt: shopItemsTable.createdAt,
 			updatedAt: shopItemsTable.updatedAt,
-			heartCount: sql<number>`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = ${shopItemsTable.id})`.as('heart_count')
+			heartCount: sql<number>`(SELECT COUNT(*) FROM shop_hearts WHERE shop_item_id = shop_items.id)`.as('heart_count')
 		})
 		.from(shopItemsTable)
 		.where(eq(shopItemsTable.id, itemId))

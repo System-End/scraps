@@ -64,6 +64,7 @@ projects.get('/explore', async ({ query }) => {
     const search = (query.search as string)?.trim() || ''
     const tier = query.tier ? parseInt(query.tier as string) : null
     const status = query.status as string || null
+    const sortBy = query.sortBy as string || 'default'
 
     const conditions = [
         or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
@@ -90,6 +91,16 @@ projects.get('/explore', async ({ query }) => {
 
     const whereClause = and(...conditions)
 
+    // Determine order based on sortBy
+    let orderClause
+    if (sortBy === 'views') {
+        orderClause = desc(projectsTable.views)
+    } else if (sortBy === 'random') {
+        orderClause = sql`RANDOM()`
+    } else {
+        orderClause = desc(projectsTable.updatedAt)
+    }
+
     const [projectsList, countResult] = await Promise.all([
         db.select({
             id: projectsTable.id,
@@ -104,7 +115,7 @@ projects.get('/explore', async ({ query }) => {
         })
         .from(projectsTable)
         .where(whereClause)
-        .orderBy(desc(projectsTable.updatedAt))
+        .orderBy(orderClause)
         .limit(limit)
         .offset(offset),
         db.select({ count: sql<number>`count(*)` })

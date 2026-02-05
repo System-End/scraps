@@ -20,7 +20,5 @@
 	title={hearted ? 'Remove from wishlist' : 'Add to wishlist'}
 >
 	<Heart size={16} class={hearted ? 'fill-red-500 text-red-500' : ''} />
-	{#if count > 0}
-		<span class="text-xs font-bold">{count}</span>
-	{/if}
+	<span class="text-xs font-bold">{count}</span>
 </button>

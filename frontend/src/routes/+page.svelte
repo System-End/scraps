@@ -282,14 +282,14 @@
 		<p class="mb-4 text-xl font-bold">tl;dr</p>
 
 		<p class="mb-2">
-			<strong>ys:</strong> any project <Superscript
+			<strong>you ship:</strong> any project <Superscript
 				number={3}
 				tooltip="optionally silly, nonsensical, or fun"
 			/>
 		</p>
 
 		<p class="mb-6">
-			<strong>ws:</strong> random items from hq<Superscript
+			<strong>we ship:</strong> random items from hq<Superscript
 				number={4}
 				tooltip="(including stickers)"
 			/> (more hours, more stuff)
