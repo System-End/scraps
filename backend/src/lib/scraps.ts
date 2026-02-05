@@ -31,10 +31,10 @@ export function calculateShopItemPricing(monetaryValue: number, stockCount: numb
 	
 	// Rarity based on price and stock
 	// Higher price = rarer, fewer stock = rarer
-	// Base probability ranges from 5% (very rare) to 80% (common)
+	// Base probability ranges from 1% (very rare) to 80% (common)
 	const priceRarityFactor = Math.max(0, 1 - monetaryValue / 100) // $100+ = max rarity
 	const stockRarityFactor = Math.min(1, stockCount / 20) // 20+ stock = common
-	const baseProbability = Math.max(5, Math.min(80, Math.round((priceRarityFactor * 0.4 + stockRarityFactor * 0.6) * 80)))
+	const baseProbability = Math.max(1, Math.min(80, Math.round((priceRarityFactor * 0.4 + stockRarityFactor * 0.6) * 80)))
 	
 	// Roll cost = price * (baseProbability / 100) - fixed, doesn't change with upgrades
 	const rollCost = Math.max(1, Math.round(price * (baseProbability / 100)))
