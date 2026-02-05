@@ -4,6 +4,7 @@
 	import { formatHours } from '$lib/utils';
 	import { tutorialProjectIdStore } from '$lib/stores';
 	import { goto } from '$app/navigation';
+	import { t } from '$lib/i18n';
 
 	interface Project {
 		id: number;
@@ -61,10 +62,10 @@
 	let selectedTier = $state(1);
 
 	const TIERS = [
-		{ value: 1, description: 'simple projects, tutorials, small scripts' },
-		{ value: 2, description: 'moderate complexity, multi-file projects' },
-		{ value: 3, description: 'complex features, APIs, integrations' },
-		{ value: 4, description: 'full applications, major undertakings' }
+		{ value: 1, description: $t.createProject.tierDescriptions.tier1 },
+		{ value: 2, description: $t.createProject.tierDescriptions.tier2 },
+		{ value: 3, description: $t.createProject.tierDescriptions.tier3 },
+		{ value: 4, description: $t.createProject.tierDescriptions.tier4 }
 	];
 
 	const NAME_MAX = 50;
@@ -109,7 +110,7 @@
 		if (!file) return;
 
 		if (file.size > 5 * 1024 * 1024) {
-			error = 'Image must be less than 5MB';
+			error = $t.createProject.imageMustBeLessThan;
 			return;
 		}
 
@@ -134,7 +135,7 @@
 
 			imageUrl = data.url;
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to upload image';
+			error = e instanceof Error ? e.message : $t.createProject.failedToCreateProject;
 			imagePreview = null;
 		} finally {
 			uploadingImage = false;
@@ -169,7 +170,7 @@
 
 	async function handleSubmit() {
 		if (!allRequirementsMet) {
-			error = 'Please complete all requirements';
+			error = $t.createProject.pleaseCompleteRequirements;
 			return;
 		}
 
@@ -201,7 +202,7 @@
 
 			if (!response.ok) {
 				const data = await response.json().catch(() => ({}));
-				throw new Error(data.message || 'Failed to create project');
+				throw new Error(data.message || $t.createProject.failedToCreateProject);
 			}
 
 			const newProject = await response.json();
@@ -215,7 +216,7 @@
 				onCreated(newProject);
 			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to create project';
+			error = e instanceof Error ? e.message : $t.createProject.failedToCreateProject;
 		} finally {
 			loading = false;
 		}
@@ -251,7 +252,7 @@
 			data-tutorial="create-project-modal"
 		>
 			<div class="mb-6 flex items-center justify-between">
-				<h2 class="text-2xl font-bold">new project</h2>
+				<h2 class="text-2xl font-bold">{$t.createProject.newProject}</h2>
 				{#if !tutorialMode}
 					<button
 						onclick={handleClose}
@@ -272,7 +273,8 @@
 				<!-- Image Upload -->
 				<div>
 					<label class="mb-1 block text-sm font-bold"
-						>image <span class="text-gray-400">(optional)</span></label
+						>{$t.createProject.image}
+						<span class="text-gray-400">({$t.createProject.optional})</span></label
 					>
 					{#if imagePreview}
 						<div class="relative h-40 w-full overflow-hidden rounded-lg border-2 border-black">
@@ -283,7 +285,7 @@
 							/>
 							{#if uploadingImage}
 								<div class="absolute inset-0 flex items-center justify-center bg-black/50">
-									<span class="font-bold text-white">uploading...</span>
+									<span class="font-bold text-white">{$t.createProject.uploading}</span>
 								</div>
 							{:else}
 								<button
@@ -300,7 +302,7 @@
 							class="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-black transition-colors hover:bg-gray-50"
 						>
 							<Upload size={32} class="mb-2 text-gray-400" />
-							<span class="text-sm text-gray-500">click to upload image</span>
+							<span class="text-sm text-gray-500">{$t.createProject.clickToUploadImage}</span>
 							<input type="file" accept="image/*" onchange={handleImageUpload} class="hidden" />
 						</label>
 					{/if}
@@ -309,7 +311,7 @@
 				<!-- Name -->
 				<div>
 					<label for="name" class="mb-1 block text-sm font-bold"
-						>name <span class="text-red-500">*</span></label
+						>{$t.createProject.name} <span class="text-red-500">*</span></label
 					>
 					<input
 						id="name"
@@ -325,7 +327,7 @@
 				<!-- Description -->
 				<div>
 					<label for="description" class="mb-1 block text-sm font-bold"
-						>description <span class="text-red-500">*</span></label
+						>{$t.createProject.description} <span class="text-red-500">*</span></label
 					>
 					<textarea
 						id="description"
@@ -347,7 +349,8 @@
 				<!-- Hackatime Project Dropdown -->
 				<div>
 					<label class="mb-1 block text-sm font-bold"
-						>hackatime project <span class="text-gray-400">(optional)</span></label
+						>{$t.createProject.hackatimeProject}
+						<span class="text-gray-400">({$t.createProject.optional})</span></label
 					>
 					<div class="relative">
 						<button
@@ -356,7 +359,7 @@
 							class="flex w-full items-center justify-between rounded-lg border-2 border-black px-4 py-2 text-left focus:border-dashed focus:outline-none"
 						>
 							{#if loadingProjects}
-								<span class="text-gray-500">loading projects...</span>
+								<span class="text-gray-500">{$t.createProject.loadingProjects}</span>
 							{:else if selectedHackatimeProject}
 								<span
 									>{selectedHackatimeProject.name}
@@ -364,7 +367,7 @@
 									></span
 								>
 							{:else}
-								<span class="text-gray-500">select a project</span>
+								<span class="text-gray-500">{$t.createProject.selectAProject}</span>
 							{/if}
 							<ChevronDown
 								size={20}
@@ -377,7 +380,9 @@
 								class="absolute top-full right-0 left-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border-2 border-black bg-white"
 							>
 								{#if hackatimeProjects.length === 0}
-									<div class="px-4 py-2 text-sm text-gray-500">no projects found</div>
+									<div class="px-4 py-2 text-sm text-gray-500">
+										{$t.createProject.noProjectsFound}
+									</div>
 								{:else}
 									{#each hackatimeProjects as project}
 										<button
@@ -398,7 +403,8 @@
 				<!-- GitHub URL (optional) -->
 				<div>
 					<label for="githubUrl" class="mb-1 block text-sm font-bold"
-						>github url <span class="text-gray-400">(optional)</span></label
+						>{$t.createProject.githubUrl}
+						<span class="text-gray-400">({$t.createProject.optional})</span></label
 					>
 					<input
 						id="githubUrl"
@@ -411,7 +417,7 @@
 
 				<!-- Tier Selector -->
 				<div>
-					<label class="mb-1 block text-sm font-bold">project tier</label>
+					<label class="mb-1 block text-sm font-bold">{$t.createProject.projectTier}</label>
 					<div class="grid grid-cols-2 gap-2">
 						{#each TIERS as tier}
 							<button
@@ -422,7 +428,7 @@
 									? 'bg-black text-white'
 									: 'hover:border-dashed'}"
 							>
-								<span>tier {tier.value}</span>
+								<span>{$t.dashboard.tier} {tier.value}</span>
 								<p
 									class="mt-1 text-xs {selectedTier === tier.value
 										? 'text-gray-300'
@@ -437,7 +443,7 @@
 
 				<!-- Requirements Checklist -->
 				<div class="rounded-lg border-2 border-black p-4">
-					<p class="mb-3 font-bold">requirements</p>
+					<p class="mb-3 font-bold">{$t.createProject.requirements}</p>
 					<ul class="space-y-2">
 						<li class="flex items-center gap-2 text-sm">
 							<span
@@ -447,7 +453,7 @@
 							>
 								{#if hasName}<Check size={12} />{/if}
 							</span>
-							<span class={hasName ? '' : 'text-gray-500'}>add a project name</span>
+							<span class={hasName ? '' : 'text-gray-500'}>{$t.createProject.addProjectName}</span>
 						</li>
 						<li class="flex items-center gap-2 text-sm">
 							<span
@@ -458,7 +464,7 @@
 								{#if hasDescription}<Check size={12} />{/if}
 							</span>
 							<span class={hasDescription ? '' : 'text-gray-500'}
-								>write a description (min {DESC_MIN} chars)</span
+								>{$t.createProject.writeDescription.replace('{min}', String(DESC_MIN))}</span
 							>
 						</li>
 					</ul>
@@ -471,14 +477,14 @@
 					disabled={loading || tutorialMode}
 					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					cancel
+					{$t.common.cancel}
 				</button>
 				<button
 					onclick={handleSubmit}
 					disabled={loading || !allRequirementsMet}
 					class="flex-1 cursor-pointer rounded-full bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
 				>
-					{loading ? 'creating...' : 'create'}
+					{loading ? $t.common.creating : $t.common.create}
 				</button>
 			</div>
 		</div>

@@ -17,6 +17,7 @@
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
+	import { t } from '$lib/i18n';
 
 	interface Review {
 		id: number;
@@ -275,11 +276,11 @@
 
 <div class="mx-auto max-w-4xl px-6 pt-24 pb-24 md:px-12">
 	{#if loading}
-		<div class="py-12 text-center text-gray-500">loading...</div>
+		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>
 	{:else if !project}
 		<div class="py-12 text-center">
-			<p class="mb-4 text-xl text-gray-500">project not found</p>
-			<a href="/admin/reviews" class="font-bold underline">back to reviews</a>
+			<p class="mb-4 text-xl text-gray-500">{$t.project.projectNotFound}</p>
+			<a href="/admin/reviews" class="font-bold underline">{$t.project.back}</a>
 		</div>
 	{:else if project.deleted || project.status !== 'waiting_for_review'}
 		<div class="py-12 text-center">
@@ -336,14 +337,14 @@
 						class="inline-flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
 					>
 						<Github size={18} />
-						<span>view on github</span>
+						<span>{$t.project.viewOnGithub}</span>
 					</a>
 				{:else}
 					<span
 						class="inline-flex cursor-not-allowed items-center gap-2 rounded-full border-4 border-dashed border-gray-300 px-4 py-2 font-bold text-gray-400"
 					>
 						<Github size={18} />
-						<span>view on github</span>
+						<span>{$t.project.viewOnGithub}</span>
 					</span>
 				{/if}
 				{#if project.playableUrl}
@@ -354,14 +355,14 @@
 						class="inline-flex cursor-pointer items-center gap-2 rounded-full border-4 border-solid border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
 					>
 						<Globe size={18} />
-						<span>try it out</span>
+						<span>{$t.project.tryItOut}</span>
 					</a>
 				{:else}
 					<span
 						class="inline-flex cursor-not-allowed items-center gap-2 rounded-full border-4 border-dashed border-gray-300 px-4 py-2 font-bold text-gray-400"
 					>
 						<Globe size={18} />
-						<span>try it out</span>
+						<span>{$t.project.tryItOut}</span>
 					</span>
 				{/if}
 			</div>
@@ -409,7 +410,7 @@
 						disabled={savingNotes}
 						class="cursor-pointer rounded-full bg-black px-4 py-2 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
 					>
-						{savingNotes ? 'saving...' : 'save notes'}
+						{savingNotes ? $t.common.saving : 'save notes'}
 					</button>
 				</div>
 			</div>
@@ -440,7 +441,7 @@
 										<div class="h-6 w-6 rounded-full border-2 border-black bg-gray-200"></div>
 									{/if}
 									<ReviewIcon size={18} class={getReviewIconColor(review.action)} />
-									<span class="font-bold">{review.reviewerName || 'reviewer'}</span>
+									<span class="font-bold">{review.reviewerName || $t.project.reviewer}</span>
 								</a>
 								<div class="flex items-center gap-2">
 									<span
@@ -590,7 +591,7 @@
 					disabled={submitting}
 					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50"
 				>
-					cancel
+					{$t.common.cancel}
 				</button>
 				<button
 					onclick={submitReview}

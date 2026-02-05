@@ -1,40 +1,58 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { AlertTriangle } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 
 	let reason = $derived(page.url.searchParams.get('reason') || 'unknown');
 
-	const errorMessages: Record<
+	const errorConfigs: Record<
 		string,
-		{ title: string; description: string; redirectUrl?: string; redirectText?: string }
+		{ key: 'needsVerification' | 'notEligible' | 'authFailed' | 'unknown'; redirectUrl?: string }
 	> = {
 		'needs-verification': {
-			title: 'verify your identity',
-			description:
-				'you need to verify your identity with hack club auth before you can use scraps. click below to complete verification.',
-			redirectUrl: 'https://auth.hackclub.com',
-			redirectText: 'verify with hack club auth'
+			key: 'needsVerification',
+			redirectUrl: 'https://auth.hackclub.com'
 		},
 		'not-eligible': {
-			title: 'not eligible for ysws',
-			description:
-				'your hack club account is not currently eligible for you ship we ship programs. please ask for help in the hack club slack.'
+			key: 'notEligible'
 		},
 		'auth-failed': {
-			title: 'authentication failed',
-			description: "we couldn't verify your identity. please try again."
+			key: 'authFailed'
 		},
 		unknown: {
-			title: 'something went wrong',
-			description: 'an unexpected error occurred. please try again later.'
+			key: 'unknown'
 		}
 	};
 
-	let errorInfo = $derived(errorMessages[reason] || errorMessages['unknown']);
+	let config = $derived(errorConfigs[reason] || errorConfigs['unknown']);
+
+	let errorTitle = $derived(
+		config.key === 'needsVerification'
+			? $t.auth.needsVerification.title
+			: config.key === 'notEligible'
+				? $t.auth.notEligible.title
+				: config.key === 'authFailed'
+					? $t.auth.authFailed.title
+					: $t.auth.unknown.title
+	);
+
+	let errorDescription = $derived(
+		config.key === 'needsVerification'
+			? $t.auth.needsVerification.description
+			: config.key === 'notEligible'
+				? $t.auth.notEligible.description
+				: config.key === 'authFailed'
+					? $t.auth.authFailed.description
+					: $t.auth.unknown.description
+	);
+
+	let redirectText = $derived(
+		config.key === 'needsVerification' ? $t.auth.needsVerification.redirectText : ''
+	);
 </script>
 
 <svelte:head>
-	<title>error - scraps</title>
+	<title>{$t.auth.error} - scraps</title>
 </svelte:head>
 
 <div class="flex min-h-dvh items-center justify-center px-6">
@@ -45,24 +63,24 @@
 			</div>
 		</div>
 
-		<h1 class="mb-4 text-4xl font-bold md:text-5xl">{errorInfo.title}</h1>
-		<p class="mb-8 text-lg text-gray-600">{errorInfo.description}</p>
+		<h1 class="mb-4 text-4xl font-bold md:text-5xl">{errorTitle}</h1>
+		<p class="mb-8 text-lg text-gray-600">{errorDescription}</p>
 
 		<div class="flex flex-col items-center justify-center gap-4 sm:flex-row">
 			<a
 				href="/"
 				class="cursor-pointer rounded-full border-4 border-black px-6 py-3 font-bold transition-all hover:border-dashed"
 			>
-				go back home
+				{$t.auth.goBackHome}
 			</a>
-			{#if errorInfo.redirectUrl}
+			{#if config.redirectUrl}
 				<a
-					href={errorInfo.redirectUrl}
+					href={config.redirectUrl}
 					target="_blank"
 					rel="noopener noreferrer"
 					class="cursor-pointer rounded-full bg-black px-6 py-3 font-bold text-white transition-all hover:bg-gray-800"
 				>
-					{errorInfo.redirectText}
+					{redirectText}
 				</a>
 			{:else}
 				<a
@@ -71,7 +89,7 @@
 					rel="noopener noreferrer"
 					class="cursor-pointer rounded-full bg-black px-6 py-3 font-bold text-white transition-all hover:bg-gray-800"
 				>
-					get help on slack
+					{$t.auth.getHelpOnSlack}
 				</a>
 			{/if}
 		</div>

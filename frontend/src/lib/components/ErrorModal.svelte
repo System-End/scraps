@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { X, AlertTriangle } from '@lucide/svelte';
 	import { errorStore, clearError } from '$lib/stores';
+	import { t } from '$lib/i18n';
 
 	let error = $derived($errorStore);
 </script>
@@ -19,12 +20,12 @@
 					<div class="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
 						<AlertTriangle size={24} class="text-red-600" />
 					</div>
-					<h2 class="text-2xl font-bold text-red-600">{error.title || 'error'}</h2>
+					<h2 class="text-2xl font-bold text-red-600">{error.title || $t.common.error}</h2>
 				</div>
 				<button
 					onclick={clearError}
 					class="cursor-pointer rounded-lg p-2 transition-colors hover:bg-gray-100"
-					aria-label="Close"
+					aria-label={$t.common.close}
 				>
 					<X size={20} />
 				</button>
@@ -41,7 +42,7 @@
 				onclick={clearError}
 				class="w-full cursor-pointer rounded-full border-4 border-red-600 bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed"
 			>
-				dismiss
+				{$t.common.dismiss}
 			</button>
 		</div>
 	</div>

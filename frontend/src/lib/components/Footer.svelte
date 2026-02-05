@@ -1,14 +1,13 @@
 <script lang="ts">
+	import { t } from '$lib/i18n';
 </script>
 
 <footer class="w-full py-4 text-center text-sm text-gray-600">
-	made with &lt;3 by <a
-		href="https://hackclub.com"
-		target="_blank"
-		rel="noopener noreferrer"
-		class="hover:underline">hack club</a
+	{$t.footer.madeWith}
+	<a href="https://hackclub.com" target="_blank" rel="noopener noreferrer" class="hover:underline"
+		>{$t.footer.hackClub}</a
 	>
-	and
+	{$t.footer.and}
 	<a
 		href="https://github.com/notaroomba"
 		target="_blank"

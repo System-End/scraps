@@ -5,6 +5,7 @@
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
+	import { t } from '$lib/i18n';
 
 	interface Project {
 		id: number;
@@ -59,7 +60,7 @@
 
 	async function submitProject() {
 		if (!selectedProject) {
-			error = 'Please select a project';
+			error = $t.submit.pleaseSelectProject;
 			return;
 		}
 
@@ -79,7 +80,7 @@
 
 			goto('/dashboard');
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to submit project';
+			error = e instanceof Error ? e.message : $t.submit.failedToSubmit;
 		} finally {
 			submitting = false;
 		}
@@ -87,12 +88,12 @@
 </script>
 
 <svelte:head>
-	<title>submit project - scraps</title>
+	<title>{$t.submit.pageTitle}</title>
 </svelte:head>
 
 <div class="mx-auto max-w-2xl px-6 pt-24 pb-24 md:px-12">
-	<h1 class="mb-4 text-4xl font-bold md:text-5xl">submit project</h1>
-	<p class="mb-8 text-lg text-gray-600">submit your project for review to earn scraps</p>
+	<h1 class="mb-4 text-4xl font-bold md:text-5xl">{$t.submit.title}</h1>
+	<p class="mb-8 text-lg text-gray-600">{$t.submit.subtitle}</p>
 
 	{#if error}
 		<div class="mb-6 rounded-lg border-2 border-red-500 bg-red-100 p-4 text-red-700">
@@ -102,7 +103,7 @@
 
 	<div class="space-y-6">
 		<div>
-			<label class="mb-2 block text-sm font-bold">select project</label>
+			<label class="mb-2 block text-sm font-bold">{$t.submit.selectProject}</label>
 			<div class="relative">
 				<button
 					type="button"
@@ -112,7 +113,7 @@
 					{#if selectedProject}
 						<span class="font-bold">{selectedProject.name}</span>
 					{:else}
-						<span class="text-gray-500">choose a project...</span>
+						<span class="text-gray-500">{$t.submit.chooseProject}</span>
 					{/if}
 					<ChevronDown
 						size={20}
@@ -125,7 +126,7 @@
 						class="absolute top-full right-0 left-0 z-10 mt-2 max-h-64 overflow-y-auto rounded-lg border-4 border-black bg-white"
 					>
 						{#if eligibleProjects.length === 0}
-							<div class="px-4 py-3 text-gray-500">no eligible projects</div>
+							<div class="px-4 py-3 text-gray-500">{$t.submit.noEligibleProjects}</div>
 						{:else}
 							{#each eligibleProjects as project}
 								<button
@@ -152,7 +153,7 @@
 				<p class="mb-4 text-gray-600">{selectedProject.description}</p>
 				<div class="flex items-center gap-4 text-sm">
 					<span class="rounded-full bg-gray-100 px-3 py-1 font-bold"
-						>{formatHours(selectedProject.hours)}h logged</span
+						>{$t.submit.hoursLogged.replace('{hours}', formatHours(selectedProject.hours))}</span
 					>
 					<span class="rounded-full bg-gray-100 px-3 py-1 font-bold">{selectedProject.status}</span>
 				</div>
@@ -165,7 +166,7 @@
 			class="flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-black px-6 py-4 text-lg font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
 		>
 			<Send size={20} />
-			<span>{submitting ? 'submitting...' : 'submit for review'}</span>
+			<span>{submitting ? $t.submit.submitting : $t.submit.submitForReview}</span>
 		</button>
 	</div>
 </div>

@@ -15,19 +15,21 @@
 		type Project
 	} from '$lib/stores';
 	import { formatHours } from '$lib/utils';
+	import { t, locale } from '$lib/i18n';
 
-	const greetingPhrases = [
-		'ready to scrap?',
-		'time to build something silly',
-		'what will you ship today?',
-		'let the scrapping begin',
-		'hack away!',
-		'make something fun',
-		'create, ship, repeat',
-		'keep on scrapping'
-	];
+	const greetingPhrases = $derived([
+		$t.dashboard.greetings.readyToScrap,
+		$t.dashboard.greetings.timeToBuild,
+		$t.dashboard.greetings.whatWillYouShip,
+		$t.dashboard.greetings.letTheScrapBegin,
+		$t.dashboard.greetings.hackAway,
+		$t.dashboard.greetings.makeSomethingFun,
+		$t.dashboard.greetings.createShipRepeat,
+		$t.dashboard.greetings.keepOnScrapping
+	]);
 
-	const randomPhrase = greetingPhrases[Math.floor(Math.random() * greetingPhrases.length)];
+	let phraseIndex = Math.floor(Math.random() * 8);
+	let randomPhrase = $derived(greetingPhrases[phraseIndex]);
 
 	let user = $state<Awaited<ReturnType<typeof getUser>>>(null);
 	let showCreateModal = $state(false);
@@ -60,7 +62,7 @@
 	<!-- Greeting -->
 	{#if user}
 		<h1 class="mb-2 text-4xl font-bold md:text-5xl">
-			hello, {(user.username || 'friend').toLocaleLowerCase()}
+			{$t.dashboard.hello.replace('{name}', (user.username || 'friend').toLocaleLowerCase())}
 		</h1>
 		<p class="mb-8 text-lg text-gray-600">{randomPhrase}</p>
 	{/if}
@@ -87,7 +89,8 @@
 						</div>
 						<div class="flex items-center justify-between">
 							<span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs">
-								tier {project.tier}
+								{$t.dashboard.tier}
+								{project.tier}
 							</span>
 							<span
 								class="rounded-full px-2 py-0.5 text-xs {project.status === 'shipped'
@@ -110,7 +113,7 @@
 				class="flex h-64 w-80 shrink-0 cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-4 border-dashed border-black bg-white transition-all hover:border-solid"
 			>
 				<FilePlus2 size={64} strokeWidth={1.5} />
-				<span class="text-2xl font-bold">new project</span>
+				<span class="text-2xl font-bold">{$t.dashboard.newProject}</span>
 			</button>
 		</div>
 	</div>
@@ -120,58 +123,56 @@
 
 	<!-- FAQ Section -->
 	<div class="mt-12">
-		<h2 class="mb-6 text-3xl font-bold">faq</h2>
+		<h2 class="mb-6 text-3xl font-bold">{$t.dashboard.faq}</h2>
 		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			<div
 				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
 			>
-				<p class="mb-2 text-lg font-bold">how does the shop work?</p>
+				<p class="mb-2 text-lg font-bold">{$t.dashboard.faqQuestions.howDoesShopWork}</p>
 				<p class="text-gray-600">
-					spend scraps to roll for prizes. each item has a probability of winning - boost your odds
-					in the refinery!
+					{$t.dashboard.faqQuestions.howDoesShopWorkAnswer}
 				</p>
 			</div>
 
 			<div
 				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
 			>
-				<p class="mb-2 text-lg font-bold">what is hackatime?</p>
+				<p class="mb-2 text-lg font-bold">{$t.dashboard.faqQuestions.whatIsHackatime}</p>
 				<p class="text-gray-600">
 					<a
 						href="https://hackatime.hackclub.com"
 						target="_blank"
 						rel="noopener noreferrer"
 						class="underline hover:no-underline">hackatime</a
-					> is hack club's time tracking tool that automatically logs your coding hours.
+					>
+					{$t.dashboard.faqQuestions.whatIsHackatimeAnswer}
 				</p>
 			</div>
 
 			<div
 				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
 			>
-				<p class="mb-2 text-lg font-bold">what is the refinery?</p>
+				<p class="mb-2 text-lg font-bold">{$t.dashboard.faqQuestions.whatIsRefinery}</p>
 				<p class="text-gray-600">
-					spend scraps to increase your probability of winning an item. each upgrade boosts your
-					chances!
+					{$t.dashboard.faqQuestions.whatIsRefineryAnswer}
 				</p>
 			</div>
 
 			<div
 				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
 			>
-				<p class="mb-2 text-lg font-bold">how long does review take?</p>
+				<p class="mb-2 text-lg font-bold">{$t.dashboard.faqQuestions.howLongDoesReviewTake}</p>
 				<p class="text-gray-600">
-					project reviews typically take a few days. you'll be notified when your project is
-					approved!
+					{$t.dashboard.faqQuestions.howLongDoesReviewTakeAnswer}
 				</p>
 			</div>
 
 			<div
 				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
 			>
-				<p class="mb-2 text-lg font-bold">what happens if i lose a roll?</p>
+				<p class="mb-2 text-lg font-bold">{$t.dashboard.faqQuestions.whatIfILoseRoll}</p>
 				<p class="text-gray-600">
-					you receive consolation scrap paper. your refinery upgrades are kept, so try again!
+					{$t.dashboard.faqQuestions.whatIfILoseRollAnswer}
 				</p>
 			</div>
 
@@ -179,7 +180,7 @@
 				href="/faq"
 				class="flex items-center justify-center rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
 			>
-				<p class="text-lg font-bold">more questions? →</p>
+				<p class="text-lg font-bold">{$t.dashboard.faqQuestions.moreQuestions} →</p>
 			</a>
 		</div>
 	</div>

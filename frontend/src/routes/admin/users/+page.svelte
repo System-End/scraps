@@ -4,6 +4,7 @@
 	import { ChevronLeft, ChevronRight, Search } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
+	import { t } from '$lib/i18n';
 
 	interface AdminUser {
 		id: number;
@@ -148,13 +149,13 @@
 </script>
 
 <svelte:head>
-	<title>users - admin - scraps</title>
+	<title>{$t.nav.users} - {$t.nav.admin} - scraps</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12">
 	<div class="mb-8">
-		<h1 class="mb-2 text-4xl font-bold md:text-5xl">users</h1>
-		<p class="text-lg text-gray-600">manage users and permissions</p>
+		<h1 class="mb-2 text-4xl font-bold md:text-5xl">{$t.nav.users}</h1>
+		<p class="text-lg text-gray-600">{$t.admin.manageUsersAndPermissions}</p>
 	</div>
 
 	<!-- Search -->
@@ -172,7 +173,7 @@
 	</div>
 
 	{#if loading}
-		<div class="py-12 text-center text-gray-500">loading...</div>
+		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>
 	{:else}
 		<div class="overflow-x-auto rounded-2xl border-4 border-black">
 			<table class="w-full min-w-[600px]">
@@ -219,13 +220,13 @@
 										href="/admin/users/{u.id}"
 										class="cursor-pointer rounded-full border-4 border-black px-3 py-1 text-sm font-bold transition-all duration-200 hover:border-dashed"
 									>
-										view
+										{$t.admin.view}
 									</a>
 									<button
 										onclick={() => startEditing(u)}
 										class="cursor-pointer rounded-full border-4 border-black px-3 py-1 text-sm font-bold transition-all duration-200 hover:border-dashed"
 									>
-										edit
+										{$t.common.edit}
 									</button>
 								</div>
 							</td>
@@ -246,7 +247,10 @@
 					<ChevronLeft size={20} />
 				</button>
 				<span class="font-bold">
-					page {pagination.page} of {pagination.totalPages}
+					{$t.admin.page}
+					{pagination.page}
+					{$t.admin.of}
+					{pagination.totalPages}
 				</span>
 				<button
 					onclick={() => goToPage(pagination!.page + 1)}
@@ -270,7 +274,9 @@
 		tabindex="-1"
 	>
 		<div class="w-full max-w-lg rounded-2xl border-4 border-black bg-white p-6">
-			<h2 class="mb-6 text-2xl font-bold">edit user: {editingUser.username || 'unknown'}</h2>
+			<h2 class="mb-6 text-2xl font-bold">
+				{$t.admin.editUser}: {editingUser.username || 'unknown'}
+			</h2>
 
 			<div class="space-y-4">
 				{#if user?.role === 'admin'}
@@ -304,14 +310,14 @@
 					disabled={saving}
 					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50"
 				>
-					cancel
+					{$t.common.cancel}
 				</button>
 				<button
 					onclick={saveChanges}
 					disabled={saving}
 					class="flex-1 cursor-pointer rounded-full bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
 				>
-					{saving ? 'saving...' : 'save'}
+					{saving ? $t.common.saving : $t.common.save}
 				</button>
 			</div>
 		</div>

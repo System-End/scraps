@@ -7,6 +7,7 @@
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
+	import { t } from '$lib/i18n';
 
 	interface Review {
 		id: number;
@@ -101,10 +102,10 @@
 
 	function getStatusLabel(status: string) {
 		const labels: Record<string, string> = {
-			in_progress: 'in progress',
-			waiting_for_review: 'waiting for review',
-			shipped: 'shipped',
-			permanently_rejected: 'rejected'
+			in_progress: $t.project.inProgress,
+			waiting_for_review: $t.project.waitingForReview,
+			shipped: $t.project.shipped,
+			permanently_rejected: $t.project.rejected
 		};
 		return labels[status] || status;
 	}
@@ -126,9 +127,9 @@
 
 <div class="mx-auto max-w-4xl px-6 pt-24 pb-24 md:px-12">
 	{#if loading}
-		<div class="py-12 text-center text-gray-500">loading...</div>
+		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>
 	{:else if !project}
-		<div class="py-12 text-center text-gray-500">project not found</div>
+		<div class="py-12 text-center text-gray-500">{$t.project.projectNotFound}</div>
 	{:else}
 		<!-- Project Image -->
 		<div class="mb-8 h-64 w-full overflow-hidden rounded-2xl border-4 border-black md:h-96">
@@ -150,7 +151,7 @@
 			<p class="mb-4 text-lg text-gray-600">{project.description}</p>
 			<div class="flex items-center gap-4">
 				<span class="rounded-full px-3 py-1 text-sm font-bold"
-					>{formatHours(project.hours)}h logged</span
+					>{$t.project.hoursLogged.replace('{hours}', formatHours(project.hours))}</span
 				>
 				{#if project.githubUrl}
 					<a
@@ -159,7 +160,7 @@
 						rel="noopener noreferrer"
 						class="cursor-pointer rounded-full px-3 py-1 text-sm font-bold transition-colors hover:bg-gray-200"
 					>
-						github
+						{$t.project.github}
 					</a>
 				{/if}
 			</div>
@@ -179,14 +180,14 @@
 				class="mb-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-black px-6 py-4 text-lg font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
 			>
 				<Send size={20} />
-				<span>{submitting ? 'submitting...' : 'submit for review'}</span>
+				<span>{submitting ? $t.project.submitting : $t.project.submitForReview}</span>
 			</button>
 		{/if}
 
 		<!-- Previous Reviews -->
 		{#if reviews.length > 0}
 			<div>
-				<h2 class="mb-4 text-2xl font-bold">review feedback</h2>
+				<h2 class="mb-4 text-2xl font-bold">{$t.project.reviewFeedback}</h2>
 				<div class="space-y-4">
 					{#each reviews as review}
 						<div class="rounded-2xl border-4 border-black p-6">

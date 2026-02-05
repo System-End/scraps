@@ -16,7 +16,7 @@ leaderboard.get('/', async ({ query }) => {
 				id: usersTable.id,
 				username: usersTable.username,
 				avatar: usersTable.avatar,
-				scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as('scraps_earned'),
+				scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0)`.as('scraps_earned'),
 				scrapsSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_spent'),
 				hours: sql<number>`COALESCE(SUM(${projectsTable.hours}), 0)`.as('total_hours'),
 				projectCount: sql<number>`COUNT(${projectsTable.id})`.as('project_count')
@@ -24,7 +24,8 @@ leaderboard.get('/', async ({ query }) => {
 			.from(usersTable)
 			.leftJoin(projectsTable, and(
 				eq(projectsTable.userId, usersTable.id),
-				or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
+				or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
+				sql`${projectsTable.status} != 'permanently_rejected'`
 			))
 			.groupBy(usersTable.id)
 			.orderBy(desc(sql`total_hours`))
@@ -47,7 +48,7 @@ leaderboard.get('/', async ({ query }) => {
 			id: usersTable.id,
 			username: usersTable.username,
 			avatar: usersTable.avatar,
-			scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as('scraps_earned'),
+			scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0)`.as('scraps_earned'),
 			scrapsSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_spent'),
 			hours: sql<number>`COALESCE(SUM(${projectsTable.hours}), 0)`.as('total_hours'),
 			projectCount: sql<number>`COUNT(${projectsTable.id})`.as('project_count')
@@ -55,10 +56,11 @@ leaderboard.get('/', async ({ query }) => {
 		.from(usersTable)
 		.leftJoin(projectsTable, and(
 			eq(projectsTable.userId, usersTable.id),
-			or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
+			or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
+			sql`${projectsTable.status} != 'permanently_rejected'`
 		))
 		.groupBy(usersTable.id)
-		.orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`))
+		.orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`))
 		.limit(10)
 
 	return results.map((user, index) => ({

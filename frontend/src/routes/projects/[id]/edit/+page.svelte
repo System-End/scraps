@@ -6,6 +6,7 @@
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
 	import { invalidateAllStores } from '$lib/stores';
+	import { t } from '$lib/i18n';
 
 	let { data } = $props();
 
@@ -24,10 +25,10 @@
 	}
 
 	const TIERS = [
-		{ value: 1, description: 'simple projects, tutorials, small scripts' },
-		{ value: 2, description: 'moderate complexity, multi-file projects' },
-		{ value: 3, description: 'complex features, APIs, integrations' },
-		{ value: 4, description: 'full applications, major undertakings' }
+		{ value: 1, descriptionKey: 'tier1' as const },
+		{ value: 2, descriptionKey: 'tier2' as const },
+		{ value: 3, descriptionKey: 'tier3' as const },
+		{ value: 4, descriptionKey: 'tier4' as const }
 	];
 
 	interface HackatimeProject {
@@ -122,7 +123,7 @@
 		if (!file || !project) return;
 
 		if (file.size > 5 * 1024 * 1024) {
-			error = 'Image must be less than 5MB';
+			error = $t.project.imageMustBeLessThan;
 			return;
 		}
 
@@ -251,21 +252,21 @@
 		class="mb-8 inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
 	>
 		<ArrowLeft size={20} />
-		back to project
+		{$t.project.backToProject}
 	</a>
 
 	{#if loading}
 		<div class="py-12 text-center">
-			<p class="text-lg text-gray-500">loading project...</p>
+			<p class="text-lg text-gray-500">{$t.project.loadingProject}</p>
 		</div>
 	{:else if error && !project}
 		<div class="py-12 text-center">
 			<p class="text-lg text-red-600">{error}</p>
-			<a href="/dashboard" class="mt-4 inline-block font-bold underline">go back</a>
+			<a href="/dashboard" class="mt-4 inline-block font-bold underline">{$t.project.goBack}</a>
 		</div>
 	{:else if project}
 		<div class="rounded-2xl border-8 border-black bg-white p-6">
-			<h1 class="mb-6 text-3xl font-bold">edit project</h1>
+			<h1 class="mb-6 text-3xl font-bold">{$t.project.editProject}</h1>
 
 			{#if error}
 				<div class="mb-4 rounded-lg border-2 border-red-500 bg-red-100 p-3 text-sm text-red-700">
@@ -277,7 +278,7 @@
 				<!-- Image Upload -->
 				<div>
 					<label class="mb-2 block text-sm font-bold"
-						>image <span class="text-red-500">*</span></label
+						>{$t.project.image} <span class="text-red-500">*</span></label
 					>
 					{#if imagePreview}
 						<div class="relative h-48 w-full overflow-hidden rounded-lg border-2 border-black">
@@ -288,7 +289,7 @@
 							/>
 							{#if uploadingImage}
 								<div class="absolute inset-0 flex items-center justify-center bg-black/50">
-									<span class="font-bold text-white">uploading...</span>
+									<span class="font-bold text-white">{$t.project.uploading}</span>
 								</div>
 							{:else}
 								<button
@@ -305,7 +306,7 @@
 							class="flex h-40 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-black transition-colors hover:bg-gray-50"
 						>
 							<Upload size={32} class="mb-2 text-gray-400" />
-							<span class="text-sm text-gray-500">click to upload image</span>
+							<span class="text-sm text-gray-500">{$t.project.clickToUploadImage}</span>
 							<input type="file" accept="image/*" onchange={handleImageUpload} class="hidden" />
 						</label>
 					{/if}
@@ -314,7 +315,7 @@
 				<!-- Name -->
 				<div>
 					<label for="name" class="mb-2 block text-sm font-bold"
-						>name <span class="text-red-500">*</span></label
+						>{$t.project.name} <span class="text-red-500">*</span></label
 					>
 					<input
 						id="name"
@@ -329,7 +330,7 @@
 				<!-- Description -->
 				<div>
 					<label for="description" class="mb-2 block text-sm font-bold"
-						>description <span class="text-red-500">*</span></label
+						>{$t.project.description} <span class="text-red-500">*</span></label
 					>
 					<textarea
 						id="description"
@@ -350,7 +351,8 @@
 				<!-- GitHub URL -->
 				<div>
 					<label for="githubUrl" class="mb-2 block text-sm font-bold"
-						>github url <span class="text-gray-400">(optional)</span></label
+						>{$t.project.githubUrl}
+						<span class="text-gray-400">({$t.project.optional})</span></label
 					>
 					<input
 						id="githubUrl"
@@ -364,7 +366,8 @@
 				<!-- Playable URL -->
 				<div>
 					<label for="playableUrl" class="mb-2 block text-sm font-bold"
-						>playable url <span class="text-gray-400">(required for submission)</span></label
+						>{$t.project.playableUrl}
+						<span class="text-gray-400">({$t.project.requiredForSubmission})</span></label
 					>
 					<input
 						id="playableUrl"
@@ -373,13 +376,14 @@
 						placeholder="https://yourproject.com or https://replit.com/..."
 						class="w-full rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
 					/>
-					<p class="mt-1 text-xs text-gray-500">a link where reviewers can try your project</p>
+					<p class="mt-1 text-xs text-gray-500">{$t.project.playableUrlHint}</p>
 				</div>
 
 				<!-- Hackatime Project Dropdown -->
 				<div>
 					<label class="mb-2 block text-sm font-bold"
-						>hackatime project <span class="text-gray-400">(optional)</span></label
+						>{$t.project.hackatimeProject}
+						<span class="text-gray-400">({$t.project.optional})</span></label
 					>
 					<div class="relative">
 						<button
@@ -388,14 +392,14 @@
 							class="flex w-full items-center justify-between rounded-lg border-2 border-black px-4 py-3 text-left focus:border-dashed focus:outline-none"
 						>
 							{#if loadingProjects}
-								<span class="text-gray-500">loading projects...</span>
+								<span class="text-gray-500">{$t.project.loadingProjects}</span>
 							{:else if selectedHackatimeName}
 								<span
 									>{selectedHackatimeName}
 									<span class="text-gray-500">({formatHours(project.hours)}h)</span></span
 								>
 							{:else}
-								<span class="text-gray-500">select a project</span>
+								<span class="text-gray-500">{$t.project.selectAProject}</span>
 							{/if}
 							<ChevronDown
 								size={20}
@@ -408,7 +412,7 @@
 								class="absolute top-full right-0 left-0 z-10 mt-1 max-h-48 overflow-y-auto rounded-lg border-2 border-black bg-white"
 							>
 								{#if hackatimeProjects.length === 0}
-									<div class="px-4 py-2 text-sm text-gray-500">no projects found</div>
+									<div class="px-4 py-2 text-sm text-gray-500">{$t.project.noProjectsFound}</div>
 								{:else}
 									{#each hackatimeProjects as hp}
 										<button
@@ -428,7 +432,7 @@
 
 				<!-- Tier Selector -->
 				<div>
-					<label class="mb-2 block text-sm font-bold">project tier</label>
+					<label class="mb-2 block text-sm font-bold">{$t.project.projectTier}</label>
 					<div class="grid grid-cols-2 gap-2">
 						{#each TIERS as tier}
 							<button
@@ -439,13 +443,13 @@
 									? 'bg-black text-white'
 									: 'hover:border-dashed'}"
 							>
-								<span>tier {tier.value}</span>
+								<span>{$t.project.tier.replace('{value}', String(tier.value))}</span>
 								<p
 									class="mt-1 text-xs {selectedTier === tier.value
 										? 'text-gray-300'
 										: 'text-gray-500'}"
 								>
-									{tier.description}
+									{$t.project.tierDescriptions[tier.descriptionKey]}
 								</p>
 							</button>
 						{/each}
@@ -459,7 +463,7 @@
 					href="/projects/{data.id}"
 					class="flex w-1/2 cursor-pointer items-center justify-center rounded-full border-4 border-black px-4 py-3 text-center font-bold transition-all duration-200 hover:border-dashed"
 				>
-					cancel
+					{$t.common.cancel}
 				</a>
 				<button
 					onclick={handleSave}
@@ -467,25 +471,25 @@
 					class="flex w-1/2 cursor-pointer items-center justify-center gap-2 rounded-full bg-black px-4 py-3 font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
 				>
 					<Save size={18} />
-					{saving ? 'saving...' : 'save changes'}
+					{saving ? $t.project.saving : $t.project.saveChanges}
 				</button>
 			</div>
 
 			<!-- Danger Zone -->
 			<div class="mt-12 border-t-4 border-dashed border-gray-300 pt-8">
-				<h2 class="mb-4 text-xl font-bold text-red-600">danger zone</h2>
+				<h2 class="mb-4 text-xl font-bold text-red-600">{$t.project.dangerZone}</h2>
 				<div class="rounded-2xl border-4 border-red-500 p-6">
 					<div class="flex items-center justify-between">
 						<div>
-							<h3 class="font-bold">delete this project</h3>
-							<p class="text-sm text-gray-600">once deleted, this project cannot be recovered.</p>
+							<h3 class="font-bold">{$t.project.deleteThisProject}</h3>
+							<p class="text-sm text-gray-600">{$t.project.deleteWarning}</p>
 						</div>
 						<button
 							onclick={() => (showDeleteConfirm = true)}
 							class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-red-500 px-4 py-2 font-bold text-red-600 transition-all duration-200 hover:bg-red-50"
 						>
 							<Trash2 size={18} />
-							delete
+							{$t.common.delete}
 						</button>
 					</div>
 				</div>
@@ -496,10 +500,9 @@
 		{#if showDeleteConfirm}
 			<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
 				<div class="w-full max-w-lg rounded-2xl border-4 border-black bg-white p-6">
-					<h2 class="mb-4 text-2xl font-bold">are you sure?</h2>
+					<h2 class="mb-4 text-2xl font-bold">{$t.project.areYouSure}</h2>
 					<p class="mb-6 text-gray-700">
-						this will permanently delete <strong>{project.name}</strong>. this action cannot be
-						undone.
+						{$t.project.deleteConfirmation.replace('{name}', project.name)}
 					</p>
 					<div class="flex gap-4">
 						<button
@@ -507,7 +510,7 @@
 							disabled={deleting}
 							class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-3 font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50"
 						>
-							cancel
+							{$t.common.cancel}
 						</button>
 						<button
 							onclick={handleDelete}
@@ -515,7 +518,7 @@
 							class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-red-600 bg-red-600 px-4 py-3 font-bold text-white transition-all duration-200 hover:bg-red-700 disabled:opacity-50"
 						>
 							<Trash2 size={18} />
-							{deleting ? 'deleting...' : 'delete project'}
+							{deleting ? $t.project.deleting : $t.project.deleteProject}
 						</button>
 					</div>
 				</div>

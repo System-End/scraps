@@ -20,9 +20,12 @@
 		Compass,
 		BarChart3,
 		Menu,
-		X
+		X,
+		Globe,
+		Languages
 	} from '@lucide/svelte';
 	import { logout, getUser, userScrapsStore } from '$lib/auth-client';
+	import { t, locale, setLocale, type Locale } from '$lib/i18n';
 
 	interface User {
 		id: number;
@@ -123,6 +126,11 @@
 	function handleMobileNavClick() {
 		showMobileMenu = false;
 	}
+
+	function toggleLanguage() {
+		const newLocale: Locale = $locale === 'en' ? 'es' : 'en';
+		setLocale(newLocale);
+	}
 </script>
 
 <svelte:window
@@ -153,7 +161,7 @@
 					: 'border-black hover:border-dashed'}"
 			>
 				<Home size={18} />
-				<span class="text-lg font-bold">home</span>
+				<span class="text-lg font-bold">{$t.nav.home}</span>
 			</button>
 			<button
 				onclick={() => scrollToSection('scraps')}
@@ -163,7 +171,7 @@
 					: 'border-black hover:border-dashed'}"
 			>
 				<Package size={18} />
-				<span class="text-lg font-bold">scraps</span>
+				<span class="text-lg font-bold">{$t.nav.scraps}</span>
 			</button>
 			<button
 				onclick={() => scrollToSection('about')}
@@ -173,7 +181,15 @@
 					: 'border-black hover:border-dashed'}"
 			>
 				<Info size={18} />
-				<span class="text-lg font-bold">about</span>
+				<span class="text-lg font-bold">{$t.nav.about}</span>
+			</button>
+			<button
+				onclick={toggleLanguage}
+				class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-6 py-2 transition-all duration-300 hover:border-dashed"
+				title={$locale === 'en' ? 'Cambiar a Español' : 'Switch to English'}
+			>
+				<Languages size={18} />
+				<span class="text-lg font-bold">{$locale === 'en' ? 'ES' : 'EN'}</span>
 			</button>
 		</div>
 	{:else if isInAdminSection}
@@ -196,7 +212,7 @@
 						: 'border-black hover:border-dashed'}"
 				>
 					<BarChart3 size={18} />
-					<span class="text-lg font-bold">info</span>
+					<span class="text-lg font-bold">{$t.nav.info}</span>
 				</a>
 
 				<a
@@ -208,7 +224,7 @@
 						: 'border-black hover:border-dashed'}"
 				>
 					<ClipboardList size={18} />
-					<span class="text-lg font-bold">reviews</span>
+					<span class="text-lg font-bold">{$t.nav.reviews}</span>
 				</a>
 
 				<a
@@ -220,7 +236,7 @@
 						: 'border-black hover:border-dashed'}"
 				>
 					<Users size={18} />
-					<span class="text-lg font-bold">users</span>
+					<span class="text-lg font-bold">{$t.nav.users}</span>
 				</a>
 
 				{#if isAdminOnly}
@@ -233,7 +249,7 @@
 							: 'border-black hover:border-dashed'}"
 					>
 						<ShoppingBag size={18} />
-						<span class="text-lg font-bold">shop</span>
+						<span class="text-lg font-bold">{$t.nav.shop}</span>
 					</a>
 					<a
 						href="/admin/news"
@@ -244,7 +260,7 @@
 							: 'border-black hover:border-dashed'}"
 					>
 						<Newspaper size={18} />
-						<span class="text-lg font-bold">news</span>
+						<span class="text-lg font-bold">{$t.nav.news}</span>
 					</a>
 					<a
 						href="/admin/orders"
@@ -255,7 +271,7 @@
 							: 'border-black hover:border-dashed'}"
 					>
 						<PackageCheck size={18} />
-						<span class="text-lg font-bold">orders</span>
+						<span class="text-lg font-bold">{$t.nav.orders}</span>
 					</a>
 				{/if}
 			{/if}
@@ -271,7 +287,7 @@
 					: 'border-black hover:border-dashed'}"
 			>
 				<Compass size={18} />
-				<span class="text-lg font-bold">explore</span>
+				<span class="text-lg font-bold">{$t.nav.explore}</span>
 			</a>
 
 			<a
@@ -282,7 +298,7 @@
 					: 'border-black hover:border-dashed'}"
 			>
 				<LayoutDashboard size={18} />
-				<span class="text-lg font-bold">dashboard</span>
+				<span class="text-lg font-bold">{$t.nav.dashboard}</span>
 			</a>
 
 			<a
@@ -293,7 +309,7 @@
 					: 'border-black hover:border-dashed'}"
 			>
 				<Trophy size={18} />
-				<span class="text-lg font-bold">leaderboard</span>
+				<span class="text-lg font-bold">{$t.nav.leaderboard}</span>
 			</a>
 
 			<a
@@ -304,7 +320,7 @@
 					: 'border-black hover:border-dashed'}"
 			>
 				<Store size={18} />
-				<span class="text-lg font-bold">shop</span>
+				<span class="text-lg font-bold">{$t.nav.shop}</span>
 			</a>
 
 			<a
@@ -315,7 +331,7 @@
 					: 'border-black hover:border-dashed'}"
 			>
 				<Flame size={18} />
-				<span class="text-lg font-bold">refinery</span>
+				<span class="text-lg font-bold">{$t.nav.refinery}</span>
 			</a>
 		</div>
 	{/if}
@@ -369,11 +385,18 @@
 								<p class="truncate text-sm text-gray-500">{user.email}</p>
 							</div>
 							<button
+								onclick={toggleLanguage}
+								class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 text-left transition-colors hover:bg-gray-100"
+							>
+								<Globe size={18} />
+								<span class="font-bold">{$locale === 'en' ? 'Español' : 'English'}</span>
+							</button>
+							<button
 								onclick={handleLogout}
 								class="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-left transition-colors hover:bg-gray-100"
 							>
 								<LogOut size={18} />
-								<span class="font-bold">logout</span>
+								<span class="font-bold">{$t.nav.logout}</span>
 							</button>
 						</div>
 					{/if}
@@ -449,7 +472,7 @@
 						: 'border-black hover:border-dashed'}"
 				>
 					<Home size={20} />
-					<span class="text-lg font-bold">home</span>
+					<span class="text-lg font-bold">{$t.nav.home}</span>
 				</button>
 				<button
 					onclick={() => scrollToSection('scraps')}
@@ -459,7 +482,7 @@
 						: 'border-black hover:border-dashed'}"
 				>
 					<Package size={20} />
-					<span class="text-lg font-bold">scraps</span>
+					<span class="text-lg font-bold">{$t.nav.scraps}</span>
 				</button>
 				<button
 					onclick={() => scrollToSection('about')}
@@ -469,7 +492,14 @@
 						: 'border-black hover:border-dashed'}"
 				>
 					<Info size={20} />
-					<span class="text-lg font-bold">about</span>
+					<span class="text-lg font-bold">{$t.nav.about}</span>
+				</button>
+				<button
+					onclick={toggleLanguage}
+					class="flex cursor-pointer items-center gap-3 rounded-full border-4 border-black px-4 py-3 transition-all duration-300 hover:border-dashed"
+				>
+					<Languages size={20} />
+					<span class="text-lg font-bold">{$locale === 'en' ? 'Español' : 'English'}</span>
 				</button>
 			</div>
 		{:else if isInAdminSection}
@@ -489,7 +519,7 @@
 							: 'border-black hover:border-dashed'}"
 					>
 						<BarChart3 size={20} />
-						<span class="text-lg font-bold">info</span>
+						<span class="text-lg font-bold">{$t.nav.info}</span>
 					</a>
 
 					<a
@@ -502,7 +532,7 @@
 							: 'border-black hover:border-dashed'}"
 					>
 						<ClipboardList size={20} />
-						<span class="text-lg font-bold">reviews</span>
+						<span class="text-lg font-bold">{$t.nav.reviews}</span>
 					</a>
 
 					<a
@@ -515,7 +545,7 @@
 							: 'border-black hover:border-dashed'}"
 					>
 						<Users size={20} />
-						<span class="text-lg font-bold">users</span>
+						<span class="text-lg font-bold">{$t.nav.users}</span>
 					</a>
 
 					{#if isAdminOnly}
@@ -529,7 +559,7 @@
 								: 'border-black hover:border-dashed'}"
 						>
 							<ShoppingBag size={20} />
-							<span class="text-lg font-bold">shop</span>
+							<span class="text-lg font-bold">{$t.nav.shop}</span>
 						</a>
 						<a
 							href="/admin/news"
@@ -541,7 +571,7 @@
 								: 'border-black hover:border-dashed'}"
 						>
 							<Newspaper size={20} />
-							<span class="text-lg font-bold">news</span>
+							<span class="text-lg font-bold">{$t.nav.news}</span>
 						</a>
 						<a
 							href="/admin/orders"
@@ -553,7 +583,7 @@
 								: 'border-black hover:border-dashed'}"
 						>
 							<PackageCheck size={20} />
-							<span class="text-lg font-bold">orders</span>
+							<span class="text-lg font-bold">{$t.nav.orders}</span>
 						</a>
 					{/if}
 				{/if}
@@ -570,7 +600,7 @@
 						: 'border-black hover:border-dashed'}"
 				>
 					<Compass size={20} />
-					<span class="text-lg font-bold">explore</span>
+					<span class="text-lg font-bold">{$t.nav.explore}</span>
 				</a>
 
 				<a
@@ -582,7 +612,7 @@
 						: 'border-black hover:border-dashed'}"
 				>
 					<LayoutDashboard size={20} />
-					<span class="text-lg font-bold">dashboard</span>
+					<span class="text-lg font-bold">{$t.nav.dashboard}</span>
 				</a>
 
 				<a
@@ -594,7 +624,7 @@
 						: 'border-black hover:border-dashed'}"
 				>
 					<Trophy size={20} />
-					<span class="text-lg font-bold">leaderboard</span>
+					<span class="text-lg font-bold">{$t.nav.leaderboard}</span>
 				</a>
 
 				<a
@@ -606,7 +636,7 @@
 						: 'border-black hover:border-dashed'}"
 				>
 					<Store size={20} />
-					<span class="text-lg font-bold">shop</span>
+					<span class="text-lg font-bold">{$t.nav.shop}</span>
 				</a>
 
 				<a
@@ -618,7 +648,7 @@
 						: 'border-black hover:border-dashed'}"
 				>
 					<Flame size={20} />
-					<span class="text-lg font-bold">refinery</span>
+					<span class="text-lg font-bold">{$t.nav.refinery}</span>
 				</a>
 			</div>
 		{/if}
@@ -669,11 +699,18 @@
 						<span class="font-bold">{$userScrapsStore}</span>
 					</div>
 					<button
+						onclick={toggleLanguage}
+						class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-4 py-2 transition-all duration-200 hover:border-dashed"
+					>
+						<Globe size={18} />
+						<span class="font-bold">{$locale === 'en' ? 'ES' : 'EN'}</span>
+					</button>
+					<button
 						onclick={handleLogout}
 						class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-4 py-2 transition-all duration-200 hover:border-dashed"
 					>
 						<LogOut size={18} />
-						<span class="font-bold">logout</span>
+						<span class="font-bold">{$t.nav.logout}</span>
 					</button>
 				</div>
 			{/if}
@@ -687,6 +724,6 @@
 		class="fixed bottom-6 left-6 z-50 flex cursor-pointer items-center gap-2 rounded-full border-4 border-red-800 bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-red-700 md:px-6 md:py-3"
 	>
 		<Shield size={20} />
-		<span class="hidden sm:inline">{isInAdminSection ? 'escape' : 'admin'}</span>
+		<span class="hidden sm:inline">{isInAdminSection ? $t.nav.escape : $t.nav.admin}</span>
 	</a>
 {/if}

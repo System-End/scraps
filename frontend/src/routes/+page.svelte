@@ -5,6 +5,7 @@
 	import Superscript from '$lib/components/Superscript.svelte';
 	import { login, getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
+	import { t } from '$lib/i18n';
 
 	let email = $state('');
 	let emailError = $state('');
@@ -24,12 +25,12 @@
 		emailError = '';
 
 		if (!email.trim()) {
-			emailError = 'please enter your email';
+			emailError = $t.landing.pleaseEnterEmail;
 			return;
 		}
 
 		if (!isValidEmail(email)) {
-			emailError = 'please enter a valid email';
+			emailError = $t.landing.pleaseEnterValidEmail;
 			return;
 		}
 
@@ -169,18 +170,14 @@
 	</div>
 
 	<div class="w-full px-6 py-4 md:absolute md:right-1/4 md:bottom-1/5 md:w-auto md:max-w-lg md:p-0">
-		<h1 class="mb-4 text-6xl font-bold md:text-8xl">scraps</h1>
+		<h1 class="mb-4 text-6xl font-bold md:text-8xl">{$t.nav.scraps}</h1>
 		<p class="mb-1 text-lg md:text-xl">
-			<strong>you ship:</strong> any project<Superscript
-				number={1}
-				tooltip="silly, nonsensical, or fun"
-			/>
+			<strong>{$t.landing.youShip}</strong>
+			{$t.landing.anyProject}<Superscript number={1} tooltip={$t.landing.sillyTooltip} />
 		</p>
 		<p class="mb-6 text-lg md:text-xl">
-			<strong>we ship:</strong> a chance to win something amazing<Superscript
-				number={2}
-				tooltip="(including rare stickers)"
-			/>
+			<strong>{$t.landing.weShip}</strong>
+			{$t.landing.chanceToWin}<Superscript number={2} tooltip={$t.landing.rareStickersTooltip} />
 		</p>
 
 		<!-- Auth Section -->
@@ -189,7 +186,7 @@
 				<input
 					type="email"
 					bind:value={email}
-					placeholder="your email"
+					placeholder={$t.landing.yourEmail}
 					class="w-full rounded-full border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
 				/>
 				{#if emailError}
@@ -202,7 +199,7 @@
 				class="flex cursor-pointer items-center justify-center gap-2 rounded-full bg-black px-8 py-3 font-bold text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				<Origami size={18} />
-				<span>{isLoggedIn ? 'go to dashboard' : 'start scrapping'}</span>
+				<span>{isLoggedIn ? $t.landing.goToDashboard : $t.landing.startScrapping}</span>
 			</button>
 		</div>
 	</div>
@@ -212,8 +209,8 @@
 <div id="scraps" class="flex min-h-dvh flex-col overflow-hidden">
 	<div class="px-6 pt-24 pb-8 md:px-12">
 		<div class="mx-auto max-w-3xl">
-			<h2 class="mb-2 text-4xl font-bold md:text-6xl">scraps</h2>
-			<p class="text-lg text-gray-600 md:text-xl">(items up for grabs)</p>
+			<h2 class="mb-2 text-4xl font-bold md:text-6xl">{$t.nav.scraps}</h2>
+			<p class="text-lg text-gray-600 md:text-xl">{$t.landing.itemsUpForGrabs}</p>
 		</div>
 	</div>
 
@@ -276,64 +273,60 @@
 
 <!-- About Section -->
 <div id="about" class="mx-auto min-h-dvh max-w-3xl px-6 pt-24 pb-24 md:px-12">
-	<h2 class="mb-8 text-4xl font-bold md:text-6xl">about scraps</h2>
+	<h2 class="mb-8 text-4xl font-bold md:text-6xl">{$t.landing.aboutScraps}</h2>
 
 	<div class="prose prose-lg">
-		<p class="mb-4 text-xl font-bold">tl;dr</p>
+		<p class="mb-4 text-xl font-bold">{$t.landing.tldr}</p>
 
 		<p class="mb-2">
-			<strong>you ship:</strong> any project <Superscript
-				number={3}
-				tooltip="optionally silly, nonsensical, or fun"
-			/>
+			<strong>{$t.landing.youShip}</strong>
+			{$t.landing.anyProject}
+			<Superscript number={3} tooltip={$t.landing.optionallySillyTooltip} />
 		</p>
 
 		<p class="mb-6">
-			<strong>we ship:</strong> random items from hq<Superscript
-				number={4}
-				tooltip="(including stickers)"
-			/> (more hours, more stuff)
+			<strong>{$t.landing.weShip}</strong>
+			{$t.landing.weShipRandomItems}<Superscript number={4} tooltip={$t.landing.stickersTooltip} />
+			{$t.landing.moreHoursMoreStuff}
 		</p>
 
 		<p class="mb-6">
-			it's cold and wintery here<Superscript number={5} tooltip="in vermont" /> at hack club hq. after
-			prototype, overglade, milkyway, and other hackathons, there are boxes and boxes of items, "scraps,"
-			if you will. now, dear hack clubber, this ysws is your chance to win the cool leftovers, including
-			random hardware<Superscript
-				number={6}
-				tooltip="sensors, esp32s, arduinos, breadboards, and a singular resistor"
-			/>, postcards, fudge, and maybe a secret surprise<Superscript
+			{$t.landing.coldAndWintery}<Superscript number={5} tooltip={$t.landing.vermontTooltip} />
+			{$t.landing.atHackClubHQ}<Superscript number={6} tooltip={$t.landing.hardwareTooltip} />{$t
+				.landing.postcardsAndMore}<Superscript
 				number={7}
-				tooltip="limited edition stickers"
+				tooltip={$t.landing.limitedEditionTooltip}
 			/>!
 		</p>
 
-		<p class="mb-4 text-xl font-bold">but how, you may ask?</p>
+		<p class="mb-4 text-xl font-bold">{$t.landing.butHow}</p>
 
 		<p class="mb-6">
-			well, it's simple: you just ship any projects that are slightly silly, nonsensical, or fun<Superscript
+			{$t.landing.simpleExplanation}<Superscript
 				number={8}
-				tooltip="or literally any project"
-			/>, and you will earn scraps for the time you put in! track your time with
+				tooltip={$t.landing.anyProjectTooltip}
+			/>{$t.landing.earnScraps}
 			<a
 				href="https://hackatime.hackclub.com"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="cursor-pointer underline hover:no-underline">hackatime</a
-			> and watch the scraps roll in.
+				class="cursor-pointer underline hover:no-underline">{$t.landing.hackatime}</a
+			>
+			{$t.landing.watchScrapsRollIn}
 		</p>
 
-		<p class="mb-4 text-xl font-bold">what can you win?</p>
+		<p class="mb-4 text-xl font-bold">{$t.landing.whatCanYouWin}</p>
 
 		<p class="mb-6">
-			currently, there is a random assortment of hardware left over from prototype, postcards, the
-			famous vermont fudge<Superscript number={9} tooltip="fudge fudge fudge" />, and more items
-			planned as events wrap up. oh, and the best part,
-			<strong>stickers!</strong>
+			{$t.landing.currentlyRandomAssortment}<Superscript
+				number={9}
+				tooltip={$t.landing.fudgeTooltip}
+			/>{$t.landing.moreItemsPlanned}
+			<strong>{$t.landing.stickers}</strong>
 		</p>
 
 		<p class="mb-6">
-			if you have ever wondered how to get the cool stickers from
+			{$t.landing.wonderedHowToGet}
 			<a
 				href="https://stickers.hackclub.com/"
 				target="_blank"
@@ -341,68 +334,69 @@
 				class="cursor-pointer underline hover:no-underline"
 			>
 				stickers.hackclub.com</a
-			>? well, here is your chance to get any sticker (that we have in stock) to complete your
-			collection<Superscript
+			>{$t.landing.hereIsYourChance}<Superscript
 				number={10}
-				tooltip="soon to be made collection.hackclub.com to keep track of your sticker collection"
-			/>! this includes some of the rarest and most sought-after stickers from hack club.
+				tooltip={$t.landing.collectionTooltip}
+			/>{$t.landing.rarestStickers}
 		</p>
 
-		<p class="mb-6 text-xl font-bold">frequently asked questions</p>
+		<p class="mb-6 text-xl font-bold">{$t.landing.faq}</p>
 
 		<div class="grid gap-4 sm:grid-cols-2">
 			<div
 				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
 			>
-				<p class="mb-2 text-lg font-bold">who is eligible?</p>
+				<p class="mb-2 text-lg font-bold">{$t.about.whoIsEligible}</p>
 				<p class="text-gray-600">
-					scraps is for high schoolers! you need to be 13-18 years old to participate.
+					{$t.about.whoIsEligibleAnswer}
 				</p>
 			</div>
 
 			<div
 				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
 			>
-				<p class="mb-2 text-lg font-bold">how much does it cost?</p>
+				<p class="mb-2 text-lg font-bold">{$t.about.howMuchDoesItCost}</p>
 				<p class="text-gray-600">
-					100% free - all the prizes are donated to us or paid for by hack club!
+					{$t.about.howMuchDoesItCostAnswer}
 				</p>
 			</div>
 
 			<div
 				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
 			>
-				<p class="mb-2 text-lg font-bold">what types of projects count?</p>
+				<p class="mb-2 text-lg font-bold">{$t.about.whatTypesOfProjects}</p>
 				<p class="text-gray-600">
-					all kinds of technical projects as long as it's open-source on github!
+					{$t.about.whatTypesOfProjectsAnswer}
 				</p>
 			</div>
 
 			<div
 				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed"
 			>
-				<p class="mb-2 text-lg font-bold">how many projects can i build?</p>
-				<p class="text-gray-600">there's no limit! build as much as you can!</p>
+				<p class="mb-2 text-lg font-bold">{$t.about.howManyProjects}</p>
+				<p class="text-gray-600">{$t.about.howManyProjectsAnswer}</p>
 			</div>
 
 			<div
 				class="rounded-2xl border-4 border-black bg-white p-6 transition-all hover:border-dashed sm:col-span-2"
 			>
-				<p class="mb-2 text-lg font-bold">is this legit?</p>
+				<p class="mb-2 text-lg font-bold">{$t.about.isThisLegit}</p>
 				<p class="text-gray-600">
-					yup! hack club has run programs like <a
+					{$t.about.isThisLegitAnswer}
+					<a
 						href="https://highseas.hackclub.com/"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="cursor-pointer underline hover:no-underline">high seas</a
+						class="cursor-pointer underline hover:no-underline">{$t.about.highSeas}</a
 					>
-					and
+					{$t.about.and}
 					<a
 						href="https://summer.hackclub.com/"
 						target="_blank"
 						rel="noopener noreferrer"
-						class="cursor-pointer underline hover:no-underline">summer of making</a
-					> — both gave out similar prizes for building personal projects.
+						class="cursor-pointer underline hover:no-underline">{$t.about.summerOfMaking}</a
+					>
+					{$t.about.similarPrizes}
 				</p>
 			</div>
 		</div>

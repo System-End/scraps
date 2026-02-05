@@ -13,6 +13,7 @@
 	} from '@lucide/svelte';
 	import { API_URL } from '$lib/config';
 	import { getUser } from '$lib/auth-client';
+	import { t } from '$lib/i18n';
 
 	interface Order {
 		id: number;
@@ -75,11 +76,11 @@
 	function getOrderTypeLabel(orderType: string): string {
 		switch (orderType) {
 			case 'luck_win':
-				return 'won';
+				return $t.orders.won;
 			case 'consolation':
-				return 'consolation';
+				return $t.orders.consolation;
 			case 'purchase':
-				return 'purchased';
+				return $t.orders.purchased;
 			default:
 				return orderType;
 		}
@@ -112,8 +113,17 @@
 	}
 
 	function getStatusLabel(status: string, isFulfilled: boolean): string {
-		if (isFulfilled) return 'fulfilled';
-		return status;
+		if (isFulfilled) return $t.orders.fulfilled;
+		switch (status) {
+			case 'pending':
+				return $t.orders.pending;
+			case 'shipped':
+				return $t.orders.shipped;
+			case 'delivered':
+				return $t.orders.delivered;
+			default:
+				return status;
+		}
 	}
 
 	interface ParsedAddress {
@@ -157,7 +167,7 @@
 </script>
 
 <svelte:head>
-	<title>my orders - scraps</title>
+	<title>{$t.orders.myOrders} - scraps</title>
 </svelte:head>
 
 <div class="mx-auto max-w-4xl px-6 pt-24 pb-24 md:px-12">
@@ -166,25 +176,25 @@
 		class="mb-8 inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
 	>
 		<ArrowLeft size={20} />
-		back to shop
+		{$t.orders.backToShop}
 	</a>
 
-	<h1 class="mb-8 text-4xl font-bold md:text-5xl">my orders</h1>
+	<h1 class="mb-8 text-4xl font-bold md:text-5xl">{$t.orders.myOrders}</h1>
 
 	{#if loading}
-		<div class="py-12 text-center text-gray-500">loading orders...</div>
+		<div class="py-12 text-center text-gray-500">{$t.orders.loadingOrders}</div>
 	{:else if error}
 		<div class="py-12 text-center text-red-600">{error}</div>
 	{:else if orders.length === 0}
 		<div class="rounded-2xl border-4 border-dashed border-gray-300 p-12 text-center">
 			<Package size={48} class="mx-auto mb-4 text-gray-400" />
-			<p class="text-lg text-gray-500">no orders yet</p>
-			<p class="mt-2 text-sm text-gray-400">try your luck in the shop to get some goodies!</p>
+			<p class="text-lg text-gray-500">{$t.orders.noOrdersYet}</p>
+			<p class="mt-2 text-sm text-gray-400">{$t.orders.tryYourLuck}</p>
 			<a
 				href="/shop"
 				class="mt-6 inline-block cursor-pointer rounded-full bg-black px-6 py-3 font-bold text-white transition-all duration-200 hover:bg-gray-800"
 			>
-				go to shop
+				{$t.orders.goToShop}
 			</a>
 		</div>
 	{:else}
@@ -213,7 +223,7 @@
 							<div class="flex items-start justify-between gap-4">
 								<div>
 									{#if isConsolation}
-										<h3 class="text-xl font-bold">paper scraps</h3>
+										<h3 class="text-xl font-bold">{$t.orders.paperScraps}</h3>
 										<p class="text-sm text-gray-400 line-through">{order.itemName}</p>
 									{:else}
 										<h3 class="text-xl font-bold">{order.itemName}</h3>
@@ -239,7 +249,7 @@
 									{order.totalPrice}
 								</span>
 								{#if order.quantity > 1}
-									<span class="text-gray-600">qty: {order.quantity}</span>
+									<span class="text-gray-600">{$t.orders.qty}: {order.quantity}</span>
 								{/if}
 							</div>
 
@@ -250,7 +260,7 @@
 								</div>
 							{:else if !order.isFulfilled}
 								<p class="mt-3 text-sm font-bold text-yellow-600">
-									⚠️ no shipping address provided
+									{$t.orders.noShippingAddress}
 								</p>
 							{/if}
 						</div>

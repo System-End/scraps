@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { getUser, refreshUserScraps, userScrapsStore } from '$lib/auth-client';
 	import { shopItemsStore, shopLoading, fetchShopItems, type ShopItem } from '$lib/stores';
+	import { t } from '$lib/i18n';
 
 	let probabilityItems = $derived($shopItemsStore.filter((item) => item.baseProbability > 0));
 	let upgrading = $state<number | null>(null);
@@ -42,7 +43,7 @@
 			);
 			await refreshUserScraps();
 		} catch (e) {
-			alertMessage = 'Failed to upgrade probability';
+			alertMessage = $t.refinery.failedToUpgrade;
 		} finally {
 			upgrading = null;
 		}
@@ -55,17 +56,17 @@
 </script>
 
 <svelte:head>
-	<title>refinery - scraps</title>
+	<title>{$t.refinery.refinery} - scraps</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12">
 	<div class="mb-8">
-		<h1 class="mb-2 text-4xl font-bold md:text-5xl">refinery</h1>
-		<p class="text-lg text-gray-600">upgrade your luck</p>
+		<h1 class="mb-2 text-4xl font-bold md:text-5xl">{$t.refinery.refinery}</h1>
+		<p class="text-lg text-gray-600">{$t.refinery.upgradeYourLuck}</p>
 	</div>
 
 	{#if $shopLoading}
-		<div class="py-12 text-center text-gray-500">loading...</div>
+		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>
 	{:else if probabilityItems.length > 0}
 		<div class="space-y-6">
 			{#each probabilityItems as item (item.id)}
@@ -100,7 +101,12 @@
 										{item.effectiveProbability}%
 									</span>
 									<span class="text-xs text-gray-600 sm:text-sm">
-										({item.baseProbability}% + {item.userBoostPercent}%{#if item.adjustedBaseProbability < item.baseProbability}<span class="text-red-500"> - {item.baseProbability - item.adjustedBaseProbability}% from previous buy</span>{/if})
+										({item.baseProbability}% + {item.userBoostPercent}%{#if item.adjustedBaseProbability < item.baseProbability}<span
+												class="text-red-500"
+											>
+												- {item.baseProbability - item.adjustedBaseProbability}% {$t.refinery
+													.fromPreviousBuy}</span
+											>{/if})
 									</span>
 								</div>
 							</div>
@@ -109,7 +115,7 @@
 							{#if maxed}
 								<span
 									class="inline-block rounded-full bg-gray-200 px-4 py-2 font-bold text-gray-600"
-									>maxed</span
+									>{$t.refinery.maxed}</span
 								>
 							{:else if nextCost !== null}
 								<button
@@ -118,9 +124,9 @@
 									class="w-full cursor-pointer rounded-full bg-black px-4 py-2 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50 sm:w-auto sm:text-base"
 								>
 									{#if upgrading === item.id}
-										upgrading...
+										{$t.refinery.upgrading}
 									{:else}
-										+{item.boostAmount}% ({nextCost} scraps)
+										+{item.boostAmount}% ({nextCost} {$t.common.scraps})
 									{/if}
 								</button>
 							{/if}
@@ -130,7 +136,7 @@
 			{/each}
 		</div>
 	{:else}
-		<div class="py-12 text-center text-gray-500">no items available for upgrades</div>
+		<div class="py-12 text-center text-gray-500">{$t.refinery.noItemsAvailable}</div>
 	{/if}
 </div>
 
@@ -143,13 +149,13 @@
 		tabindex="-1"
 	>
 		<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
-			<h2 class="mb-4 text-2xl font-bold">error</h2>
+			<h2 class="mb-4 text-2xl font-bold">{$t.common.error}</h2>
 			<p class="mb-6 text-gray-600">{alertMessage}</p>
 			<button
 				onclick={() => (alertMessage = null)}
 				class="w-full cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed"
 			>
-				ok
+				{$t.refinery.ok}
 			</button>
 		</div>
 	</div>

@@ -4,6 +4,7 @@
 	import { Plus, Pencil, Trash2, X, Spool } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
+	import { t } from '$lib/i18n';
 
 	interface ShopItem {
 		id: number;
@@ -81,8 +82,7 @@
 		if (actualUpgrades <= 0 || upgradeBudget <= 0) {
 			baseUpgradeCost = Math.round(price * 0.05) || 1;
 		} else {
-			const seriesSum =
-				(Math.pow(multiplierDecimal, actualUpgrades) - 1) / (multiplierDecimal - 1);
+			const seriesSum = (Math.pow(multiplierDecimal, actualUpgrades) - 1) / (multiplierDecimal - 1);
 			baseUpgradeCost = Math.max(1, Math.round(upgradeBudget / seriesSum));
 		}
 
@@ -248,21 +248,21 @@
 </script>
 
 <svelte:head>
-	<title>shop editor - admin - scraps</title>
+	<title>{$t.nav.shop} - {$t.nav.admin} - scraps</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12">
 	<div class="mb-8 flex items-center justify-between">
 		<div>
-			<h1 class="mb-2 text-4xl font-bold md:text-5xl">shop</h1>
-			<p class="text-lg text-gray-600">manage shop items and inventory</p>
+			<h1 class="mb-2 text-4xl font-bold md:text-5xl">{$t.nav.shop}</h1>
+			<p class="text-lg text-gray-600">{$t.admin.manageShopItemsAndInventory}</p>
 		</div>
 		<button
 			onclick={openCreateModal}
 			class="flex cursor-pointer items-center gap-2 rounded-full bg-black px-6 py-3 font-bold text-white transition-all duration-200 hover:bg-gray-800"
 		>
 			<Plus size={20} />
-			add item
+			{$t.admin.addItem}
 		</button>
 	</div>
 
@@ -283,9 +283,9 @@
 	</div>
 
 	{#if loading}
-		<div class="py-12 text-center text-gray-500">loading...</div>
+		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>
 	{:else if items.length === 0}
-		<div class="py-12 text-center text-gray-500">no items yet</div>
+		<div class="py-12 text-center text-gray-500">{$t.refinery.noItemsAvailable}</div>
 	{:else}
 		<div class="grid gap-4">
 			{#each items as item}
@@ -343,7 +343,7 @@
 			class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border-4 border-black bg-white p-6"
 		>
 			<div class="mb-6 flex items-center justify-between">
-				<h2 class="text-2xl font-bold">{editingItem ? 'edit item' : 'add item'}</h2>
+				<h2 class="text-2xl font-bold">{editingItem ? $t.admin.editItem : $t.admin.addItem}</h2>
 				<button
 					onclick={closeModal}
 					class="cursor-pointer rounded-lg p-2 transition-colors hover:bg-gray-100"
@@ -401,8 +401,9 @@
 						class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
 					/>
 					<p class="mt-1 text-xs text-gray-500">
-						= {formPrice} scraps · {formBaseProbability}% base · +{formBoostAmount}%/upgrade ·
-						~{(formPrice / SCRAPS_PER_HOUR).toFixed(1)} hrs to earn
+						= {formPrice} scraps · {formBaseProbability}% base · +{formBoostAmount}%/upgrade · ~{(
+							formPrice / SCRAPS_PER_HOUR
+						).toFixed(1)} hrs to earn
 					</p>
 					{#if formPrice > 0}
 						{@const rollCost = Math.max(1, Math.round(formPrice * (formBaseProbability / 100)))}
@@ -418,10 +419,13 @@
 							roll cost: {rollCost} scraps · upgrades to 100%: {Math.round(totalUpgradeCost)} scraps
 						</p>
 						<p
-							class="mt-1 text-xs {totalCost > maxBudget ? 'font-bold text-red-600' : 'text-gray-500'}"
+							class="mt-1 text-xs {totalCost > maxBudget
+								? 'font-bold text-red-600'
+								: 'text-gray-500'}"
 						>
-							total: {Math.round(totalCost)} scraps ({upgradesNeeded} upgrades + roll) ·
-							budget: {Math.round(maxBudget)} (1.5×)
+							total: {Math.round(totalCost)} scraps ({upgradesNeeded} upgrades + roll) · budget: {Math.round(
+								maxBudget
+							)} (1.5×)
 							{#if totalCost > maxBudget}· ⚠️ over budget!{/if}
 						</p>
 					{/if}
@@ -517,14 +521,14 @@
 					disabled={saving}
 					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50"
 				>
-					cancel
+					{$t.common.cancel}
 				</button>
 				<button
 					onclick={handleSubmit}
 					disabled={saving}
 					class="flex-1 cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
 				>
-					{saving ? 'saving...' : editingItem ? 'save' : 'create'}
+					{saving ? $t.common.saving : editingItem ? $t.common.save : $t.common.create}
 				</button>
 			</div>
 		</div>
@@ -540,7 +544,7 @@
 		tabindex="-1"
 	>
 		<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
-			<h2 class="mb-4 text-2xl font-bold">confirm delete</h2>
+			<h2 class="mb-4 text-2xl font-bold">{$t.admin.confirmDelete}</h2>
 			<p class="mb-6 text-gray-600">
 				are you sure you want to delete this item? <span class="mt-2 block text-red-600"
 					>this action cannot be undone.</span
@@ -551,13 +555,13 @@
 					onclick={() => (deleteConfirmId = null)}
 					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
 				>
-					cancel
+					{$t.common.cancel}
 				</button>
 				<button
 					onclick={confirmDelete}
 					class="flex-1 cursor-pointer rounded-full border-4 border-black bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed"
 				>
-					delete
+					{$t.common.delete}
 				</button>
 			</div>
 		</div>
@@ -573,13 +577,13 @@
 		tabindex="-1"
 	>
 		<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
-			<h2 class="mb-4 text-2xl font-bold">error</h2>
+			<h2 class="mb-4 text-2xl font-bold">{$t.common.error}</h2>
 			<p class="mb-6 text-gray-600">{errorModal}</p>
 			<button
 				onclick={() => (errorModal = null)}
 				class="w-full cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed"
 			>
-				ok
+				{$t.common.ok}
 			</button>
 		</div>
 	</div>
