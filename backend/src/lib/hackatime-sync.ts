@@ -242,6 +242,53 @@ async function checkHourMilestones(): Promise<void> {
 
 let syncInterval: ReturnType<typeof setInterval> | null = null
 
+export async function syncSingleProject(projectId: number): Promise<{ hours: number; updated: boolean; error?: string }> {
+	try {
+		const [project] = await db
+			.select({
+				id: projectsTable.id,
+				hackatimeProject: projectsTable.hackatimeProject,
+				hours: projectsTable.hours,
+				userEmail: usersTable.email
+			})
+			.from(projectsTable)
+			.innerJoin(usersTable, eq(projectsTable.userId, usersTable.id))
+			.where(eq(projectsTable.id, projectId))
+			.limit(1)
+
+		if (!project) return { hours: 0, updated: false, error: 'Project not found' }
+		if (!project.hackatimeProject) return { hours: project.hours ?? 0, updated: false, error: 'No Hackatime project linked' }
+
+		const parsed = parseHackatimeProject(project.hackatimeProject)
+		if (!parsed) return { hours: project.hours ?? 0, updated: false, error: 'Invalid Hackatime project format' }
+
+		const hackatimeUserId = await getHackatimeUserId(project.userEmail)
+		if (hackatimeUserId === null) return { hours: project.hours ?? 0, updated: false, error: 'Could not find Hackatime user' }
+
+		const adminProjects = await fetchUserProjects(hackatimeUserId)
+		if (adminProjects === null) return { hours: project.hours ?? 0, updated: false, error: 'Failed to fetch Hackatime projects' }
+
+		const hackatimeProject = adminProjects.find(p => p.name === parsed.projectName)
+		const hours = hackatimeProject
+			? Math.round(hackatimeProject.total_duration / 3600 * 10) / 10
+			: 0
+
+		if (hours !== project.hours) {
+			await db
+				.update(projectsTable)
+				.set({ hours, updatedAt: new Date() })
+				.where(eq(projectsTable.id, projectId))
+			console.log(`[HACKATIME-SYNC] Manual sync project ${projectId}: ${project.hours}h -> ${hours}h`)
+			return { hours, updated: true }
+		}
+
+		return { hours, updated: false }
+	} catch (error) {
+		console.error(`[HACKATIME-SYNC] Error syncing project ${projectId}:`, error)
+		return { hours: 0, updated: false, error: 'Sync failed' }
+	}
+}
+
 export function startHackatimeSync(): void {
 	if (syncInterval) return
 

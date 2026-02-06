@@ -9,6 +9,7 @@ import { newsTable } from '../schemas/news'
 import { projectActivityTable } from '../schemas/activity'
 import { getUserFromSession } from '../lib/auth'
 import { calculateScrapsFromHours, getUserScrapsBalance } from '../lib/scraps'
+import { syncSingleProject } from '../lib/hackatime-sync'
 
 const admin = new Elysia({ prefix: '/admin' })
 
@@ -978,6 +979,25 @@ admin.patch('/orders/:id', async ({ params, body, headers, status }) => {
     } catch (err) {
         console.error(err)
         return status(500, { error: 'Failed to update order' })
+    }
+})
+
+// Sync hours for a single project from Hackatime
+admin.post('/projects/:id/sync-hours', async ({ headers, params, status }) => {
+    const user = await requireAdmin(headers as Record<string, string>)
+    if (!user) {
+        return status(401, { error: 'Unauthorized' })
+    }
+
+    try {
+        const result = await syncSingleProject(parseInt(params.id))
+        if (result.error) {
+            return { hours: result.hours, updated: result.updated, error: result.error }
+        }
+        return { hours: result.hours, updated: result.updated }
+    } catch (err) {
+        console.error(err)
+        return status(500, { error: 'Failed to sync hours' })
     }
 })
 

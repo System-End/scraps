@@ -15,7 +15,8 @@
 		Plus,
 		Globe,
 		Spool,
-		Eye
+		Eye,
+		RefreshCw
 	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
@@ -65,9 +66,11 @@
 	let project = $state<Project | null>(null);
 	let owner = $state<Owner | null>(null);
 	let isOwner = $state(false);
+	let isAdmin = $state(false);
 	let activity = $state<ActivityEntry[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let syncingHours = $state(false);
 
 	onMount(async () => {
 		const user = await getUser();
@@ -75,6 +78,7 @@
 			goto('/');
 			return;
 		}
+		isAdmin = user.role === 'admin';
 
 		try {
 			const projectRes = await fetch(`${API_URL}/projects/${data.id}`, { credentials: 'include' });
@@ -146,6 +150,27 @@
 			hour: '2-digit',
 			minute: '2-digit'
 		});
+	}
+
+	async function syncHours() {
+		if (!project || syncingHours) return;
+		syncingHours = true;
+		try {
+			const response = await fetch(`${API_URL}/admin/projects/${project.id}/sync-hours`, {
+				method: 'POST',
+				credentials: 'include'
+			});
+			const data = await response.json();
+			if (data.error) {
+				error = data.error;
+			} else if (data.updated && project) {
+				project.hours = data.hours;
+			}
+		} catch (e) {
+			console.error('Failed to sync hours:', e);
+		} finally {
+			syncingHours = false;
+		}
 	}
 </script>
 
@@ -265,6 +290,17 @@
 						<Clock size={18} />
 						{formatHours(project.hours)}h
 					</span>
+					{#if isAdmin}
+						<button
+							onclick={syncHours}
+							disabled={syncingHours}
+							title="Sync hours from Hackatime"
+							class="inline-flex cursor-pointer items-center gap-1 rounded-full border-2 border-black bg-blue-100 px-3 py-2 text-sm font-bold text-blue-700 transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							<RefreshCw size={14} class={syncingHours ? 'animate-spin' : ''} />
+							{syncingHours ? 'syncing...' : 'sync hours'}
+						</button>
+					{/if}
 					{#if project.githubUrl}
 						<a
 							href={project.githubUrl}

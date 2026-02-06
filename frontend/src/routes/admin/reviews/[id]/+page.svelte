@@ -11,7 +11,8 @@
 		CheckCircle,
 		XCircle,
 		Info,
-		Globe
+		Globe,
+		RefreshCw
 	} from '@lucide/svelte';
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
 	import { getUser } from '$lib/auth-client';
@@ -92,6 +93,7 @@
 
 	let confirmAction = $state<'approved' | 'denied' | 'permanently_rejected' | null>(null);
 	let errorModal = $state<string | null>(null);
+	let syncingHours = $state(false);
 
 	let projectId = $derived(page.params.id);
 
@@ -198,6 +200,28 @@
 		} finally {
 			submitting = false;
 			confirmAction = null;
+		}
+	}
+
+	async function syncHours() {
+		if (!project || syncingHours) return;
+		syncingHours = true;
+		try {
+			const response = await fetch(`${API_URL}/admin/projects/${project.id}/sync-hours`, {
+				method: 'POST',
+				credentials: 'include'
+			});
+			const data = await response.json();
+			if (data.error) {
+				errorModal = data.error;
+			} else if (data.updated && project) {
+				project.hours = data.hours;
+			}
+		} catch (e) {
+			console.error('Failed to sync hours:', e);
+			errorModal = 'Failed to sync hours from Hackatime';
+		} finally {
+			syncingHours = false;
 		}
 	}
 
@@ -323,6 +347,15 @@
 				<span class="rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold"
 					>{formatHours(project.hours)}h logged</span
 				>
+				<button
+					onclick={syncHours}
+					disabled={syncingHours}
+					title="Sync hours from Hackatime"
+					class="inline-flex cursor-pointer items-center gap-1 rounded-full border-2 border-black bg-blue-100 px-3 py-1 text-sm font-bold text-blue-700 transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					<RefreshCw size={14} class={syncingHours ? 'animate-spin' : ''} />
+					{syncingHours ? 'syncing...' : 'sync hours'}
+				</button>
 				{#if project.hackatimeProject}
 					<span class="rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold"
 						>hackatime: {project.hackatimeProject}</span
