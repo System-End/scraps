@@ -406,13 +406,6 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 			// Lock the user row to serialize spend operations and prevent race conditions
 			await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user.id} FOR UPDATE`)
 
-			// Re-check affordability inside the transaction
-			const affordable = await canAfford(user.id, item.price, tx)
-			if (!affordable) {
-				const { balance } = await getUserScrapsBalance(user.id, tx)
-				throw { type: 'insufficient_funds', balance }
-			}
-
 			// Re-check stock inside transaction
 			const currentItem = await tx
 				.select()
