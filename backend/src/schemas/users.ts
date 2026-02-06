@@ -27,6 +27,9 @@ export const usersTable = pgTable('users', {
   // tutorial status
   tutorialCompleted: boolean('tutorial_completed').notNull().default(false),
 
+  // language preference
+  language: varchar().notNull().default('en'),
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 })

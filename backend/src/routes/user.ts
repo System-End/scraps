@@ -5,6 +5,7 @@ import { db } from '../db'
 import { usersTable, userBonusesTable } from '../schemas/users'
 import { projectsTable } from '../schemas/projects'
 import { shopHeartsTable, shopItemsTable, refineryOrdersTable } from '../schemas/shop'
+import { userActivityTable } from '../schemas/user-emails'
 import { getUserScrapsBalance } from '../lib/scraps'
 
 const user = new Elysia({ prefix: '/user' })
@@ -37,8 +38,32 @@ user.get('/me', async ({ headers }) => {
         scrapsSpent: scrapsBalance.spent,
         yswsEligible,
         verificationStatus,
-        tutorialCompleted: userData.tutorialCompleted
+        tutorialCompleted: userData.tutorialCompleted,
+        language: userData.language
     }
+})
+
+// Update user language preference
+user.put('/language', async ({ headers, body }) => {
+    const userData = await getUserFromSession(headers as Record<string, string>)
+    if (!userData) return { error: 'Unauthorized' }
+
+    const { language } = body as { language: string }
+    if (!language || typeof language !== 'string') return { error: 'Language is required' }
+
+    await db.update(usersTable)
+        .set({ language, updatedAt: new Date() })
+        .where(eq(usersTable.id, userData.id))
+
+    // Log language change activity
+    await db.insert(userActivityTable).values({
+        userId: userData.id,
+        email: userData.email,
+        action: 'language_changed',
+        metadata: language
+    })
+
+    return { success: true }
 })
 
 user.post('/complete-tutorial', async ({ headers }) => {
@@ -77,6 +102,13 @@ user.post('/complete-tutorial', async ({ headers }) => {
         userId: userData.id,
         reason: 'tutorial_completion',
         amount: 5
+    })
+
+    // Log tutorial_completed activity
+    await db.insert(userActivityTable).values({
+        userId: userData.id,
+        email: userData.email,
+        action: 'tutorial_completed'
     })
 
     return { success: true, bonusAwarded: 5 }

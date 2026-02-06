@@ -23,6 +23,16 @@ interface HackClubIdentity {
     verification_status?: string
     primary_email?: string
     slack_id?: string
+    given_name?: string
+    family_name?: string
+    birthdate?: string
+    address?: {
+        street_address?: string
+        locality?: string
+        region?: string
+        postal_code?: string
+        country?: string
+    }
 }
 
 interface HackClubMeResponse {
@@ -84,6 +94,41 @@ export async function fetchUserIdentity(accessToken: string): Promise<HackClubMe
         return await response.json()
     } catch (error) {
         console.error("[AUTH] Error fetching user identity:", error)
+        return null
+    }
+}
+
+export interface UserInfoResponse {
+    sub: string
+    email?: string
+    given_name?: string
+    family_name?: string
+    name?: string
+    birthdate?: string
+    address?: {
+        street_address?: string
+        locality?: string
+        region?: string
+        postal_code?: string
+        country?: string
+    }
+    slack_id?: string
+}
+
+export async function fetchUserInfo(accessToken: string): Promise<UserInfoResponse | null> {
+    try {
+        const response = await fetch(`${HACKCLUB_AUTH_URL}/oauth/userinfo`, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`
+            }
+        })
+
+        if (!response.ok) {
+            return null
+        }
+
+        return await response.json()
+    } catch {
         return null
     }
 }

@@ -34,6 +34,10 @@
 	let error = $state<string | null>(null);
 	let scraps = $derived(user?.scraps ?? 0);
 
+	let feedbackSource = $state('');
+	let feedbackGood = $state('');
+	let feedbackImprove = $state('');
+
 	let eligibleProjects = $derived(projects.filter((p) => p.status === 'in_progress'));
 
 	onMount(async () => {
@@ -70,7 +74,13 @@
 		try {
 			const response = await fetch(`${API_URL}/projects/${selectedProject.id}/submit`, {
 				method: 'POST',
-				credentials: 'include'
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({
+					feedbackSource,
+					feedbackGood,
+					feedbackImprove
+				})
 			});
 
 			const data = await response.json();
@@ -157,6 +167,40 @@
 					>
 					<span class="rounded-full bg-gray-100 px-3 py-1 font-bold">{selectedProject.status}</span>
 				</div>
+			</div>
+
+			<!-- Feedback Questions -->
+			<div>
+				<label for="feedbackSource" class="mb-2 block text-sm font-bold">{$t.submit.feedbackSourceLabel}</label>
+				<textarea
+					id="feedbackSource"
+					bind:value={feedbackSource}
+					rows="3"
+					placeholder={$t.submit.feedbackSourcePlaceholder}
+					class="w-full resize-none rounded-lg border-4 border-black px-4 py-3 transition-all focus:border-dashed focus:outline-none"
+				></textarea>
+			</div>
+
+			<div>
+				<label for="feedbackGood" class="mb-2 block text-sm font-bold">{$t.submit.feedbackGoodLabel}</label>
+				<textarea
+					id="feedbackGood"
+					bind:value={feedbackGood}
+					rows="3"
+					placeholder={$t.submit.feedbackGoodPlaceholder}
+					class="w-full resize-none rounded-lg border-4 border-black px-4 py-3 transition-all focus:border-dashed focus:outline-none"
+				></textarea>
+			</div>
+
+			<div>
+				<label for="feedbackImprove" class="mb-2 block text-sm font-bold">{$t.submit.feedbackImproveLabel}</label>
+				<textarea
+					id="feedbackImprove"
+					bind:value={feedbackImprove}
+					rows="3"
+					placeholder={$t.submit.feedbackImprovePlaceholder}
+					class="w-full resize-none rounded-lg border-4 border-black px-4 py-3 transition-all focus:border-dashed focus:outline-none"
+				></textarea>
 			</div>
 		{/if}
 

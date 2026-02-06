@@ -1,6 +1,7 @@
 import { writable, derived } from 'svelte/store';
 import en from './en';
 import es from './es';
+import { API_URL } from '$lib/config';
 
 export type Locale = 'en' | 'es';
 export type Translations = typeof en;
@@ -22,6 +23,13 @@ function createLocaleStore() {
 		set: (value: Locale) => {
 			if (typeof window !== 'undefined') {
 				localStorage.setItem('locale', value);
+				// Sync language preference to backend
+				fetch(`${API_URL}/user/language`, {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify({ language: value })
+				}).catch(() => {});
 			}
 			set(value);
 		},

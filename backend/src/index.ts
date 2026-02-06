@@ -11,6 +11,7 @@ import hackatime from './routes/hackatime'
 import upload from './routes/upload'
 import admin from './routes/admin'
 import { startHackatimeSync } from './lib/hackatime-sync'
+import { startAirtableSync } from './lib/airtable-sync'
 
 const api = new Elysia()
     .use(authRoutes)
@@ -38,3 +39,6 @@ console.log(
 
 // Start background hackatime sync
 startHackatimeSync()
+
+// Start background airtable sync
+startAirtableSync()

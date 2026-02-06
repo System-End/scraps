@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { ArrowLeft, Send, Check, ChevronDown } from '@lucide/svelte';
+	import { ArrowLeft, Send, Check, ChevronDown, Upload, X } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
@@ -41,12 +41,18 @@
 	let loading = $state(true);
 	let submitting = $state(false);
 	let error = $state<string | null>(null);
+	let imagePreview = $state<string | null>(null);
+	let uploadingImage = $state(false);
 	let hackatimeProjects = $state<HackatimeProject[]>([]);
 	let userSlackId = $state<string | null>(null);
 	let selectedHackatimeName = $state<string | null>(null);
 	let loadingProjects = $state(false);
 	let showDropdown = $state(false);
 	let selectedTier = $state(1);
+	let feedbackSource = $state('');
+	let feedbackGood = $state('');
+	let feedbackImprove = $state('');
+	let hasSubmittedFeedbackBefore = $state(false);
 
 	const NAME_MAX = 50;
 	const DESC_MIN = 20;
@@ -63,8 +69,14 @@
 	let hasName = $derived(
 		(project?.name?.trim().length ?? 0) > 0 && (project?.name?.trim().length ?? 0) <= NAME_MAX
 	);
+	let hasFeedback = $derived(
+		hasSubmittedFeedbackBefore ||
+			(feedbackSource.trim().length > 0 &&
+				feedbackGood.trim().length > 0 &&
+				feedbackImprove.trim().length > 0)
+	);
 	let allRequirementsMet = $derived(
-		hasImage && hasHackatime && hasGithub && hasPlayableUrl && hasDescription && hasName
+		hasImage && hasHackatime && hasGithub && hasPlayableUrl && hasDescription && hasName && hasFeedback
 	);
 
 	onMount(async () => {
@@ -89,6 +101,8 @@
 				throw new Error('You can only submit your own projects');
 			}
 			project = responseData.project;
+			imagePreview = project?.image || null;
+			hasSubmittedFeedbackBefore = responseData.hasSubmittedFeedback ?? false;
 			if (project?.hackatimeProject) {
 				const parts = project.hackatimeProject.split('/');
 				selectedHackatimeName = parts.length > 1 ? parts.slice(1).join('/') : parts[0];
@@ -118,6 +132,51 @@
 		} finally {
 			loadingProjects = false;
 		}
+	}
+
+	async function handleImageUpload(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file || !project) return;
+
+		if (file.size > 5 * 1024 * 1024) {
+			error = $t.project.imageMustBeLessThan;
+			return;
+		}
+
+		imagePreview = URL.createObjectURL(file);
+		uploadingImage = true;
+		error = null;
+
+		try {
+			const formData = new FormData();
+			formData.append('file', file);
+
+			const response = await fetch(`${API_URL}/upload/image`, {
+				method: 'POST',
+				credentials: 'include',
+				body: formData
+			});
+
+			const responseData = await response.json();
+			if (responseData.error) {
+				throw new Error(responseData.error);
+			}
+
+			project.image = responseData.url;
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Failed to upload image';
+			imagePreview = project?.image || null;
+		} finally {
+			uploadingImage = false;
+		}
+	}
+
+	function removeImage() {
+		if (project) {
+			project.image = null;
+		}
+		imagePreview = null;
 	}
 
 	function selectHackatimeProject(hp: HackatimeProject) {
@@ -167,7 +226,15 @@
 			// Then submit for review
 			const submitResponse = await fetch(`${API_URL}/projects/${project.id}/submit`, {
 				method: 'POST',
-				credentials: 'include'
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				credentials: 'include',
+				body: JSON.stringify({
+					feedbackSource,
+					feedbackGood,
+					feedbackImprove
+				})
 			});
 
 			const submitData = await submitResponse.json().catch(() => ({}));
@@ -225,21 +292,40 @@
 				</div>
 			{/if}
 
-			<!-- Project Image Preview -->
+			<!-- Project Image Upload -->
 			<div class="mb-6">
-				<label class="mb-2 block text-sm font-bold">{$t.project.projectImage}</label>
-				{#if project.image}
-					<img
-						src={project.image}
-						alt={project.name}
-						class="h-48 w-full rounded-lg border-2 border-black bg-gray-50 object-contain"
-					/>
-				{:else}
-					<div
-						class="flex h-48 w-full items-center justify-center rounded-lg border-2 border-black bg-gray-200 text-gray-400"
-					>
-						{$t.project.noImageAddOne}
+				<label class="mb-2 block text-sm font-bold"
+					>{$t.project.projectImage} <span class="text-red-500">*</span></label
+				>
+				{#if imagePreview}
+					<div class="relative h-48 w-full overflow-hidden rounded-lg border-2 border-black">
+						<img
+							src={imagePreview}
+							alt={project.name}
+							class="h-full w-full bg-gray-100 object-contain"
+						/>
+						{#if uploadingImage}
+							<div class="absolute inset-0 flex items-center justify-center bg-black/50">
+								<span class="font-bold text-white">{$t.project.uploading}</span>
+							</div>
+						{:else}
+							<button
+								type="button"
+								onclick={removeImage}
+								class="absolute top-2 right-2 cursor-pointer rounded-full border-2 border-black bg-white p-1 hover:bg-gray-100"
+							>
+								<X size={16} />
+							</button>
+						{/if}
 					</div>
+				{:else}
+					<label
+						class="flex h-48 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-black transition-colors hover:bg-gray-50"
+					>
+						<Upload size={32} class="mb-2 text-gray-400" />
+						<span class="text-sm text-gray-500">{$t.project.clickToUploadImage}</span>
+						<input type="file" accept="image/*" onchange={handleImageUpload} class="hidden" />
+					</label>
 				{/if}
 			</div>
 
@@ -394,6 +480,49 @@
 				</div>
 			</div>
 
+			<!-- Feedback -->
+			<div class="mb-6 space-y-4">
+				<div>
+					<label for="feedbackSource" class="mb-2 block text-sm font-bold"
+						>{$t.submit.feedbackSourceLabel}
+						{#if !hasSubmittedFeedbackBefore}<span class="text-red-500">*</span>{/if}
+					</label>
+					<textarea
+						id="feedbackSource"
+						bind:value={feedbackSource}
+						rows="2"
+						placeholder={$t.submit.feedbackSourcePlaceholder}
+						class="w-full resize-none rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+					></textarea>
+				</div>
+				<div>
+					<label for="feedbackGood" class="mb-2 block text-sm font-bold"
+						>{$t.submit.feedbackGoodLabel}
+						{#if !hasSubmittedFeedbackBefore}<span class="text-red-500">*</span>{/if}
+					</label>
+					<textarea
+						id="feedbackGood"
+						bind:value={feedbackGood}
+						rows="2"
+						placeholder={$t.submit.feedbackGoodPlaceholder}
+						class="w-full resize-none rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+					></textarea>
+				</div>
+				<div>
+					<label for="feedbackImprove" class="mb-2 block text-sm font-bold"
+						>{$t.submit.feedbackImproveLabel}
+						{#if !hasSubmittedFeedbackBefore}<span class="text-red-500">*</span>{/if}
+					</label>
+					<textarea
+						id="feedbackImprove"
+						bind:value={feedbackImprove}
+						rows="2"
+						placeholder={$t.submit.feedbackImprovePlaceholder}
+						class="w-full resize-none rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+					></textarea>
+				</div>
+			</div>
+
 			<!-- Requirements Checklist -->
 			<div class="mb-6 rounded-lg border-2 border-black p-4">
 				<p class="mb-3 font-bold">{$t.project.requirementsChecklist}</p>
@@ -469,6 +598,20 @@
 							>{$t.project.hackatimeProjectSelected}</span
 						>
 					</li>
+					{#if !hasSubmittedFeedbackBefore}
+						<li class="flex items-center gap-2 text-sm">
+							<span
+								class="flex h-5 w-5 items-center justify-center rounded-full border-2 border-black {hasFeedback
+									? 'bg-black text-white'
+									: ''}"
+							>
+								{#if hasFeedback}<Check size={12} />{/if}
+							</span>
+							<span class={hasFeedback ? '' : 'text-gray-500'}
+								>{$t.project.feedbackCompleted}</span
+							>
+						</li>
+					{/if}
 				</ul>
 			</div>
 

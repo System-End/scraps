@@ -1,12 +1,12 @@
 import { Elysia } from 'elysia'
-import { eq, and, inArray, sql, desc, or } from 'drizzle-orm'
+import { eq, and, inArray, sql, desc, or, isNull } from 'drizzle-orm'
 import { db } from '../db'
 import { usersTable, userBonusesTable } from '../schemas/users'
 import { projectsTable } from '../schemas/projects'
 import { reviewsTable } from '../schemas/reviews'
 import { shopItemsTable, shopOrdersTable, shopHeartsTable, shopRollsTable, refineryOrdersTable, shopPenaltiesTable } from '../schemas/shop'
 import { newsTable } from '../schemas/news'
-import { activityTable } from '../schemas/activity'
+import { projectActivityTable } from '../schemas/activity'
 import { getUserFromSession } from '../lib/auth'
 import { calculateScrapsFromHours, getUserScrapsBalance } from '../lib/scraps'
 
@@ -528,6 +528,23 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
             internalJustification
         })
 
+        // Check for duplicate Code URL if approving
+        if (action === 'approved' && project[0].githubUrl) {
+            const duplicates = await db
+                .select({ id: projectsTable.id })
+                .from(projectsTable)
+                .where(and(
+                    eq(projectsTable.githubUrl, project[0].githubUrl),
+                    eq(projectsTable.status, 'shipped'),
+                    or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
+                ))
+                .limit(1)
+
+            if (duplicates.length > 0) {
+                return { error: 'A shipped project with this Code URL already exists. This project has been kept in review.', duplicateCodeUrl: true }
+            }
+        }
+
         // Update project status
         let newStatus = 'in_progress'
 
@@ -572,10 +589,18 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
             .where(eq(projectsTable.id, projectId))
 
         if (action === 'approved' && scrapsAwarded > 0) {
-            await db.insert(activityTable).values({
+            await db.insert(projectActivityTable).values({
                 userId: project[0].userId,
                 projectId,
                 action: `earned ${scrapsAwarded} scraps`
+            })
+        }
+
+        if (action === 'approved') {
+            await db.insert(projectActivityTable).values({
+                userId: project[0].userId,
+                projectId,
+                action: 'project_shipped'
             })
         }
 

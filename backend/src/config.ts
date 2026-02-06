@@ -27,5 +27,14 @@ export const config = {
 	slackBotToken: process.env.SLACK_BOT_TOKEN,
 	
 	// HCCDN
-	hccdnKey: process.env.HCCDN_KEY
+	hccdnKey: process.env.HCCDN_KEY,
+
+	// Hackatime
+	hackatimeAdminKey: process.env.HACKATIME_ADMIN,
+
+	// Airtable
+	airtableToken: process.env.AIRTABLE_TOKEN,
+	airtableBaseId: process.env.AIRTABLE_BASE_ID,
+	airtableProjectsTableId: process.env.AIRTABLE_PROJECTS_TABLE_ID!,
+	airtableUsersTableId: process.env.AIRTABLE_USERS_TABLE_ID!
 }

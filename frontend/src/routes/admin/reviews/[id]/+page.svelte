@@ -53,6 +53,9 @@
 		tier: number;
 		tierOverride: number | null;
 		deleted: number | null;
+		feedbackSource: string | null;
+		feedbackGood: string | null;
+		feedbackImprove: string | null;
 	}
 
 	interface User {
@@ -88,6 +91,7 @@
 	);
 
 	let confirmAction = $state<'approved' | 'denied' | 'permanently_rejected' | null>(null);
+	let errorModal = $state<string | null>(null);
 
 	let projectId = $derived(page.params.id);
 
@@ -184,6 +188,7 @@
 
 			const data = await response.json();
 			if (data.error) {
+				errorModal = data.error;
 				throw new Error(data.error);
 			}
 
@@ -392,6 +397,33 @@
 				</a>
 			{/if}
 		</div>
+
+		<!-- Author Feedback -->
+		{#if project.feedbackSource || project.feedbackGood || project.feedbackImprove}
+			<div class="mb-6 rounded-2xl border-4 border-black bg-white p-6">
+				<h2 class="mb-4 text-xl font-bold">author feedback</h2>
+				<div class="space-y-4">
+					{#if project.feedbackSource}
+						<div>
+							<p class="mb-1 text-sm font-bold text-gray-500">How did you hear about this?</p>
+							<p class="text-gray-700">{project.feedbackSource}</p>
+						</div>
+					{/if}
+					{#if project.feedbackGood}
+						<div>
+							<p class="mb-1 text-sm font-bold text-gray-500">What are we doing well?</p>
+							<p class="text-gray-700">{project.feedbackGood}</p>
+						</div>
+					{/if}
+					{#if project.feedbackImprove}
+						<div>
+							<p class="mb-1 text-sm font-bold text-gray-500">How can we improve?</p>
+							<p class="text-gray-700">{project.feedbackImprove}</p>
+						</div>
+					{/if}
+				</div>
+			</div>
+		{/if}
 
 		<!-- User Internal Notes Section -->
 		{#if projectUser}
@@ -606,6 +638,31 @@
 					{submitting ? 'submitting...' : getActionLabel(confirmAction)}
 				</button>
 			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Error Modal -->
+{#if errorModal}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+		onclick={(e) => e.target === e.currentTarget && (errorModal = null)}
+		onkeydown={(e) => e.key === 'Escape' && (errorModal = null)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md rounded-2xl border-4 border-red-600 bg-white p-6">
+			<div class="mb-4 flex items-center gap-3">
+				<AlertTriangle size={28} class="text-red-600" />
+				<h2 class="text-2xl font-bold text-red-600">error</h2>
+			</div>
+			<p class="mb-6 text-gray-700">{errorModal}</p>
+			<button
+				onclick={() => (errorModal = null)}
+				class="w-full cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
+			>
+				ok
+			</button>
 		</div>
 	</div>
 {/if}

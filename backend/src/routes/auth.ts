@@ -11,7 +11,7 @@ import {
 import { config } from "../config"
 import { getUserScrapsBalance } from "../lib/scraps"
 import { db } from "../db"
-import { userEmailsTable } from "../schemas"
+import { userActivityTable } from "../schemas/user-emails"
 import { userBonusesTable } from "../schemas/users"
 import { eq, and } from "drizzle-orm"
 
@@ -24,7 +24,7 @@ authRoutes.post("/collect-email", async ({ body }) => {
     const { email } = body as { email: string }
     console.log("[AUTH] Collecting email:", email)
     
-    await db.insert(userEmailsTable).values({ email })
+    await db.insert(userActivityTable).values({ email, action: 'auth_started' })
     
     return { success: true }
 }, {
@@ -84,9 +84,13 @@ authRoutes.get("/callback", async ({ query, redirect, cookie }) => {
 
         const user = await createOrUpdateUser(identity, tokens)
         
-        // Delete the collected email since user completed auth
-        await db.delete(userEmailsTable).where(eq(userEmailsTable.email, identity.primary_email))
-        console.log("[AUTH] Deleted collected email:", identity.primary_email)
+        // Log auth completed activity
+        await db.insert(userActivityTable).values({ 
+            userId: user.id,
+            email: identity.primary_email,
+            action: 'auth_completed'
+        })
+        console.log("[AUTH] Logged auth_completed for:", identity.primary_email)
         
         if (user.role === 'banned') {
             console.log("[AUTH] Banned user attempted login:", { userId: user.id, username: user.username })

@@ -235,7 +235,13 @@ export default {
 		submitForReview: 'enviar para revisión',
 		submitting: 'enviando...',
 		pleaseSelectProject: 'Por favor selecciona un proyecto',
-		failedToSubmit: 'Error al enviar el proyecto'
+		failedToSubmit: 'Error al enviar el proyecto',
+		feedbackSourceLabel: '¿Cómo te enteraste de esto?',
+		feedbackSourcePlaceholder: 'Cuéntanos cómo descubriste scraps...',
+		feedbackGoodLabel: '¿Qué estamos haciendo bien?',
+		feedbackGoodPlaceholder: 'Dinos qué te gusta de scraps...',
+		feedbackImproveLabel: '¿Cómo podemos mejorar?',
+		feedbackImprovePlaceholder: '¿Alguna sugerencia para mejorar scraps...'
 	},
 	createProject: {
 		newProject: 'nuevo proyecto',
@@ -396,6 +402,7 @@ export default {
 		githubRepositoryLinked: 'repositorio github vinculado',
 		playableUrlProvided: 'url jugable proporcionada',
 		hackatimeProjectSelected: 'proyecto hackatime seleccionado',
+		feedbackCompleted: 'preguntas de retroalimentación respondidas',
 		submitting: 'enviando...',
 		hoursLogged: '{hours}h registradas',
 		github: 'github',

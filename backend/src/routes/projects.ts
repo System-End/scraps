@@ -1,44 +1,73 @@
 import { Elysia } from 'elysia'
-import { eq, and, sql, desc, inArray, or, isNull, ilike } from 'drizzle-orm'
+import { eq, and, sql, desc, inArray, or, isNull, isNotNull, ilike } from 'drizzle-orm'
 import { db } from '../db'
 import { projectsTable } from '../schemas/projects'
 import { reviewsTable } from '../schemas/reviews'
 import { usersTable } from '../schemas/users'
-import { activityTable } from '../schemas/activity'
+import { projectActivityTable } from '../schemas/activity'
 import { getUserFromSession, fetchUserIdentity } from '../lib/auth'
+import { config } from '../config'
 
-const HACKATIME_API = 'https://hackatime.hackclub.com/api/v1'
+const HACKATIME_ADMIN_API = 'https://hackatime.hackclub.com/api/admin/v1'
 const SCRAPS_START_DATE = '2026-02-03'
 
-interface HackatimeStatsProject {
+interface HackatimeAdminProject {
     name: string
-    total_seconds: number
+    total_heartbeats: number
+    total_duration: number
+    first_heartbeat: number
+    last_heartbeat: number
+    languages: string[]
+    repo: string
+    repo_mapping_id: number
+    archived: boolean
 }
 
-interface HackatimeStatsResponse {
-    data: {
-        projects: HackatimeStatsProject[]
+interface HackatimeUserProjectsResponse {
+    user_id: number
+    username: string
+    total_projects: number
+    projects: HackatimeAdminProject[]
+}
+
+async function getHackatimeUserId(email: string): Promise<number | null> {
+    try {
+        const response = await fetch(`${HACKATIME_ADMIN_API}/user/get_user_by_email`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${config.hackatimeAdminKey}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ email })
+        })
+        if (!response.ok) return null
+        const data = await response.json() as { user_id: number }
+        return data.user_id
+    } catch {
+        return null
     }
 }
 
-async function fetchHackatimeHours(slackId: string, projectName: string): Promise<number> {
+async function fetchHackatimeHours(email: string, projectName: string): Promise<number> {
     try {
-        const params = new URLSearchParams({
-            features: 'projects',
-            start_date: SCRAPS_START_DATE,
-            filter_by_project: projectName
-        })
-        const url = `${HACKATIME_API}/users/${encodeURIComponent(slackId)}/stats?${params}`
-        const response = await fetch(url, {
-            headers: { 'Accept': 'application/json' }
+        const hackatimeUserId = await getHackatimeUserId(email)
+        if (hackatimeUserId === null) return 0
+
+        const params = new URLSearchParams({ user_id: String(hackatimeUserId), start_date: SCRAPS_START_DATE })
+        const response = await fetch(`${HACKATIME_ADMIN_API}/user/projects?${params}`, {
+            headers: {
+                'Authorization': `Bearer ${config.hackatimeAdminKey}`,
+                'Accept': 'application/json'
+            }
         })
         if (!response.ok) return 0
-        
-        const data: HackatimeStatsResponse = await response.json()
-        const project = data.data?.projects?.find(p => p.name === projectName)
+
+        const data: HackatimeUserProjectsResponse = await response.json()
+        const project = data.projects?.find(p => p.name === projectName)
         if (!project) return 0
-        
-        return Math.round(project.total_seconds / 3600 * 10) / 10
+
+        return Math.round(project.total_duration / 3600 * 10) / 10
     } catch {
         return 0
     }
@@ -270,16 +299,16 @@ projects.get('/:id', async ({ params, headers }) => {
         // Fetch submission and scraps earned events from activity table
         const activityEntries = await db
             .select({
-                id: activityTable.id,
-                action: activityTable.action,
-                createdAt: activityTable.createdAt
+                id: projectActivityTable.id,
+                action: projectActivityTable.action,
+                createdAt: projectActivityTable.createdAt
             })
-            .from(activityTable)
+            .from(projectActivityTable)
             .where(and(
-                eq(activityTable.projectId, parseInt(params.id)),
+                eq(projectActivityTable.projectId, parseInt(params.id)),
                 or(
-                    eq(activityTable.action, 'project_submitted'),
-                    sql`${activityTable.action} LIKE 'earned % scraps'`
+                    eq(projectActivityTable.action, 'project_submitted'),
+                    sql`${projectActivityTable.action} LIKE 'earned % scraps'`
                 )
             ))
 
@@ -312,6 +341,24 @@ projects.get('/:id', async ({ params, headers }) => {
         })
     }
 
+    // Check if the user has ever submitted feedback on any project
+    let hasSubmittedFeedback = false
+    if (isOwner) {
+        const feedbackCheck = await db
+            .select({ id: projectsTable.id })
+            .from(projectsTable)
+            .where(and(
+                eq(projectsTable.userId, user.id),
+                or(
+                    isNotNull(projectsTable.feedbackSource),
+                    isNotNull(projectsTable.feedbackGood),
+                    isNotNull(projectsTable.feedbackImprove)
+                )
+            ))
+            .limit(1)
+        hasSubmittedFeedback = feedbackCheck.length > 0
+    }
+
     return {
         project: {
             id: project[0].id,
@@ -333,6 +380,7 @@ projects.get('/:id', async ({ params, headers }) => {
         },
         owner: projectOwner[0] || null,
         isOwner,
+        hasSubmittedFeedback: isOwner ? hasSubmittedFeedback : undefined,
         activity: isOwner ? activity : undefined
     }
 })
@@ -353,7 +401,7 @@ projects.post('/', async ({ body, headers }) => {
     let hours = 0
     const parsed = parseHackatimeProject(data.hackatimeProject || null)
     if (parsed) {
-        hours = await fetchHackatimeHours(parsed.slackId, parsed.projectName)
+        hours = await fetchHackatimeHours(user.email, parsed.projectName)
     }
 
     const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : 1
@@ -372,7 +420,7 @@ projects.post('/', async ({ body, headers }) => {
         })
         .returning()
 
-    await db.insert(activityTable).values({
+    await db.insert(projectActivityTable).values({
         userId: user.id,
         projectId: newProject[0].id,
         action: 'project_created'
@@ -412,7 +460,7 @@ projects.put('/:id', async ({ params, body, headers }) => {
     let hours = 0
     const parsed = parseHackatimeProject(data.hackatimeProject || null)
     if (parsed) {
-        hours = await fetchHackatimeHours(parsed.slackId, parsed.projectName)
+        hours = await fetchHackatimeHours(user.email, parsed.projectName)
     }
 
     const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : undefined
@@ -448,7 +496,7 @@ projects.delete("/:id", async ({ params, headers }) => {
 
     if (!updated[0]) return { error: "Not found" }
 
-    await db.insert(activityTable).values({
+    await db.insert(projectActivityTable).values({
         userId: user.id,
         projectId: updated[0].id,
         action: 'project_deleted'
@@ -458,9 +506,15 @@ projects.delete("/:id", async ({ params, headers }) => {
 })
 
 // Submit project for review
-projects.post("/:id/submit", async ({ params, headers }) => {
+projects.post("/:id/submit", async ({ params, headers, body }) => {
     const user = await getUserFromSession(headers as Record<string, string>)
     if (!user) return { error: "Unauthorized" }
+
+    const data = body as {
+        feedbackSource?: string
+        feedbackGood?: string
+        feedbackImprove?: string
+    }
 
     // Check verification status before allowing submission
     if (user.accessToken) {
@@ -493,16 +547,23 @@ projects.post("/:id/submit", async ({ params, headers }) => {
     let hours = project[0].hours
     const parsed = parseHackatimeProject(project[0].hackatimeProject)
     if (parsed) {
-        hours = await fetchHackatimeHours(parsed.slackId, parsed.projectName)
+        hours = await fetchHackatimeHours(user.email, parsed.projectName)
     }
 
     const updated = await db
         .update(projectsTable)
-        .set({ status: 'waiting_for_review', hours, updatedAt: new Date() })
+        .set({ 
+            status: 'waiting_for_review', 
+            hours, 
+            feedbackSource: data.feedbackSource || null,
+            feedbackGood: data.feedbackGood || null,
+            feedbackImprove: data.feedbackImprove || null,
+            updatedAt: new Date() 
+        })
         .where(eq(projectsTable.id, parseInt(params.id)))
         .returning()
 
-    await db.insert(activityTable).values({
+    await db.insert(projectActivityTable).values({
         userId: user.id,
         projectId: updated[0].id,
         action: 'project_submitted'
