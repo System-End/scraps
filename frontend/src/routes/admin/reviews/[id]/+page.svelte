@@ -347,15 +347,6 @@
 				<span class="rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold"
 					>{formatHours(project.hours)}h logged</span
 				>
-				<button
-					onclick={syncHours}
-					disabled={syncingHours}
-					title="Sync hours from Hackatime"
-					class="inline-flex cursor-pointer items-center gap-1 rounded-full border-2 border-black bg-blue-100 px-3 py-1 text-sm font-bold text-blue-700 transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
-				>
-					<RefreshCw size={14} class={syncingHours ? 'animate-spin' : ''} />
-					{syncingHours ? 'syncing...' : 'sync hours'}
-				</button>
 				{#if project.hackatimeProject}
 					<span class="rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold"
 						>hackatime: {project.hackatimeProject}</span
@@ -403,6 +394,15 @@
 						<span>{$t.project.tryItOut}</span>
 					</span>
 				{/if}
+				<button
+					onclick={syncHours}
+					disabled={syncingHours}
+					title="Sync hours from Hackatime"
+					class="inline-flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					<RefreshCw size={18} class={syncingHours ? 'animate-spin' : ''} />
+					{syncingHours ? 'syncing...' : 'sync hours'}
+				</button>
 			</div>
 
 			<!-- User Info (clickable) -->
