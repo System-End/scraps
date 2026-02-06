@@ -167,6 +167,8 @@ export default {
 		fromPreviousBuy: 'de compra anterior',
 		noItemsAvailable: 'no hay artículos disponibles para mejorar',
 		failedToUpgrade: 'Error al mejorar probabilidad',
+		failedToUndo: 'Error al deshacer mejora',
+		undo: 'deshacer',
 		ok: 'ok'
 	},
 	leaderboard: {

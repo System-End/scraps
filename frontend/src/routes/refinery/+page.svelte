@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { Undo2 } from '@lucide/svelte';
 	import { getUser, refreshUserScraps, userScrapsStore } from '$lib/auth-client';
 	import { shopItemsStore, shopLoading, fetchShopItems, type ShopItem } from '$lib/stores';
 	import { t } from '$lib/i18n';
 
 	let probabilityItems = $derived($shopItemsStore.filter((item) => item.baseProbability > 0));
 	let upgrading = $state<number | null>(null);
+	let undoing = $state<number | null>(null);
 	let alertMessage = $state<string | null>(null);
 
 	function getProbabilityColor(probability: number): string {
@@ -46,6 +48,43 @@
 			alertMessage = $t.refinery.failedToUpgrade;
 		} finally {
 			upgrading = null;
+		}
+	}
+
+	async function undoRefinery(item: ShopItem) {
+		undoing = item.id;
+		try {
+			const res = await fetch(
+				`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/shop/items/${item.id}/refinery/undo`,
+				{
+					method: 'POST',
+					credentials: 'include'
+				}
+			);
+			const data = await res.json();
+			if (data.error) {
+				alertMessage = data.error;
+				return;
+			}
+			shopItemsStore.update((items) =>
+				items.map((i) =>
+					i.id === item.id
+						? {
+								...i,
+								userBoostPercent: data.boostPercent,
+								upgradeCount: data.upgradeCount,
+								effectiveProbability: data.effectiveProbability,
+								nextUpgradeCost: data.nextCost
+							}
+						: i
+				)
+			);
+			await refreshUserScraps();
+			alertMessage = `Refunded ${data.refundedCost} scraps`;
+		} catch (e) {
+			alertMessage = $t.refinery.failedToUndo || 'Failed to undo upgrade';
+		} finally {
+			undoing = null;
 		}
 	}
 
@@ -111,10 +150,19 @@
 								</div>
 							</div>
 						</div>
-						<div class="sm:text-right">
+						<div class="flex items-center gap-2 sm:text-right">
+							{#if item.userBoostPercent > 0}
+								<button
+									onclick={() => undoRefinery(item)}
+									disabled={undoing === item.id}
+									class="cursor-pointer rounded-full border-4 border-black px-4 py-2 text-sm font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50 sm:text-base"
+								>
+									{$t.refinery.undo}
+								</button>
+							{/if}
 							{#if maxed}
 								<span
-									class="inline-block rounded-full bg-gray-200 px-4 py-2 font-bold text-gray-600"
+									class="rounded-full bg-gray-200 px-4 py-2 font-bold text-gray-600"
 									>{$t.refinery.maxed}</span
 								>
 							{:else if nextCost !== null}

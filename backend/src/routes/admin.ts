@@ -100,7 +100,7 @@ admin.get('/users', async ({ headers, query, status }) => {
             )
             : undefined
 
-        const [users, countResult] = await Promise.all([
+        const [userIds, countResult] = await Promise.all([
             db.select({
                 id: usersTable.id,
                 username: usersTable.username,
@@ -109,23 +109,32 @@ admin.get('/users', async ({ headers, query, status }) => {
                 email: usersTable.email,
                 role: usersTable.role,
                 internalNotes: usersTable.internalNotes,
-                createdAt: usersTable.createdAt,
-                scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as('scraps_earned'),
-                scrapsSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_spent')
+                createdAt: usersTable.createdAt
             }).from(usersTable).where(searchCondition).orderBy(desc(usersTable.createdAt)).limit(limit).offset(offset),
             db.select({ count: sql<number>`count(*)` }).from(usersTable).where(searchCondition)
         ])
 
         const total = Number(countResult[0]?.count || 0)
         
+        // Get scraps balance for each user
+        const usersWithScraps = await Promise.all(
+            userIds.map(async (u) => {
+                const balance = await getUserScrapsBalance(u.id)
+                return {
+                    ...u,
+                    scraps: balance.balance
+                }
+            })
+        )
+        
         return {
-            data: users.map(u => ({
+            data: usersWithScraps.map(u => ({
                 id: u.id,
                 username: u.username,
                 avatar: u.avatar,
                 slackId: u.slackId,
                 email: user.role === 'admin' ? u.email : undefined,
-                scraps: Number(u.scrapsEarned) - Number(u.scrapsSpent),
+                scraps: u.scraps,
                 role: u.role,
                 internalNotes: u.internalNotes,
                 createdAt: u.createdAt

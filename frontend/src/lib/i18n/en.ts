@@ -167,6 +167,8 @@ export default {
 		fromPreviousBuy: 'from previous buy',
 		noItemsAvailable: 'no items available for upgrades',
 		failedToUpgrade: 'Failed to upgrade probability',
+		failedToUndo: 'Failed to undo upgrade',
+		undo: 'undo',
 		ok: 'ok'
 	},
 	leaderboard: {

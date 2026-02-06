@@ -882,4 +882,89 @@ shop.post('/orders/:id/address', async ({ params, body, headers }) => {
 	return { success: true }
 })
 
+shop.post('/items/:id/refinery/undo', async ({ params, headers }) => {
+	const user = await getUserFromSession(headers as Record<string, string>)
+	if (!user) {
+		return { error: 'Unauthorized' }
+	}
+
+	const itemId = parseInt(params.id)
+	if (!Number.isInteger(itemId)) {
+		return { error: 'Invalid item id' }
+	}
+
+	const item = await db
+		.select()
+		.from(shopItemsTable)
+		.where(eq(shopItemsTable.id, itemId))
+		.limit(1)
+
+	if (item.length === 0) {
+		return { error: 'Item not found' }
+	}
+
+	// Get the most recent refinery order for this user and item
+	const orders = await db
+		.select()
+		.from(refineryOrdersTable)
+		.where(and(
+			eq(refineryOrdersTable.userId, user.id),
+			eq(refineryOrdersTable.shopItemId, itemId)
+		))
+		.orderBy(desc(refineryOrdersTable.createdAt))
+		.limit(1)
+
+	if (orders.length === 0) {
+		return { error: 'No refinery upgrades to undo' }
+	}
+
+	const order = orders[0]
+
+	// Delete the order (balance is calculated dynamically, so deleting this removes the cost from the spent total)
+	await db
+		.delete(refineryOrdersTable)
+		.where(eq(refineryOrdersTable.id, order.id))
+
+	// Get updated boost and upgrade count
+	const boost = await db
+		.select({
+			boostPercent: sql<number>`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`,
+			upgradeCount: sql<number>`COUNT(*)`
+		})
+		.from(refineryOrdersTable)
+		.where(and(
+			eq(refineryOrdersTable.userId, user.id),
+			eq(refineryOrdersTable.shopItemId, itemId)
+		))
+
+	const newBoostPercent = boost.length > 0 ? Number(boost[0].boostPercent) : 0
+	const newUpgradeCount = boost.length > 0 ? Number(boost[0].upgradeCount) : 0
+	const refundedCost = order.cost
+
+	// Get penalty for effective probability calculation
+	const penalty = await db
+		.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier })
+		.from(shopPenaltiesTable)
+		.where(and(
+			eq(shopPenaltiesTable.userId, user.id),
+			eq(shopPenaltiesTable.shopItemId, itemId)
+		))
+		.limit(1)
+
+	const penaltyMultiplier = penalty.length > 0 ? penalty[0].probabilityMultiplier : 100
+	const adjustedBaseProbability = Math.floor(item[0].baseProbability * penaltyMultiplier / 100)
+	const maxBoost = 100 - adjustedBaseProbability
+	const nextCost = newBoostPercent >= maxBoost
+		? null
+		: Math.floor(item[0].baseUpgradeCost * Math.pow(item[0].costMultiplier / 100, newUpgradeCount))
+
+	return {
+		boostPercent: newBoostPercent,
+		upgradeCount: newUpgradeCount,
+		refundedCost,
+		effectiveProbability: Math.min(adjustedBaseProbability + newBoostPercent, 100),
+		nextCost
+	}
+})
+
 export default shop

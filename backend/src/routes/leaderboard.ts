@@ -17,7 +17,9 @@ leaderboard.get('/', async ({ query }) => {
 				username: usersTable.username,
 				avatar: usersTable.avatar,
 				scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0)`.as('scraps_earned'),
-				scrapsSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_spent'),
+				scrapsBonus: sql<number>`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as('scraps_bonus'),
+				scrapsShopSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_shop_spent'),
+				scrapsRefinerySpent: sql<number>`COALESCE((SELECT SUM(cost) FROM refinery_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_refinery_spent'),
 				hours: sql<number>`COALESCE(SUM(${projectsTable.hours}), 0)`.as('total_hours'),
 				projectCount: sql<number>`COUNT(${projectsTable.id})`.as('project_count')
 			})
@@ -37,7 +39,7 @@ leaderboard.get('/', async ({ query }) => {
 			username: user.username,
 			avatar: user.avatar,
 			hours: Number(user.hours),
-			scraps: Number(user.scrapsEarned) - Number(user.scrapsSpent),
+			scraps: Number(user.scrapsEarned) + Number(user.scrapsBonus) - Number(user.scrapsShopSpent) - Number(user.scrapsRefinerySpent),
 			scrapsEarned: Number(user.scrapsEarned),
 			projectCount: Number(user.projectCount)
 		}))
@@ -49,7 +51,9 @@ leaderboard.get('/', async ({ query }) => {
 			username: usersTable.username,
 			avatar: usersTable.avatar,
 			scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0)`.as('scraps_earned'),
-			scrapsSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_spent'),
+			scrapsBonus: sql<number>`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as('scraps_bonus'),
+			scrapsShopSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_shop_spent'),
+			scrapsRefinerySpent: sql<number>`COALESCE((SELECT SUM(cost) FROM refinery_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_refinery_spent'),
 			hours: sql<number>`COALESCE(SUM(${projectsTable.hours}), 0)`.as('total_hours'),
 			projectCount: sql<number>`COUNT(${projectsTable.id})`.as('project_count')
 		})
@@ -60,7 +64,7 @@ leaderboard.get('/', async ({ query }) => {
 			sql`${projectsTable.status} != 'permanently_rejected'`
 		))
 		.groupBy(usersTable.id)
-		.orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`))
+		.orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0) + COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(cost) FROM refinery_orders WHERE user_id = ${usersTable.id}), 0)`))
 		.limit(10)
 
 	return results.map((user, index) => ({
@@ -69,7 +73,7 @@ leaderboard.get('/', async ({ query }) => {
 		username: user.username,
 		avatar: user.avatar,
 		hours: Number(user.hours),
-		scraps: Number(user.scrapsEarned) - Number(user.scrapsSpent),
+		scraps: Number(user.scrapsEarned) + Number(user.scrapsBonus) - Number(user.scrapsShopSpent) - Number(user.scrapsRefinerySpent),
 		scrapsEarned: Number(user.scrapsEarned),
 		projectCount: Number(user.projectCount)
 	}))
