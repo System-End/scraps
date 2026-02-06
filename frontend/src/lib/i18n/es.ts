@@ -95,7 +95,7 @@ export default {
 				'las revisiones de proyectos generalmente toman unos días. ¡te notificaremos cuando tu proyecto sea aprobado!',
 			whatIfILoseRoll: '¿qué pasa si pierdo una tirada?',
 			whatIfILoseRollAnswer:
-				'recibes papel scrap de consolación. tus mejoras de la refinería se mantienen, ¡así que intenta de nuevo!',
+				'recibes papel de consolación que viene de HQ. tus mejoras de la refinería se mantienen, ¡así que intenta de nuevo!',
 			moreQuestions: '¿más preguntas?'
 		}
 	},
@@ -309,7 +309,7 @@ export default {
 			'las revisiones de proyectos generalmente toman unos días. nuestro equipo revisa cada envío para verificar el trabajo y asignar un nivel apropiado. te notificaremos cuando tu proyecto sea aprobado.',
 		whatIfILoseRoll: '¿qué pasa si pierdo una tirada?',
 		whatIfILoseRollAnswer:
-			'si pierdes una tirada, recibes papel scrap de consolación como pequeño premio. tus mejoras de la refinería se mantienen, así que puedes intentar de nuevo con mejores probabilidades. ¡sigue construyendo proyectos para ganar más scraps!',
+			'si pierdes una tirada, recibes un papel que viene de hq como pequeño premio. tus mejoras de la refinería se mantienen, así que puedes intentar de nuevo con mejores probabilidades. ¡sigue construyendo proyectos para ganar más scraps!',
 		canISubmitAnyProject: '¿puedo enviar cualquier proyecto?',
 		canISubmitAnyProjectAnswer:
 			'los proyectos deben ser trabajo original que hayas construido. necesitan un repositorio de github, descripción y horas rastreadas vía <a href="https://hackatime.hackclub.com" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">hackatime</a>. ¡tanto proyectos nuevos como mejoras a proyectos existentes cuentan!',

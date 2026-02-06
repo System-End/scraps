@@ -95,7 +95,7 @@ export default {
 				"project reviews typically take a few days. you'll be notified when your project is approved!",
 			whatIfILoseRoll: 'what happens if i lose a roll?',
 			whatIfILoseRollAnswer:
-				'you receive consolation scrap paper. your refinery upgrades are kept, so try again!',
+				'you receive consolation paper from hq. your refinery upgrades are kept, so try again!',
 			moreQuestions: 'more questions?'
 		}
 	},
@@ -389,7 +389,7 @@ export default {
 			"project reviews typically take a few days. our team reviews each submission to verify the work and assign an appropriate tier. you'll be notified when your project is approved.",
 		whatIfILoseRoll: 'what happens if i lose a roll?',
 		whatIfILoseRollAnswer:
-			'if you lose a roll, you receive consolation scrap paper as a small prize. your refinery upgrades are kept, so you can try again with improved odds. keep building projects to earn more scraps!',
+			'if you lose a roll, you receive consolation paper from hq as a small prize. your refinery upgrades are kept, so you can try again with improved odds. keep building projects to earn more scraps!',
 		canISubmitAnyProject: 'can i submit any project?',
 		canISubmitAnyProjectAnswer:
 			'projects should be original work you\'ve built. they need a github repo, description, and tracked hours via <a href="https://hackatime.hackclub.com" target="_blank" rel="noopener noreferrer" class="underline hover:no-underline">hackatime</a>. both new projects and improvements to existing ones count!',
