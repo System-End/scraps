@@ -23,7 +23,7 @@
 	}
 
 	let selectedCategories = $state<Set<string>>(new Set());
-	let sortBy = $state<'default' | 'favorites' | 'probability'>('default');
+	let sortBy = $state<'default' | 'favorites' | 'probability'>('probability');
 
 	let selectedItem = $state<ShopItem | null>(null);
 	let winningOrderId = $state<number | null>(null);
