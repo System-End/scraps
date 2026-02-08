@@ -23,7 +23,7 @@
 	}
 
 	let selectedCategories = $state<Set<string>>(new Set());
-	let sortBy = $state<'default' | 'favorites' | 'probability'>('probability');
+	let sortBy = $state<'default' | 'favorites' | 'probability' | 'cost'>('probability');
 
 	let selectedItem = $state<ShopItem | null>(null);
 	let winningOrderId = $state<number | null>(null);
@@ -62,6 +62,12 @@
 			return items.sort((a, b) => b.heartCount - a.heartCount);
 		} else if (sortBy === 'probability') {
 			return items.sort((a, b) => b.effectiveProbability - a.effectiveProbability);
+		} else if (sortBy === 'cost') {
+			return items.sort((a, b) => {
+				const costA = Math.max(1, Math.round(a.price * (a.baseProbability / 100)));
+				const costB = Math.max(1, Math.round(b.price * (b.baseProbability / 100)));
+				return costA - costB;
+			});
 		}
 		return items;
 	});
@@ -228,6 +234,15 @@
 					: 'hover:border-dashed'}"
 			>
 				{$t.shop.probability}
+			</button>
+			<button
+				onclick={() => (sortBy = 'cost')}
+				class="cursor-pointer rounded-full border-4 border-black px-3 py-1.5 text-sm font-bold transition-all duration-200 sm:px-4 sm:py-2 {sortBy ===
+				'cost'
+					? 'bg-black text-white'
+					: 'hover:border-dashed'}"
+			>
+				{$t.shop.cost}
 			</button>
 		</div>
 	</div>

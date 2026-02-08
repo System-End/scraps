@@ -106,6 +106,7 @@ export default {
 		default: 'default',
 		favorites: 'favorites',
 		probability: 'probability',
+		cost: 'cost (low to high)',
 		loadingItems: 'Loading items...',
 		noItemsAvailable: 'No items available',
 		soldOut: 'sold out',

@@ -146,7 +146,7 @@
 <nav
 	class="fixed top-0 right-0 left-0 z-50 hidden items-center justify-between bg-white/90 px-6 py-4 backdrop-blur-sm md:flex md:px-12 lg:px-64"
 >
-	<a href="/" class="shrink-0">
+	<a href={isLoggedIn ? '/dashboard' : '/'} class="shrink-0">
 		<img src="/flag-standalone-bw.png" alt="Hack Club" class="h-8 md:h-10" />
 	</a>
 
@@ -280,17 +280,6 @@
 		<!-- Dashboard nav for logged-in users - centered -->
 		<div class="flex items-center gap-2">
 			<a
-				href="/explore"
-				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
-				'/explore'
-					? 'border-black bg-black text-white'
-					: 'border-black hover:border-dashed'}"
-			>
-				<Compass size={18} />
-				<span class="text-lg font-bold">{$t.nav.explore}</span>
-			</a>
-
-			<a
 				href="/dashboard"
 				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
 				'/dashboard'
@@ -299,6 +288,17 @@
 			>
 				<LayoutDashboard size={18} />
 				<span class="text-lg font-bold">{$t.nav.dashboard}</span>
+			</a>
+
+			<a
+				href="/explore"
+				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
+				'/explore'
+					? 'border-black bg-black text-white'
+					: 'border-black hover:border-dashed'}"
+			>
+				<Compass size={18} />
+				<span class="text-lg font-bold">{$t.nav.explore}</span>
 			</a>
 
 			<a
@@ -413,7 +413,7 @@
 <nav
 	class="fixed top-0 right-0 left-0 z-50 flex items-center justify-between bg-white/90 px-4 py-3 backdrop-blur-sm md:hidden"
 >
-	<a href="/" class="shrink-0">
+	<a href={isLoggedIn ? '/dashboard' : '/'} class="shrink-0">
 		<img src="/flag-standalone-bw.png" alt="Hack Club" class="h-8" />
 	</a>
 
@@ -592,18 +592,6 @@
 			<!-- Dashboard nav -->
 			<div class="flex flex-col gap-2">
 				<a
-					href="/explore"
-					onclick={handleMobileNavClick}
-					class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath ===
-					'/explore'
-						? 'border-black bg-black text-white'
-						: 'border-black hover:border-dashed'}"
-				>
-					<Compass size={20} />
-					<span class="text-lg font-bold">{$t.nav.explore}</span>
-				</a>
-
-				<a
 					href="/dashboard"
 					onclick={handleMobileNavClick}
 					class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath ===
@@ -613,6 +601,18 @@
 				>
 					<LayoutDashboard size={20} />
 					<span class="text-lg font-bold">{$t.nav.dashboard}</span>
+				</a>
+
+				<a
+					href="/explore"
+					onclick={handleMobileNavClick}
+					class="flex cursor-pointer items-center gap-3 rounded-full border-4 px-4 py-3 transition-all duration-300 {currentPath ===
+					'/explore'
+						? 'border-black bg-black text-white'
+						: 'border-black hover:border-dashed'}"
+				>
+					<Compass size={20} />
+					<span class="text-lg font-bold">{$t.nav.explore}</span>
 				</a>
 
 				<a
