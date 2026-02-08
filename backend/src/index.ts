@@ -37,8 +37,10 @@ console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
 )
 
-// Start background hackatime sync
-startHackatimeSync()
-
-// Start background airtable sync
-startAirtableSync()
+// Start background syncs (skip in dev mode)
+if (process.env.NODE_ENV !== 'development') {
+	startHackatimeSync()
+	startAirtableSync()
+} else {
+	console.log('[STARTUP] Skipping background syncs in development mode')
+}

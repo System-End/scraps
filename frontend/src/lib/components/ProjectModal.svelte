@@ -85,12 +85,7 @@
 			editedProject = { ...project };
 			imagePreview = project.image;
 			error = null;
-			if (project.hackatimeProject) {
-				const parts = project.hackatimeProject.split('/');
-				selectedHackatimeName = parts.length > 1 ? parts.slice(1).join('/') : parts[0];
-			} else {
-				selectedHackatimeName = null;
-			}
+			selectedHackatimeName = project.hackatimeProject || null;
 			fetchHackatimeProjects();
 		}
 	});
@@ -159,8 +154,7 @@
 		loading = true;
 		error = null;
 
-		const hackatimeValue =
-			selectedHackatimeName && userSlackId ? `${userSlackId}/${selectedHackatimeName}` : null;
+		const hackatimeValue = selectedHackatimeName || null;
 
 		try {
 			const response = await fetch(`${API_URL}/projects/${editedProject.id}`, {
@@ -174,7 +168,7 @@
 					description: editedProject.description,
 					image: editedProject.image,
 					githubUrl: editedProject.githubUrl,
-					hackatimeProject: hackatimeValue
+					hackatimeProject: hackatimeValue || null
 				})
 			});
 

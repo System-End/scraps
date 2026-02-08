@@ -88,8 +88,7 @@
 			imagePreview = project?.image || null;
 			selectedTier = project?.tier || 1;
 			if (project?.hackatimeProject) {
-				const parts = project.hackatimeProject.split('/');
-				selectedHackatimeName = parts.length > 1 ? parts.slice(1).join('/') : parts[0];
+				selectedHackatimeName = project.hackatimeProject;
 			}
 			fetchHackatimeProjects();
 		} catch (e) {
@@ -179,8 +178,7 @@
 		saving = true;
 		error = null;
 
-		const hackatimeValue =
-			selectedHackatimeName && userSlackId ? `${userSlackId}/${selectedHackatimeName}` : null;
+		const hackatimeValue = selectedHackatimeName || null;
 
 		try {
 			const response = await fetch(`${API_URL}/projects/${project.id}`, {

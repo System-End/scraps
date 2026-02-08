@@ -177,10 +177,7 @@
 		loading = true;
 		error = null;
 
-		const hackatimeValue =
-			selectedHackatimeProject && userSlackId
-				? `${userSlackId}/${selectedHackatimeProject.name}`
-				: null;
+		const hackatimeValue = selectedHackatimeProject?.name || null;
 		const finalGithubUrl = githubUrl.trim() || selectedHackatimeProject?.repoUrl || null;
 
 		try {

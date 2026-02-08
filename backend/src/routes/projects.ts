@@ -6,81 +6,29 @@ import { reviewsTable } from '../schemas/reviews'
 import { usersTable } from '../schemas/users'
 import { projectActivityTable } from '../schemas/activity'
 import { getUserFromSession, fetchUserIdentity } from '../lib/auth'
-import { config } from '../config'
+import { syncSingleProject } from '../lib/hackatime-sync'
 
-const HACKATIME_ADMIN_API = 'https://hackatime.hackclub.com/api/admin/v1'
-const SCRAPS_START_DATE = '2026-02-03'
+const ALLOWED_IMAGE_DOMAIN = 'cdn.hackclub.com'
 
-interface HackatimeAdminProject {
-    name: string
-    total_heartbeats: number
-    total_duration: number
-    first_heartbeat: number
-    last_heartbeat: number
-    languages: string[]
-    repo: string
-    repo_mapping_id: number
-    archived: boolean
+
+
+
+
+function parseHackatimeProject(hackatimeProject: string | null): string | null {
+	if (!hackatimeProject) return null
+	const slashIndex = hackatimeProject.indexOf('/')
+	if (slashIndex === -1) return hackatimeProject
+	return hackatimeProject.substring(slashIndex + 1)
 }
 
-interface HackatimeUserProjectsResponse {
-    user_id: number
-    username: string
-    total_projects: number
-    projects: HackatimeAdminProject[]
-}
-
-async function getHackatimeUserId(email: string): Promise<number | null> {
-    try {
-        const response = await fetch(`${HACKATIME_ADMIN_API}/user/get_user_by_email`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${config.hackatimeAdminKey}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ email })
-        })
-        if (!response.ok) return null
-        const data = await response.json() as { user_id: number }
-        return data.user_id
-    } catch {
-        return null
-    }
-}
-
-async function fetchHackatimeHours(email: string, projectName: string): Promise<number> {
-    try {
-        const hackatimeUserId = await getHackatimeUserId(email)
-        if (hackatimeUserId === null) return 0
-
-        const params = new URLSearchParams({ user_id: String(hackatimeUserId), start_date: SCRAPS_START_DATE })
-        const response = await fetch(`${HACKATIME_ADMIN_API}/user/projects?${params}`, {
-            headers: {
-                'Authorization': `Bearer ${config.hackatimeAdminKey}`,
-                'Accept': 'application/json'
-            }
-        })
-        if (!response.ok) return 0
-
-        const data: HackatimeUserProjectsResponse = await response.json()
-        const project = data.projects?.find(p => p.name === projectName)
-        if (!project) return 0
-
-        return Math.round(project.total_duration / 3600 * 10) / 10
-    } catch {
-        return 0
-    }
-}
-
-function parseHackatimeProject(hackatimeProject: string | null): { slackId: string; projectName: string } | null {
-    if (!hackatimeProject) return null
-    const slashIndex = hackatimeProject.indexOf('/')
-    if (slashIndex === -1) return null
-    return {
-        slackId: hackatimeProject.substring(0, slashIndex),
-        projectName: hackatimeProject.substring(slashIndex + 1)
-    }
+function validateImageUrl(imageUrl: string | null | undefined): boolean {
+	if (!imageUrl) return true
+	try {
+		const url = new URL(imageUrl)
+		return url.hostname === ALLOWED_IMAGE_DOMAIN
+	} catch {
+		return false
+	}
 }
 
 const projects = new Elysia({ prefix: '/projects' })
@@ -398,27 +346,32 @@ projects.post('/', async ({ body, headers }) => {
         tier?: number
     }
 
-    let hours = 0
-    const parsed = parseHackatimeProject(data.hackatimeProject || null)
-    if (parsed) {
-        hours = await fetchHackatimeHours(user.email, parsed.projectName)
+    if (!validateImageUrl(data.image)) {
+        return { error: 'Image must be from cdn.hackclub.com' }
     }
 
+    const projectName = parseHackatimeProject(data.hackatimeProject || null)
     const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : 1
 
     const newProject = await db
-        .insert(projectsTable)
-        .values({
-            userId: user.id,
-            name: data.name,
-            description: data.description,
-            image: data.image || null,
-            githubUrl: data.githubUrl || null,
-            hackatimeProject: data.hackatimeProject || null,
-            hours,
-            tier
-        })
-        .returning()
+    	.insert(projectsTable)
+    	.values({
+    		userId: user.id,
+    		name: data.name,
+    		description: data.description,
+    		image: data.image || null,
+    		githubUrl: data.githubUrl || null,
+    		hackatimeProject: projectName || null,
+    		hours: 0,
+    		tier
+    	})
+    	.returning()
+
+    // Sync hours from Hackatime if project is linked
+    if (projectName) {
+    	const syncResult = await syncSingleProject(newProject[0].id)
+    	newProject[0].hours = syncResult.hours
+    }
 
     await db.insert(projectActivityTable).values({
         userId: user.id,
@@ -457,31 +410,37 @@ projects.put('/:id', async ({ params, body, headers }) => {
         tier?: number
     }
 
-    let hours = 0
-    const parsed = parseHackatimeProject(data.hackatimeProject || null)
-    if (parsed) {
-        hours = await fetchHackatimeHours(user.email, parsed.projectName)
+    if (!validateImageUrl(data.image)) {
+        return { error: 'Image must be from cdn.hackclub.com' }
     }
 
+    const projectName = parseHackatimeProject(data.hackatimeProject || null)
     const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : undefined
 
     const updated = await db
-        .update(projectsTable)
-        .set({
-            name: data.name,
-            description: data.description,
-            image: data.image,
-            githubUrl: data.githubUrl,
-            playableUrl: data.playableUrl,
-            hackatimeProject: data.hackatimeProject,
-            hours,
-            tier,
-            updatedAt: new Date()
-        })
+    	.update(projectsTable)
+    	.set({
+    		name: data.name,
+    		description: data.description,
+    		image: data.image,
+    		githubUrl: data.githubUrl,
+    		playableUrl: data.playableUrl,
+    		hackatimeProject: projectName,
+    		tier,
+    		updatedAt: new Date()
+    	})
         .where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id)))
         .returning()
 
-    return updated[0] || { error: 'Not found' }
+    if (!updated[0]) return { error: 'Not found' }
+
+    // Sync hours from Hackatime if project is linked
+    if (projectName) {
+    	const syncResult = await syncSingleProject(updated[0].id)
+    	updated[0].hours = syncResult.hours
+    }
+
+    return updated[0]
 })
 
 projects.delete("/:id", async ({ params, headers }) => {
@@ -544,17 +503,15 @@ projects.post("/:id/submit", async ({ params, headers, body }) => {
         return { error: "Project cannot be submitted in current status" }
     }
 
-    let hours = project[0].hours
-    const parsed = parseHackatimeProject(project[0].hackatimeProject)
-    if (parsed) {
-        hours = await fetchHackatimeHours(user.email, parsed.projectName)
+    // Sync hours from Hackatime before submitting
+    if (project[0].hackatimeProject) {
+    	await syncSingleProject(parseInt(params.id))
     }
 
     const updated = await db
         .update(projectsTable)
         .set({ 
             status: 'waiting_for_review', 
-            hours, 
             feedbackSource: data.feedbackSource || null,
             feedbackGood: data.feedbackGood || null,
             feedbackImprove: data.feedbackImprove || null,
