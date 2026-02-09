@@ -158,6 +158,10 @@
 			error = 'Feedback for author is required';
 			return;
 		}
+		if (!internalJustification.trim()) {
+			error = 'Internal justification is required';
+			return;
+		}
 		confirmAction = action;
 	}
 
@@ -169,6 +173,10 @@
 		if (!confirmAction) return;
 		if (!feedbackForAuthor.trim()) {
 			error = 'Feedback for author is required';
+			return;
+		}
+		if (!internalJustification.trim()) {
+			error = 'Internal justification is required';
 			return;
 		}
 
@@ -570,7 +578,9 @@
 				</div>
 
 				<div>
-					<label class="mb-1 block text-sm font-bold">internal justification</label>
+					<label class="mb-1 block text-sm font-bold"
+						>internal justification <span class="text-red-500">*</span></label
+					>
 					<textarea
 						bind:value={internalJustification}
 						rows="2"
