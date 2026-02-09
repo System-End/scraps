@@ -542,6 +542,49 @@
 			</div>
 		{/if}
 
+		<!-- Tier Reference -->
+		<div class="mb-6 rounded-2xl border-4 border-black p-6">
+			<h2 class="mb-4 text-xl font-bold">tier reference</h2>
+			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+				<div class="rounded-lg border-2 {project.tier === 1 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
+					<div class="flex items-center justify-between">
+						<span class="font-bold">tier 1</span>
+						<span class="text-sm {project.tier === 1 ? 'text-gray-300' : 'text-gray-500'}">0.8×</span>
+					</div>
+					<p class="mt-1 text-xs {project.tier === 1 ? 'text-gray-300' : 'text-gray-500'}">
+						{$t.project.tierDescriptions.tier1}
+					</p>
+				</div>
+				<div class="rounded-lg border-2 {project.tier === 2 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
+					<div class="flex items-center justify-between">
+						<span class="font-bold">tier 2</span>
+						<span class="text-sm {project.tier === 2 ? 'text-gray-300' : 'text-gray-500'}">1.0×</span>
+					</div>
+					<p class="mt-1 text-xs {project.tier === 2 ? 'text-gray-300' : 'text-gray-500'}">
+						{$t.project.tierDescriptions.tier2}
+					</p>
+				</div>
+				<div class="rounded-lg border-2 {project.tier === 3 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
+					<div class="flex items-center justify-between">
+						<span class="font-bold">tier 3</span>
+						<span class="text-sm {project.tier === 3 ? 'text-gray-300' : 'text-gray-500'}">1.25×</span>
+					</div>
+					<p class="mt-1 text-xs {project.tier === 3 ? 'text-gray-300' : 'text-gray-500'}">
+						{$t.project.tierDescriptions.tier3}
+					</p>
+				</div>
+				<div class="rounded-lg border-2 {project.tier === 4 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
+					<div class="flex items-center justify-between">
+						<span class="font-bold">tier 4</span>
+						<span class="text-sm {project.tier === 4 ? 'text-gray-300' : 'text-gray-500'}">1.5×</span>
+					</div>
+					<p class="mt-1 text-xs {project.tier === 4 ? 'text-gray-300' : 'text-gray-500'}">
+						{$t.project.tierDescriptions.tier4}
+					</p>
+				</div>
+			</div>
+		</div>
+
 		<!-- Review Form -->
 		<div class="rounded-2xl border-4 border-black p-6">
 			<h2 class="mb-4 text-xl font-bold">submit review</h2>
