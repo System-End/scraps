@@ -25,7 +25,7 @@ slack.post('/events', async ({ body, status }) => {
 
     // Handle event callbacks
     if (event.type === 'event_callback' && event.event) {
-        const { type, channel, user } = event.event
+        const { type, channel, user, ts } = event.event
 
         if (type === 'app_mention') {
             if (!config.slackBotToken) {
@@ -42,7 +42,8 @@ slack.post('/events', async ({ body, status }) => {
                     },
                     body: JSON.stringify({
                         channel,
-                        text: ':scraps: join scraps ---> https://scraps.hackclub.com?utm_source=slack_mention :scraps:',
+                        thread_ts: ts,
+                        text: ':scraps: join scraps ---> <https://scraps.hackclub.com?utm_source=slack_mention|https://scraps.hackclub.com> :scraps:',
                         unfurl_links: false,
                         unfurl_media: false
                     })
