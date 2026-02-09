@@ -18,9 +18,7 @@ const ALLOWED_IMAGE_DOMAIN = 'cdn.hackclub.com'
 
 function parseHackatimeProject(hackatimeProject: string | null): string | null {
 	if (!hackatimeProject) return null
-	const slashIndex = hackatimeProject.indexOf('/')
-	if (slashIndex === -1) return hackatimeProject
-	return hackatimeProject.substring(slashIndex + 1)
+	return hackatimeProject.trim()
 }
 
 function parseHackatimeProjects(hackatimeProject: string | null): string | null {
@@ -29,8 +27,6 @@ function parseHackatimeProjects(hackatimeProject: string | null): string | null 
 		.split(',')
 		.map(p => p.trim())
 		.filter(p => p.length > 0)
-		.map(p => parseHackatimeProject(p))
-		.filter((p): p is string => p !== null)
 		.join(',')
 		|| null
 }

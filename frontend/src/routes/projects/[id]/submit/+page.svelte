@@ -104,7 +104,11 @@
 			imagePreview = project?.image || null;
 			hasSubmittedFeedbackBefore = responseData.hasSubmittedFeedback ?? false;
 			if (project?.hackatimeProject) {
-				selectedHackatimeNames = project.hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0);
+				selectedHackatimeNames = project.hackatimeProject.split(',').map((p: string) => {
+					const trimmed = p.trim();
+					const slashIndex = trimmed.indexOf('/');
+					return slashIndex !== -1 ? trimmed.substring(slashIndex + 1) : trimmed;
+				}).filter((p: string) => p.length > 0);
 			}
 			selectedTier = project?.tier ?? 1;
 			fetchHackatimeProjects();
@@ -215,7 +219,9 @@
 		submitting = true;
 		error = null;
 
-		const hackatimeValue = selectedHackatimeNames.length > 0 ? selectedHackatimeNames.join(',') : null;
+		const hackatimeValue = selectedHackatimeNames.length > 0
+			? selectedHackatimeNames.map(name => userSlackId ? `${userSlackId}/${name}` : name).join(',')
+			: null;
 
 		try {
 			// First update the project with any changes

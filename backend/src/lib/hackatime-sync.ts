@@ -113,14 +113,29 @@ function parseHackatimeProject(hackatimeProject: string | null): string | null {
 	return hackatimeProject.substring(slashIndex + 1)
 }
 
-function parseHackatimeProjects(hackatimeProject: string | null): string[] {
+function parseHackatimeProjectSlackId(hackatimeProject: string | null): string | null {
+	if (!hackatimeProject) return null
+	const slashIndex = hackatimeProject.indexOf('/')
+	if (slashIndex === -1) return null
+	return hackatimeProject.substring(0, slashIndex)
+}
+
+interface ParsedHackatimeEntry {
+	slackId: string | null
+	projectName: string
+}
+
+function parseHackatimeProjects(hackatimeProject: string | null): ParsedHackatimeEntry[] {
 	if (!hackatimeProject) return []
 	return hackatimeProject
 		.split(',')
 		.map(p => p.trim())
 		.filter(p => p.length > 0)
-		.map(p => parseHackatimeProject(p))
-		.filter((p): p is string => p !== null)
+		.map(p => ({
+			slackId: parseHackatimeProjectSlackId(p),
+			projectName: parseHackatimeProject(p)!
+		}))
+		.filter(p => p.projectName !== null)
 }
 
 async function syncAllProjects(): Promise<void> {
@@ -179,14 +194,38 @@ async function syncAllProjects(): Promise<void> {
 
 			// Match each scraps project to its hackatime project(s)
 			for (const project of userProjects) {
-				const projectNames = parseHackatimeProjects(project.hackatimeProject)
-				if (projectNames.length === 0) continue
+				const entries = parseHackatimeProjects(project.hackatimeProject)
+				if (entries.length === 0) continue
 
 				let totalSeconds = 0
-				for (const name of projectNames) {
-					const duration = adminProjectMap.get(name)
-					if (duration !== undefined) {
-						totalSeconds += duration
+
+				// Group entries by slackId to batch lookups for different users
+				const entriesBySlackId = new Map<string, string[]>()
+				for (const entry of entries) {
+					const key = entry.slackId || identifier
+					const existing = entriesBySlackId.get(key) || []
+					existing.push(entry.projectName)
+					entriesBySlackId.set(key, existing)
+				}
+
+				for (const [entryIdentifier, projectNames] of entriesBySlackId) {
+					let projectsData: { name: string; total_duration: number }[] | null
+
+					if (entryIdentifier === identifier) {
+						// Same user, reuse already-fetched data
+						projectsData = adminProjects
+					} else {
+						// Different user (slackId prefix), fetch their projects
+						projectsData = await fetchUserProjects(entryIdentifier)
+					}
+
+					if (projectsData) {
+						for (const name of projectNames) {
+							const found = projectsData.find(p => p.name === name)
+							if (found) {
+								totalSeconds += found.total_duration
+							}
+						}
 					}
 				}
 
@@ -305,23 +344,37 @@ export async function syncSingleProject(projectId: number): Promise<{ hours: num
 		if (!project) return { hours: 0, updated: false, error: 'Project not found' }
 		if (!project.hackatimeProject) return { hours: project.hours ?? 0, updated: false, error: 'No Hackatime project linked' }
 
-		const projectNames = parseHackatimeProjects(project.hackatimeProject)
-		if (projectNames.length === 0) return { hours: project.hours ?? 0, updated: false, error: 'Invalid Hackatime project format' }
+		const entries = parseHackatimeProjects(project.hackatimeProject)
+		if (entries.length === 0) return { hours: project.hours ?? 0, updated: false, error: 'Invalid Hackatime project format' }
 
 		const hackatimeUser = await getHackatimeUser(project.userEmail)
 		if (hackatimeUser === null) return { hours: project.hours ?? 0, updated: false, error: 'Could not find Hackatime user' }
 
 		const identifier = hackatimeUser.slack_uid || hackatimeUser.username
-		const adminProjects = await fetchUserProjects(identifier)
-		if (adminProjects === null) return { hours: project.hours ?? 0, updated: false, error: 'Failed to fetch Hackatime projects' }
 
 		let totalSeconds = 0
-		for (const name of projectNames) {
-			const hackatimeProject = adminProjects.find(p => p.name === name)
-			if (hackatimeProject) {
-				totalSeconds += hackatimeProject.total_duration
+
+		// Group entries by slackId to batch lookups for different users
+		const entriesBySlackId = new Map<string, string[]>()
+		for (const entry of entries) {
+			const key = entry.slackId || identifier
+			const existing = entriesBySlackId.get(key) || []
+			existing.push(entry.projectName)
+			entriesBySlackId.set(key, existing)
+		}
+
+		for (const [entryIdentifier, projectNames] of entriesBySlackId) {
+			const projectsData = await fetchUserProjects(entryIdentifier)
+			if (projectsData === null) continue
+
+			for (const name of projectNames) {
+				const hackatimeProject = projectsData.find(p => p.name === name)
+				if (hackatimeProject) {
+					totalSeconds += hackatimeProject.total_duration
+				}
 			}
 		}
+
 		const hours = Math.round(totalSeconds / 3600 * 10) / 10
 
 		if (hours !== project.hours) {
