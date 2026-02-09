@@ -64,7 +64,9 @@
 	let hasName = $derived(
 		(project?.name?.trim().length ?? 0) > 0 && (project?.name?.trim().length ?? 0) <= NAME_MAX
 	);
-	let canSave = $derived(hasDescription && hasName);
+	let githubValidation = $derived(validateGithubUrl(project?.githubUrl));
+	let playableValidation = $derived(validatePlayableUrl(project?.playableUrl));
+	let canSave = $derived(hasDescription && hasName && githubValidation.valid && playableValidation.valid);
 
 	onMount(async () => {
 		const user = await getUser();
@@ -377,8 +379,11 @@
 						type="url"
 						bind:value={project.githubUrl}
 						placeholder="https://github.com/user/repo"
-						class="w-full rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+						class="w-full rounded-lg border-2 px-4 py-3 focus:border-dashed focus:outline-none {project.githubUrl?.trim() && !githubValidation.valid ? 'border-red-500' : 'border-black'}"
 					/>
+					{#if project.githubUrl?.trim() && !githubValidation.valid}
+						<p class="mt-1 text-xs text-red-500">{githubValidation.error}</p>
+					{/if}
 				</div>
 
 				<!-- Playable URL -->
@@ -392,9 +397,13 @@
 						type="url"
 						bind:value={project.playableUrl}
 						placeholder="https://yourproject.com or https://replit.com/..."
-						class="w-full rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+						class="w-full rounded-lg border-2 px-4 py-3 focus:border-dashed focus:outline-none {project.playableUrl?.trim() && !playableValidation.valid ? 'border-red-500' : 'border-black'}"
 					/>
-					<p class="mt-1 text-xs text-gray-500">{$t.project.playableUrlHint}</p>
+					{#if project.playableUrl?.trim() && !playableValidation.valid}
+						<p class="mt-1 text-xs text-red-500">{playableValidation.error}</p>
+					{:else}
+						<p class="mt-1 text-xs text-gray-500">{$t.project.playableUrlHint}</p>
+					{/if}
 				</div>
 
 				<!-- Hackatime Project Dropdown -->
