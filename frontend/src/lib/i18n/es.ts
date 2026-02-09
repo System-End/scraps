@@ -274,10 +274,10 @@ export default {
 		whatDidYouUpdate: '¿qué actualizaste?',
 		updateDescriptionPlaceholder: 'Describe qué cambiaste o mejoraste en esta actualización...',
 		pleaseDescribeUpdate: 'Por favor describe qué actualizaste',
-		usedAiLabel: 'se usó IA en este proyecto',
-		howWasAiUsed: '¿cómo se usó la IA?',
-		aiDescriptionPlaceholder: 'Describe cómo se usó la IA en este proyecto...',
-		pleaseDescribeAiUsage: 'Por favor describe cómo se usó la IA'
+		usedAiLabel: 'se usó ia en este proyecto',
+		howWasAiUsed: '¿cómo se usó la ia?',
+		aiDescriptionPlaceholder: 'describe cómo se usó la ia en este proyecto...',
+		pleaseDescribeAiUsage: 'por favor describe cómo se usó la ia'
 	},
 	address: {
 		shippingAddress: 'dirección de envío',
@@ -428,11 +428,11 @@ export default {
 		updateDescriptionPlaceholder: 'Describe qué cambiaste o mejoraste en esta actualización...',
 		pleaseDescribeUpdate: 'Por favor describe qué actualizaste',
 		whatWasUpdated: 'qué se actualizó',
-		usedAiLabel: 'se usó IA en este proyecto',
-		howWasAiUsed: '¿cómo se usó la IA?',
-		aiDescriptionPlaceholder: 'Describe cómo se usó la IA en este proyecto...',
-		pleaseDescribeAiUsage: 'Por favor describe cómo se usó la IA',
-		aiWasUsed: 'se usó IA en este proyecto'
+		usedAiLabel: 'se usó ia en este proyecto',
+		howWasAiUsed: '¿cómo se usó la ia?',
+		aiDescriptionPlaceholder: 'describe cómo se usó la ia en este proyecto...',
+		pleaseDescribeAiUsage: 'por favor describe cómo se usó la ia',
+		aiWasUsed: 'se usó ia en este proyecto'
 	},
 	profile: {
 		backToLeaderboard: 'volver a clasificación',

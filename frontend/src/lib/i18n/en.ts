@@ -274,10 +274,10 @@ export default {
 		whatDidYouUpdate: 'what did you update?',
 		updateDescriptionPlaceholder: 'Describe what you changed or improved in this update...',
 		pleaseDescribeUpdate: 'Please describe what you updated',
-		usedAiLabel: 'AI was used in this project',
-		howWasAiUsed: 'how was AI used?',
-		aiDescriptionPlaceholder: 'Describe how AI was used in this project...',
-		pleaseDescribeAiUsage: 'Please describe how AI was used'
+		usedAiLabel: 'ai was used in this project',
+		howWasAiUsed: 'how was ai used?',
+		aiDescriptionPlaceholder: 'describe how ai was used in this project...',
+		pleaseDescribeAiUsage: 'please describe how ai was used'
 	},
 	address: {
 		shippingAddress: 'shipping address',
@@ -388,11 +388,11 @@ export default {
 		updateDescriptionPlaceholder: 'Describe what you changed or improved in this update...',
 		pleaseDescribeUpdate: 'Please describe what you updated',
 		whatWasUpdated: 'what was updated',
-		usedAiLabel: 'AI was used in this project',
-		howWasAiUsed: 'how was AI used?',
-		aiDescriptionPlaceholder: 'Describe how AI was used in this project...',
-		pleaseDescribeAiUsage: 'Please describe how AI was used',
-		aiWasUsed: 'AI was used in this project'
+		usedAiLabel: 'ai was used in this project',
+		howWasAiUsed: 'how was ai used?',
+		aiDescriptionPlaceholder: 'describe how ai was used in this project...',
+		pleaseDescribeAiUsage: 'please describe how ai was used',
+		aiWasUsed: 'ai was used in this project'
 	},
 	faq: {
 		title: 'faq',
