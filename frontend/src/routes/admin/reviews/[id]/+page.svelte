@@ -96,7 +96,6 @@
 
 	let confirmAction = $state<'approved' | 'denied' | 'permanently_rejected' | null>(null);
 	let errorModal = $state<string | null>(null);
-	let syncingHours = $state(false);
 
 	let projectId = $derived(page.params.id);
 
@@ -203,28 +202,6 @@
 		} finally {
 			submitting = false;
 			confirmAction = null;
-		}
-	}
-
-	async function syncHours() {
-		if (!project || syncingHours) return;
-		syncingHours = true;
-		try {
-			const response = await fetch(`${API_URL}/admin/projects/${project.id}/sync-hours`, {
-				method: 'POST',
-				credentials: 'include'
-			});
-			const data = await response.json();
-			if (data.error) {
-				errorModal = data.error;
-			} else if (data.updated && project) {
-				project.hours = data.hours;
-			}
-		} catch (e) {
-			console.error('Failed to sync hours:', e);
-			errorModal = 'Failed to sync hours from Hackatime';
-		} finally {
-			syncingHours = false;
 		}
 	}
 
@@ -415,15 +392,6 @@
 						<span>{$t.project.tryItOut}</span>
 					</span>
 				{/if}
-				<button
-					onclick={syncHours}
-					disabled={syncingHours}
-					title="Sync hours from Hackatime"
-					class="inline-flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
-				>
-					<RefreshCw size={18} class={syncingHours ? 'animate-spin' : ''} />
-					{syncingHours ? 'syncing...' : 'sync hours'}
-				</button>
 			</div>
 
 			<!-- User Info (clickable) -->

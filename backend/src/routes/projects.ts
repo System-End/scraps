@@ -275,8 +275,8 @@ projects.get('/:id', async ({ params, headers }) => {
         reviewer?: { id: number; username: string | null; avatar: string | null } | null
     }> = []
 
-    if (isOwner) {
-        const reviews = await db
+    // Fetch reviews for activity
+    const reviews = await db
             .select({
                 id: reviewsTable.id,
                 reviewerId: reviewsTable.reviewerId,
@@ -356,7 +356,6 @@ projects.get('/:id', async ({ params, headers }) => {
             const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
             return dateB - dateA
         })
-    }
 
     // Check if the user has ever submitted feedback on any project
     let hasSubmittedFeedback = false
@@ -401,7 +400,7 @@ projects.get('/:id', async ({ params, headers }) => {
         owner: projectOwner[0] || null,
         isOwner,
         hasSubmittedFeedback: isOwner ? hasSubmittedFeedback : undefined,
-        activity: isOwner ? activity : undefined
+        activity
     }
 })
 

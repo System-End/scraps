@@ -481,16 +481,19 @@
 					{error}
 				</div>
 			{/if}
+		{/if}
 
-			<!-- Activity Timeline (only for owner) -->
-			<div>
-				<h2 class="mb-6 text-2xl font-bold">{$t.project.activity}</h2>
+		<!-- Activity Timeline -->
+		<div>
+			<h2 class="mb-6 text-2xl font-bold">{$t.project.activity}</h2>
 
-				{#if activity.length === 0}
-					<div class="rounded-2xl border-4 border-dashed border-gray-300 p-8 text-center">
-						<p class="text-gray-500">{$t.project.noActivityYet}</p>
+			{#if activity.length === 0}
+				<div class="rounded-2xl border-4 border-dashed border-gray-300 p-8 text-center">
+					<p class="text-gray-500">{$t.project.noActivityYet}</p>
+					{#if isOwner}
 						<p class="mt-2 text-sm text-gray-400">{$t.project.submitToGetStarted}</p>
-					</div>
+					{/if}
+				</div>
 				{:else}
 					<div class="relative">
 						<!-- Timeline line -->
@@ -592,7 +595,6 @@
 					</div>
 				{/if}
 			</div>
-		{/if}
 	{/if}
 </div>
 
