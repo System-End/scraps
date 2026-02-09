@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { ChevronLeft, ChevronRight } from '@lucide/svelte';
+	import { ChevronLeft, ChevronRight, ArrowUpDown } from '@lucide/svelte';
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
@@ -39,12 +39,13 @@
 	let projects = $state<Project[]>([]);
 	let pagination = $state<Pagination | null>(null);
 	let loading = $state(true);
+	let sortOrder = $state<'oldest' | 'newest'>('oldest');
 	let scraps = $derived(user?.scraps ?? 0);
 
 	async function fetchReviews(page = 1) {
 		loading = true;
 		try {
-			const response = await fetch(`${API_URL}/admin/reviews?page=${page}&limit=12`, {
+			const response = await fetch(`${API_URL}/admin/reviews?page=${page}&limit=12&sort=${sortOrder}`, {
 				credentials: 'include'
 			});
 			if (response.ok) {
@@ -71,6 +72,11 @@
 	function goToPage(page: number) {
 		fetchReviews(page);
 	}
+
+	function toggleSort() {
+		sortOrder = sortOrder === 'oldest' ? 'newest' : 'oldest';
+		fetchReviews(1);
+	}
 </script>
 
 <svelte:head>
@@ -78,8 +84,19 @@
 </svelte:head>
 
 <div class="mx-auto max-w-6xl px-6 pt-24 pb-24 md:px-12">
-	<h1 class="mb-2 text-4xl font-bold md:text-5xl">{$t.admin.reviewQueue}</h1>
-	<p class="mb-8 text-lg text-gray-600">{$t.admin.projectsWaitingForReview}</p>
+	<div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+		<div>
+			<h1 class="mb-2 text-4xl font-bold md:text-5xl">{$t.admin.reviewQueue}</h1>
+			<p class="text-lg text-gray-600">{$t.admin.projectsWaitingForReview}</p>
+		</div>
+		<button
+			onclick={toggleSort}
+			class="flex cursor-pointer items-center gap-2 rounded-full border-2 border-black px-4 py-2 text-sm font-bold transition-all hover:border-dashed"
+		>
+			<ArrowUpDown size={16} />
+			{$t.admin.sort}: {sortOrder === 'oldest' ? $t.admin.sortOldestFirst : $t.admin.sortNewestFirst}
+		</button>
+	</div>
 
 	{#if loading}
 		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>

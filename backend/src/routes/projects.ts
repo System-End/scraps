@@ -21,6 +21,18 @@ function parseHackatimeProject(hackatimeProject: string | null): string | null {
 	return hackatimeProject.substring(slashIndex + 1)
 }
 
+function parseHackatimeProjects(hackatimeProject: string | null): string | null {
+	if (!hackatimeProject) return null
+	return hackatimeProject
+		.split(',')
+		.map(p => p.trim())
+		.filter(p => p.length > 0)
+		.map(p => parseHackatimeProject(p))
+		.filter((p): p is string => p !== null)
+		.join(',')
+		|| null
+}
+
 function validateImageUrl(imageUrl: string | null | undefined): boolean {
 	if (!imageUrl) return true
 	try {
@@ -36,7 +48,7 @@ const projects = new Elysia({ prefix: '/projects' })
 // Public explore endpoint - returns minimal data for browsing
 projects.get('/explore', async ({ query }) => {
     const page = parseInt(query.page as string) || 1
-    const limit = Math.min(parseInt(query.limit as string) || 20, 50)
+    const limit = Math.min(parseInt(query.limit as string) || 18, 48)
     const offset = (page - 1) * limit
     const search = (query.search as string)?.trim() || ''
     const tier = query.tier ? parseInt(query.tier as string) : null
@@ -45,7 +57,7 @@ projects.get('/explore', async ({ query }) => {
 
     const conditions = [
         or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
-        or(eq(projectsTable.status, 'shipped'), eq(projectsTable.status, 'in_progress'))
+        or(eq(projectsTable.status, 'shipped'), eq(projectsTable.status, 'in_progress'), eq(projectsTable.status, 'waiting_for_review'))
     ]
 
     if (search) {
@@ -61,7 +73,7 @@ projects.get('/explore', async ({ query }) => {
         conditions.push(eq(projectsTable.tier, tier))
     }
 
-    if (status === 'shipped' || status === 'in_progress') {
+    if (status === 'shipped' || status === 'in_progress' || status === 'waiting_for_review') {
         // Replace the default status condition with specific one
         conditions[1] = eq(projectsTable.status, status)
     }
@@ -184,8 +196,8 @@ projects.get('/:id', async ({ params, headers }) => {
 
     const isOwner = project[0].userId === user.id
 
-    // If not owner, only show shipped or in_progress projects
-    if (!isOwner && project[0].status !== 'shipped' && project[0].status !== 'in_progress') {
+    // If not owner, only show shipped, in_progress, or waiting_for_review projects
+    if (!isOwner && project[0].status !== 'shipped' && project[0].status !== 'in_progress' && project[0].status !== 'waiting_for_review') {
         return { error: 'Not found' }
     }
 
@@ -256,6 +268,7 @@ projects.get('/:id', async ({ params, headers }) => {
                 eq(projectActivityTable.projectId, parseInt(params.id)),
                 or(
                     eq(projectActivityTable.action, 'project_submitted'),
+                    eq(projectActivityTable.action, 'project_unsubmitted'),
                     sql`${projectActivityTable.action} LIKE 'earned % scraps'`
                 )
             ))
@@ -264,6 +277,11 @@ projects.get('/:id', async ({ params, headers }) => {
             if (entry.action === 'project_submitted') {
                 activity.push({
                     type: 'submitted',
+                    createdAt: entry.createdAt
+                })
+            } else if (entry.action === 'project_unsubmitted') {
+                activity.push({
+                    type: 'unsubmitted',
                     createdAt: entry.createdAt
                 })
             } else if (entry.action.startsWith('earned ') && entry.action.endsWith(' scraps')) {
@@ -350,7 +368,7 @@ projects.post('/', async ({ body, headers }) => {
         return { error: 'Image must be from cdn.hackclub.com' }
     }
 
-    const projectName = parseHackatimeProject(data.hackatimeProject || null)
+    const projectName = parseHackatimeProjects(data.hackatimeProject || null)
     const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : 1
 
     const newProject = await db
@@ -414,7 +432,7 @@ projects.put('/:id', async ({ params, body, headers }) => {
         return { error: 'Image must be from cdn.hackclub.com' }
     }
 
-    const projectName = parseHackatimeProject(data.hackatimeProject || null)
+    const projectName = parseHackatimeProjects(data.hackatimeProject || null)
     const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : undefined
 
     const updated = await db
@@ -462,6 +480,41 @@ projects.delete("/:id", async ({ params, headers }) => {
     })
 
     return { success: true }
+})
+
+// Unsubmit project (withdraw from review queue)
+projects.post("/:id/unsubmit", async ({ params, headers }) => {
+    const user = await getUserFromSession(headers as Record<string, string>)
+    if (!user) return { error: "Unauthorized" }
+
+    const project = await db
+        .select()
+        .from(projectsTable)
+        .where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id)))
+        .limit(1)
+
+    if (!project[0]) return { error: "Not found" }
+
+    if (project[0].status !== 'waiting_for_review') {
+        return { error: "Project can only be unsubmitted while waiting for review" }
+    }
+
+    const updated = await db
+        .update(projectsTable)
+        .set({
+            status: 'in_progress',
+            updatedAt: new Date()
+        })
+        .where(eq(projectsTable.id, parseInt(params.id)))
+        .returning()
+
+    await db.insert(projectActivityTable).values({
+        userId: user.id,
+        projectId: updated[0].id,
+        action: 'project_unsubmitted'
+    })
+
+    return updated[0]
 })
 
 // Submit project for review

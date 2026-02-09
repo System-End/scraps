@@ -45,7 +45,7 @@
 	let uploadingImage = $state(false);
 	let hackatimeProjects = $state<HackatimeProject[]>([]);
 	let userSlackId = $state<string | null>(null);
-	let selectedHackatimeName = $state<string | null>(null);
+	let selectedHackatimeNames = $state<string[]>([]);
 	let loadingProjects = $state(false);
 	let showDropdown = $state(false);
 	let selectedTier = $state(1);
@@ -59,7 +59,7 @@
 	const DESC_MAX = 1000;
 
 	let hasImage = $derived(!!project?.image);
-	let hasHackatime = $derived(!!selectedHackatimeName);
+	let hasHackatime = $derived(selectedHackatimeNames.length > 0);
 	let hasGithub = $derived(!!project?.githubUrl?.trim());
 	let hasPlayableUrl = $derived(!!project?.playableUrl?.trim());
 	let hasDescription = $derived(
@@ -104,7 +104,7 @@
 			imagePreview = project?.image || null;
 			hasSubmittedFeedbackBefore = responseData.hasSubmittedFeedback ?? false;
 			if (project?.hackatimeProject) {
-				selectedHackatimeName = project.hackatimeProject;
+				selectedHackatimeNames = project.hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0);
 			}
 			selectedTier = project?.tier ?? 1;
 			fetchHackatimeProjects();
@@ -180,13 +180,33 @@
 
 	function selectHackatimeProject(hp: HackatimeProject) {
 		if (project) {
-			selectedHackatimeName = hp.name;
-			project.hours = hp.hours;
+			const idx = selectedHackatimeNames.indexOf(hp.name);
+			if (idx >= 0) {
+				selectedHackatimeNames = selectedHackatimeNames.filter((_, i) => i !== idx);
+			} else {
+				selectedHackatimeNames = [...selectedHackatimeNames, hp.name];
+			}
+			// Recalculate total hours from all selected projects
+			const totalHours = selectedHackatimeNames.reduce((sum, name) => {
+				const found = hackatimeProjects.find(p => p.name === name);
+				return sum + (found?.hours || 0);
+			}, 0);
+			project.hours = Math.round(totalHours * 10) / 10;
 			if (hp.repoUrl && !project.githubUrl) {
 				project.githubUrl = hp.repoUrl;
 			}
 		}
-		showDropdown = false;
+	}
+
+	function removeHackatimeProject(name: string) {
+		selectedHackatimeNames = selectedHackatimeNames.filter(n => n !== name);
+		if (project) {
+			const totalHours = selectedHackatimeNames.reduce((sum, n) => {
+				const found = hackatimeProjects.find(p => p.name === n);
+				return sum + (found?.hours || 0);
+			}, 0);
+			project.hours = Math.round(totalHours * 10) / 10;
+		}
 	}
 
 	async function handleSubmit() {
@@ -195,7 +215,7 @@
 		submitting = true;
 		error = null;
 
-		const hackatimeValue = selectedHackatimeName || null;
+		const hackatimeValue = selectedHackatimeNames.length > 0 ? selectedHackatimeNames.join(',') : null;
 
 		try {
 			// First update the project with any changes
@@ -399,6 +419,26 @@
 					<label class="mb-2 block text-sm font-bold"
 						>{$t.project.hackatimeProject} <span class="text-red-500">*</span></label
 					>
+					{#if selectedHackatimeNames.length > 0}
+						<div class="mb-2 flex flex-wrap gap-2">
+							{#each selectedHackatimeNames as name}
+								{@const hp = hackatimeProjects.find(p => p.name === name)}
+								<span class="flex items-center gap-1 rounded-full border-2 border-black bg-gray-100 px-3 py-1 text-sm font-medium">
+									{name}
+									{#if hp}
+										<span class="text-gray-500">({formatHours(hp.hours)}h)</span>
+									{/if}
+									<button
+										type="button"
+										onclick={() => removeHackatimeProject(name)}
+										class="ml-1 cursor-pointer rounded-full hover:bg-gray-200"
+									>
+										<X size={14} />
+									</button>
+								</span>
+							{/each}
+						</div>
+					{/if}
 					<div class="relative">
 						<button
 							type="button"
@@ -407,11 +447,8 @@
 						>
 							{#if loadingProjects}
 								<span class="text-gray-500">{$t.project.loadingProjects}</span>
-							{:else if selectedHackatimeName}
-								<span
-									>{selectedHackatimeName}
-									<span class="text-gray-500">({formatHours(project.hours)}h)</span></span
-								>
+							{:else if selectedHackatimeNames.length > 0}
+								<span class="text-gray-500">add another project...</span>
 							{:else}
 								<span class="text-gray-500">{$t.project.selectAProject}</span>
 							{/if}
@@ -429,12 +466,18 @@
 									<div class="px-4 py-2 text-sm text-gray-500">{$t.project.noProjectsFound}</div>
 								{:else}
 									{#each hackatimeProjects as hp}
+										{@const isSelected = selectedHackatimeNames.includes(hp.name)}
 										<button
 											type="button"
 											onclick={() => selectHackatimeProject(hp)}
-											class="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-left hover:bg-gray-100"
+											class="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-left hover:bg-gray-100 {isSelected ? 'bg-gray-50' : ''}"
 										>
-											<span class="font-medium">{hp.name}</span>
+											<span class="flex items-center gap-2">
+												{#if isSelected}
+													<Check size={16} class="text-green-600" />
+												{/if}
+												<span class="font-medium">{hp.name}</span>
+											</span>
 											<span class="text-sm text-gray-500">{formatHours(hp.hours)}h</span>
 										</button>
 									{/each}

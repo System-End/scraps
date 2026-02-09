@@ -52,7 +52,7 @@
 	let imageUrl = $state<string | null>(null);
 	let imagePreview = $state<string | null>(null);
 	let uploadingImage = $state(false);
-	let selectedHackatimeProject = $state<HackatimeProject | null>(null);
+	let selectedHackatimeProjects = $state<HackatimeProject[]>([]);
 	let hackatimeProjects = $state<HackatimeProject[]>([]);
 	let userSlackId = $state<string | null>(null);
 	let loadingProjects = $state(false);
@@ -73,7 +73,7 @@
 	const DESC_MAX = 1000;
 
 	let hasImage = $derived(!!imageUrl);
-	let hasHackatime = $derived(!!selectedHackatimeProject);
+	let hasHackatime = $derived(selectedHackatimeProjects.length > 0);
 	let hasDescription = $derived(
 		description.trim().length >= DESC_MIN && description.trim().length <= DESC_MAX
 	);
@@ -148,12 +148,20 @@
 	}
 
 	function selectProject(project: HackatimeProject) {
-		selectedHackatimeProject = project;
-		showDropdown = false;
+		const idx = selectedHackatimeProjects.findIndex(p => p.name === project.name);
+		if (idx >= 0) {
+			selectedHackatimeProjects = selectedHackatimeProjects.filter((_, i) => i !== idx);
+		} else {
+			selectedHackatimeProjects = [...selectedHackatimeProjects, project];
+		}
 		// Always update GitHub URL from hackatime project if available
-		if (project.repoUrl) {
+		if (project.repoUrl && !githubUrl) {
 			githubUrl = project.repoUrl;
 		}
+	}
+
+	function removeSelectedProject(name: string) {
+		selectedHackatimeProjects = selectedHackatimeProjects.filter(p => p.name !== name);
 	}
 
 	function resetForm() {
@@ -162,7 +170,7 @@
 		githubUrl = '';
 		imageUrl = null;
 		imagePreview = null;
-		selectedHackatimeProject = null;
+		selectedHackatimeProjects = [];
 		showDropdown = false;
 		selectedTier = 1;
 		error = null;
@@ -177,8 +185,8 @@
 		loading = true;
 		error = null;
 
-		const hackatimeValue = selectedHackatimeProject?.name || null;
-		const finalGithubUrl = githubUrl.trim() || selectedHackatimeProject?.repoUrl || null;
+		const hackatimeValue = selectedHackatimeProjects.length > 0 ? selectedHackatimeProjects.map(p => p.name).join(',') : null;
+		const finalGithubUrl = githubUrl.trim() || selectedHackatimeProjects[0]?.repoUrl || null;
 
 		try {
 			const response = await fetch(`${API_URL}/projects`, {
@@ -349,6 +357,23 @@
 						>{$t.createProject.hackatimeProject}
 						<span class="text-gray-400">({$t.createProject.optional})</span></label
 					>
+					{#if selectedHackatimeProjects.length > 0}
+						<div class="mb-2 flex flex-wrap gap-2">
+							{#each selectedHackatimeProjects as hp}
+								<span class="flex items-center gap-1 rounded-full border-2 border-black bg-gray-100 px-3 py-1 text-sm font-medium">
+									{hp.name}
+									<span class="text-gray-500">({formatHours(hp.hours)}h)</span>
+									<button
+										type="button"
+										onclick={() => removeSelectedProject(hp.name)}
+										class="ml-1 cursor-pointer rounded-full hover:bg-gray-200"
+									>
+										<X size={14} />
+									</button>
+								</span>
+							{/each}
+						</div>
+					{/if}
 					<div class="relative">
 						<button
 							type="button"
@@ -357,12 +382,8 @@
 						>
 							{#if loadingProjects}
 								<span class="text-gray-500">{$t.createProject.loadingProjects}</span>
-							{:else if selectedHackatimeProject}
-								<span
-									>{selectedHackatimeProject.name}
-									<span class="text-gray-500">({formatHours(selectedHackatimeProject.hours)}h)</span
-									></span
-								>
+							{:else if selectedHackatimeProjects.length > 0}
+								<span class="text-gray-500">add another project...</span>
 							{:else}
 								<span class="text-gray-500">{$t.createProject.selectAProject}</span>
 							{/if}
@@ -382,12 +403,18 @@
 									</div>
 								{:else}
 									{#each hackatimeProjects as project}
+										{@const isSelected = selectedHackatimeProjects.some(p => p.name === project.name)}
 										<button
 											type="button"
 											onclick={() => selectProject(project)}
-											class="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-left hover:bg-gray-100"
+											class="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-left hover:bg-gray-100 {isSelected ? 'bg-gray-50' : ''}"
 										>
-											<span class="font-medium">{project.name}</span>
+											<span class="flex items-center gap-2">
+												{#if isSelected}
+													<Check size={16} class="text-green-600" />
+												{/if}
+												<span class="font-medium">{project.name}</span>
+											</span>
 											<span class="text-sm text-gray-500">{formatHours(project.hours)}h</span>
 										</button>
 									{/each}

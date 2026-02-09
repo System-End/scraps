@@ -233,7 +233,7 @@
 					<p class="text-xs text-gray-500 sm:text-sm">{$t.profile.inProgress}</p>
 				</div>
 				<div class="rounded-2xl border-4 border-black p-2 text-center sm:p-4">
-					<p class="text-xl font-bold sm:text-3xl">{stats.totalHours}h</p>
+					<p class="text-xl font-bold sm:text-3xl">{formatHours(stats.totalHours)}h</p>
 					<p class="text-xs text-gray-500 sm:text-sm">{$t.profile.totalHours}</p>
 				</div>
 			</div>

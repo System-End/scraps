@@ -336,9 +336,9 @@ export default {
 		goBack: 'volver',
 		projectNotFound: 'proyecto no encontrado',
 		shipped: 'enviado',
-		awaitingReview: 'esperando revisión',
+		awaitingReview: 'en revisión',
 		inProgress: 'en progreso',
-		waitingForReview: 'esperando revisión',
+		waitingForReview: 'en revisión',
 		rejected: 'rechazado',
 		tier: 'nivel {value}',
 		noDescriptionYet: 'sin descripción aún',
@@ -359,6 +359,7 @@ export default {
 		reviewedBy: 'revisado por',
 		reviewer: 'revisor',
 		submittedForReview: 'enviado para revisión',
+		unsubmittedFromReview: 'retirado de revisión',
 		projectCreated: 'proyecto creado',
 		image: 'imagen',
 		uploading: 'subiendo...',
@@ -408,7 +409,12 @@ export default {
 		hoursLogged: '{hours}h registradas',
 		github: 'github',
 		reviewFeedback: 'comentarios de revisión',
-		imageMustBeLessThan: 'La imagen debe ser menor a 5MB'
+		imageMustBeLessThan: 'La imagen debe ser menor a 5MB',
+		unsubmitProject: 'retirar proyecto',
+		unsubmitConfirmTitle: '¿retirar proyecto?',
+		unsubmitConfirmMessage: 'esto eliminará tu proyecto de la cola de revisión y lo devolverá al estado en progreso.',
+		unsubmitting: 'retirando...',
+		unsubmitSuccess: 'proyecto retirado exitosamente'
 	},
 	profile: {
 		backToLeaderboard: 'volver a clasificación',
@@ -528,7 +534,10 @@ export default {
 		fulfilled: 'completado',
 		loadingStats: 'cargando estadísticas...',
 		page: 'página',
-		of: 'de'
+		of: 'de',
+		sortOldestFirst: 'más antiguos primero',
+		sortNewestFirst: 'más recientes primero',
+		sort: 'ordenar'
 	},
 	auth: {
 		error: 'error',

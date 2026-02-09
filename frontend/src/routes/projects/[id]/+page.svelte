@@ -16,7 +16,8 @@
 		Globe,
 		Spool,
 		Eye,
-		RefreshCw
+		RefreshCw,
+		Undo2
 	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
@@ -52,7 +53,7 @@
 	}
 
 	interface ActivityEntry {
-		type: 'review' | 'created' | 'submitted' | 'scraps_earned';
+		type: 'review' | 'created' | 'submitted' | 'unsubmitted' | 'scraps_earned';
 		action?: string;
 		feedbackForAuthor?: string | null;
 		createdAt: string;
@@ -71,6 +72,8 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let syncingHours = $state(false);
+	let showUnsubmitConfirm = $state(false);
+	let unsubmitting = $state(false);
 
 	onMount(async () => {
 		const user = await getUser();
@@ -172,6 +175,28 @@
 			syncingHours = false;
 		}
 	}
+
+	async function handleUnsubmit() {
+		if (!project || unsubmitting) return;
+		unsubmitting = true;
+		try {
+			const response = await fetch(`${API_URL}/projects/${project.id}/unsubmit`, {
+				method: 'POST',
+				credentials: 'include'
+			});
+			const data = await response.json();
+			if (data.error) {
+				error = data.error;
+			} else {
+				project.status = 'in_progress';
+				showUnsubmitConfirm = false;
+			}
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Failed to unsubmit project';
+		} finally {
+			unsubmitting = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -228,8 +253,8 @@
 
 			<!-- Content -->
 			<div class="p-6">
-				<div class="mb-2 flex items-start justify-between gap-4">
-					<h1 class="text-3xl font-bold md:text-4xl">{project.name}</h1>
+				<div class="mb-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+					<h1 class="min-w-0 wrap-break-word text-3xl font-bold md:text-4xl">{project.name}</h1>
 					{#if project.status === 'shipped'}
 						<span
 							class="flex shrink-0 items-center gap-1 rounded-full border-2 border-green-600 bg-green-100 px-3 py-1 text-sm font-bold text-green-700"
@@ -361,7 +386,8 @@
 
 		<!-- Action Buttons (only for owner) -->
 		{#if isOwner}
-			<div class="mb-8 flex flex-col gap-3 sm:flex-row sm:gap-4">
+			<div class="mb-8 flex flex-col gap-3">
+				<div class="flex flex-col gap-3 sm:flex-row sm:gap-4">
 				{#if project.status === 'waiting_for_review'}
 					<span
 						class="flex flex-1 items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
@@ -416,6 +442,16 @@
 						<Send size={18} />
 						{$t.project.reviewAndSubmit}
 					</a>
+				{/if}
+				</div>
+				{#if project.status === 'waiting_for_review'}
+					<button
+						onclick={() => (showUnsubmitConfirm = true)}
+						class="flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-red-500 bg-red-100 px-4 py-3 text-sm font-bold text-red-600 transition-all duration-200 hover:border-dashed hover:bg-red-200 sm:px-6 sm:text-base"
+					>
+						<Undo2 size={18} />
+						{$t.project.unsubmitProject}
+					</button>
 				{/if}
 			</div>
 
@@ -507,6 +543,17 @@
 											>{$t.project.submittedForReview} · {formatDate(entry.createdAt)}</span
 										>
 									</div>
+								{:else if entry.type === 'unsubmitted'}
+									<div class="relative ml-8 flex items-center gap-3 py-2">
+										<div
+											class="absolute left-[-26px] z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
+										>
+											<Undo2 size={16} class="text-orange-500" />
+										</div>
+										<span class="text-sm text-orange-500"
+											>{$t.project.unsubmittedFromReview} · {formatDate(entry.createdAt)}</span
+										>
+									</div>
 								{:else if entry.type === 'created'}
 									<div class="relative ml-8 flex items-center gap-3 py-2">
 										<div
@@ -527,3 +574,38 @@
 		{/if}
 	{/if}
 </div>
+
+<!-- Unsubmit Confirmation Modal -->
+{#if showUnsubmitConfirm && project}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6"
+		onclick={(e) => e.target === e.currentTarget && (showUnsubmitConfirm = false)}
+		onkeydown={(e) => e.key === 'Escape' && (showUnsubmitConfirm = false)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-lg rounded-2xl border-4 border-black bg-white p-6">
+			<h2 class="mb-4 text-2xl font-bold">{$t.project.unsubmitConfirmTitle}</h2>
+			<p class="mb-6 text-gray-700">
+				{$t.project.unsubmitConfirmMessage}
+			</p>
+			<div class="flex gap-4">
+				<button
+					onclick={() => (showUnsubmitConfirm = false)}
+					disabled={unsubmitting}
+					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-3 font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50"
+				>
+					{$t.common.cancel}
+				</button>
+				<button
+					onclick={handleUnsubmit}
+					disabled={unsubmitting}
+					class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-red-600 bg-red-600 px-4 py-3 font-bold text-white transition-all duration-200 hover:bg-red-700 disabled:opacity-50"
+				>
+					<Undo2 size={18} />
+					{unsubmitting ? $t.project.unsubmitting : $t.project.unsubmitProject}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

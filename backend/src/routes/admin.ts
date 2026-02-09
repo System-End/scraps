@@ -1,5 +1,5 @@
 import { Elysia } from 'elysia'
-import { eq, and, inArray, sql, desc, or, isNull } from 'drizzle-orm'
+import { eq, and, inArray, sql, desc, asc, or, isNull } from 'drizzle-orm'
 import { db } from '../db'
 import { usersTable, userBonusesTable } from '../schemas/users'
 import { projectsTable } from '../schemas/projects'
@@ -382,11 +382,16 @@ admin.get('/reviews', async ({ headers, query }) => {
         const page = parseInt(query.page as string) || 1
         const limit = Math.min(parseInt(query.limit as string) || 20, 100)
         const offset = (page - 1) * limit
+        const sort = (query.sort as string) || 'oldest'
+
+        const orderClause = sort === 'newest'
+            ? desc(projectsTable.updatedAt)
+            : asc(projectsTable.updatedAt)
 
         const [projects, countResult] = await Promise.all([
             db.select().from(projectsTable)
                 .where(eq(projectsTable.status, 'waiting_for_review'))
-                .orderBy(desc(projectsTable.updatedAt))
+                .orderBy(orderClause)
                 .limit(limit)
                 .offset(offset),
             db.select({ count: sql<number>`count(*)` }).from(projectsTable)

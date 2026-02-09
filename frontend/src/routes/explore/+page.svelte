@@ -47,7 +47,7 @@
 		try {
 			const params = new URLSearchParams();
 			params.set('page', currentPage.toString());
-			params.set('limit', '20');
+			params.set('limit', '18');
 			if (searchQuery.trim()) params.set('search', searchQuery.trim());
 			if (selectedTier) params.set('tier', selectedTier.toString());
 			if (selectedStatus) params.set('status', selectedStatus);
@@ -243,9 +243,11 @@
 							<span
 								class="shrink-0 rounded-full px-2 py-0.5 text-xs {project.status === 'shipped'
 									? 'bg-green-100'
-									: 'bg-gray-100'}"
+									: project.status === 'waiting_for_review'
+										? 'bg-blue-100'
+										: 'bg-gray-100'}"
 							>
-								{project.status.replace(/_/g, ' ')}
+								{project.status === 'waiting_for_review' ? 'under review' : project.status.replace(/_/g, ' ')}
 							</span>
 						</div>
 						<p class="line-clamp-2 flex-1 text-sm text-gray-600">{project.description}</p>

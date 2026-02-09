@@ -297,9 +297,9 @@ export default {
 		goBack: 'go back',
 		projectNotFound: 'project not found',
 		shipped: 'shipped',
-		awaitingReview: 'awaiting review',
+		awaitingReview: 'under review',
 		inProgress: 'in progress',
-		waitingForReview: 'waiting for review',
+		waitingForReview: 'under review',
 		rejected: 'rejected',
 		tier: 'tier {value}',
 		noDescriptionYet: 'no description yet',
@@ -320,6 +320,7 @@ export default {
 		reviewedBy: 'reviewed by',
 		reviewer: 'reviewer',
 		submittedForReview: 'submitted for review',
+		unsubmittedFromReview: 'unsubmitted from review',
 		projectCreated: 'project created',
 		image: 'image',
 		uploading: 'uploading...',
@@ -368,7 +369,12 @@ export default {
 		hoursLogged: '{hours}h logged',
 		github: 'github',
 		reviewFeedback: 'review feedback',
-		imageMustBeLessThan: 'Image must be less than 5MB'
+		imageMustBeLessThan: 'Image must be less than 5MB',
+		unsubmitProject: 'unsubmit project',
+		unsubmitConfirmTitle: 'unsubmit project?',
+		unsubmitConfirmMessage: 'this will remove your project from the review queue and return it to in-progress status.',
+		unsubmitting: 'unsubmitting...',
+		unsubmitSuccess: 'project unsubmitted successfully'
 	},
 	faq: {
 		title: 'faq',
@@ -525,7 +531,10 @@ export default {
 		fulfilled: 'fulfilled',
 		loadingStats: 'loading stats...',
 		page: 'page',
-		of: 'of'
+		of: 'of',
+		sortOldestFirst: 'oldest first',
+		sortNewestFirst: 'newest first',
+		sort: 'sort'
 	},
 	auth: {
 		error: 'error',

@@ -148,7 +148,7 @@ user.get('/profile/:id', async ({ params, headers }) => {
     const inProgressHours = allProjects
         .filter(p => !p.deleted && (p.status === 'in_progress' || p.status === 'waiting_for_review'))
         .reduce((sum, p) => sum + (p.hoursOverride ?? p.hours ?? 0), 0)
-    const totalHours = shippedHours + inProgressHours
+    const totalHours = Math.round((shippedHours + inProgressHours) * 10) / 10
 
     // Get user's hearted shop items
     const userHearts = await db

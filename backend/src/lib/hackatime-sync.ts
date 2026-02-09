@@ -113,6 +113,16 @@ function parseHackatimeProject(hackatimeProject: string | null): string | null {
 	return hackatimeProject.substring(slashIndex + 1)
 }
 
+function parseHackatimeProjects(hackatimeProject: string | null): string[] {
+	if (!hackatimeProject) return []
+	return hackatimeProject
+		.split(',')
+		.map(p => p.trim())
+		.filter(p => p.length > 0)
+		.map(p => parseHackatimeProject(p))
+		.filter((p): p is string => p !== null)
+}
+
 async function syncAllProjects(): Promise<void> {
 	console.log('[HACKATIME-SYNC] Starting sync...')
 	const startTime = Date.now()
@@ -167,15 +177,20 @@ async function syncAllProjects(): Promise<void> {
 				adminProjectMap.set(ap.name, ap.total_duration)
 			}
 
-			// Match each scraps project to its hackatime project
+			// Match each scraps project to its hackatime project(s)
 			for (const project of userProjects) {
-				const projectName = parseHackatimeProject(project.hackatimeProject)
-				if (!projectName) continue
+				const projectNames = parseHackatimeProjects(project.hackatimeProject)
+				if (projectNames.length === 0) continue
 
-				const totalDuration = adminProjectMap.get(projectName)
-				const hours = totalDuration !== undefined
-					? Math.round(totalDuration / 3600 * 10) / 10
-					: 0
+				let totalSeconds = 0
+				for (const name of projectNames) {
+					const duration = adminProjectMap.get(name)
+					if (duration !== undefined) {
+						totalSeconds += duration
+					}
+				}
+
+				const hours = Math.round(totalSeconds / 3600 * 10) / 10
 
 				// Only update if hours changed
 				if (hours !== project.hours) {
@@ -290,8 +305,8 @@ export async function syncSingleProject(projectId: number): Promise<{ hours: num
 		if (!project) return { hours: 0, updated: false, error: 'Project not found' }
 		if (!project.hackatimeProject) return { hours: project.hours ?? 0, updated: false, error: 'No Hackatime project linked' }
 
-		const projectName = parseHackatimeProject(project.hackatimeProject)
-		if (!projectName) return { hours: project.hours ?? 0, updated: false, error: 'Invalid Hackatime project format' }
+		const projectNames = parseHackatimeProjects(project.hackatimeProject)
+		if (projectNames.length === 0) return { hours: project.hours ?? 0, updated: false, error: 'Invalid Hackatime project format' }
 
 		const hackatimeUser = await getHackatimeUser(project.userEmail)
 		if (hackatimeUser === null) return { hours: project.hours ?? 0, updated: false, error: 'Could not find Hackatime user' }
@@ -300,10 +315,14 @@ export async function syncSingleProject(projectId: number): Promise<{ hours: num
 		const adminProjects = await fetchUserProjects(identifier)
 		if (adminProjects === null) return { hours: project.hours ?? 0, updated: false, error: 'Failed to fetch Hackatime projects' }
 
-		const hackatimeProject = adminProjects.find(p => p.name === projectName)
-		const hours = hackatimeProject
-			? Math.round(hackatimeProject.total_duration / 3600 * 10) / 10
-			: 0
+		let totalSeconds = 0
+		for (const name of projectNames) {
+			const hackatimeProject = adminProjects.find(p => p.name === name)
+			if (hackatimeProject) {
+				totalSeconds += hackatimeProject.total_duration
+			}
+		}
+		const hours = Math.round(totalSeconds / 3600 * 10) / 10
 
 		if (hours !== project.hours) {
 			await db

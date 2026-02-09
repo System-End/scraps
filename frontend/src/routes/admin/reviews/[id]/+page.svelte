@@ -87,7 +87,7 @@
 
 	let hoursOverrideError = $derived(
 		hoursOverride !== undefined && project && hoursOverride > project.hours
-			? `Hours override cannot exceed project hours (${project.hours}h)`
+			? `Hours override cannot exceed project hours (${formatHours(project.hours)}h)`
 			: null
 	);
 
@@ -557,7 +557,7 @@
 						min="0"
 						max={project.hours}
 						bind:value={hoursOverride}
-						placeholder={String(project.hours)}
+						placeholder={formatHours(project.hours)}
 						class="w-full rounded-lg border-2 px-4 py-2 focus:border-dashed focus:outline-none {hoursOverrideError
 							? 'border-red-500'
 							: 'border-black'}"
