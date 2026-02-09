@@ -269,7 +269,15 @@ export default {
 			tier2: 'moderate complexity, multi-file projects',
 			tier3: 'complex features, APIs, integrations',
 			tier4: 'full applications, major undertakings'
-		}
+		},
+		isUpdateLabel: 'this project is an update to a previous project',
+		whatDidYouUpdate: 'what did you update?',
+		updateDescriptionPlaceholder: 'Describe what you changed or improved in this update...',
+		pleaseDescribeUpdate: 'Please describe what you updated',
+		usedAiLabel: 'AI was used in this project',
+		howWasAiUsed: 'how was AI used?',
+		aiDescriptionPlaceholder: 'Describe how AI was used in this project...',
+		pleaseDescribeAiUsage: 'Please describe how AI was used'
 	},
 	address: {
 		shippingAddress: 'shipping address',
@@ -374,7 +382,17 @@ export default {
 		unsubmitConfirmTitle: 'unsubmit project?',
 		unsubmitConfirmMessage: 'this will remove your project from the review queue and return it to in-progress status.',
 		unsubmitting: 'unsubmitting...',
-		unsubmitSuccess: 'project unsubmitted successfully'
+		unsubmitSuccess: 'project unsubmitted successfully',
+		isUpdateLabel: 'this project is an update to a previous project',
+		whatDidYouUpdate: 'what did you update?',
+		updateDescriptionPlaceholder: 'Describe what you changed or improved in this update...',
+		pleaseDescribeUpdate: 'Please describe what you updated',
+		whatWasUpdated: 'what was updated',
+		usedAiLabel: 'AI was used in this project',
+		howWasAiUsed: 'how was AI used?',
+		aiDescriptionPlaceholder: 'Describe how AI was used in this project...',
+		pleaseDescribeAiUsage: 'Please describe how AI was used',
+		aiWasUsed: 'AI was used in this project'
 	},
 	faq: {
 		title: 'faq',

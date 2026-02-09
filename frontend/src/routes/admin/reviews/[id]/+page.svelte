@@ -12,7 +12,8 @@
 		XCircle,
 		Info,
 		Globe,
-		RefreshCw
+		RefreshCw,
+		Bot
 	} from '@lucide/svelte';
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
 	import { getUser } from '$lib/auth-client';
@@ -57,6 +58,8 @@
 		feedbackSource: string | null;
 		feedbackGood: string | null;
 		feedbackImprove: string | null;
+		updateDescription: string | null;
+		aiDescription: string | null;
 	}
 
 	interface User {
@@ -343,6 +346,24 @@
 				</span>
 			</div>
 			<p class="mb-4 text-gray-600">{project.description}</p>
+			{#if project.updateDescription}
+				<div class="mb-4 rounded-lg border-2 border-dashed border-gray-400 bg-gray-50 p-4">
+					<p class="mb-1 flex items-center gap-1.5 text-sm font-bold text-gray-600">
+						<RefreshCw size={14} />
+						{$t.project.whatWasUpdated}
+					</p>
+					<p class="text-gray-700">{project.updateDescription}</p>
+				</div>
+			{/if}
+			{#if project.aiDescription}
+				<div class="mb-4 rounded-lg border-2 border-dashed border-purple-400 bg-purple-50 p-4">
+					<p class="mb-1 flex items-center gap-1.5 text-sm font-bold text-purple-600">
+						<Bot size={14} />
+						{$t.project.aiWasUsed}
+					</p>
+					<p class="text-purple-700">{project.aiDescription}</p>
+				</div>
+			{/if}
 			<div class="flex flex-wrap items-center gap-3 text-sm">
 				<span class="rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold"
 					>{formatHours(project.hours)}h logged</span

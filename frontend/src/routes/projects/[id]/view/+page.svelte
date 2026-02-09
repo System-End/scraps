@@ -7,7 +7,9 @@
 		Clock,
 		CheckCircle,
 		AlertTriangle,
-		Package
+		Package,
+		RefreshCw,
+		Bot
 	} from '@lucide/svelte';
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
@@ -26,6 +28,8 @@
 		playableUrl: string | null;
 		hours: number;
 		status: string;
+		updateDescription: string | null;
+		usedAi: boolean;
 		createdAt: string;
 	}
 
@@ -131,6 +135,25 @@
 				{/if}
 			</div>
 			<p class="mb-4 text-gray-600">{project.description}</p>
+			{#if project.updateDescription}
+				<div class="mb-4 rounded-lg border-2 border-dashed border-gray-400 bg-gray-50 p-4">
+					<p class="mb-1 flex items-center gap-1.5 text-sm font-bold text-gray-600">
+						<RefreshCw size={14} />
+						{$t.project.whatWasUpdated}
+					</p>
+					<p class="text-gray-700">{project.updateDescription}</p>
+				</div>
+			{/if}
+			<div class="mb-4 flex flex-wrap items-center gap-2">
+				{#if project.usedAi}
+					<span
+						class="flex items-center gap-1 rounded-full border-2 border-purple-400 bg-purple-100 px-3 py-1 text-sm font-bold text-purple-700"
+					>
+						<Bot size={14} />
+						{$t.project.aiWasUsed}
+					</span>
+				{/if}
+			</div>
 			<div class="flex flex-wrap items-center gap-3 text-sm">
 				<span
 					class="flex items-center gap-1 rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold"

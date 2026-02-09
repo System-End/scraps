@@ -60,6 +60,10 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let selectedTier = $state(1);
+	let isUpdate = $state(false);
+	let updateDescription = $state('');
+	let usedAi = $state(false);
+	let aiDescription = $state('');
 
 	const TIERS = [
 		{ value: 1, description: $t.createProject.tierDescriptions.tier1 },
@@ -78,7 +82,9 @@
 		description.trim().length >= DESC_MIN && description.trim().length <= DESC_MAX
 	);
 	let hasName = $derived(name.trim().length > 0 && name.trim().length <= NAME_MAX);
-	let allRequirementsMet = $derived(hasDescription && hasName);
+	let updateValid = $derived(!isUpdate || updateDescription.trim().length > 0);
+	let aiValid = $derived(!usedAi || aiDescription.trim().length > 0);
+	let allRequirementsMet = $derived(hasDescription && hasName && updateValid && aiValid);
 
 	async function fetchHackatimeProjects() {
 		loadingProjects = true;
@@ -173,6 +179,10 @@
 		selectedHackatimeProjects = [];
 		showDropdown = false;
 		selectedTier = 1;
+		isUpdate = false;
+		updateDescription = '';
+		usedAi = false;
+		aiDescription = '';
 		error = null;
 	}
 
@@ -201,7 +211,9 @@
 					image: imageUrl || null,
 					githubUrl: finalGithubUrl,
 					hackatimeProject: hackatimeValue,
-					tier: selectedTier
+					tier: selectedTier,
+					updateDescription: isUpdate ? updateDescription : null,
+					aiDescription: usedAi ? aiDescription : null
 				})
 			});
 
@@ -464,6 +476,66 @@
 						{/each}
 					</div>
 				</div>
+
+				<!-- Is Update Checkbox -->
+				<div>
+					<label class="flex cursor-pointer items-center gap-3">
+						<input
+							type="checkbox"
+							bind:checked={isUpdate}
+							class="h-5 w-5 cursor-pointer accent-black"
+						/>
+						<span class="text-sm font-bold">{$t.createProject.isUpdateLabel}</span>
+					</label>
+				</div>
+
+				{#if isUpdate}
+					<div>
+						<label for="updateDescription" class="mb-1 block text-sm font-bold"
+							>{$t.createProject.whatDidYouUpdate} <span class="text-red-500">*</span></label
+						>
+						<textarea
+							id="updateDescription"
+							bind:value={updateDescription}
+							rows="3"
+							placeholder={$t.createProject.updateDescriptionPlaceholder}
+							class="w-full resize-none rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
+						></textarea>
+						{#if updateDescription.trim().length === 0}
+							<p class="mt-1 text-xs text-red-500">{$t.createProject.pleaseDescribeUpdate}</p>
+						{/if}
+					</div>
+				{/if}
+
+				<!-- AI Usage Checkbox -->
+				<div>
+					<label class="flex cursor-pointer items-center gap-3">
+						<input
+							type="checkbox"
+							bind:checked={usedAi}
+							class="h-5 w-5 cursor-pointer accent-black"
+						/>
+						<span class="text-sm font-bold">{$t.createProject.usedAiLabel}</span>
+					</label>
+				</div>
+
+				{#if usedAi}
+					<div>
+						<label for="aiDescription" class="mb-1 block text-sm font-bold"
+							>{$t.createProject.howWasAiUsed} <span class="text-red-500">*</span></label
+						>
+						<textarea
+							id="aiDescription"
+							bind:value={aiDescription}
+							rows="3"
+							placeholder={$t.createProject.aiDescriptionPlaceholder}
+							class="w-full resize-none rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
+						></textarea>
+						{#if aiDescription.trim().length === 0}
+							<p class="mt-1 text-xs text-red-500">{$t.createProject.pleaseDescribeAiUsage}</p>
+						{/if}
+					</div>
+				{/if}
 
 				<!-- Requirements Checklist -->
 				<div class="rounded-lg border-2 border-black p-4">

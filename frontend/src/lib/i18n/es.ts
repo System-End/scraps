@@ -269,7 +269,15 @@ export default {
 			tier2: 'complejidad moderada, proyectos multi-archivo',
 			tier3: 'características complejas, APIs, integraciones',
 			tier4: 'aplicaciones completas, emprendimientos mayores'
-		}
+		},
+		isUpdateLabel: 'este proyecto es una actualización de un proyecto anterior',
+		whatDidYouUpdate: '¿qué actualizaste?',
+		updateDescriptionPlaceholder: 'Describe qué cambiaste o mejoraste en esta actualización...',
+		pleaseDescribeUpdate: 'Por favor describe qué actualizaste',
+		usedAiLabel: 'se usó IA en este proyecto',
+		howWasAiUsed: '¿cómo se usó la IA?',
+		aiDescriptionPlaceholder: 'Describe cómo se usó la IA en este proyecto...',
+		pleaseDescribeAiUsage: 'Por favor describe cómo se usó la IA'
 	},
 	address: {
 		shippingAddress: 'dirección de envío',
@@ -414,7 +422,17 @@ export default {
 		unsubmitConfirmTitle: '¿retirar proyecto?',
 		unsubmitConfirmMessage: 'esto eliminará tu proyecto de la cola de revisión y lo devolverá al estado en progreso.',
 		unsubmitting: 'retirando...',
-		unsubmitSuccess: 'proyecto retirado exitosamente'
+		unsubmitSuccess: 'proyecto retirado exitosamente',
+		isUpdateLabel: 'este proyecto es una actualización de un proyecto anterior',
+		whatDidYouUpdate: '¿qué actualizaste?',
+		updateDescriptionPlaceholder: 'Describe qué cambiaste o mejoraste en esta actualización...',
+		pleaseDescribeUpdate: 'Por favor describe qué actualizaste',
+		whatWasUpdated: 'qué se actualizó',
+		usedAiLabel: 'se usó IA en este proyecto',
+		howWasAiUsed: '¿cómo se usó la IA?',
+		aiDescriptionPlaceholder: 'Describe cómo se usó la IA en este proyecto...',
+		pleaseDescribeAiUsage: 'Por favor describe cómo se usó la IA',
+		aiWasUsed: 'se usó IA en este proyecto'
 	},
 	profile: {
 		backToLeaderboard: 'volver a clasificación',

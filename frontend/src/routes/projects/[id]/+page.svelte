@@ -17,7 +17,8 @@
 		Spool,
 		Eye,
 		RefreshCw,
-		Undo2
+		Undo2,
+		Bot
 	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
@@ -42,6 +43,8 @@
 		status: string;
 		scrapsAwarded: number;
 		views: number;
+		updateDescription: string | null;
+		usedAi: boolean;
 		createdAt: string;
 		updatedAt: string;
 	}
@@ -278,18 +281,36 @@
 						</span>
 					{/if}
 				</div>
-				<div class="mb-4 flex items-center gap-2">
+				<div class="mb-4 flex flex-wrap items-center gap-2">
 					<span
 						class="rounded-full border-2 border-gray-400 bg-gray-100 px-3 py-1 text-sm font-bold text-gray-700"
 					>
 						{$t.project.tier.replace('{value}', String(project.tier))}
 					</span>
+					{#if project.usedAi}
+						<span
+							class="flex items-center gap-1 rounded-full border-2 border-purple-400 bg-purple-100 px-3 py-1 text-sm font-bold text-purple-700"
+						>
+							<Bot size={14} />
+							{$t.project.aiWasUsed}
+						</span>
+					{/if}
 				</div>
 
 				{#if project.description}
 					<p class="mb-4 text-lg text-gray-700">{project.description}</p>
 				{:else}
 					<p class="mb-4 text-lg text-gray-400 italic">{$t.project.noDescriptionYet}</p>
+				{/if}
+
+				{#if project.updateDescription}
+					<div class="mb-4 rounded-lg border-2 border-dashed border-gray-400 bg-gray-50 p-4">
+						<p class="mb-1 flex items-center gap-1.5 text-sm font-bold text-gray-600">
+							<RefreshCw size={14} />
+							{$t.project.whatWasUpdated}
+						</p>
+						<p class="text-gray-700">{project.updateDescription}</p>
+					</div>
 				{/if}
 
 				<div class="mb-3 flex flex-wrap items-center gap-3">

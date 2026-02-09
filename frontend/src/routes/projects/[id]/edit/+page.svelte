@@ -22,6 +22,8 @@
 		hours: number;
 		tier: number;
 		status: string;
+		updateDescription: string | null;
+		aiDescription: string | null;
 	}
 
 	const TIERS = [
@@ -52,6 +54,10 @@
 	let loadingProjects = $state(false);
 	let showDropdown = $state(false);
 	let selectedTier = $state(1);
+	let isUpdate = $state(false);
+	let updateDescription = $state('');
+	let usedAi = $state(false);
+	let aiDescription = $state('');
 
 	const NAME_MAX = 50;
 	const DESC_MIN = 20;
@@ -66,7 +72,9 @@
 	);
 	let githubValidation = $derived(validateGithubUrl(project?.githubUrl));
 	let playableValidation = $derived(validatePlayableUrl(project?.playableUrl));
-	let canSave = $derived(hasDescription && hasName && githubValidation.valid && playableValidation.valid);
+	let updateValid = $derived(!isUpdate || updateDescription.trim().length > 0);
+	let aiValid = $derived(!usedAi || aiDescription.trim().length > 0);
+	let canSave = $derived(hasDescription && hasName && githubValidation.valid && playableValidation.valid && updateValid && aiValid);
 
 	onMount(async () => {
 		const user = await getUser();
@@ -89,6 +97,10 @@
 			project = responseData.project;
 			imagePreview = project?.image || null;
 			selectedTier = project?.tier || 1;
+			isUpdate = !!(project?.updateDescription);
+			updateDescription = project?.updateDescription || '';
+			usedAi = !!(project?.aiDescription);
+			aiDescription = project?.aiDescription || '';
 			if (project?.hackatimeProject) {
 				selectedHackatimeNames = project.hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0);
 			}
@@ -216,7 +228,9 @@
 					githubUrl: project.githubUrl,
 					playableUrl: project.playableUrl,
 					hackatimeProject: hackatimeValue,
-					tier: selectedTier
+					tier: selectedTier,
+					updateDescription: isUpdate ? updateDescription : null,
+					aiDescription: usedAi ? aiDescription : null
 				})
 			});
 
@@ -505,6 +519,66 @@
 						{/each}
 					</div>
 				</div>
+
+				<!-- Is Update Checkbox -->
+				<div>
+					<label class="flex cursor-pointer items-center gap-3">
+						<input
+							type="checkbox"
+							bind:checked={isUpdate}
+							class="h-5 w-5 cursor-pointer accent-black"
+						/>
+						<span class="text-sm font-bold">{$t.project.isUpdateLabel}</span>
+					</label>
+				</div>
+
+				{#if isUpdate}
+					<div>
+						<label for="updateDescription" class="mb-2 block text-sm font-bold"
+							>{$t.project.whatDidYouUpdate} <span class="text-red-500">*</span></label
+						>
+						<textarea
+							id="updateDescription"
+							bind:value={updateDescription}
+							rows="3"
+							placeholder={$t.project.updateDescriptionPlaceholder}
+							class="w-full resize-none rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+						></textarea>
+						{#if updateDescription.trim().length === 0}
+							<p class="mt-1 text-xs text-red-500">{$t.project.pleaseDescribeUpdate}</p>
+						{/if}
+					</div>
+				{/if}
+
+				<!-- AI Usage Checkbox -->
+				<div>
+					<label class="flex cursor-pointer items-center gap-3">
+						<input
+							type="checkbox"
+							bind:checked={usedAi}
+							class="h-5 w-5 cursor-pointer accent-black"
+						/>
+						<span class="text-sm font-bold">{$t.project.usedAiLabel}</span>
+					</label>
+				</div>
+
+				{#if usedAi}
+					<div>
+						<label for="aiDescription" class="mb-2 block text-sm font-bold"
+							>{$t.project.howWasAiUsed} <span class="text-red-500">*</span></label
+						>
+						<textarea
+							id="aiDescription"
+							bind:value={aiDescription}
+							rows="3"
+							placeholder={$t.project.aiDescriptionPlaceholder}
+							class="w-full resize-none rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+						></textarea>
+						{#if aiDescription.trim().length === 0}
+							<p class="mt-1 text-xs text-red-500">{$t.project.pleaseDescribeAiUsage}</p>
+						{/if}
+					</div>
+				{/if}
 			</div>
 
 			<!-- Actions -->

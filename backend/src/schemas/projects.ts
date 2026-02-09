@@ -22,6 +22,12 @@ export const projectsTable = pgTable('projects', {
   scrapsAwarded: integer('scraps_awarded').notNull().default(0),
   views: integer().notNull().default(0),
 
+  // Update fields
+  updateDescription: text('update_description'),
+
+  // AI usage fields
+  aiDescription: text('ai_description'),
+
   // Feedback fields (filled on submission)
   feedbackSource: text('feedback_source'),
   feedbackGood: text('feedback_good'),

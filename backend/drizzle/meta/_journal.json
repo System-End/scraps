@@ -8,6 +8,20 @@
       "when": 1770422400000,
       "tag": "0002_feedback_and_activity",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770508800000,
+      "tag": "0003_add_project_update_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1770595200000,
+      "tag": "0004_remove_is_update_add_ai_description",
+      "breakpoints": true
     }
   ]
 }

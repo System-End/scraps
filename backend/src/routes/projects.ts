@@ -392,6 +392,9 @@ projects.get('/:id', async ({ params, headers }) => {
             status: project[0].status,
             scrapsAwarded: project[0].scrapsAwarded,
             views: project[0].views,
+            updateDescription: project[0].updateDescription,
+            aiDescription: isOwner ? project[0].aiDescription : undefined,
+            usedAi: !!project[0].aiDescription,
             createdAt: project[0].createdAt,
             updatedAt: project[0].updatedAt
         },
@@ -413,6 +416,8 @@ projects.post('/', async ({ body, headers }) => {
         githubUrl?: string
         hackatimeProject?: string
         tier?: number
+        updateDescription?: string
+        aiDescription?: string
     }
 
     if (!validateImageUrl(data.image)) {
@@ -437,7 +442,9 @@ projects.post('/', async ({ body, headers }) => {
     		githubUrl: data.githubUrl || null,
     		hackatimeProject: projectName || null,
     		hours: 0,
-    		tier
+    		tier,
+    		updateDescription: data.updateDescription || null,
+    		aiDescription: data.aiDescription || null
     	})
     	.returning()
 
@@ -482,6 +489,8 @@ projects.put('/:id', async ({ params, body, headers }) => {
         playableUrl?: string | null
         hackatimeProject?: string | null
         tier?: number
+        updateDescription?: string | null
+        aiDescription?: string | null
     }
 
     if (!validateImageUrl(data.image)) {
@@ -511,6 +520,8 @@ projects.put('/:id', async ({ params, body, headers }) => {
     		playableUrl: data.playableUrl,
     		hackatimeProject: projectName,
     		tier,
+    		updateDescription: data.updateDescription !== undefined ? (data.updateDescription || null) : undefined,
+    		aiDescription: data.aiDescription !== undefined ? (data.aiDescription || null) : undefined,
     		updatedAt: new Date()
     	})
         .where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id)))

@@ -42,6 +42,8 @@ async function syncProjectsToAirtable(): Promise<void> {
 				hoursOverride: projectsTable.hoursOverride,
 				tier: projectsTable.tier,
 				status: projectsTable.status,
+				updateDescription: projectsTable.updateDescription,
+				aiDescription: projectsTable.aiDescription,
 				feedbackSource: projectsTable.feedbackSource,
 				feedbackGood: projectsTable.feedbackGood,
 				feedbackImprove: projectsTable.feedbackImprove,
@@ -117,9 +119,17 @@ async function syncProjectsToAirtable(): Promise<void> {
 			const firstName = userInfo?.given_name || (project.username || '').split(' ')[0] || ''
 			const lastName = userInfo?.family_name || (project.username || '').split(' ').slice(1).join(' ') || ''
 
+			const descriptionParts = [project.description || '']
+			if (project.updateDescription) {
+				descriptionParts.push(`\nThis project is an update. ${project.updateDescription}`)
+			}
+			if (project.aiDescription) {
+				descriptionParts.push(`\nAI was used in this project. ${project.aiDescription}`)
+			}
+
 			const fields: Airtable.FieldSet = {
 				'Code URL': project.githubUrl,
-				'Description': project.description || '',
+				'Description': descriptionParts.join('\n'),
 				'Email': project.email || '',
 				'First Name': firstName,
 				'Last Name': lastName,
