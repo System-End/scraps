@@ -1,5 +1,5 @@
 import { Elysia } from 'elysia'
-import { eq, sql, and, desc, isNull } from 'drizzle-orm'
+import { eq, sql, and, desc, isNull, ne } from 'drizzle-orm'
 import { db } from '../db'
 import { shopItemsTable, shopHeartsTable, shopOrdersTable, shopRollsTable, refineryOrdersTable, shopPenaltiesTable } from '../schemas/shop'
 import { usersTable } from '../schemas/users'
@@ -725,7 +725,7 @@ shop.get('/items/:id/buyers', async ({ params }) => {
 		})
 		.from(shopOrdersTable)
 		.innerJoin(usersTable, eq(shopOrdersTable.userId, usersTable.id))
-		.where(eq(shopOrdersTable.shopItemId, itemId))
+		.where(and(eq(shopOrdersTable.shopItemId, itemId), ne(shopOrdersTable.orderType, 'consolation')))
 		.orderBy(desc(shopOrdersTable.createdAt))
 		.limit(20)
 

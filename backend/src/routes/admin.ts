@@ -95,13 +95,20 @@ admin.get('/users', async ({ headers, query, status }) => {
         const offset = (page - 1) * limit
         const search = (query.search as string)?.trim() || ''
 
+        const searchIsNumeric = search && /^\d+$/.test(search)
         const searchCondition = search
             ? or(
+                ...(searchIsNumeric ? [eq(usersTable.id, parseInt(search))] : []),
                 sql`${usersTable.username} ILIKE ${'%' + search + '%'}`,
                 sql`${usersTable.email} ILIKE ${'%' + search + '%'}`,
                 sql`${usersTable.slackId} ILIKE ${'%' + search + '%'}`
             )
             : undefined
+
+        // Sort ID exact matches first, then by created date
+        const orderClause = searchIsNumeric
+            ? [sql`CASE WHEN ${usersTable.id} = ${parseInt(search)} THEN 0 ELSE 1 END`, desc(usersTable.createdAt)]
+            : [desc(usersTable.createdAt)]
 
         const [userIds, countResult] = await Promise.all([
             db.select({
@@ -113,7 +120,7 @@ admin.get('/users', async ({ headers, query, status }) => {
                 role: usersTable.role,
                 internalNotes: usersTable.internalNotes,
                 createdAt: usersTable.createdAt
-            }).from(usersTable).where(searchCondition).orderBy(desc(usersTable.createdAt)).limit(limit).offset(offset),
+            }).from(usersTable).where(searchCondition).orderBy(...orderClause).limit(limit).offset(offset),
             db.select({ count: sql<number>`count(*)` }).from(usersTable).where(searchCondition)
         ])
 
@@ -1051,6 +1058,53 @@ admin.post('/projects/:id/sync-hours', async ({ headers, params, status }) => {
     } catch (err) {
         console.error(err)
         return status(500, { error: 'Failed to sync hours' })
+    }
+})
+
+// Fix negative balances: give bonuses to all users with negative balance to bring them to 0
+admin.post('/fix-negative-balances', async ({ headers, status }) => {
+    const adminUser = await requireAdmin(headers as Record<string, string>)
+    if (!adminUser) {
+        return status(401, { error: 'Unauthorized' })
+    }
+
+    try {
+        // Get all user IDs
+        const allUsers = await db
+            .select({ id: usersTable.id })
+            .from(usersTable)
+
+        const fixed: { userId: number; username: string | null; deficit: number }[] = []
+
+        for (const u of allUsers) {
+            const { balance } = await getUserScrapsBalance(u.id)
+            if (balance < 0) {
+                const deficit = Math.abs(balance)
+                await db.insert(userBonusesTable).values({
+                    userId: u.id,
+                    amount: deficit,
+                    reason: 'negative_balance_fix',
+                    givenBy: adminUser.id
+                })
+
+                const userInfo = await db
+                    .select({ username: usersTable.username })
+                    .from(usersTable)
+                    .where(eq(usersTable.id, u.id))
+                    .limit(1)
+
+                fixed.push({
+                    userId: u.id,
+                    username: userInfo[0]?.username ?? null,
+                    deficit
+                })
+            }
+        }
+
+        return { success: true, fixedCount: fixed.length, fixed }
+    } catch (err) {
+        console.error(err)
+        return status(500, { error: 'Failed to fix negative balances' })
     }
 })
 

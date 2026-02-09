@@ -113,8 +113,9 @@
 			{#each probabilityItems as item (item.id)}
 				{@const nextCost = item.nextUpgradeCost}
 				{@const maxed = item.effectiveProbability >= 100 || nextCost === null}
+				{@const soldOut = item.count === 0}
 				<div
-					class="rounded-2xl border-4 border-black p-4 transition-all hover:border-dashed sm:p-6"
+					class="rounded-2xl border-4 border-black p-4 transition-all hover:border-dashed sm:p-6 {soldOut ? 'bg-gray-100' : ''}"
 				>
 					<div class="flex flex-col gap-4 sm:flex-row sm:items-start">
 						<div class="flex flex-1 items-start gap-4">
@@ -122,17 +123,22 @@
 								<img
 									src={item.image}
 									alt={item.name}
-									class="h-12 w-12 shrink-0 rounded-lg border-2 border-black object-cover sm:h-16 sm:w-16"
+									class="h-12 w-12 shrink-0 rounded-lg border-2 border-black object-cover sm:h-16 sm:w-16 {soldOut ? 'opacity-50 grayscale' : ''}"
 								/>
 							{:else}
 								<div
-									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border-2 border-black bg-gray-100 sm:h-16 sm:w-16"
+									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border-2 border-black bg-gray-100 sm:h-16 sm:w-16 {soldOut ? 'opacity-50 grayscale' : ''}"
 								>
 									<span class="text-xl sm:text-2xl">?</span>
 								</div>
 							{/if}
 							<div class="min-w-0 flex-1">
-								<h3 class="truncate text-lg font-bold sm:text-xl">{item.name}</h3>
+								<div class="flex items-center gap-2">
+									<h3 class="truncate text-lg font-bold sm:text-xl">{item.name}</h3>
+									{#if soldOut}
+										<span class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600">{$t.shop.soldOut}</span>
+									{/if}
+								</div>
 								<div class="mt-1 flex flex-wrap items-center gap-2">
 									<span
 										class="text-xl font-bold sm:text-2xl {getProbabilityColor(

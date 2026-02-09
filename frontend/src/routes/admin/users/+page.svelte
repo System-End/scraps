@@ -164,7 +164,7 @@
 			<Search size={20} class="absolute top-1/2 left-4 -translate-y-1/2 text-gray-400" />
 			<input
 				type="text"
-				placeholder="search by username, email, or slack id..."
+				placeholder="search by user id, username, email, or slack id..."
 				value={searchQuery}
 				oninput={handleSearch}
 				class="w-full rounded-full border-4 border-black py-3 pr-4 pl-12 focus:border-dashed focus:outline-none"
