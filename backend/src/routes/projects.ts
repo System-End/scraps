@@ -7,6 +7,8 @@ import { usersTable } from '../schemas/users'
 import { projectActivityTable } from '../schemas/activity'
 import { getUserFromSession, fetchUserIdentity } from '../lib/auth'
 import { syncSingleProject } from '../lib/hackatime-sync'
+import { notifyProjectSubmitted } from '../lib/slack'
+import { config } from '../config'
 
 const ALLOWED_IMAGE_DOMAIN = 'cdn.hackclub.com'
 
@@ -578,6 +580,21 @@ projects.post("/:id/submit", async ({ params, headers, body }) => {
         projectId: updated[0].id,
         action: 'project_submitted'
     })
+
+    // Send Slack DM notification that the project is waiting for review
+    if (config.slackBotToken && user.slackId) {
+        try {
+            await notifyProjectSubmitted({
+                userSlackId: user.slackId,
+                projectName: updated[0].name,
+                projectId: updated[0].id,
+                frontendUrl: config.frontendUrl,
+                token: config.slackBotToken
+            })
+        } catch (slackErr) {
+            console.error('Failed to send Slack submission notification:', slackErr)
+        }
+    }
 
     return updated[0]
 })

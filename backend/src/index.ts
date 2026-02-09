@@ -10,6 +10,7 @@ import leaderboard from './routes/leaderboard'
 import hackatime from './routes/hackatime'
 import upload from './routes/upload'
 import admin from './routes/admin'
+import slack from './routes/slack'
 import { startHackatimeSync } from './lib/hackatime-sync'
 import { startAirtableSync } from './lib/airtable-sync'
 
@@ -23,6 +24,7 @@ const api = new Elysia()
     .use(hackatime)
     .use(upload)
     .use(admin)
+    .use(slack)
     .get("/", () => "if you dm @notaroomba abt finding this you may get cool stickers")
 
 const app = new Elysia()

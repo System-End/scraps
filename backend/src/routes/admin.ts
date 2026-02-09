@@ -10,6 +10,8 @@ import { projectActivityTable } from '../schemas/activity'
 import { getUserFromSession } from '../lib/auth'
 import { calculateScrapsFromHours, getUserScrapsBalance } from '../lib/scraps'
 import { syncSingleProject } from '../lib/hackatime-sync'
+import { notifyProjectReview } from '../lib/slack'
+import { config } from '../config'
 
 const admin = new Elysia({ prefix: '/admin' })
 
@@ -617,6 +619,52 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
                     .update(usersTable)
                     .set({ internalNotes: userInternalNotes, updatedAt: new Date() })
                     .where(eq(usersTable.id, project[0].userId))
+            }
+        }
+
+        // Send Slack DM notification to the project author
+        if (config.slackBotToken) {
+            try {
+                // Get the project author's Slack ID
+                const projectAuthor = await db
+                    .select({ slackId: usersTable.slackId })
+                    .from(usersTable)
+                    .where(eq(usersTable.id, project[0].userId))
+                    .limit(1)
+
+                if (projectAuthor[0]?.slackId) {
+                    // Get admin Slack IDs for permanently rejected projects
+                    let adminSlackIds: string[] = []
+                    if (action === 'permanently_rejected') {
+                        const admins = await db
+                            .select({ slackId: usersTable.slackId })
+                            .from(usersTable)
+                            .where(eq(usersTable.role, 'admin'))
+
+                        adminSlackIds = admins
+                            .map(a => a.slackId)
+                            .filter((id): id is string => !!id)
+                    }
+
+                    // Get the reviewer's Slack ID
+                    const reviewerSlackId = user.slackId ?? null
+
+                    await notifyProjectReview({
+                        userSlackId: projectAuthor[0].slackId,
+                        projectName: project[0].name,
+                        projectId,
+                        action,
+                        feedbackForAuthor,
+                        reviewerSlackId,
+                        adminSlackIds,
+                        scrapsAwarded,
+                        frontendUrl: config.frontendUrl,
+                        token: config.slackBotToken
+                    })
+                }
+            } catch (slackErr) {
+                // Don't fail the review if Slack notification fails
+                console.error('Failed to send Slack DM notification:', slackErr)
             }
         }
 
