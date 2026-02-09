@@ -4,7 +4,7 @@
 	import { ArrowLeft, ChevronDown, Upload, X, Save, Check, Trash2 } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
-	import { formatHours } from '$lib/utils';
+	import { formatHours, validateGithubUrl, validatePlayableUrl } from '$lib/utils';
 	import { invalidateAllStores } from '$lib/stores';
 	import { t } from '$lib/i18n';
 

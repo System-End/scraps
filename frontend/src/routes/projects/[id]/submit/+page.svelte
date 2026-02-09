@@ -4,7 +4,7 @@
 	import { ArrowLeft, Send, Check, ChevronDown, Upload, X } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
-	import { formatHours } from '$lib/utils';
+	import { formatHours, validateGithubUrl, validatePlayableUrl } from '$lib/utils';
 	import { t } from '$lib/i18n';
 
 	let { data } = $props();
@@ -60,8 +60,10 @@
 
 	let hasImage = $derived(!!project?.image);
 	let hasHackatime = $derived(selectedHackatimeNames.length > 0);
-	let hasGithub = $derived(!!project?.githubUrl?.trim());
-	let hasPlayableUrl = $derived(!!project?.playableUrl?.trim());
+	let githubValidation = $derived(validateGithubUrl(project?.githubUrl));
+	let playableValidation = $derived(validatePlayableUrl(project?.playableUrl));
+	let hasGithub = $derived(!!project?.githubUrl?.trim() && githubValidation.valid);
+	let hasPlayableUrl = $derived(!!project?.playableUrl?.trim() && playableValidation.valid);
 	let hasDescription = $derived(
 		(project?.description?.trim().length ?? 0) >= DESC_MIN &&
 			(project?.description?.trim().length ?? 0) <= DESC_MAX
@@ -401,8 +403,11 @@
 						type="url"
 						bind:value={project.githubUrl}
 						placeholder="https://github.com/user/repo"
-						class="w-full rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+						class="w-full rounded-lg border-2 px-4 py-3 focus:border-dashed focus:outline-none {project.githubUrl?.trim() && !githubValidation.valid ? 'border-red-500' : 'border-black'}"
 					/>
+					{#if project.githubUrl?.trim() && !githubValidation.valid}
+						<p class="mt-1 text-xs text-red-500">{githubValidation.error}</p>
+					{/if}
 				</div>
 
 				<!-- Playable URL -->
@@ -415,9 +420,13 @@
 						type="url"
 						bind:value={project.playableUrl}
 						placeholder="https://yourproject.com or https://replit.com/..."
-						class="w-full rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+						class="w-full rounded-lg border-2 px-4 py-3 focus:border-dashed focus:outline-none {project.playableUrl?.trim() && !playableValidation.valid ? 'border-red-500' : 'border-black'}"
 					/>
-					<p class="mt-1 text-xs text-gray-500">{$t.project.playableUrlHint}</p>
+					{#if project.playableUrl?.trim() && !playableValidation.valid}
+						<p class="mt-1 text-xs text-red-500">{playableValidation.error}</p>
+					{:else}
+						<p class="mt-1 text-xs text-gray-500">{$t.project.playableUrlHint}</p>
+					{/if}
 				</div>
 
 				<!-- Hackatime Project Dropdown -->
