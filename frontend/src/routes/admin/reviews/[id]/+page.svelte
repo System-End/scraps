@@ -122,11 +122,9 @@
 				reviews = data.reviews || [];
 				userInternalNotes = data.user?.internalNotes || '';
 
-				// Check if project is deleted or not waiting for review
+				// Check if project is deleted
 				if (project?.deleted) {
 					error = 'This project has been deleted';
-				} else if (project?.status !== 'waiting_for_review') {
-					error = 'This project is not marked for review';
 				}
 			}
 		} catch (e) {
@@ -299,17 +297,30 @@
 			<p class="mb-4 text-xl text-gray-500">{$t.project.projectNotFound}</p>
 			<a href="/admin/reviews" class="font-bold underline">{$t.project.back}</a>
 		</div>
-	{:else if project.deleted || project.status !== 'waiting_for_review'}
+	{:else if project.deleted}
 		<div class="py-12 text-center">
-			<p class="mb-2 text-xl text-gray-500">
-				{project.deleted
-					? 'this project has been deleted'
-					: 'this project is not marked for review'}
-			</p>
+			<p class="mb-2 text-xl text-gray-500">this project has been deleted</p>
 			<p class="mb-4 text-gray-400">status: {project.status}</p>
 			<a href="/projects/{project.id}" class="font-bold underline">view project</a>
 		</div>
 	{:else}
+		{@const isReviewable = project.status === 'waiting_for_review'}
+
+		<!-- Status Banner (shown when project is not waiting for review) -->
+		{#if !isReviewable}
+			<div class="mb-6 rounded-2xl border-4 border-gray-400 bg-gray-100 p-4">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<Info size={20} class="text-gray-500" />
+						<div>
+							<p class="font-bold text-gray-700">this project is not waiting for review</p>
+							<p class="text-sm text-gray-500">status: {project.status}</p>
+						</div>
+					</div>
+					<a href="/projects/{project.id}" class="font-bold underline text-gray-600 hover:text-black">view project</a>
+				</div>
+			</div>
+		{/if}
 		<!-- Project Image -->
 		<div class="mb-6 h-64 w-full overflow-hidden rounded-2xl border-4 border-black md:h-80">
 			{#if project.image}
@@ -455,29 +466,6 @@
 			</div>
 		{/if}
 
-		<!-- User Internal Notes Section -->
-		{#if projectUser}
-			<div class="mb-6 rounded-2xl border-4 border-black bg-white p-6">
-				<h2 class="mb-4 text-xl font-bold">user internal notes</h2>
-				<textarea
-					bind:value={userInternalNotes}
-					rows="3"
-					placeholder="Notes about this user (visible to reviewers only)"
-					class="w-full resize-none rounded-lg border-2 border-black bg-white px-4 py-2 focus:border-dashed focus:outline-none"
-				></textarea>
-				<div class="mt-3 flex items-center justify-between">
-					<p class="text-xs text-gray-500">these notes persist across all reviews for this user</p>
-					<button
-						onclick={saveUserNotes}
-						disabled={savingNotes}
-						class="cursor-pointer rounded-full bg-black px-4 py-2 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
-					>
-						{savingNotes ? $t.common.saving : 'save notes'}
-					</button>
-				</div>
-			</div>
-		{/if}
-
 		<!-- Previous Reviews -->
 		{#if reviews.length > 0}
 			<div class="mb-6 rounded-2xl border-4 border-black p-6">
@@ -536,139 +524,166 @@
 			</div>
 		{/if}
 
-		{#if error}
+		{#if error && isReviewable}
 			<div class="mb-6 rounded-lg border-2 border-red-500 bg-red-100 p-4 text-red-700">
 				{error}
 			</div>
 		{/if}
 
-		<!-- Tier Reference -->
-		<div class="mb-6 rounded-2xl border-4 border-black p-6">
-			<h2 class="mb-4 text-xl font-bold">tier reference</h2>
-			<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-				<div class="rounded-lg border-2 {project.tier === 1 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
-					<div class="flex items-center justify-between">
-						<span class="font-bold">tier 1</span>
-						<span class="text-sm {project.tier === 1 ? 'text-gray-300' : 'text-gray-500'}">0.8×</span>
-					</div>
-					<p class="mt-1 text-xs {project.tier === 1 ? 'text-gray-300' : 'text-gray-500'}">
-						{$t.project.tierDescriptions.tier1}
-					</p>
-				</div>
-				<div class="rounded-lg border-2 {project.tier === 2 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
-					<div class="flex items-center justify-between">
-						<span class="font-bold">tier 2</span>
-						<span class="text-sm {project.tier === 2 ? 'text-gray-300' : 'text-gray-500'}">1.0×</span>
-					</div>
-					<p class="mt-1 text-xs {project.tier === 2 ? 'text-gray-300' : 'text-gray-500'}">
-						{$t.project.tierDescriptions.tier2}
-					</p>
-				</div>
-				<div class="rounded-lg border-2 {project.tier === 3 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
-					<div class="flex items-center justify-between">
-						<span class="font-bold">tier 3</span>
-						<span class="text-sm {project.tier === 3 ? 'text-gray-300' : 'text-gray-500'}">1.25×</span>
-					</div>
-					<p class="mt-1 text-xs {project.tier === 3 ? 'text-gray-300' : 'text-gray-500'}">
-						{$t.project.tierDescriptions.tier3}
-					</p>
-				</div>
-				<div class="rounded-lg border-2 {project.tier === 4 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
-					<div class="flex items-center justify-between">
-						<span class="font-bold">tier 4</span>
-						<span class="text-sm {project.tier === 4 ? 'text-gray-300' : 'text-gray-500'}">1.5×</span>
-					</div>
-					<p class="mt-1 text-xs {project.tier === 4 ? 'text-gray-300' : 'text-gray-500'}">
-						{$t.project.tierDescriptions.tier4}
-					</p>
+		<!-- User Internal Notes Section (always interactive) -->
+		{#if projectUser}
+			<div class="mb-6 rounded-2xl border-4 border-black bg-white p-6">
+				<h2 class="mb-4 text-xl font-bold">user internal notes</h2>
+				<textarea
+					bind:value={userInternalNotes}
+					rows="3"
+					placeholder="Notes about this user (visible to reviewers only)"
+					class="w-full resize-none rounded-lg border-2 border-black bg-white px-4 py-2 focus:border-dashed focus:outline-none"
+				></textarea>
+				<div class="mt-3 flex items-center justify-between">
+					<p class="text-xs text-gray-500">these notes persist across all reviews for this user</p>
+					<button
+						onclick={saveUserNotes}
+						disabled={savingNotes}
+						class="cursor-pointer rounded-full bg-black px-4 py-2 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
+					>
+						{savingNotes ? $t.common.saving : 'save notes'}
+					</button>
 				</div>
 			</div>
-		</div>
+		{/if}
 
-		<!-- Review Form -->
-		<div class="rounded-2xl border-4 border-black p-6">
-			<h2 class="mb-4 text-xl font-bold">submit review</h2>
-			<div class="space-y-4">
-				<div>
-					<label class="mb-1 block text-sm font-bold">hours override</label>
-					<input
-						type="number"
-						step="0.1"
-						min="0"
-						max={project.hours}
-						bind:value={hoursOverride}
-						placeholder={formatHours(project.hours)}
-						class="w-full rounded-lg border-2 px-4 py-2 focus:border-dashed focus:outline-none {hoursOverrideError
-							? 'border-red-500'
-							: 'border-black'}"
-					/>
-					{#if hoursOverrideError}
-						<p class="mt-1 text-sm text-red-500">{hoursOverrideError}</p>
-					{/if}
+		<!-- Review-only sections (sold-out effect when not reviewable) -->
+		<div class="relative {!isReviewable ? 'pointer-events-none select-none opacity-50 grayscale' : ''}">
+
+			<!-- Tier Reference -->
+			<div class="mb-6 rounded-2xl border-4 border-black p-6">
+				<h2 class="mb-4 text-xl font-bold">tier reference</h2>
+				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+					<div class="rounded-lg border-2 {project.tier === 1 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
+						<div class="flex items-center justify-between">
+							<span class="font-bold">tier 1</span>
+							<span class="text-sm {project.tier === 1 ? 'text-gray-300' : 'text-gray-500'}">0.8×</span>
+						</div>
+						<p class="mt-1 text-xs {project.tier === 1 ? 'text-gray-300' : 'text-gray-500'}">
+							{$t.project.tierDescriptions.tier1}
+						</p>
+					</div>
+					<div class="rounded-lg border-2 {project.tier === 2 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
+						<div class="flex items-center justify-between">
+							<span class="font-bold">tier 2</span>
+							<span class="text-sm {project.tier === 2 ? 'text-gray-300' : 'text-gray-500'}">1.0×</span>
+						</div>
+						<p class="mt-1 text-xs {project.tier === 2 ? 'text-gray-300' : 'text-gray-500'}">
+							{$t.project.tierDescriptions.tier2}
+						</p>
+					</div>
+					<div class="rounded-lg border-2 {project.tier === 3 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
+						<div class="flex items-center justify-between">
+							<span class="font-bold">tier 3</span>
+							<span class="text-sm {project.tier === 3 ? 'text-gray-300' : 'text-gray-500'}">1.25×</span>
+						</div>
+						<p class="mt-1 text-xs {project.tier === 3 ? 'text-gray-300' : 'text-gray-500'}">
+							{$t.project.tierDescriptions.tier3}
+						</p>
+					</div>
+					<div class="rounded-lg border-2 {project.tier === 4 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
+						<div class="flex items-center justify-between">
+							<span class="font-bold">tier 4</span>
+							<span class="text-sm {project.tier === 4 ? 'text-gray-300' : 'text-gray-500'}">1.5×</span>
+						</div>
+						<p class="mt-1 text-xs {project.tier === 4 ? 'text-gray-300' : 'text-gray-500'}">
+							{$t.project.tierDescriptions.tier4}
+						</p>
+					</div>
 				</div>
+			</div>
 
-				<div>
-					<label class="mb-1 block text-sm font-bold">tier override</label>
-					<select
-						bind:value={tierOverride}
-						class="w-full cursor-pointer rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
-					>
-						<option value={undefined}>use user's tier (tier {project.tier})</option>
-						{#each [1, 2, 3, 4] as tier}
-							<option value={tier}>tier {tier}</option>
-						{/each}
-					</select>
-				</div>
+			<!-- Review Form -->
+			<div class="rounded-2xl border-4 border-black p-6">
+				<h2 class="mb-4 text-xl font-bold">submit review</h2>
+				<div class="space-y-4">
+					<div>
+						<label class="mb-1 block text-sm font-bold">hours override</label>
+						<input
+							type="number"
+							step="0.1"
+							min="0"
+							max={project.hours}
+							bind:value={hoursOverride}
+							placeholder={formatHours(project.hours)}
+							class="w-full rounded-lg border-2 px-4 py-2 focus:border-dashed focus:outline-none {hoursOverrideError
+								? 'border-red-500'
+								: 'border-black'}"
+						/>
+						{#if hoursOverrideError}
+							<p class="mt-1 text-sm text-red-500">{hoursOverrideError}</p>
+						{/if}
+					</div>
 
-				<div>
-					<label class="mb-1 block text-sm font-bold"
-						>internal justification <span class="text-red-500">*</span></label
-					>
-					<textarea
-						bind:value={internalJustification}
-						rows="2"
-						placeholder="Internal notes about this review decision"
-						class="w-full resize-none rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
-					></textarea>
-				</div>
+					<div>
+						<label class="mb-1 block text-sm font-bold">tier override</label>
+						<select
+							bind:value={tierOverride}
+							class="w-full cursor-pointer rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
+						>
+							<option value={undefined}>use user's tier (tier {project.tier})</option>
+							{#each [1, 2, 3, 4] as tier}
+								<option value={tier}>tier {tier}</option>
+							{/each}
+						</select>
+					</div>
 
-				<div>
-					<label class="mb-1 block text-sm font-bold">
-						feedback for author <span class="text-red-500">*</span>
-					</label>
-					<textarea
-						bind:value={feedbackForAuthor}
-						rows="4"
-						placeholder="This will be shown to the project author"
-						class="w-full resize-none rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
-					></textarea>
-				</div>
+					<div>
+						<label class="mb-1 block text-sm font-bold"
+							>internal justification <span class="text-red-500">*</span></label
+						>
+						<textarea
+							bind:value={internalJustification}
+							rows="2"
+							placeholder="Internal notes about this review decision"
+							class="w-full resize-none rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
+						></textarea>
+					</div>
 
-				<div class="flex gap-3 pt-4">
-					<button
-						onclick={() => requestConfirmation('approved')}
-						disabled={submitting || !!hoursOverrideError}
-						class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-green-600 px-4 py-3 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						<Check size={20} />
-						<span>approve</span>
-					</button>
-					<button
-						onclick={() => requestConfirmation('denied')}
-						disabled={submitting || !!hoursOverrideError}
-						class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-yellow-500 px-4 py-3 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						<X size={20} />
-						<span>reject</span>
-					</button>
-					<button
-						onclick={() => requestConfirmation('permanently_rejected')}
-						disabled={submitting || !!hoursOverrideError}
-						class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-red-600 px-4 py-3 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						<Ban size={20} />
-						<span>permanently reject</span>
-					</button>
+					<div>
+						<label class="mb-1 block text-sm font-bold">
+							feedback for author <span class="text-red-500">*</span>
+						</label>
+						<textarea
+							bind:value={feedbackForAuthor}
+							rows="4"
+							placeholder="This will be shown to the project author"
+							class="w-full resize-none rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
+						></textarea>
+					</div>
+
+					<div class="flex gap-3 pt-4">
+						<button
+							onclick={() => requestConfirmation('approved')}
+							disabled={submitting || !!hoursOverrideError || !isReviewable}
+							class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-green-600 px-4 py-3 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							<Check size={20} />
+							<span>approve</span>
+						</button>
+						<button
+							onclick={() => requestConfirmation('denied')}
+							disabled={submitting || !!hoursOverrideError || !isReviewable}
+							class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-yellow-500 px-4 py-3 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							<X size={20} />
+							<span>reject</span>
+						</button>
+						<button
+							onclick={() => requestConfirmation('permanently_rejected')}
+							disabled={submitting || !!hoursOverrideError || !isReviewable}
+							class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-red-600 px-4 py-3 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							<Ban size={20} />
+							<span>permanently reject</span>
+						</button>
+					</div>
 				</div>
 			</div>
 		</div>

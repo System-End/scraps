@@ -4,8 +4,9 @@ import { projectsTable } from '../schemas/projects'
 import { usersTable } from '../schemas/users'
 import { userActivityTable } from '../schemas/user-emails'
 import { projectActivityTable } from '../schemas/activity'
+import { reviewsTable } from '../schemas/reviews'
 import { config } from '../config'
-import { eq, and, or, isNull, min, sql } from 'drizzle-orm'
+import { eq, and, or, isNull, min, sql, inArray } from 'drizzle-orm'
 import { fetchUserInfo } from './auth'
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
@@ -20,6 +21,47 @@ function getBase(): Airtable.Base | null {
 
 	const airtable = new Airtable({ apiKey: config.airtableToken })
 	return airtable.base(config.airtableBaseId)
+}
+
+function formatHoursMinutes(hours: number): string {
+	const totalMinutes = Math.round(hours * 60)
+	const h = Math.floor(totalMinutes / 60)
+	const m = totalMinutes % 60
+	if (h === 0) return `${m}min`
+	if (m === 0) return `${h}h`
+	return `${h}h ${m}min`
+}
+
+function buildJustification(project: {
+	id: number
+	hours: number | null
+	hoursOverride: number | null
+}, reviews: {
+	action: string
+	reviewerName: string | null
+	createdAt: Date
+}[]): string {
+	const effectiveHours = project.hoursOverride ?? project.hours ?? 0
+	const lines: string[] = []
+
+	lines.push(`The user logged ${formatHoursMinutes(effectiveHours)} on hackatime.`)
+	lines.push('')
+	lines.push(`The scraps project can be found at ${config.frontendUrl}/projects/${project.id}`)
+
+	if (reviews.length > 0) {
+		lines.push('')
+		lines.push('Review history:')
+		for (const review of reviews) {
+			const reviewerName = review.reviewerName || 'Unknown'
+			const date = review.createdAt.toISOString().split('T')[0]
+			lines.push(`- ${reviewerName} ${review.action} on ${date}`)
+		}
+	}
+
+	lines.push('')
+	lines.push(`Full review history can be found at ${config.frontendUrl}/admin/reviews/${project.id}`)
+
+	return lines.join('\n')
 }
 
 async function syncProjectsToAirtable(): Promise<void> {
@@ -60,6 +102,32 @@ async function syncProjectsToAirtable(): Promise<void> {
 				eq(projectsTable.status, 'shipped'),
 				or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
 			))
+
+		// Fetch all reviews for shipped projects with reviewer usernames
+		const projectIds = projects.map(p => p.id)
+		let reviewsByProjectId = new Map<number, { action: string; reviewerName: string | null; createdAt: Date }[]>()
+		if (projectIds.length > 0) {
+			const allReviews = await db
+				.select({
+					projectId: reviewsTable.projectId,
+					action: reviewsTable.action,
+					createdAt: reviewsTable.createdAt,
+					reviewerUsername: usersTable.username
+				})
+				.from(reviewsTable)
+				.leftJoin(usersTable, eq(reviewsTable.reviewerId, usersTable.id))
+				.where(inArray(reviewsTable.projectId, projectIds))
+
+			for (const review of allReviews) {
+				const existing = reviewsByProjectId.get(review.projectId) || []
+				existing.push({
+					action: review.action,
+					reviewerName: review.reviewerUsername,
+					createdAt: review.createdAt
+				})
+				reviewsByProjectId.set(review.projectId, existing)
+			}
+		}
 
 		const table = base(config.airtableProjectsTableId)
 
@@ -139,6 +207,10 @@ async function syncProjectsToAirtable(): Promise<void> {
 				'What are we doing well?': project.feedbackGood || '',
 				'Slack ID': project.slackId || '',
 				'Optional - Override Hours Spent': effectiveHours,
+				'Optional - Override Hours Spent Justification': buildJustification(
+					project,
+					reviewsByProjectId.get(project.id) || []
+				),
 				'Playable URL': project.playableUrl || '',
 				'Screenshot': [{ url: project.image }] as any,
 			}
