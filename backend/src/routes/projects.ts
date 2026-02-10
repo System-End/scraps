@@ -41,36 +41,6 @@ function validateImageUrl(imageUrl: string | null | undefined): boolean {
 	}
 }
 
-const ALLOWED_GITHUB_HOSTS = ['github.com', 'www.github.com']
-
-function validateGithubUrl(githubUrl: string | null | undefined): { valid: boolean; error?: string } {
-	if (!githubUrl || !githubUrl.trim()) return { valid: true }
-	const trimmed = githubUrl.trim()
-
-	let url: URL
-	try {
-		url = new URL(trimmed)
-	} catch {
-		return { valid: false, error: 'GitHub URL is not a valid URL' }
-	}
-
-	if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-		return { valid: false, error: 'GitHub URL must use http or https' }
-	}
-
-	if (!ALLOWED_GITHUB_HOSTS.includes(url.hostname)) {
-		return { valid: false, error: 'GitHub URL must be from github.com' }
-	}
-
-	// Must have at least /user/repo pattern
-	const pathParts = url.pathname.split('/').filter(p => p.length > 0)
-	if (pathParts.length < 2) {
-		return { valid: false, error: 'GitHub URL must include a user and repository (e.g. https://github.com/user/repo)' }
-	}
-
-	return { valid: true }
-}
-
 function validatePlayableUrl(playableUrl: string | null | undefined): { valid: boolean; error?: string } {
 	if (!playableUrl || !playableUrl.trim()) return { valid: true }
 	const trimmed = playableUrl.trim()
@@ -423,11 +393,6 @@ projects.post('/', async ({ body, headers }) => {
         return { error: 'Image must be from cdn.hackclub.com' }
     }
 
-    const githubCheck = validateGithubUrl(data.githubUrl)
-    if (!githubCheck.valid) {
-        return { error: githubCheck.error }
-    }
-
     const projectName = parseHackatimeProjects(data.hackatimeProject || null)
     const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : 1
 
@@ -494,11 +459,6 @@ projects.put('/:id', async ({ params, body, headers }) => {
 
     if (!validateImageUrl(data.image)) {
         return { error: 'Image must be from cdn.hackclub.com' }
-    }
-
-    const githubCheck = validateGithubUrl(data.githubUrl)
-    if (!githubCheck.valid) {
-        return { error: githubCheck.error }
     }
 
     const playableCheck = validatePlayableUrl(data.playableUrl)
