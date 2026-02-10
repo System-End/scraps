@@ -9,6 +9,7 @@ import { newsTable } from '../schemas/news'
 import { projectActivityTable } from '../schemas/activity'
 import { getUserFromSession } from '../lib/auth'
 import { calculateScrapsFromHours, getUserScrapsBalance } from '../lib/scraps'
+import { payoutPendingScraps, getNextPayoutDate } from '../lib/scraps-payout'
 import { syncSingleProject } from '../lib/hackatime-sync'
 import { notifyProjectReview } from '../lib/slack'
 import { config } from '../config'
@@ -679,6 +680,50 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
     } catch (err) {
         console.error(err)
         return { error: 'Failed to submit review' }
+    }
+})
+
+// Get pending scraps payout info (admin only)
+admin.get('/scraps-payout', async ({ headers }) => {
+    try {
+        const user = await requireAdmin(headers as Record<string, string>)
+        if (!user) return { error: 'Unauthorized' }
+
+        const pendingResult = await db
+            .select({
+                count: sql<number>`count(*)`,
+                totalScraps: sql<number>`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`
+            })
+            .from(projectsTable)
+            .where(and(
+                eq(projectsTable.status, 'shipped'),
+                sql`${projectsTable.scrapsAwarded} > 0`,
+                isNull(projectsTable.scrapsPaidAt),
+                or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
+            ))
+
+        return {
+            pendingProjects: Number(pendingResult[0]?.count || 0),
+            pendingScraps: Number(pendingResult[0]?.totalScraps || 0),
+            nextPayoutDate: getNextPayoutDate().toISOString()
+        }
+    } catch (err) {
+        console.error(err)
+        return { error: 'Failed to fetch payout info' }
+    }
+})
+
+// Manually trigger scraps payout (admin only)
+admin.post('/scraps-payout', async ({ headers }) => {
+    try {
+        const user = await requireAdmin(headers as Record<string, string>)
+        if (!user) return { error: 'Unauthorized' }
+
+        const { paidCount, totalScraps } = await payoutPendingScraps()
+        return { success: true, paidCount, totalScraps }
+    } catch (err) {
+        console.error(err)
+        return { error: 'Failed to trigger payout' }
     }
 })
 

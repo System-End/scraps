@@ -10,6 +10,7 @@ import {
 } from "../lib/auth"
 import { config } from "../config"
 import { getUserScrapsBalance } from "../lib/scraps"
+import { getNextPayoutDate } from "../lib/scraps-payout"
 import { db } from "../db"
 import { userActivityTable } from "../schemas/user-emails"
 import { userBonusesTable } from "../schemas/users"
@@ -159,6 +160,8 @@ authRoutes.get("/me", async ({ headers }) => {
             avatar: user.avatar,
             slackId: user.slackId,
             scraps: scrapsBalance.balance,
+            scrapsPending: scrapsBalance.pending,
+            nextPayoutDate: getNextPayoutDate().toISOString(),
             role: user.role,
             tutorialCompleted: user.tutorialCompleted
         }

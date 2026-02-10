@@ -13,6 +13,7 @@ import admin from './routes/admin'
 import slack from './routes/slack'
 import { startHackatimeSync } from './lib/hackatime-sync'
 import { startAirtableSync } from './lib/airtable-sync'
+import { startScrapsPayout } from './lib/scraps-payout'
 
 const api = new Elysia()
     .use(authRoutes)
@@ -43,6 +44,7 @@ console.log(
 if (process.env.NODE_ENV !== 'development') {
 	startHackatimeSync()
 	startAirtableSync()
+	startScrapsPayout()
 } else {
 	console.log('[STARTUP] Skipping background syncs in development mode')
 }

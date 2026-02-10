@@ -12,7 +12,8 @@
 		Origami,
 		Pencil,
 		Shield,
-		X
+		X,
+		Spool
 	} from '@lucide/svelte';
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
@@ -53,6 +54,7 @@
 		avatar: string | null;
 		role: 'admin' | 'reviewer' | 'member' | 'banned';
 		scraps: number;
+		scrapsPending?: number;
 		createdAt: string;
 	}
 
@@ -215,7 +217,13 @@
 					</p>
 				</div>
 				<div class="shrink-0 text-center sm:text-right">
-					<p class="text-3xl font-bold sm:text-4xl">{profileUser.scraps}</p>
+					<div class="flex items-center justify-center gap-2 sm:justify-end">
+						<Spool size={28} />
+						<p class="text-3xl font-bold sm:text-4xl">{profileUser.scraps}</p>
+					</div>
+					{#if profileUser.scrapsPending && profileUser.scrapsPending > 0}
+						<p class="text-sm text-gray-400">+{profileUser.scrapsPending} pending</p>
+					{/if}
 					<p class="text-sm text-gray-500">{$t.profile.scraps}</p>
 				</div>
 			</div>

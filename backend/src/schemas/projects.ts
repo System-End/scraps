@@ -20,6 +20,7 @@ export const projectsTable = pgTable('projects', {
   status: varchar().notNull().default('in_progress'),
   deleted: integer('deleted').default(0),
   scrapsAwarded: integer('scraps_awarded').notNull().default(0),
+  scrapsPaidAt: timestamp('scraps_paid_at'),
   views: integer().notNull().default(0),
 
   // Update fields

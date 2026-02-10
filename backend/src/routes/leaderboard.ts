@@ -16,7 +16,7 @@ leaderboard.get('/', async ({ query }) => {
 				id: usersTable.id,
 				username: usersTable.username,
 				avatar: usersTable.avatar,
-				scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0)`.as('scraps_earned'),
+				scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected' AND scraps_paid_at IS NOT NULL), 0)`.as('scraps_earned'),
 				scrapsBonus: sql<number>`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as('scraps_bonus'),
 				scrapsShopSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_shop_spent'),
 				scrapsRefinerySpent: sql<number>`COALESCE((SELECT SUM(cost) FROM refinery_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_refinery_spent'),
@@ -50,7 +50,7 @@ leaderboard.get('/', async ({ query }) => {
 			id: usersTable.id,
 			username: usersTable.username,
 			avatar: usersTable.avatar,
-			scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0)`.as('scraps_earned'),
+			scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected' AND scraps_paid_at IS NOT NULL), 0)`.as('scraps_earned'),
 			scrapsBonus: sql<number>`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as('scraps_bonus'),
 			scrapsShopSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_shop_spent'),
 			scrapsRefinerySpent: sql<number>`COALESCE((SELECT SUM(cost) FROM refinery_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_refinery_spent'),
@@ -64,7 +64,7 @@ leaderboard.get('/', async ({ query }) => {
 			sql`${projectsTable.status} != 'permanently_rejected'`
 		))
 		.groupBy(usersTable.id)
-		.orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0) + COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(cost) FROM refinery_orders WHERE user_id = ${usersTable.id}), 0)`))
+		.orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected' AND scraps_paid_at IS NOT NULL), 0) + COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(cost) FROM refinery_orders WHERE user_id = ${usersTable.id}), 0)`))
 		.limit(10)
 
 	return results.map((user, index) => ({

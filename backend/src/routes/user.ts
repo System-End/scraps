@@ -36,6 +36,7 @@ user.get('/me', async ({ headers }) => {
         scraps: scrapsBalance.balance,
         scrapsEarned: scrapsBalance.earned,
         scrapsSpent: scrapsBalance.spent,
+        scrapsPending: scrapsBalance.pending,
         yswsEligible,
         verificationStatus,
         tutorialCompleted: userData.tutorialCompleted,
@@ -193,6 +194,7 @@ user.get('/profile/:id', async ({ params, headers }) => {
             avatar: targetUser[0].avatar,
             role: targetUser[0].role,
             scraps: scrapsBalance.balance,
+            scrapsPending: scrapsBalance.pending,
             createdAt: targetUser[0].createdAt
         },
         isAdmin: currentUser.role === 'admin',

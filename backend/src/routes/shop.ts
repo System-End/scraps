@@ -5,6 +5,7 @@ import { shopItemsTable, shopHeartsTable, shopOrdersTable, shopRollsTable, refin
 import { usersTable } from '../schemas/users'
 import { getUserFromSession } from '../lib/auth'
 import { getUserScrapsBalance, canAfford, calculateRollCost } from '../lib/scraps'
+import { notifyShopWin } from '../lib/scraps-payout'
 
 const shop = new Elysia({ prefix: '/shop' })
 
@@ -548,6 +549,10 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 		})
 
 		if (result.won) {
+			// Notify Slack channel about the win (fire and forget)
+			notifyShopWin(user.id, item.name, item.image ?? '').catch(err =>
+				console.error('[SHOP] Failed to notify shop win:', err)
+			)
 			return { success: true, won: true, orderId: result.orderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, rollCost: result.rollCost, refineryReset: true, probabilityHalved: true }
 		}
 		return { success: true, won: false, consolationOrderId: result.consolationOrderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, rollCost: result.rollCost }

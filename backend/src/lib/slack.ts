@@ -181,14 +181,14 @@ export async function notifyProjectReview({
     let blocks: unknown[] = []
 
     if (action === 'approved') {
-        fallbackText = `:scraps: hey <@${userSlackId}>! your scraps project ${projectName} has passed the review! you've been awarded ${scrapsAwarded ?? 0} scraps for your work. :blobhaj_party:`
+        fallbackText = `:scraps: hey <@${userSlackId}>! your scraps project ${projectName} has passed the review! you've been awarded ${scrapsAwarded ?? 0} scraps for your work. scraps are paid out every few days, so they may take a bit to appear in your balance. :blobhaj_party:`
 
         blocks = [
             {
                 type: 'section',
                 text: {
                     type: 'mrkdwn',
-                    text: `:scraps: hey <@${userSlackId}>! :blobhaj_party:\n\nyour scraps project *<${projectUrl}|${projectName}>* has passed the review! you've been awarded scraps for your work.\n\n*total scraps awarded:* ${scrapsAwarded ?? 0} scraps\n\nkeep building and ship again for more scraps! :blobhaj_party:`
+                    text: `:scraps: hey <@${userSlackId}>! :blobhaj_party:\n\nyour scraps project *<${projectUrl}|${projectName}>* has passed the review! you've been awarded scraps for your work.\n\n*total scraps awarded:* ${scrapsAwarded ?? 0} scraps\n\n_scraps are paid out every few days, so they may take a bit to appear in your balance._\n\nkeep building and ship again for more scraps! :blobhaj_party:`
                 }
             },
             {

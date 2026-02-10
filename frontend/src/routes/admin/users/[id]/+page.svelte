@@ -9,7 +9,8 @@
 		XCircle,
 		AlertTriangle,
 		Plus,
-		Gift
+		Gift,
+		Spool
 	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
@@ -308,7 +309,10 @@
 					</div>
 				</div>
 				<div class="text-right">
-					<p class="text-4xl font-bold">{targetUser.scraps}</p>
+					<div class="flex items-center justify-end gap-2">
+						<Spool size={28} />
+						<p class="text-4xl font-bold">{targetUser.scraps}</p>
+					</div>
 					<p class="text-sm text-gray-500">{$t.common.scraps}</p>
 					{#if currentUser?.role === 'admin'}
 						<button

@@ -94,15 +94,25 @@ type DbOrTx = typeof db | PgTransaction<any, any, any>
 
 export async function getUserScrapsBalance(userId: number, txOrDb: DbOrTx = db): Promise<{
 	earned: number
+	pending: number
 	spent: number
 	balance: number
 }> {
+	// Only count scraps that have been paid out (scrapsPaidAt IS NOT NULL)
 	const earnedResult = await txOrDb
 		.select({
 			total: sql<number>`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`
 		})
 		.from(projectsTable)
-		.where(eq(projectsTable.userId, userId))
+		.where(sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsPaidAt} IS NOT NULL`)
+
+	// Pending scraps: awarded but not yet paid out (must be shipped & not deleted, matching payout criteria)
+	const pendingResult = await txOrDb
+		.select({
+			total: sql<number>`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`
+		})
+		.from(projectsTable)
+		.where(sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsAwarded} > 0 AND ${projectsTable.scrapsPaidAt} IS NULL AND ${projectsTable.status} = 'shipped' AND (${projectsTable.deleted} = 0 OR ${projectsTable.deleted} IS NULL)`)
 
 	const bonusResult = await txOrDb
 		.select({
@@ -127,6 +137,7 @@ export async function getUserScrapsBalance(userId: number, txOrDb: DbOrTx = db):
 		.where(eq(refineryOrdersTable.userId, userId))
 
 	const projectEarned = Number(earnedResult[0]?.total) || 0
+	const pending = Number(pendingResult[0]?.total) || 0
 	const bonusEarned = Number(bonusResult[0]?.total) || 0
 	const earned = projectEarned + bonusEarned
 	const shopSpent = Number(spentResult[0]?.total) || 0
@@ -134,7 +145,7 @@ export async function getUserScrapsBalance(userId: number, txOrDb: DbOrTx = db):
 	const spent = shopSpent + upgradeSpent
 	const balance = earned - spent
 
-	return { earned, spent, balance }
+	return { earned, pending, spent, balance }
 }
 
 export async function canAfford(userId: number, cost: number, txOrDb: DbOrTx = db): Promise<boolean> {
