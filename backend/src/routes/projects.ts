@@ -12,10 +12,6 @@ import { config } from '../config'
 
 const ALLOWED_IMAGE_DOMAIN = 'cdn.hackclub.com'
 
-
-
-
-
 function parseHackatimeProject(hackatimeProject: string | null): string | null {
 	if (!hackatimeProject) return null
 	return hackatimeProject.trim()
