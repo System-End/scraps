@@ -114,6 +114,7 @@ projects.get('/explore', async ({ query }) => {
             description: projectsTable.description,
             image: projectsTable.image,
             hours: projectsTable.hours,
+            hoursOverride: projectsTable.hoursOverride,
             tier: projectsTable.tier,
             status: projectsTable.status,
             views: projectsTable.views,
@@ -147,7 +148,7 @@ projects.get('/explore', async ({ query }) => {
             name: p.name,
             description: p.description.substring(0, 150) + (p.description.length > 150 ? '...' : ''),
             image: p.image,
-            hours: p.hours,
+            hours: p.hoursOverride ?? p.hours,
             tier: p.tier,
             status: p.status,
             views: p.views,
@@ -341,6 +342,37 @@ projects.get('/:id', async ({ params, headers }) => {
         hasSubmittedFeedback = feedbackCheck.length > 0
     }
 
+    // Calculate effective hours (subtract overlapping shipped project hours)
+    const projectHours = project[0].hoursOverride ?? project[0].hours ?? 0
+    let deductedHours = 0
+    if (project[0].hackatimeProject) {
+        const hackatimeNames = project[0].hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
+        if (hackatimeNames.length > 0) {
+            const shipped = await db
+                .select({
+                    hours: projectsTable.hours,
+                    hoursOverride: projectsTable.hoursOverride,
+                    hackatimeProject: projectsTable.hackatimeProject
+                })
+                .from(projectsTable)
+                .where(and(
+                    eq(projectsTable.userId, project[0].userId),
+                    eq(projectsTable.status, 'shipped'),
+                    or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
+                    sql`${projectsTable.id} != ${project[0].id}`
+                ))
+
+            for (const op of shipped) {
+                if (!op.hackatimeProject) continue
+                const opNames = op.hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
+                if (opNames.some((name: string) => hackatimeNames.includes(name))) {
+                    deductedHours += op.hoursOverride ?? op.hours ?? 0
+                }
+            }
+        }
+    }
+    const effectiveHours = Math.max(0, projectHours - deductedHours)
+
     return {
         project: {
             id: project[0].id,
@@ -350,7 +382,7 @@ projects.get('/:id', async ({ params, headers }) => {
             githubUrl: project[0].githubUrl,
             playableUrl: project[0].playableUrl,
             hackatimeProject: isOwner ? project[0].hackatimeProject : undefined,
-            hours: project[0].hoursOverride ?? project[0].hours,
+            hours: projectHours,
             hoursOverride: isOwner ? project[0].hoursOverride : undefined,
             tier: project[0].tier,
             tierOverride: isOwner ? project[0].tierOverride : undefined,
@@ -360,6 +392,8 @@ projects.get('/:id', async ({ params, headers }) => {
             updateDescription: project[0].updateDescription,
             aiDescription: isOwner ? project[0].aiDescription : undefined,
             usedAi: !!project[0].aiDescription,
+            effectiveHours,
+            deductedHours,
             createdAt: project[0].createdAt,
             updatedAt: project[0].updatedAt
         },

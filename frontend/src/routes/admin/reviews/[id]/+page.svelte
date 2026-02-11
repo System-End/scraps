@@ -13,7 +13,8 @@
 		Info,
 		Globe,
 		RefreshCw,
-		Bot
+		Bot,
+		Loader
 	} from '@lucide/svelte';
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
 	import { getUser } from '$lib/auth-client';
@@ -86,6 +87,7 @@
 	let loading = $state(true);
 	let submitting = $state(false);
 	let savingNotes = $state(false);
+	let syncing = $state(false);
 	let error = $state<string | null>(null);
 	let scraps = $derived(user?.scraps ?? 0);
 
@@ -163,6 +165,28 @@
 			console.error('Failed to save notes:', e);
 		} finally {
 			savingNotes = false;
+		}
+	}
+
+	async function syncHours() {
+		if (!project || syncing) return;
+		syncing = true;
+		try {
+			const response = await fetch(`${API_URL}/admin/projects/${projectId}/sync-hours`, {
+				method: 'POST',
+				credentials: 'include'
+			});
+			const data = await response.json();
+			if (data.error) {
+				error = data.error;
+			} else if (data.updated && project) {
+				project = { ...project, hours: data.hours };
+			}
+		} catch (e) {
+			console.error('Failed to sync hours:', e);
+			error = 'Failed to sync hours';
+		} finally {
+			syncing = false;
 		}
 	}
 
@@ -376,9 +400,18 @@
 				</div>
 			{/if}
 			<div class="flex flex-wrap items-center gap-3 text-sm">
-				<span class="rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold"
-					>{formatHours(project.hours)}h logged</span
-				>
+				{#if deductedHours > 0}
+					<span class="rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold text-gray-400 line-through"
+						>{formatHours(project.hours)}h logged</span
+					>
+					<span class="rounded-full border-2 border-yellow-500 bg-yellow-100 px-3 py-1 font-bold text-yellow-800"
+						>{formatHours(effectiveHours)}h effective</span
+					>
+				{:else}
+					<span class="rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold"
+						>{formatHours(project.hours)}h logged</span
+					>
+				{/if}
 				{#if project.hackatimeProject}
 					<span class="rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold"
 						>hackatime: {project.hackatimeProject}</span
@@ -387,6 +420,16 @@
 				<span class="rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold"
 					>tier {project.tier}</span
 				>
+				{#if user?.role === 'admin' && project.status !== 'shipped'}
+					<button
+						onclick={syncHours}
+						disabled={syncing}
+						class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						<RefreshCw size={14} class={syncing ? 'animate-spin' : ''} />
+						{syncing ? 'syncing...' : 'sync hours'}
+					</button>
+				{/if}
 			</div>
 
 			{#if overlappingProjects.length > 0}
@@ -651,14 +694,14 @@
 				<h2 class="mb-4 text-xl font-bold">submit review</h2>
 				<div class="space-y-4">
 					<div>
-						<label class="mb-1 block text-sm font-bold">hours override</label>
+						<label class="mb-1 block text-sm font-bold">hours override {#if deductedHours > 0}<span class="font-normal text-yellow-600">(effective: {formatHours(effectiveHours)}h after -{formatHours(deductedHours)}h deduction)</span>{/if}</label>
 						<input
 							type="number"
 							step="0.1"
 							min="0"
 							max={project.hours}
 							bind:value={hoursOverride}
-							placeholder={formatHours(project.hours)}
+							placeholder="{formatHours(project.hours)} ({formatHours(effectiveHours)}h effective)"
 							class="w-full rounded-lg border-2 px-4 py-2 focus:border-dashed focus:outline-none {hoursOverrideError
 								? 'border-red-500'
 								: 'border-black'}"

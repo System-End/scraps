@@ -45,6 +45,8 @@
 		views: number;
 		updateDescription: string | null;
 		usedAi: boolean;
+		effectiveHours: number;
+		deductedHours: number;
 		createdAt: string;
 		updatedAt: string;
 	}
@@ -334,8 +336,20 @@
 						class="flex items-center gap-2 rounded-full border-4 border-black bg-white px-4 py-2 font-bold"
 					>
 						<Clock size={18} />
-						{formatHours(project.hours)}h
+						{#if (isOwner || isAdmin) && project.deductedHours > 0}
+							<span class="text-gray-400 line-through">{formatHours(project.hours)}h</span>
+						{:else}
+							{formatHours(project.effectiveHours)}h
+						{/if}
 					</span>
+					{#if (isOwner || isAdmin) && project.deductedHours > 0}
+						<span
+							class="flex items-center gap-2 rounded-full border-4 border-yellow-500 bg-yellow-100 px-4 py-2 font-bold text-yellow-700"
+							title="{formatHours(project.deductedHours)}h deducted from overlapping shipped projects"
+						>
+							{formatHours(project.effectiveHours)}h effective
+						</span>
+					{/if}
 					{#if project.githubUrl}
 						<a
 							href={project.githubUrl}

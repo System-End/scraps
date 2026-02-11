@@ -16,6 +16,8 @@
 		image: string | null;
 		status: string;
 		hours: number;
+		effectiveHours: number;
+		deductedHours: number;
 	}
 
 	interface Pagination {
@@ -121,9 +123,20 @@
 					<div class="p-4">
 						<h3 class="mb-1 text-xl font-bold">{project.name}</h3>
 						<p class="mb-2 line-clamp-2 text-sm text-gray-600">{project.description}</p>
-						<span class="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold"
-							>{formatHours(project.hours)}h</span
-						>
+						<div class="flex flex-wrap items-center gap-2">
+							{#if project.deductedHours > 0}
+								<span class="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold text-gray-400 line-through"
+									>{formatHours(project.hours)}h</span
+								>
+								<span class="rounded-full border-2 border-yellow-500 bg-yellow-100 px-3 py-1 text-sm font-bold text-yellow-800"
+									>{formatHours(project.effectiveHours)}h</span
+								>
+							{:else}
+								<span class="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold"
+									>{formatHours(project.hours)}h</span
+								>
+							{/if}
+						</div>
 					</div>
 				</a>
 			{/each}

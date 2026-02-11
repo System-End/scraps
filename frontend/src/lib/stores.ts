@@ -12,6 +12,7 @@ export interface Project {
 	githubUrl: string | null;
 	hackatimeProject: string | null;
 	hours: number;
+	hoursOverride: number | null;
 	tier: number;
 	status: string;
 }

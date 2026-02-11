@@ -85,7 +85,7 @@
 					<div class="border-t-2 border-black bg-white px-4 py-3">
 						<div class="mb-1 flex items-center justify-between">
 							<span class="truncate text-lg font-bold">{project.name}</span>
-							<span class="shrink-0 text-sm text-gray-500">{formatHours(project.hours)}h</span>
+							<span class="shrink-0 text-sm text-gray-500">{formatHours(project.hoursOverride ?? project.hours)}h</span>
 						</div>
 						<div class="flex items-center justify-between">
 							<span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs">

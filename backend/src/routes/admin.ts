@@ -410,8 +410,42 @@ admin.get('/reviews', async ({ headers, query }) => {
 
         const total = Number(countResult[0]?.count || 0)
 
+        // Compute effective hours for each project (subtract overlapping shipped hours)
+        const projectsWithEffective = await Promise.all(projects.map(async (p) => {
+            const hours = p.hoursOverride ?? p.hours ?? 0
+            if (!p.hackatimeProject) return { ...p, effectiveHours: hours, deductedHours: 0 }
+
+            const hackatimeNames = p.hackatimeProject.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0)
+            if (hackatimeNames.length === 0) return { ...p, effectiveHours: hours, deductedHours: 0 }
+
+            const shipped = await db
+                .select({
+                    hours: projectsTable.hours,
+                    hoursOverride: projectsTable.hoursOverride,
+                    hackatimeProject: projectsTable.hackatimeProject
+                })
+                .from(projectsTable)
+                .where(and(
+                    eq(projectsTable.userId, p.userId),
+                    eq(projectsTable.status, 'shipped'),
+                    or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
+                    sql`${projectsTable.id} != ${p.id}`
+                ))
+
+            let deductedHours = 0
+            for (const op of shipped) {
+                if (!op.hackatimeProject) continue
+                const opNames = op.hackatimeProject.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0)
+                if (opNames.some((name: string) => hackatimeNames.includes(name))) {
+                    deductedHours += op.hoursOverride ?? op.hours ?? 0
+                }
+            }
+
+            return { ...p, effectiveHours: Math.max(0, hours - deductedHours), deductedHours }
+        }))
+
         return {
-            data: projects,
+            data: projectsWithEffective,
             pagination: {
                 page,
                 limit,
@@ -481,10 +515,10 @@ admin.get('/reviews/:id', async ({ params, headers }) => {
                     reviewerId: r.reviewerId
                 }
             }),
-            overlappingProjects: await (async () => {
-                if (!project[0].hackatimeProject) return []
+            ...await (async () => {
+                if (!project[0].hackatimeProject) return { overlappingProjects: [], deductedHours: 0, effectiveHours: project[0].hoursOverride ?? project[0].hours ?? 0 }
                 const hackatimeNames = project[0].hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
-                if (hackatimeNames.length === 0) return []
+                if (hackatimeNames.length === 0) return { overlappingProjects: [], deductedHours: 0, effectiveHours: project[0].hoursOverride ?? project[0].hours ?? 0 }
 
                 const shipped = await db
                     .select({
@@ -503,7 +537,7 @@ admin.get('/reviews/:id', async ({ params, headers }) => {
                         sql`${projectsTable.id} != ${project[0].id}`
                     ))
 
-                return shipped.filter(op => {
+                const overlapping = shipped.filter(op => {
                     if (!op.hackatimeProject) return false
                     const opNames = op.hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
                     return opNames.some((name: string) => hackatimeNames.includes(name))
@@ -512,6 +546,14 @@ admin.get('/reviews/:id', async ({ params, headers }) => {
                     name: op.name,
                     hours: op.hoursOverride ?? op.hours ?? 0
                 }))
+
+                const deductedHours = overlapping.reduce((sum, op) => sum + op.hours, 0)
+                const projectHours = project[0].hoursOverride ?? project[0].hours ?? 0
+                return {
+                    overlappingProjects: overlapping,
+                    deductedHours,
+                    effectiveHours: Math.max(0, projectHours - deductedHours)
+                }
             })()
         }
     } catch (err) {
@@ -1154,12 +1196,27 @@ admin.patch('/orders/:id', async ({ params, body, headers, status }) => {
 
 // Sync hours for a single project from Hackatime
 admin.post('/projects/:id/sync-hours', async ({ headers, params, status }) => {
-    const user = await requireAdmin(headers as Record<string, string>)
+    const user = await requireReviewer(headers as Record<string, string>)
     if (!user) {
         return status(401, { error: 'Unauthorized' })
     }
 
     try {
+        // Don't allow syncing shipped projects — their hours are frozen at approval time
+        const [proj] = await db
+            .select({ status: projectsTable.status })
+            .from(projectsTable)
+            .where(eq(projectsTable.id, parseInt(params.id)))
+            .limit(1)
+
+        if (!proj) {
+            return status(404, { error: 'Project not found' })
+        }
+
+        if (proj.status === 'shipped') {
+            return status(400, { error: 'Cannot sync hours for shipped projects — hours are frozen at approval time' })
+        }
+
         const result = await syncSingleProject(parseInt(params.id))
         if (result.error) {
             return { hours: result.hours, updated: result.updated, error: result.error }
