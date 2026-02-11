@@ -40,6 +40,12 @@
 		internalNotes: string | null;
 	}
 
+	interface OverlappingProject {
+		id: number;
+		name: string;
+		hours: number;
+	}
+
 	interface Project {
 		id: number;
 		userId: number;
@@ -76,6 +82,7 @@
 	let project = $state<Project | null>(null);
 	let projectUser = $state<ProjectUser | null>(null);
 	let reviews = $state<Review[]>([]);
+	let overlappingProjects = $state<OverlappingProject[]>([]);
 	let loading = $state(true);
 	let submitting = $state(false);
 	let savingNotes = $state(false);
@@ -87,6 +94,13 @@
 	let userInternalNotes = $state('');
 	let hoursOverride = $state<number | undefined>(undefined);
 	let tierOverride = $state<number | undefined>(undefined);
+
+	let deductedHours = $derived(
+		overlappingProjects.reduce((sum: number, op: OverlappingProject) => sum + op.hours, 0)
+	);
+	let effectiveHours = $derived(
+		project ? Math.max(0, (hoursOverride ?? project.hours) - deductedHours) : 0
+	);
 
 	let hoursOverrideError = $derived(
 		hoursOverride !== undefined && project && hoursOverride > project.hours
@@ -120,6 +134,7 @@
 				project = data.project;
 				projectUser = data.user;
 				reviews = data.reviews || [];
+				overlappingProjects = data.overlappingProjects || [];
 				userInternalNotes = data.user?.internalNotes || '';
 
 				// Check if project is deleted
@@ -373,6 +388,38 @@
 					>tier {project.tier}</span
 				>
 			</div>
+
+			{#if overlappingProjects.length > 0}
+				<div class="mt-4 rounded-lg border-2 border-dashed border-yellow-500 bg-yellow-50 p-4">
+					<p class="mb-2 flex items-center gap-1.5 text-sm font-bold text-yellow-700">
+						<AlertTriangle size={14} />
+						shared hackatime project — hours will be deducted
+					</p>
+					<p class="mb-2 text-sm text-yellow-700">
+						this project shares a hackatime project with other shipped projects. hours from those projects will be subtracted when calculating scraps.
+					</p>
+					<ul class="mb-3 space-y-1 text-sm text-yellow-800">
+						{#each overlappingProjects as op}
+							<li class="flex items-center gap-2">
+								<span>•</span>
+								<a href="/projects/{op.id}" class="font-bold underline">{op.name}</a>
+								<span>— {formatHours(op.hours)}h</span>
+							</li>
+						{/each}
+					</ul>
+					<div class="flex flex-wrap gap-3 text-sm font-bold">
+						<span class="rounded-full border-2 border-yellow-600 bg-yellow-100 px-3 py-1 text-yellow-800">
+							total: {formatHours(hoursOverride ?? project.hours)}h
+						</span>
+						<span class="rounded-full border-2 border-yellow-600 bg-yellow-100 px-3 py-1 text-yellow-800">
+							deducted: -{formatHours(deductedHours)}h
+						</span>
+						<span class="rounded-full border-2 border-black bg-yellow-200 px-3 py-1 text-black">
+							effective: {formatHours(effectiveHours)}h
+						</span>
+					</div>
+				</div>
+			{/if}
 
 			<div class="mt-4 flex flex-wrap gap-3">
 				{#if project.githubUrl}

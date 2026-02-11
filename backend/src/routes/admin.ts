@@ -480,7 +480,39 @@ admin.get('/reviews/:id', async ({ params, headers }) => {
                     reviewerAvatar: reviewer?.avatar,
                     reviewerId: r.reviewerId
                 }
-            })
+            }),
+            overlappingProjects: await (async () => {
+                if (!project[0].hackatimeProject) return []
+                const hackatimeNames = project[0].hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
+                if (hackatimeNames.length === 0) return []
+
+                const shipped = await db
+                    .select({
+                        id: projectsTable.id,
+                        name: projectsTable.name,
+                        hours: projectsTable.hours,
+                        hoursOverride: projectsTable.hoursOverride,
+                        hackatimeProject: projectsTable.hackatimeProject,
+                        status: projectsTable.status
+                    })
+                    .from(projectsTable)
+                    .where(and(
+                        eq(projectsTable.userId, project[0].userId),
+                        eq(projectsTable.status, 'shipped'),
+                        or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
+                        sql`${projectsTable.id} != ${project[0].id}`
+                    ))
+
+                return shipped.filter(op => {
+                    if (!op.hackatimeProject) return false
+                    const opNames = op.hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
+                    return opNames.some((name: string) => hackatimeNames.includes(name))
+                }).map(op => ({
+                    id: op.id,
+                    name: op.name,
+                    hours: op.hoursOverride ?? op.hours ?? 0
+                }))
+            })()
         }
     } catch (err) {
         console.error(err);
@@ -595,7 +627,40 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
         if (action === 'approved') {
             const hours = hoursOverride ?? project[0].hours ?? 0
             const tier = tierOverride ?? project[0].tier ?? 1
-            scrapsAwarded = calculateScrapsFromHours(hours, tier)
+
+            // Subtract hours from previously shipped projects that share the same hackatime project
+            let deductedHours = 0
+            if (project[0].hackatimeProject) {
+                const hackatimeNames = project[0].hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
+                if (hackatimeNames.length > 0) {
+                    const overlapping = await db
+                        .select({
+                            id: projectsTable.id,
+                            hours: projectsTable.hours,
+                            hoursOverride: projectsTable.hoursOverride,
+                            hackatimeProject: projectsTable.hackatimeProject
+                        })
+                        .from(projectsTable)
+                        .where(and(
+                            eq(projectsTable.userId, project[0].userId),
+                            eq(projectsTable.status, 'shipped'),
+                            or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
+                            sql`${projectsTable.id} != ${projectId}`
+                        ))
+
+                    for (const op of overlapping) {
+                        if (!op.hackatimeProject) continue
+                        const opNames = op.hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
+                        const hasOverlap = opNames.some((name: string) => hackatimeNames.includes(name))
+                        if (hasOverlap) {
+                            deductedHours += op.hoursOverride ?? op.hours ?? 0
+                        }
+                    }
+                }
+            }
+
+            const effectiveHours = Math.max(0, hours - deductedHours)
+            scrapsAwarded = calculateScrapsFromHours(effectiveHours, tier)
             updateData.scrapsAwarded = scrapsAwarded
         }
 
