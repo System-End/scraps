@@ -133,15 +133,20 @@ async function syncProjectsToAirtable(): Promise<void> {
 
 		// Fetch existing records from Airtable to find which ones to update vs create
 		const existingRecords: Map<string, string> = new Map() // github_url -> airtable record id
+		const approvedRecords: Set<string> = new Set() // github_urls that are already approved in Airtable
 		await new Promise<void>((resolve, reject) => {
 			table.select({
-				fields: ['Code URL']
+				fields: ['Code URL', 'Review Status']
 			}).eachPage(
 				(records, fetchNextPage) => {
 					for (const record of records) {
 						const githubUrl = record.get('Code URL')
 						if (githubUrl) {
 							existingRecords.set(String(githubUrl), record.id)
+							const reviewStatus = record.get('Review Status')
+							if (reviewStatus === 'Approved') {
+								approvedRecords.add(String(githubUrl))
+							}
 						}
 					}
 					fetchNextPage()
@@ -166,6 +171,9 @@ async function syncProjectsToAirtable(): Promise<void> {
 		for (const project of projects) {
 			if (!project.githubUrl) continue // skip projects without a GitHub URL
 			if (!project.image) continue // screenshot must exist
+
+			// Skip projects already approved in Airtable — don't overwrite them
+			if (approvedRecords.has(project.githubUrl)) continue
 
 			// Check for duplicate Code URL among shipped projects
 			if (seenCodeUrls.has(project.githubUrl)) {
