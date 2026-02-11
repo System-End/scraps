@@ -44,10 +44,10 @@
 	let sortOrder = $state<'oldest' | 'newest'>('oldest');
 	let scraps = $derived(user?.scraps ?? 0);
 
-	async function fetchReviews(page = 1) {
+	async function fetchSecondPass(page = 1) {
 		loading = true;
 		try {
-			const response = await fetch(`${API_URL}/admin/reviews?page=${page}&limit=12&sort=${sortOrder}`, {
+			const response = await fetch(`${API_URL}/admin/second-pass?page=${page}&limit=12&sort=${sortOrder}`, {
 				credentials: 'include'
 			});
 			if (response.ok) {
@@ -56,7 +56,7 @@
 				pagination = data.pagination;
 			}
 		} catch (e) {
-			console.error('Failed to fetch reviews:', e);
+			console.error('Failed to fetch second-pass reviews:', e);
 		} finally {
 			loading = false;
 		}
@@ -64,25 +64,25 @@
 
 	onMount(async () => {
 		user = await getUser();
-		if (!user || (user.role !== 'admin' && user.role !== 'reviewer')) {
+		if (!user || user.role !== 'admin') {
 			goto('/dashboard');
 			return;
 		}
-		await fetchReviews();
+		await fetchSecondPass();
 	});
 
 	function goToPage(page: number) {
-		fetchReviews(page);
+		fetchSecondPass(page);
 	}
 
 	function toggleSort() {
 		sortOrder = sortOrder === 'oldest' ? 'newest' : 'oldest';
-		fetchReviews(1);
+		fetchSecondPass(1);
 	}
 </script>
 
 <svelte:head>
-	<title>{$t.nav.reviews} - {$t.nav.admin} - scraps</title>
+	<title>second pass reviews - admin - scraps</title>
 </svelte:head>
 
 <div class="mx-auto max-w-6xl px-6 pt-24 pb-32 md:px-12">
@@ -96,30 +96,30 @@
 
 	<div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 		<div>
-			<h1 class="mb-2 text-4xl font-bold md:text-5xl">{$t.admin.reviewQueue}</h1>
-			<p class="text-lg text-gray-600">{$t.admin.projectsWaitingForReview}</p>
+			<h1 class="mb-2 text-4xl font-bold md:text-5xl">second pass reviews</h1>
+			<p class="text-lg text-gray-600">projects approved by reviewers, awaiting admin confirmation</p>
 		</div>
 		<button
 			onclick={toggleSort}
 			class="flex cursor-pointer items-center gap-2 rounded-full border-2 border-black px-4 py-2 text-sm font-bold transition-all hover:border-dashed"
 		>
 			<ArrowUpDown size={16} />
-			{$t.admin.sort}: {sortOrder === 'oldest' ? $t.admin.sortOldestFirst : $t.admin.sortNewestFirst}
+			sort: {sortOrder === 'oldest' ? 'oldest first' : 'newest first'}
 		</button>
 	</div>
 
 	{#if loading}
-		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>
+		<div class="py-12 text-center text-gray-500">loading...</div>
 	{:else if projects.length === 0}
 		<div class="py-12 text-center">
-			<p class="text-xl text-gray-500">{$t.admin.noProjectsWaitingForReview}</p>
+			<p class="text-xl text-gray-500">no projects pending second-pass review</p>
 		</div>
 	{:else}
 		<div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 			{#each projects as project}
 				<a
-					href="/admin/reviews/{project.id}"
-					class="flex flex-col overflow-hidden rounded-2xl border-4 border-black transition-all hover:border-dashed"
+					href="/admin/second-pass/{project.id}"
+					class="flex flex-col overflow-hidden rounded-2xl border-4 border-yellow-500 bg-yellow-50 transition-all hover:border-dashed"
 				>
 					<div class="h-40 overflow-hidden">
 						{#if project.image}
@@ -136,7 +136,7 @@
 								<span class="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold text-gray-400 line-through"
 									>{formatHours(project.hours)}h</span
 								>
-								<span class="rounded-full border-2 border-yellow-500 bg-yellow-100 px-3 py-1 text-sm font-bold text-yellow-800"
+								<span class="rounded-full border-2 border-yellow-600 bg-yellow-100 px-3 py-1 text-sm font-bold text-yellow-800"
 									>{formatHours(project.effectiveHours)}h</span
 								>
 							{:else}
@@ -144,6 +144,9 @@
 									>{formatHours(project.hours)}h</span
 								>
 							{/if}
+							<span class="rounded-full bg-yellow-200 px-3 py-1 text-xs font-bold text-yellow-800">
+								PENDING APPROVAL
+							</span>
 						</div>
 					</div>
 				</a>
@@ -161,9 +164,9 @@
 					<ChevronLeft size={20} />
 				</button>
 				<span class="font-bold">
-					{$t.admin.page}
+					Page
 					{pagination.page}
-					{$t.admin.of}
+					of
 					{pagination.totalPages}
 				</span>
 				<button

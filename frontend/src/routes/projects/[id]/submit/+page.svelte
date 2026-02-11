@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { ArrowLeft, Send, Check, ChevronDown, Upload, X } from '@lucide/svelte';
+	import { ArrowLeft, Send, Check, ChevronDown, Upload, X, RefreshCw, Bot, MessageSquare } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { formatHours, validateGithubUrl, validatePlayableUrl } from '$lib/utils';
@@ -21,6 +21,7 @@
 		hours: number;
 		status: string;
 		tier: number;
+		reviewerNotes: string | null;
 	}
 
 	const TIERS = [
@@ -53,6 +54,11 @@
 	let feedbackGood = $state('');
 	let feedbackImprove = $state('');
 	let hasSubmittedFeedbackBefore = $state(false);
+	let isShippedUpdate = $state(false);
+	let updateDescription = $state('');
+	let usedAi = $state(false);
+	let aiDescription = $state('');
+	let reviewerNotes = $state('');
 
 	const NAME_MAX = 50;
 	const DESC_MIN = 20;
@@ -77,8 +83,10 @@
 				feedbackGood.trim().length > 0 &&
 				feedbackImprove.trim().length > 0)
 	);
+	let hasUpdateDescription = $derived(!isShippedUpdate || updateDescription.trim().length > 0);
+	let hasAiDescription = $derived(!usedAi || aiDescription.trim().length > 0);
 	let allRequirementsMet = $derived(
-		hasImage && hasHackatime && hasGithub && hasPlayableUrl && hasDescription && hasName && hasFeedback
+		hasImage && hasHackatime && hasGithub && hasPlayableUrl && hasDescription && hasName && hasFeedback && hasUpdateDescription && hasAiDescription
 	);
 
 	onMount(async () => {
@@ -105,6 +113,8 @@
 			project = responseData.project;
 			imagePreview = project?.image || null;
 			hasSubmittedFeedbackBefore = responseData.hasSubmittedFeedback ?? false;
+			isShippedUpdate = project?.status === 'shipped';
+			reviewerNotes = project?.reviewerNotes || '';
 			if (project?.hackatimeProject) {
 				selectedHackatimeNames = project.hackatimeProject.split(',').map((p: string) => {
 					const trimmed = p.trim();
@@ -240,7 +250,10 @@
 					githubUrl: project.githubUrl,
 					playableUrl: project.playableUrl,
 					hackatimeProject: hackatimeValue,
-					tier: selectedTier
+					tier: selectedTier,
+					updateDescription: isShippedUpdate ? updateDescription : null,
+					aiDescription: usedAi ? aiDescription : null,
+					reviewerNotes: reviewerNotes.trim() || null
 				})
 			});
 
@@ -284,7 +297,7 @@
 </script>
 
 <svelte:head>
-	<title>submit {project?.name || 'project'} - scraps</title>
+	<title>{isShippedUpdate ? 'ship update' : 'submit'} {project?.name || 'project'} - scraps</title>
 </svelte:head>
 
 <div class="mx-auto max-w-4xl px-6 pt-24 pb-24 md:px-12">
@@ -307,9 +320,9 @@
 		</div>
 	{:else if project}
 		<div class="rounded-2xl border-4 border-black bg-white p-6">
-			<h1 class="mb-2 text-3xl font-bold">{$t.project.submitForReview}</h1>
+			<h1 class="mb-2 text-3xl font-bold">{isShippedUpdate ? 'ship update' : $t.project.submitForReview}</h1>
 			<p class="mb-6 text-gray-600">
-				{$t.project.submitRequirementsHint}
+				{isShippedUpdate ? 'submit your updated project for review. you\'ll earn the difference in scraps based on your new hours.' : $t.project.submitRequirementsHint}
 			</p>
 
 			{#if error}
@@ -536,6 +549,76 @@
 				</div>
 			</div>
 
+			<!-- Update Description (required for shipped project updates) -->
+			{#if isShippedUpdate}
+				<div class="mb-6 rounded-lg border-2 border-dashed border-gray-400 bg-gray-50 p-4">
+					<p class="mb-3 flex items-center gap-1.5 text-sm font-bold text-gray-600">
+						<RefreshCw size={14} />
+						this is an update to a shipped project
+					</p>
+					<div>
+						<label for="updateDescription" class="mb-2 block text-sm font-bold"
+							>what did you update? <span class="text-red-500">*</span></label
+						>
+						<textarea
+							id="updateDescription"
+							bind:value={updateDescription}
+							rows="3"
+							placeholder="describe what you changed or added since the last ship..."
+							class="w-full resize-none rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+						></textarea>
+						{#if updateDescription.trim().length === 0}
+							<p class="mt-1 text-xs text-red-500">please describe what you updated</p>
+						{/if}
+					</div>
+				</div>
+			{/if}
+
+			<!-- AI Usage -->
+			<div class="mb-6 space-y-4">
+				<label class="flex cursor-pointer items-center gap-3">
+					<input
+						type="checkbox"
+						bind:checked={usedAi}
+						class="h-5 w-5 cursor-pointer accent-black"
+					/>
+					<span class="text-sm font-bold">i used ai in this project</span>
+				</label>
+				{#if usedAi}
+					<div class="rounded-lg border-2 border-dashed border-purple-400 bg-purple-50 p-4">
+						<p class="mb-2 flex items-center gap-1.5 text-sm font-bold text-purple-600">
+							<Bot size={14} />
+							how was ai used? <span class="text-red-500">*</span>
+						</p>
+						<textarea
+							bind:value={aiDescription}
+							rows="3"
+							placeholder="describe how you used ai in this project..."
+							class="w-full resize-none rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+						></textarea>
+						{#if aiDescription.trim().length === 0}
+							<p class="mt-1 text-xs text-red-500">please describe how ai was used</p>
+						{/if}
+					</div>
+				{/if}
+			</div>
+
+			<!-- Notes for Reviewer -->
+			<div class="mb-6">
+				<label for="reviewerNotes" class="mb-2 flex items-center gap-1.5 text-sm font-bold">
+					<MessageSquare size={14} />
+					notes for reviewer
+					<span class="text-gray-400">(optional)</span>
+				</label>
+				<textarea
+					id="reviewerNotes"
+					bind:value={reviewerNotes}
+					rows="3"
+					placeholder="anything you'd like the reviewer to know about this project..."
+					class="w-full resize-none rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+				></textarea>
+			</div>
+
 			<!-- Feedback -->
 			<div class="mb-6 space-y-4">
 				<div>
@@ -654,6 +737,30 @@
 							>{$t.project.hackatimeProjectSelected}</span
 						>
 					</li>
+					{#if isShippedUpdate}
+						<li class="flex items-center gap-2 text-sm">
+							<span
+								class="flex h-5 w-5 items-center justify-center rounded-full border-2 border-black {hasUpdateDescription
+									? 'bg-black text-white'
+									: ''}"
+							>
+								{#if hasUpdateDescription}<Check size={12} />{/if}
+							</span>
+							<span class={hasUpdateDescription ? '' : 'text-gray-500'}>update description provided</span>
+						</li>
+					{/if}
+					{#if usedAi}
+						<li class="flex items-center gap-2 text-sm">
+							<span
+								class="flex h-5 w-5 items-center justify-center rounded-full border-2 border-black {hasAiDescription
+									? 'bg-black text-white'
+									: ''}"
+							>
+								{#if hasAiDescription}<Check size={12} />{/if}
+							</span>
+							<span class={hasAiDescription ? '' : 'text-gray-500'}>ai usage described</span>
+						</li>
+					{/if}
 					{#if !hasSubmittedFeedbackBefore}
 						<li class="flex items-center gap-2 text-sm">
 							<span
@@ -684,8 +791,12 @@
 					disabled={submitting || !allRequirementsMet}
 					class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-black px-4 py-3 font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
 				>
-					<Send size={18} />
-					{submitting ? $t.project.submitting : $t.project.submitForReview}
+					{#if isShippedUpdate}
+						<RefreshCw size={18} />
+					{:else}
+						<Send size={18} />
+					{/if}
+					{submitting ? $t.project.submitting : isShippedUpdate ? 'ship update' : $t.project.submitForReview}
 				</button>
 			</div>
 		</div>

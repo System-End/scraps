@@ -13,6 +13,7 @@ import { payoutPendingScraps, getNextPayoutDate } from '../lib/scraps-payout'
 import { syncSingleProject } from '../lib/hackatime-sync'
 import { notifyProjectReview } from '../lib/slack'
 import { config } from '../config'
+import { computeEffectiveHours, getProjectShippedDates, hasProjectBeenShipped, computeEffectiveHoursForProject } from '../lib/effective-hours'
 
 const admin = new Elysia({ prefix: '/admin' })
 
@@ -28,30 +29,6 @@ async function requireAdmin(headers: Record<string, string>) {
     if (!user) return null
     if (user.role !== 'admin') return null
     return user
-}
-
-// Helper: compute effective hours for a project by subtracting overlapping shipped hours
-function computeEffectiveHours(
-    project: { id: number; userId: number; hours: number | null; hoursOverride: number | null; hackatimeProject: string | null },
-    allShipped: { id: number; userId: number; hours: number | null; hoursOverride: number | null; hackatimeProject: string | null }[]
-): number {
-    const hours = project.hoursOverride ?? project.hours ?? 0
-    if (!project.hackatimeProject) return hours
-
-    const hackatimeNames = project.hackatimeProject.split(',').map(n => n.trim()).filter(n => n.length > 0)
-    if (hackatimeNames.length === 0) return hours
-
-    let deducted = 0
-    for (const op of allShipped) {
-        if (op.id === project.id || op.userId !== project.userId) continue
-        if (!op.hackatimeProject) continue
-        const opNames = op.hackatimeProject.split(',').map(n => n.trim()).filter(n => n.length > 0)
-        if (opNames.some(name => hackatimeNames.includes(name))) {
-            deducted += op.hoursOverride ?? op.hours ?? 0
-        }
-    }
-
-    return Math.max(0, hours - deducted)
 }
 
 // Get admin stats (info page)
@@ -82,10 +59,19 @@ admin.get('/stats', async ({ headers, status }) => {
     const pending = allProjects.filter(p => p.status === 'waiting_for_review')
     const inProgress = allProjects.filter(p => p.status === 'in_progress')
 
+    // Get shipped dates from activity table for all projects
+    const allProjectIds = allProjects.map(p => p.id)
+    const shippedDates = await getProjectShippedDates(allProjectIds)
+
+    // Attach shippedDate to each project for computeEffectiveHours
+    const shippedWithDates = shipped.map(p => ({ ...p, shippedDate: shippedDates.get(p.id) ?? null }))
+    const pendingWithDates = pending.map(p => ({ ...p, shippedDate: shippedDates.get(p.id) ?? null }))
+    const inProgressWithDates = inProgress.map(p => ({ ...p, shippedDate: shippedDates.get(p.id) ?? null }))
+
     // Compute effective hours for each category (deducting overlapping shipped project hours)
-    const totalHours = shipped.reduce((sum, p) => sum + computeEffectiveHours(p, shipped), 0)
-    const pendingHours = pending.reduce((sum, p) => sum + computeEffectiveHours(p, shipped), 0)
-    const inProgressHours = inProgress.reduce((sum, p) => sum + computeEffectiveHours(p, shipped), 0)
+    const totalHours = shippedWithDates.reduce((sum, p) => sum + computeEffectiveHours(p, shippedWithDates), 0)
+    const pendingHours = pendingWithDates.reduce((sum, p) => sum + computeEffectiveHours(p, shippedWithDates), 0)
+    const inProgressHours = inProgressWithDates.reduce((sum, p) => sum + computeEffectiveHours(p, shippedWithDates), 0)
 
     const totalUsers = Number(usersCount[0]?.count || 0)
     const totalProjects = Number(projectsCount[0]?.count || 0)
@@ -421,7 +407,32 @@ admin.get('/reviews', async ({ headers, query }) => {
             : asc(projectsTable.updatedAt)
 
         const [projects, countResult] = await Promise.all([
-            db.select().from(projectsTable)
+            db.select({
+                id: projectsTable.id,
+                userId: projectsTable.userId,
+                name: projectsTable.name,
+                description: projectsTable.description,
+                image: projectsTable.image,
+                githubUrl: projectsTable.githubUrl,
+                playableUrl: projectsTable.playableUrl,
+                hours: projectsTable.hours,
+                hoursOverride: projectsTable.hoursOverride,
+                hackatimeProject: projectsTable.hackatimeProject,
+                tier: projectsTable.tier,
+                tierOverride: projectsTable.tierOverride,
+                status: projectsTable.status,
+                deleted: projectsTable.deleted,
+                scrapsAwarded: projectsTable.scrapsAwarded,
+                scrapsPaidAt: projectsTable.scrapsPaidAt,
+                views: projectsTable.views,
+                updateDescription: projectsTable.updateDescription,
+                aiDescription: projectsTable.aiDescription,
+                feedbackSource: projectsTable.feedbackSource,
+                feedbackGood: projectsTable.feedbackGood,
+                feedbackImprove: projectsTable.feedbackImprove,
+                createdAt: projectsTable.createdAt,
+                updatedAt: projectsTable.updatedAt
+            }).from(projectsTable)
                 .where(eq(projectsTable.status, 'waiting_for_review'))
                 .orderBy(orderClause)
                 .limit(limit)
@@ -434,36 +445,8 @@ admin.get('/reviews', async ({ headers, query }) => {
 
         // Compute effective hours for each project (subtract overlapping shipped hours)
         const projectsWithEffective = await Promise.all(projects.map(async (p) => {
-            const hours = p.hoursOverride ?? p.hours ?? 0
-            if (!p.hackatimeProject) return { ...p, effectiveHours: hours, deductedHours: 0 }
-
-            const hackatimeNames = p.hackatimeProject.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0)
-            if (hackatimeNames.length === 0) return { ...p, effectiveHours: hours, deductedHours: 0 }
-
-            const shipped = await db
-                .select({
-                    hours: projectsTable.hours,
-                    hoursOverride: projectsTable.hoursOverride,
-                    hackatimeProject: projectsTable.hackatimeProject
-                })
-                .from(projectsTable)
-                .where(and(
-                    eq(projectsTable.userId, p.userId),
-                    eq(projectsTable.status, 'shipped'),
-                    or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
-                    sql`${projectsTable.id} != ${p.id}`
-                ))
-
-            let deductedHours = 0
-            for (const op of shipped) {
-                if (!op.hackatimeProject) continue
-                const opNames = op.hackatimeProject.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0)
-                if (opNames.some((name: string) => hackatimeNames.includes(name))) {
-                    deductedHours += op.hoursOverride ?? op.hours ?? 0
-                }
-            }
-
-            return { ...p, effectiveHours: Math.max(0, hours - deductedHours), deductedHours }
+            const result = await computeEffectiveHoursForProject(p)
+            return { ...p, effectiveHours: result.effectiveHours, deductedHours: result.deductedHours }
         }))
 
         return {
@@ -520,15 +503,26 @@ admin.get('/reviews/:id', async ({ params, headers }) => {
                 .where(inArray(usersTable.id, reviewerIds))
         }
 
+        const isAdmin = user.role === 'admin'
+        // Hide pending_admin_approval from non-admin reviewers
+        const maskedProject = (!isAdmin && project[0].status === 'pending_admin_approval')
+            ? { ...project[0], status: 'waiting_for_review' }
+            : project[0]
+
+        // Hide approval reviews from non-admin reviewers when project is pending admin approval
+        const visibleReviews = (!isAdmin && project[0].status === 'pending_admin_approval')
+            ? reviews.filter(r => r.action !== 'approved')
+            : reviews
+
         return {
-            project: project[0],
+            project: maskedProject,
             user: projectUser[0] ? {
                 id: projectUser[0].id,
                 username: projectUser[0].username,
                 avatar: projectUser[0].avatar,
                 internalNotes: projectUser[0].internalNotes
             } : null,
-            reviews: reviews.map(r => {
+            reviews: visibleReviews.map(r => {
                 const reviewer = reviewers.find(rv => rv.id === r.reviewerId)
                 return {
                     ...r,
@@ -537,46 +531,7 @@ admin.get('/reviews/:id', async ({ params, headers }) => {
                     reviewerId: r.reviewerId
                 }
             }),
-            ...await (async () => {
-                if (!project[0].hackatimeProject) return { overlappingProjects: [], deductedHours: 0, effectiveHours: project[0].hoursOverride ?? project[0].hours ?? 0 }
-                const hackatimeNames = project[0].hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
-                if (hackatimeNames.length === 0) return { overlappingProjects: [], deductedHours: 0, effectiveHours: project[0].hoursOverride ?? project[0].hours ?? 0 }
-
-                const shipped = await db
-                    .select({
-                        id: projectsTable.id,
-                        name: projectsTable.name,
-                        hours: projectsTable.hours,
-                        hoursOverride: projectsTable.hoursOverride,
-                        hackatimeProject: projectsTable.hackatimeProject,
-                        status: projectsTable.status
-                    })
-                    .from(projectsTable)
-                    .where(and(
-                        eq(projectsTable.userId, project[0].userId),
-                        eq(projectsTable.status, 'shipped'),
-                        or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
-                        sql`${projectsTable.id} != ${project[0].id}`
-                    ))
-
-                const overlapping = shipped.filter(op => {
-                    if (!op.hackatimeProject) return false
-                    const opNames = op.hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
-                    return opNames.some((name: string) => hackatimeNames.includes(name))
-                }).map(op => ({
-                    id: op.id,
-                    name: op.name,
-                    hours: op.hoursOverride ?? op.hours ?? 0
-                }))
-
-                const deductedHours = overlapping.reduce((sum, op) => sum + op.hours, 0)
-                const projectHours = project[0].hoursOverride ?? project[0].hours ?? 0
-                return {
-                    overlappingProjects: overlapping,
-                    deductedHours,
-                    effectiveHours: Math.max(0, projectHours - deductedHours)
-                }
-            })()
+            ...await computeEffectiveHoursForProject(project[0])
         }
     } catch (err) {
         console.error(err);
@@ -659,10 +614,13 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
 
         // Update project status
         let newStatus = 'in_progress'
+        const isAdmin = user.role === 'admin'
 
         switch (action) {
             case "approved":
-                newStatus = "shipped";
+                // If reviewer (not admin) approves, send to second-pass review
+                // If admin approves, ship directly
+                newStatus = isAdmin ? "shipped" : "pending_admin_approval";
                 break;
             case "denied":
                 newStatus = "in_progress";
@@ -692,40 +650,27 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
             const hours = hoursOverride ?? project[0].hours ?? 0
             const tier = tierOverride ?? project[0].tier ?? 1
 
-            // Subtract hours from previously shipped projects that share the same hackatime project
-            let deductedHours = 0
-            if (project[0].hackatimeProject) {
-                const hackatimeNames = project[0].hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
-                if (hackatimeNames.length > 0) {
-                    const overlapping = await db
-                        .select({
-                            id: projectsTable.id,
-                            hours: projectsTable.hours,
-                            hoursOverride: projectsTable.hoursOverride,
-                            hackatimeProject: projectsTable.hackatimeProject
-                        })
-                        .from(projectsTable)
-                        .where(and(
-                            eq(projectsTable.userId, project[0].userId),
-                            eq(projectsTable.status, 'shipped'),
-                            or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
-                            sql`${projectsTable.id} != ${projectId}`
-                        ))
+            // Compute effective hours using activity-derived shipped dates
+            const { effectiveHours } = await computeEffectiveHoursForProject({
+                ...project[0],
+                hoursOverride: hoursOverride ?? project[0].hoursOverride
+            })
+            const newScrapsAwarded = calculateScrapsFromHours(effectiveHours, tier)
 
-                    for (const op of overlapping) {
-                        if (!op.hackatimeProject) continue
-                        const opNames = op.hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
-                        const hasOverlap = opNames.some((name: string) => hackatimeNames.includes(name))
-                        if (hasOverlap) {
-                            deductedHours += op.hoursOverride ?? op.hours ?? 0
-                        }
-                    }
+            // Only set scrapsAwarded if admin is approving
+            // Reviewer approvals just go to pending_admin_approval without awarding scraps yet
+            if (isAdmin) {
+                const previouslyShipped = await hasProjectBeenShipped(projectId)
+                // If this is an update to an already-shipped project, calculate ADDITIONAL scraps
+                // (difference between new award and previous award)
+                if (previouslyShipped && project[0].scrapsAwarded > 0) {
+                    scrapsAwarded = Math.max(0, newScrapsAwarded - project[0].scrapsAwarded)
+                } else {
+                    scrapsAwarded = newScrapsAwarded
                 }
-            }
 
-            const effectiveHours = Math.max(0, hours - deductedHours)
-            scrapsAwarded = calculateScrapsFromHours(effectiveHours, tier)
-            updateData.scrapsAwarded = scrapsAwarded
+                updateData.scrapsAwarded = newScrapsAwarded
+            }
         }
 
         await db
@@ -733,20 +678,25 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
             .set(updateData)
             .where(eq(projectsTable.id, projectId))
 
-        if (action === 'approved' && scrapsAwarded > 0) {
-            await db.insert(projectActivityTable).values({
-                userId: project[0].userId,
-                projectId,
-                action: `earned ${scrapsAwarded} scraps`
-            })
-        }
-
         if (action === 'approved') {
-            await db.insert(projectActivityTable).values({
-                userId: project[0].userId,
-                projectId,
-                action: 'project_shipped'
-            })
+            const previouslyShipped = await hasProjectBeenShipped(projectId)
+
+            if (scrapsAwarded > 0) {
+                await db.insert(projectActivityTable).values({
+                    userId: project[0].userId,
+                    projectId,
+                    action: previouslyShipped ? `earned ${scrapsAwarded} additional scraps (update)` : `earned ${scrapsAwarded} scraps`
+                })
+            }
+
+            // Only log shipping activity if admin approved (not pending second-pass)
+            if (isAdmin) {
+                await db.insert(projectActivityTable).values({
+                    userId: project[0].userId,
+                    projectId,
+                    action: previouslyShipped ? 'project_updated' : 'project_shipped'
+                })
+            }
         }
 
         // Update user internal notes if provided
@@ -760,7 +710,10 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
         }
 
         // Send Slack DM notification to the project author
-        if (config.slackBotToken) {
+        // Skip notification when a non-admin reviewer approves (goes to pending_admin_approval)
+        // The second-pass flow sends its own notification when an admin accepts/rejects
+        const shouldNotify = isAdmin || action !== 'approved'
+        if (config.slackBotToken && shouldNotify) {
             try {
                 // Get the project author's Slack ID
                 const projectAuthor = await db
@@ -809,6 +762,326 @@ admin.post('/reviews/:id', async ({ params, body, headers }) => {
     } catch (err) {
         console.error(err)
         return { error: 'Failed to submit review' }
+    }
+})
+
+// Second-pass review endpoints (admin only)
+// Get projects pending admin approval (reviewer-approved projects)
+admin.get('/second-pass', async ({ headers, query }) => {
+    try {
+        const user = await requireAdmin(headers as Record<string, string>)
+        if (!user) return { error: 'Unauthorized' }
+
+        const page = parseInt(query.page as string) || 1
+        const limit = Math.min(parseInt(query.limit as string) || 20, 100)
+        const offset = (page - 1) * limit
+        const sort = (query.sort as string) || 'oldest'
+
+        const orderClause = sort === 'newest'
+            ? desc(projectsTable.updatedAt)
+            : asc(projectsTable.updatedAt)
+
+        const [projects, countResult] = await Promise.all([
+            db.select({
+                id: projectsTable.id,
+                userId: projectsTable.userId,
+                name: projectsTable.name,
+                description: projectsTable.description,
+                image: projectsTable.image,
+                githubUrl: projectsTable.githubUrl,
+                playableUrl: projectsTable.playableUrl,
+                hours: projectsTable.hours,
+                hoursOverride: projectsTable.hoursOverride,
+                hackatimeProject: projectsTable.hackatimeProject,
+                tier: projectsTable.tier,
+                tierOverride: projectsTable.tierOverride,
+                status: projectsTable.status,
+                deleted: projectsTable.deleted,
+                scrapsAwarded: projectsTable.scrapsAwarded,
+                scrapsPaidAt: projectsTable.scrapsPaidAt,
+                views: projectsTable.views,
+                updateDescription: projectsTable.updateDescription,
+                aiDescription: projectsTable.aiDescription,
+                feedbackSource: projectsTable.feedbackSource,
+                feedbackGood: projectsTable.feedbackGood,
+                feedbackImprove: projectsTable.feedbackImprove,
+                createdAt: projectsTable.createdAt,
+                updatedAt: projectsTable.updatedAt
+            }).from(projectsTable)
+                .where(eq(projectsTable.status, 'pending_admin_approval'))
+                .orderBy(orderClause)
+                .limit(limit)
+                .offset(offset),
+            db.select({ count: sql<number>`count(*)` }).from(projectsTable)
+                .where(eq(projectsTable.status, 'pending_admin_approval'))
+        ])
+
+        const total = Number(countResult[0]?.count || 0)
+
+        // Compute effective hours for each project
+        const projectsWithEffective = await Promise.all(projects.map(async (p) => {
+            const result = await computeEffectiveHoursForProject(p)
+            return { ...p, effectiveHours: result.effectiveHours, deductedHours: result.deductedHours }
+        }))
+
+        return {
+            data: projectsWithEffective,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        }
+    } catch (err) {
+        console.error(err)
+        return { error: 'Failed to fetch second-pass reviews' }
+    }
+})
+
+// Get single project for second-pass review
+admin.get('/second-pass/:id', async ({ params, headers }) => {
+    const user = await requireAdmin(headers as Record<string, string>)
+    if (!user) return { error: 'Unauthorized' }
+
+    try {
+        const project = await db
+            .select()
+            .from(projectsTable)
+            .where(eq(projectsTable.id, parseInt(params.id)))
+            .limit(1)
+
+        if (project.length <= 0) return { error: "Project not found!" }
+        if (project[0].status !== 'pending_admin_approval') {
+            return { error: "Project is not pending admin approval" }
+        }
+
+        const projectUser = await db
+            .select({
+                id: usersTable.id,
+                username: usersTable.username,
+                avatar: usersTable.avatar,
+                internalNotes: usersTable.internalNotes
+            })
+            .from(usersTable)
+            .where(eq(usersTable.id, project[0].userId))
+            .limit(1)
+
+        const reviews = await db
+            .select()
+            .from(reviewsTable)
+            .where(eq(reviewsTable.projectId, parseInt(params.id)))
+
+        const reviewerIds = reviews.map(r => r.reviewerId)
+        let reviewers: { id: number; username: string | null; avatar: string | null }[] = []
+        if (reviewerIds.length > 0) {
+            reviewers = await db
+                .select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar })
+                .from(usersTable)
+                .where(inArray(usersTable.id, reviewerIds))
+        }
+
+        // Calculate effective hours and overlapping projects
+        const effectiveHoursData = await computeEffectiveHoursForProject(project[0])
+
+        return {
+            project: project[0],
+            user: projectUser[0] ? {
+                id: projectUser[0].id,
+                username: projectUser[0].username,
+                avatar: projectUser[0].avatar,
+                internalNotes: projectUser[0].internalNotes
+            } : null,
+            reviews: reviews.map(r => {
+                const reviewer = reviewers.find(rv => rv.id === r.reviewerId)
+                return {
+                    ...r,
+                    reviewerName: reviewer?.username,
+                    reviewerAvatar: reviewer?.avatar,
+                    reviewerId: r.reviewerId
+                }
+            }),
+            ...effectiveHoursData
+        }
+    } catch (err) {
+        console.error(err)
+        return { error: "Something went wrong while trying to get project" }
+    }
+})
+
+// Accept or reject a second-pass review
+admin.post('/second-pass/:id', async ({ params, body, headers }) => {
+    try {
+        const user = await requireAdmin(headers as Record<string, string>)
+        if (!user) return { error: 'Unauthorized' }
+
+        const { action, feedbackForAuthor, hoursOverride } = body as {
+            action: 'accept' | 'reject'
+            feedbackForAuthor?: string
+            hoursOverride?: number
+        }
+
+        if (!['accept', 'reject'].includes(action)) {
+            return { error: 'Invalid action. Must be "accept" or "reject"' }
+        }
+
+        const projectId = parseInt(params.id)
+
+        // Get project
+        const project = await db
+            .select()
+            .from(projectsTable)
+            .where(eq(projectsTable.id, projectId))
+            .limit(1)
+
+        if (!project[0]) return { error: 'Project not found' }
+        if (project[0].status !== 'pending_admin_approval') {
+            return { error: 'Project is not pending admin approval' }
+        }
+
+        if (action === 'accept') {
+            // Accept the reviewer's approval and ship the project
+            const tier = project[0].tierOverride ?? project[0].tier ?? 1
+
+            // Apply hours override if provided
+            if (hoursOverride !== undefined) {
+                await db
+                    .update(projectsTable)
+                    .set({ hoursOverride })
+                    .where(eq(projectsTable.id, projectId))
+                project[0].hoursOverride = hoursOverride
+            }
+
+            // Compute effective hours using activity-derived shipped dates
+            const { effectiveHours } = await computeEffectiveHoursForProject(project[0])
+            const newScrapsAwarded = calculateScrapsFromHours(effectiveHours, tier)
+
+            const previouslyShipped = await hasProjectBeenShipped(projectId)
+
+            let scrapsAwarded = 0
+            const updateData: Record<string, unknown> = {
+                status: 'shipped',
+                updatedAt: new Date()
+            }
+
+            // Calculate scraps
+            if (previouslyShipped && project[0].scrapsAwarded > 0) {
+                scrapsAwarded = Math.max(0, newScrapsAwarded - project[0].scrapsAwarded)
+            } else {
+                scrapsAwarded = newScrapsAwarded
+            }
+
+            updateData.scrapsAwarded = newScrapsAwarded
+
+            // Update project
+            await db
+                .update(projectsTable)
+                .set(updateData)
+                .where(eq(projectsTable.id, projectId))
+
+            // Log scraps earned
+            if (scrapsAwarded > 0) {
+                await db.insert(projectActivityTable).values({
+                    userId: project[0].userId,
+                    projectId,
+                    action: previouslyShipped ? `earned ${scrapsAwarded} additional scraps (update)` : `earned ${scrapsAwarded} scraps`
+                })
+            }
+
+            // Log project shipped
+            await db.insert(projectActivityTable).values({
+                userId: project[0].userId,
+                projectId,
+                action: previouslyShipped ? 'project_updated' : 'project_shipped'
+            })
+
+            // Send notification to project author
+            if (config.slackBotToken) {
+                try {
+                    const projectAuthor = await db
+                        .select({ slackId: usersTable.slackId })
+                        .from(usersTable)
+                        .where(eq(usersTable.id, project[0].userId))
+                        .limit(1)
+
+                    if (projectAuthor[0]?.slackId) {
+                        await notifyProjectReview({
+                            userSlackId: projectAuthor[0].slackId,
+                            projectName: project[0].name,
+                            projectId,
+                            action: 'approved',
+                            feedbackForAuthor: 'Your project has been approved and shipped!',
+                            reviewerSlackId: user.slackId ?? null,
+                            adminSlackIds: [],
+                            scrapsAwarded,
+                            frontendUrl: config.frontendUrl,
+                            token: config.slackBotToken
+                        })
+                    }
+                } catch (slackErr) {
+                    console.error('Failed to send Slack notification:', slackErr)
+                }
+            }
+
+            return { success: true, scrapsAwarded }
+        } else {
+            // Reject: Delete the approval review and add a denial review
+            // Find and delete the approval review
+            await db
+                .delete(reviewsTable)
+                .where(and(
+                    eq(reviewsTable.projectId, projectId),
+                    eq(reviewsTable.action, 'approved')
+                ))
+
+            // Add a denial review from the admin
+            await db.insert(reviewsTable).values({
+                projectId,
+                reviewerId: user.id,
+                action: 'denied',
+                feedbackForAuthor: feedbackForAuthor || 'The admin has rejected the initial approval. Please make improvements and resubmit.',
+                internalJustification: 'Second-pass rejection'
+            })
+
+            // Set project back to in_progress
+            await db
+                .update(projectsTable)
+                .set({ status: 'in_progress', updatedAt: new Date() })
+                .where(eq(projectsTable.id, projectId))
+
+            // Send notification to project author
+            if (config.slackBotToken) {
+                try {
+                    const projectAuthor = await db
+                        .select({ slackId: usersTable.slackId })
+                        .from(usersTable)
+                        .where(eq(usersTable.id, project[0].userId))
+                        .limit(1)
+
+                    if (projectAuthor[0]?.slackId) {
+                        await notifyProjectReview({
+                            userSlackId: projectAuthor[0].slackId,
+                            projectName: project[0].name,
+                            projectId,
+                            action: 'denied',
+                            feedbackForAuthor: feedbackForAuthor || 'The admin has rejected the initial approval. Please make improvements and resubmit.',
+                            reviewerSlackId: user.slackId ?? null,
+                            adminSlackIds: [],
+                            scrapsAwarded: 0,
+                            frontendUrl: config.frontendUrl,
+                            token: config.slackBotToken
+                        })
+                    }
+                } catch (slackErr) {
+                    console.error('Failed to send Slack notification:', slackErr)
+                }
+            }
+
+            return { success: true }
+        }
+    } catch (err) {
+        console.error(err)
+        return { error: 'Failed to process second-pass review' }
     }
 })
 

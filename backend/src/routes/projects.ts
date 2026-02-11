@@ -9,6 +9,7 @@ import { getUserFromSession, fetchUserIdentity } from '../lib/auth'
 import { syncSingleProject } from '../lib/hackatime-sync'
 import { notifyProjectSubmitted } from '../lib/slack'
 import { config } from '../config'
+import { computeEffectiveHoursForProject } from '../lib/effective-hours'
 
 const ALLOWED_IMAGE_DOMAIN = 'cdn.hackclub.com'
 
@@ -74,7 +75,7 @@ projects.get('/explore', async ({ query }) => {
 
     const conditions = [
         or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
-        or(eq(projectsTable.status, 'shipped'), eq(projectsTable.status, 'in_progress'), eq(projectsTable.status, 'waiting_for_review'))
+        or(eq(projectsTable.status, 'shipped'), eq(projectsTable.status, 'in_progress'), eq(projectsTable.status, 'waiting_for_review'), eq(projectsTable.status, 'pending_admin_approval'))
     ]
 
     if (search) {
@@ -90,9 +91,11 @@ projects.get('/explore', async ({ query }) => {
         conditions.push(eq(projectsTable.tier, tier))
     }
 
-    if (status === 'shipped' || status === 'in_progress' || status === 'waiting_for_review') {
-        // Replace the default status condition with specific one
+    if (status === 'shipped' || status === 'in_progress') {
         conditions[1] = eq(projectsTable.status, status)
+    } else if (status === 'waiting_for_review') {
+        // Include pending_admin_approval since it appears as waiting_for_review externally
+        conditions[1] = or(eq(projectsTable.status, 'waiting_for_review'), eq(projectsTable.status, 'pending_admin_approval'))!
     }
 
     const whereClause = and(...conditions)
@@ -150,7 +153,7 @@ projects.get('/explore', async ({ query }) => {
             image: p.image,
             hours: p.hoursOverride ?? p.hours,
             tier: p.tier,
-            status: p.status,
+            status: p.status === 'pending_admin_approval' ? 'waiting_for_review' : p.status,
             views: p.views,
             username: users.find(u => u.id === p.userId)?.username || null
         })),
@@ -190,7 +193,10 @@ projects.get('/', async ({ headers, query }) => {
     const total = Number(countResult[0]?.count || 0)
 
     return {
-        data: projectsList,
+        data: projectsList.map(p => ({
+            ...p,
+            status: p.status === 'pending_admin_approval' ? 'waiting_for_review' : p.status
+        })),
         pagination: {
             page,
             limit,
@@ -214,8 +220,8 @@ projects.get('/:id', async ({ params, headers }) => {
 
     const isOwner = project[0].userId === user.id
 
-    // If not owner, only show shipped, in_progress, or waiting_for_review projects
-    if (!isOwner && project[0].status !== 'shipped' && project[0].status !== 'in_progress' && project[0].status !== 'waiting_for_review') {
+    // If not owner, only show shipped, in_progress, waiting_for_review, or pending_admin_approval projects
+    if (!isOwner && project[0].status !== 'shipped' && project[0].status !== 'in_progress' && project[0].status !== 'waiting_for_review' && project[0].status !== 'pending_admin_approval') {
         return { error: 'Not found' }
     }
 
@@ -264,7 +270,10 @@ projects.get('/:id', async ({ params, headers }) => {
         }
 
         // Add review entries
+        // Hide approval reviews when project is pending admin approval (internal status)
+        const isPendingAdmin = project[0].status === 'pending_admin_approval'
         for (const r of reviews) {
+            if (isPendingAdmin && r.action === 'approved') continue
             activity.push({
                 type: 'review',
                 action: r.action,
@@ -343,35 +352,11 @@ projects.get('/:id', async ({ params, headers }) => {
     }
 
     // Calculate effective hours (subtract overlapping shipped project hours)
+    // Uses activity-derived shipped dates for ordering (consistent with Airtable sync and admin review)
     const projectHours = project[0].hoursOverride ?? project[0].hours ?? 0
-    let deductedHours = 0
-    if (project[0].hackatimeProject) {
-        const hackatimeNames = project[0].hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
-        if (hackatimeNames.length > 0) {
-            const shipped = await db
-                .select({
-                    hours: projectsTable.hours,
-                    hoursOverride: projectsTable.hoursOverride,
-                    hackatimeProject: projectsTable.hackatimeProject
-                })
-                .from(projectsTable)
-                .where(and(
-                    eq(projectsTable.userId, project[0].userId),
-                    eq(projectsTable.status, 'shipped'),
-                    or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
-                    sql`${projectsTable.id} != ${project[0].id}`
-                ))
-
-            for (const op of shipped) {
-                if (!op.hackatimeProject) continue
-                const opNames = op.hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0)
-                if (opNames.some((name: string) => hackatimeNames.includes(name))) {
-                    deductedHours += op.hoursOverride ?? op.hours ?? 0
-                }
-            }
-        }
-    }
-    const effectiveHours = Math.max(0, projectHours - deductedHours)
+    const effectiveHoursResult = await computeEffectiveHoursForProject(project[0])
+    const effectiveHours = effectiveHoursResult.effectiveHours
+    const deductedHours = effectiveHoursResult.deductedHours
 
     return {
         project: {
@@ -386,11 +371,12 @@ projects.get('/:id', async ({ params, headers }) => {
             hoursOverride: isOwner ? project[0].hoursOverride : undefined,
             tier: project[0].tier,
             tierOverride: isOwner ? project[0].tierOverride : undefined,
-            status: project[0].status,
+            status: project[0].status === 'pending_admin_approval' ? 'waiting_for_review' : project[0].status,
             scrapsAwarded: project[0].scrapsAwarded,
             views: project[0].views,
             updateDescription: project[0].updateDescription,
             aiDescription: isOwner ? project[0].aiDescription : undefined,
+            reviewerNotes: isOwner ? project[0].reviewerNotes : undefined,
             usedAi: !!project[0].aiDescription,
             effectiveHours,
             deductedHours,
@@ -470,8 +456,8 @@ projects.put('/:id', async ({ params, body, headers }) => {
 
     if (!existing[0]) return { error: 'Not found' }
 
-    // Reject edits while waiting for review
-    if (existing[0].status === 'waiting_for_review') {
+    // Reject edits while waiting for review or pending admin approval
+    if (existing[0].status === 'waiting_for_review' || existing[0].status === 'pending_admin_approval') {
         return { error: 'Cannot edit project while waiting for review' }
     }
 
@@ -485,6 +471,7 @@ projects.put('/:id', async ({ params, body, headers }) => {
         tier?: number
         updateDescription?: string | null
         aiDescription?: string | null
+        reviewerNotes?: string | null
     }
 
     if (!validateImageUrl(data.image)) {
@@ -511,6 +498,7 @@ projects.put('/:id', async ({ params, body, headers }) => {
     		tier,
     		updateDescription: data.updateDescription !== undefined ? (data.updateDescription || null) : undefined,
     		aiDescription: data.aiDescription !== undefined ? (data.aiDescription || null) : undefined,
+    		reviewerNotes: data.reviewerNotes !== undefined ? (data.reviewerNotes || null) : undefined,
     		updatedAt: new Date()
     	})
         .where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id)))
@@ -561,8 +549,18 @@ projects.post("/:id/unsubmit", async ({ params, headers }) => {
 
     if (!project[0]) return { error: "Not found" }
 
-    if (project[0].status !== 'waiting_for_review') {
+    if (project[0].status !== 'waiting_for_review' && project[0].status !== 'pending_admin_approval') {
         return { error: "Project can only be unsubmitted while waiting for review" }
+    }
+
+    // If project was pending admin approval, clean up the reviewer's approval review
+    if (project[0].status === 'pending_admin_approval') {
+        await db
+            .delete(reviewsTable)
+            .where(and(
+                eq(reviewsTable.projectId, parseInt(params.id)),
+                eq(reviewsTable.action, 'approved')
+            ))
     }
 
     const updated = await db
@@ -618,7 +616,7 @@ projects.post("/:id/submit", async ({ params, headers, body }) => {
 
     if (!project[0]) return { error: "Not found" }
 
-    if (project[0].status !== 'in_progress') {
+    if (project[0].status !== 'in_progress' && project[0].status !== 'shipped') {
         return { error: "Project cannot be submitted in current status" }
     }
 
@@ -696,7 +694,12 @@ projects.get("/:id/reviews", async ({ params, headers }) => {
             .where(inArray(usersTable.id, reviewerIds))
     }
 
-    return reviews.map(r => ({
+    // Hide approval reviews when project is pending admin approval (internal status)
+    const filteredReviews = project[0].status === 'pending_admin_approval'
+        ? reviews.filter(r => r.action !== 'approved')
+        : reviews
+
+    return filteredReviews.map(r => ({
         id: r.id,
         action: r.action,
         feedbackForAuthor: r.feedbackForAuthor,

@@ -29,6 +29,9 @@ export const projectsTable = pgTable('projects', {
   // AI usage fields
   aiDescription: text('ai_description'),
 
+  // Notes for reviewer
+  reviewerNotes: text('reviewer_notes'),
+
   // Feedback fields (filled on submission)
   feedbackSource: text('feedback_source'),
   feedbackGood: text('feedback_good'),

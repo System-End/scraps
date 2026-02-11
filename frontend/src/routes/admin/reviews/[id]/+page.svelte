@@ -14,7 +14,9 @@
 		Globe,
 		RefreshCw,
 		Bot,
-		Loader
+		Loader,
+		ArrowLeft,
+		MessageSquare
 	} from '@lucide/svelte';
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
 	import { getUser } from '$lib/auth-client';
@@ -67,6 +69,7 @@
 		feedbackImprove: string | null;
 		updateDescription: string | null;
 		aiDescription: string | null;
+		reviewerNotes: string | null;
 	}
 
 	interface User {
@@ -330,21 +333,41 @@
 	<title>review {project?.name || 'project'} - admin - scraps</title>
 </svelte:head>
 
-<div class="mx-auto max-w-4xl px-6 pt-24 pb-24 md:px-12">
+<div class="mx-auto max-w-4xl px-6 pt-24 pb-32 md:px-12">
 	{#if loading}
 		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>
 	{:else if !project}
 		<div class="py-12 text-center">
 			<p class="mb-4 text-xl text-gray-500">{$t.project.projectNotFound}</p>
-			<a href="/admin/reviews" class="font-bold underline">{$t.project.back}</a>
+			<a
+				href="/admin/reviews"
+				class="inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
+			>
+				<ArrowLeft size={20} />
+				{$t.project.back}
+			</a>
 		</div>
 	{:else if project.deleted}
 		<div class="py-12 text-center">
 			<p class="mb-2 text-xl text-gray-500">this project has been deleted</p>
 			<p class="mb-4 text-gray-400">status: {project.status}</p>
-			<a href="/projects/{project.id}" class="font-bold underline">view project</a>
+			<a
+				href="/admin/reviews"
+				class="inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
+			>
+				<ArrowLeft size={20} />
+				back to reviews
+			</a>
 		</div>
 	{:else}
+		<a
+			href="/admin/reviews"
+			class="mb-8 inline-flex cursor-pointer items-center gap-2 font-bold hover:underline"
+		>
+			<ArrowLeft size={20} />
+			back to reviews
+		</a>
+
 		{@const isReviewable = project.status === 'waiting_for_review'}
 
 		<!-- Status Banner (shown when project is not waiting for review) -->
@@ -399,6 +422,15 @@
 						{$t.project.aiWasUsed}
 					</p>
 					<p class="text-purple-700">{project.aiDescription}</p>
+				</div>
+			{/if}
+			{#if project.reviewerNotes}
+				<div class="mb-4 rounded-lg border-2 border-dashed border-blue-400 bg-blue-50 p-4">
+					<p class="mb-1 flex items-center gap-1.5 text-sm font-bold text-blue-600">
+						<MessageSquare size={14} />
+						notes from author
+					</p>
+					<p class="text-blue-700">{project.reviewerNotes}</p>
 				</div>
 			{/if}
 			<div class="flex flex-wrap items-center gap-3 text-sm">
@@ -563,7 +595,7 @@
 			<div class="mb-6 rounded-2xl border-4 border-black p-6">
 				<h2 class="mb-4 text-xl font-bold">previous reviews</h2>
 				<div class="space-y-4">
-					{#each reviews as review}
+					{#each [...reviews].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) as review}
 						{@const ReviewIcon = getReviewIcon(review.action)}
 						<div
 							class="rounded-lg border-2 border-black p-4 transition-all duration-200 hover:border-dashed"
@@ -596,7 +628,7 @@
 										{review.action === 'permanently_rejected' ? 'rejected' : review.action === 'scraps_unawarded' ? 'scraps unawarded' : review.action}
 									</span>
 									<span class="text-xs text-gray-500">
-										{new Date(review.createdAt).toLocaleDateString()}
+										{new Date(review.createdAt).toLocaleString()}
 									</span>
 								</div>
 							</div>

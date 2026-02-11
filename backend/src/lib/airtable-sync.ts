@@ -8,6 +8,7 @@ import { reviewsTable } from '../schemas/reviews'
 import { config } from '../config'
 import { eq, and, or, isNull, min, sql, inArray } from 'drizzle-orm'
 import { fetchUserInfo } from './auth'
+import { getProjectShippedDates } from './effective-hours'
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
 
@@ -209,6 +210,9 @@ async function syncProjectsToAirtable(): Promise<void> {
 		// Cache userinfo per userId to avoid redundant API calls
 		const userInfoCache: Map<number, Awaited<ReturnType<typeof fetchUserInfo>>> = new Map()
 
+		// Batch-fetch first shipped dates from project_activity for all projects
+		const shippedDates = await getProjectShippedDates(projects.map(p => p.id))
+
 		// Track which Code URLs we've already seen to detect duplicates
 		const seenCodeUrls = new Set<string>()
 
@@ -235,13 +239,19 @@ async function syncProjectsToAirtable(): Promise<void> {
 			const userInfo = userInfoCache.get(project.userId)
 
 			// Compute effective hours by deducting overlapping shipped project hours
+			// Only deduct from projects that were shipped BEFORE this one (using activity-derived dates)
+			const projectShippedDate = shippedDates.get(project.id)
 			let effectiveHours = project.hoursOverride ?? project.hours ?? 0
-			if (project.hackatimeProject) {
+			if (project.hackatimeProject && projectShippedDate) {
 				const hackatimeNames = project.hackatimeProject.split(',').map(n => n.trim()).filter(n => n.length > 0)
 				if (hackatimeNames.length > 0) {
 					for (const op of projects) {
 						if (op.id === project.id || op.userId !== project.userId) continue
 						if (!op.hackatimeProject) continue
+						const opShippedDate = shippedDates.get(op.id)
+						if (!opShippedDate) continue
+						// Only deduct from projects shipped before this one
+						if (opShippedDate >= projectShippedDate) continue
 						const opNames = op.hackatimeProject.split(',').map(n => n.trim()).filter(n => n.length > 0)
 						if (opNames.some(name => hackatimeNames.includes(name))) {
 							effectiveHours -= (op.hoursOverride ?? op.hours ?? 0)

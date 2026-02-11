@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { ArrowLeft, ChevronDown, Upload, X, Save, Check, Trash2 } from '@lucide/svelte';
+	import { ArrowLeft, ChevronDown, Upload, X, Save, Check, Trash2, MessageSquare } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { formatHours, validateGithubUrl, validatePlayableUrl } from '$lib/utils';
@@ -24,6 +24,7 @@
 		status: string;
 		updateDescription: string | null;
 		aiDescription: string | null;
+		reviewerNotes: string | null;
 	}
 
 	const TIERS = [
@@ -58,6 +59,7 @@
 	let updateDescription = $state('');
 	let usedAi = $state(false);
 	let aiDescription = $state('');
+	let reviewerNotes = $state('');
 
 	const NAME_MAX = 50;
 	const DESC_MIN = 20;
@@ -101,6 +103,7 @@
 			updateDescription = project?.updateDescription || '';
 			usedAi = !!(project?.aiDescription);
 			aiDescription = project?.aiDescription || '';
+			reviewerNotes = project?.reviewerNotes || '';
 			if (project?.hackatimeProject) {
 				selectedHackatimeNames = project.hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0);
 			}
@@ -230,7 +233,8 @@
 					hackatimeProject: hackatimeValue,
 					tier: selectedTier,
 					updateDescription: isUpdate ? updateDescription : null,
-					aiDescription: usedAi ? aiDescription : null
+					aiDescription: usedAi ? aiDescription : null,
+					reviewerNotes: reviewerNotes.trim() || null
 				})
 			});
 
@@ -579,6 +583,22 @@
 						{/if}
 					</div>
 				{/if}
+			</div>
+
+			<!-- Notes for Reviewer -->
+			<div class="mt-6">
+				<label for="reviewerNotes" class="mb-2 flex items-center gap-1.5 text-sm font-bold">
+					<MessageSquare size={14} />
+					notes for reviewer
+					<span class="text-gray-400">(optional)</span>
+				</label>
+				<textarea
+					id="reviewerNotes"
+					bind:value={reviewerNotes}
+					rows="3"
+					placeholder="anything you'd like the reviewer to know about this project..."
+					class="w-full resize-none rounded-lg border-2 border-black px-4 py-3 focus:border-dashed focus:outline-none"
+				></textarea>
 			</div>
 
 			<!-- Actions -->

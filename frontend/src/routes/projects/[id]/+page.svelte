@@ -452,12 +452,13 @@
 						{$t.project.awaitingReview}
 					</span>
 				{:else if project.status === 'shipped'}
-					<span
-						class="flex flex-1 items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
+					<a
+						href="/projects/{project.id}/submit"
+						class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-black px-4 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 sm:px-6 sm:text-base"
 					>
-						<Send size={18} />
-						{$t.project.shipped}
-					</span>
+						<RefreshCw size={18} />
+						ship update
+					</a>
 				{:else if project.status === 'permanently_rejected'}
 					<span
 						class="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full border-4 border-black bg-red-100 px-4 py-3 text-center text-sm font-bold text-red-600 sm:px-6 sm:text-base"
