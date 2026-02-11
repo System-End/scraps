@@ -118,6 +118,7 @@
 			case 'denied':
 				return AlertCircle;
 			case 'permanently_rejected':
+			case 'scraps_unawarded':
 				return XCircle;
 			default:
 				return Clock;
@@ -132,6 +133,8 @@
 				return 'text-yellow-600';
 			case 'permanently_rejected':
 				return 'text-red-600';
+			case 'scraps_unawarded':
+				return 'text-red-600';
 			default:
 				return 'text-gray-600';
 		}
@@ -145,6 +148,8 @@
 				return $t.project.changesRequested;
 			case 'permanently_rejected':
 				return $t.project.permanentlyRejected;
+			case 'scraps_unawarded':
+				return 'scraps unawarded';
 			default:
 				return action;
 		}

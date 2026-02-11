@@ -818,10 +818,17 @@ admin.get('/scraps-payout', async ({ headers }) => {
         const user = await requireAdmin(headers as Record<string, string>)
         if (!user) return { error: 'Unauthorized' }
 
-        const pendingResult = await db
+        const pendingProjects = await db
             .select({
-                count: sql<number>`count(*)`,
-                totalScraps: sql<number>`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`
+                id: projectsTable.id,
+                name: projectsTable.name,
+                image: projectsTable.image,
+                scrapsAwarded: projectsTable.scrapsAwarded,
+                hours: projectsTable.hours,
+                hoursOverride: projectsTable.hoursOverride,
+                userId: projectsTable.userId,
+                status: projectsTable.status,
+                createdAt: projectsTable.createdAt
             })
             .from(projectsTable)
             .where(and(
@@ -831,9 +838,28 @@ admin.get('/scraps-payout', async ({ headers }) => {
                 or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
             ))
 
+        // Get user info for each pending project
+        const userIds = [...new Set(pendingProjects.map(p => p.userId))]
+        let users: { id: number; username: string | null; avatar: string | null }[] = []
+        if (userIds.length > 0) {
+            users = await db
+                .select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar })
+                .from(usersTable)
+                .where(inArray(usersTable.id, userIds))
+        }
+
+        const projectsWithUsers = pendingProjects.map(p => {
+            const owner = users.find(u => u.id === p.userId)
+            return {
+                ...p,
+                owner: owner ? { id: owner.id, username: owner.username, avatar: owner.avatar } : null
+            }
+        })
+
         return {
-            pendingProjects: Number(pendingResult[0]?.count || 0),
-            pendingScraps: Number(pendingResult[0]?.totalScraps || 0),
+            pendingProjects: pendingProjects.length,
+            pendingScraps: pendingProjects.reduce((sum, p) => sum + p.scrapsAwarded, 0),
+            projects: projectsWithUsers,
             nextPayoutDate: getNextPayoutDate().toISOString()
         }
     } catch (err) {
@@ -853,6 +879,71 @@ admin.post('/scraps-payout', async ({ headers }) => {
     } catch (err) {
         console.error(err)
         return { error: 'Failed to trigger payout' }
+    }
+})
+
+// Reject a project's payout (admin only)
+admin.post('/scraps-payout/reject', async ({ headers, body, status }) => {
+    try {
+        const user = await requireAdmin(headers as Record<string, string>)
+        if (!user) return status(401, { error: 'Unauthorized' })
+
+        const { projectId, reason } = body as { projectId: number; reason: string }
+
+        if (!projectId || typeof projectId !== 'number') {
+            return status(400, { error: 'Project ID is required' })
+        }
+
+        if (!reason?.trim()) {
+            return status(400, { error: 'A reason is required' })
+        }
+
+        // Find the project
+        const project = await db
+            .select({
+                id: projectsTable.id,
+                userId: projectsTable.userId,
+                scrapsAwarded: projectsTable.scrapsAwarded,
+                scrapsPaidAt: projectsTable.scrapsPaidAt,
+                status: projectsTable.status,
+                name: projectsTable.name
+            })
+            .from(projectsTable)
+            .where(eq(projectsTable.id, projectId))
+            .limit(1)
+
+        if (!project[0]) {
+            return status(404, { error: 'Project not found' })
+        }
+
+        if (project[0].scrapsPaidAt) {
+            return status(400, { error: 'Scraps have already been paid out for this project' })
+        }
+
+        if (project[0].scrapsAwarded <= 0) {
+            return status(400, { error: 'No scraps to reject for this project' })
+        }
+
+        const previousScraps = project[0].scrapsAwarded
+
+        // Set scrapsAwarded to 0 and status back to in_progress
+        await db
+            .update(projectsTable)
+            .set({ scrapsAwarded: 0, status: 'in_progress', updatedAt: new Date() })
+            .where(eq(projectsTable.id, projectId))
+
+        // Add a proper review record so it shows like a regular review card
+        await db.insert(reviewsTable).values({
+            projectId,
+            reviewerId: user.id,
+            action: 'scraps_unawarded',
+            feedbackForAuthor: `Payout rejected (${previousScraps} scraps): ${reason.trim()}`
+        })
+
+        return { success: true, previousScraps }
+    } catch (err) {
+        console.error(err)
+        return status(500, { error: 'Failed to reject payout' })
     }
 })
 

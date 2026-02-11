@@ -270,6 +270,7 @@
 			case 'denied':
 				return AlertTriangle;
 			case 'permanently_rejected':
+			case 'scraps_unawarded':
 				return XCircle;
 			default:
 				return Info;
@@ -283,6 +284,7 @@
 			case 'denied':
 				return 'text-yellow-600';
 			case 'permanently_rejected':
+			case 'scraps_unawarded':
 				return 'text-red-600';
 			default:
 				return 'text-gray-600';
@@ -591,7 +593,7 @@
 												? 'border-yellow-600 bg-yellow-100 text-yellow-700'
 												: 'border-red-600 bg-red-100 text-red-700'}"
 									>
-										{review.action === 'permanently_rejected' ? 'rejected' : review.action}
+										{review.action === 'permanently_rejected' ? 'rejected' : review.action === 'scraps_unawarded' ? 'scraps unawarded' : review.action}
 									</span>
 									<span class="text-xs text-gray-500">
 										{new Date(review.createdAt).toLocaleDateString()}

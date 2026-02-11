@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Users, FolderKanban, Clock, Scale, Hourglass, ShieldAlert, Coins } from '@lucide/svelte';
+	import { Users, FolderKanban, Clock, Scale, Hourglass, ShieldAlert, Coins, XCircle } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { t } from '$lib/i18n';
@@ -17,6 +17,19 @@
 		inProgressWeightedGrants: number;
 	}
 
+	interface PendingProject {
+		id: number;
+		name: string;
+		image: string | null;
+		scrapsAwarded: number;
+		hours: number | null;
+		hoursOverride: number | null;
+		userId: number;
+		status: string;
+		createdAt: string;
+		owner: { id: number; username: string | null; avatar: string | null } | null;
+	}
+
 	let stats = $state<Stats | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -24,10 +37,16 @@
 
 	// Payout state
 	let payoutLoading = $state(false);
-	let payoutInfo = $state<{ pendingProjects: number; pendingScraps: number; nextPayoutDate: string } | null>(null);
+	let payoutInfo = $state<{ pendingProjects: number; pendingScraps: number; projects: PendingProject[]; nextPayoutDate: string } | null>(null);
 	let payoutResult = $state<{ paidCount: number; totalScraps: number } | null>(null);
 	let payoutError = $state<string | null>(null);
 	let payingOut = $state(false);
+
+	// Reject payout state
+	let rejectingProjectId = $state<number | null>(null);
+	let rejectReason = $state('');
+	let rejectLoading = $state(false);
+	let rejectError = $state<string | null>(null);
 
 	// Fix balances state
 	let fixingBalances = $state(false);
@@ -72,6 +91,36 @@
 			payoutError = 'Failed to trigger payout';
 		} finally {
 			payingOut = false;
+		}
+	}
+
+	async function rejectPayout(projectId: number) {
+		if (!rejectReason.trim()) {
+			rejectError = 'A reason is required';
+			return;
+		}
+		rejectLoading = true;
+		rejectError = null;
+		try {
+			const res = await fetch(`${API_URL}/admin/scraps-payout/reject`, {
+				method: 'POST',
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ projectId, reason: rejectReason.trim() })
+			});
+			const data = await res.json();
+			if (data.error) {
+				rejectError = data.error;
+			} else {
+				rejectingProjectId = null;
+				rejectReason = '';
+				// Refresh payout info
+				await fetchPayoutInfo();
+			}
+		} catch {
+			rejectError = 'Failed to reject payout';
+		} finally {
+			rejectLoading = false;
 		}
 	}
 
@@ -275,6 +324,76 @@
 					<p class="font-bold text-green-700">
 						paid out {payoutResult.totalScraps} scraps across {payoutResult.paidCount} project{payoutResult.paidCount !== 1 ? 's' : ''}
 					</p>
+				</div>
+			{/if}
+
+			<!-- Pending Projects Preview -->
+			{#if payoutInfo && payoutInfo.projects && payoutInfo.projects.length > 0}
+				<div class="mt-6">
+					<h4 class="mb-3 text-sm font-bold text-gray-500 uppercase">pending payout projects</h4>
+					<div class="space-y-3 max-h-96 overflow-y-auto">
+						{#each payoutInfo.projects as project}
+							<div class="flex items-center gap-4 rounded-xl border-2 border-gray-200 bg-gray-50 p-4 transition-all hover:border-gray-300">
+								{#if project.image}
+									<img src={project.image} alt={project.name} class="h-12 w-12 rounded-lg border-2 border-black object-cover" />
+								{:else}
+									<div class="h-12 w-12 rounded-lg border-2 border-gray-300 bg-gray-200"></div>
+								{/if}
+								<div class="flex-1 min-w-0">
+									<a href="/projects/{project.id}" class="font-bold hover:underline truncate block">{project.name}</a>
+									<div class="flex items-center gap-2 text-sm text-gray-500">
+										{#if project.owner}
+											<a href="/users/{project.owner.id}" class="hover:underline">
+												{project.owner.username ?? `User #${project.owner.id}`}
+											</a>
+											<span>·</span>
+										{/if}
+										<span>{(project.hoursOverride ?? project.hours ?? 0).toFixed(1)}h</span>
+										<span>·</span>
+										<span class="font-bold text-green-600">{project.scrapsAwarded} scraps</span>
+									</div>
+								</div>
+								<div class="flex items-center gap-2 shrink-0">
+									{#if rejectingProjectId === project.id}
+										<div class="flex items-center gap-2">
+											<input
+												type="text"
+												bind:value={rejectReason}
+												placeholder="reason for rejection..."
+												class="rounded-lg border-2 border-gray-300 px-3 py-1.5 text-sm focus:border-red-500 focus:outline-none w-48"
+												onkeydown={(e) => e.key === 'Enter' && rejectPayout(project.id)}
+											/>
+											<button
+												onclick={() => rejectPayout(project.id)}
+												disabled={rejectLoading || !rejectReason.trim()}
+												class="cursor-pointer rounded-full bg-red-600 px-4 py-1.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+											>
+												{rejectLoading ? '...' : 'reject'}
+											</button>
+											<button
+												onclick={() => { rejectingProjectId = null; rejectReason = ''; rejectError = null; }}
+												class="cursor-pointer rounded-full border-2 border-gray-300 px-3 py-1.5 text-sm font-bold text-gray-600 hover:border-gray-400"
+											>
+												cancel
+											</button>
+										</div>
+									{:else}
+										<button
+											onclick={() => { rejectingProjectId = project.id; rejectReason = ''; rejectError = null; }}
+											class="cursor-pointer flex items-center gap-1 rounded-full border-2 border-red-300 px-3 py-1.5 text-sm font-bold text-red-600 transition-all hover:bg-red-50 hover:border-red-400"
+											title="Reject payout for this project"
+										>
+											<XCircle size={14} />
+											reject
+										</button>
+									{/if}
+								</div>
+							</div>
+							{#if rejectError && rejectingProjectId === project.id}
+								<div class="ml-16 rounded-lg bg-red-50 p-2 text-xs text-red-600">{rejectError}</div>
+							{/if}
+						{/each}
+					</div>
 				</div>
 			{/if}
 		</div>
