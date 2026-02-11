@@ -143,7 +143,7 @@ async function syncAllProjects(): Promise<void> {
 	const startTime = Date.now()
 
 	try {
-		// Get all projects with hackatime projects that are not deleted, joined with user email
+		// Get all projects with hackatime projects that are not deleted and not shipped, joined with user email
 		const projects = await db
 			.select({
 				id: projectsTable.id,
@@ -156,7 +156,8 @@ async function syncAllProjects(): Promise<void> {
 			.innerJoin(usersTable, eq(projectsTable.userId, usersTable.id))
 			.where(and(
 				isNotNull(projectsTable.hackatimeProject),
-				or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
+				or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
+				sql`${projectsTable.status} != 'shipped'`
 			))
 
 		// Group projects by user email to batch API calls
