@@ -30,6 +30,30 @@ async function requireAdmin(headers: Record<string, string>) {
     return user
 }
 
+// Helper: compute effective hours for a project by subtracting overlapping shipped hours
+function computeEffectiveHours(
+    project: { id: number; userId: number; hours: number | null; hoursOverride: number | null; hackatimeProject: string | null },
+    allShipped: { id: number; userId: number; hours: number | null; hoursOverride: number | null; hackatimeProject: string | null }[]
+): number {
+    const hours = project.hoursOverride ?? project.hours ?? 0
+    if (!project.hackatimeProject) return hours
+
+    const hackatimeNames = project.hackatimeProject.split(',').map(n => n.trim()).filter(n => n.length > 0)
+    if (hackatimeNames.length === 0) return hours
+
+    let deducted = 0
+    for (const op of allShipped) {
+        if (op.id === project.id || op.userId !== project.userId) continue
+        if (!op.hackatimeProject) continue
+        const opNames = op.hackatimeProject.split(',').map(n => n.trim()).filter(n => n.length > 0)
+        if (opNames.some(name => hackatimeNames.includes(name))) {
+            deducted += op.hoursOverride ?? op.hours ?? 0
+        }
+    }
+
+    return Math.max(0, hours - deducted)
+}
+
 // Get admin stats (info page)
 admin.get('/stats', async ({ headers, status }) => {
     const user = await requireReviewer(headers as Record<string, string>)
@@ -37,36 +61,34 @@ admin.get('/stats', async ({ headers, status }) => {
         return status(401, { error: 'Unauthorized' })
     }
 
-    const [usersCount, projectsCount, totalHoursResult, pendingHoursResult, inProgressHoursResult] = await Promise.all([
+    const [usersCount, projectsCount, allProjects] = await Promise.all([
         db.select({ count: sql<number>`count(*)` }).from(usersTable),
         db.select({ count: sql<number>`count(*)` })
             .from(projectsTable)
             .where(or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)),
-        db.select({ total: sql<number>`COALESCE(SUM(COALESCE(${projectsTable.hoursOverride}, ${projectsTable.hours})), 0)` })
+        db.select({
+            id: projectsTable.id,
+            userId: projectsTable.userId,
+            hours: projectsTable.hours,
+            hoursOverride: projectsTable.hoursOverride,
+            hackatimeProject: projectsTable.hackatimeProject,
+            status: projectsTable.status
+        })
             .from(projectsTable)
-            .where(and(
-                eq(projectsTable.status, 'shipped'),
-                or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)
-            )),
-        db.select({ total: sql<number>`COALESCE(SUM(COALESCE(${projectsTable.hoursOverride}, ${projectsTable.hours})), 0)` })
-            .from(projectsTable)
-            .where(and(
-                eq(projectsTable.status, 'waiting_for_review'),
-                or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)
-            )),
-        db.select({ total: sql<number>`COALESCE(SUM(COALESCE(${projectsTable.hoursOverride}, ${projectsTable.hours})), 0)` })
-            .from(projectsTable)
-            .where(and(
-                eq(projectsTable.status, 'in_progress'),
-                or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)
-            ))
+            .where(or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))
     ])
+
+    const shipped = allProjects.filter(p => p.status === 'shipped')
+    const pending = allProjects.filter(p => p.status === 'waiting_for_review')
+    const inProgress = allProjects.filter(p => p.status === 'in_progress')
+
+    // Compute effective hours for each category (deducting overlapping shipped project hours)
+    const totalHours = shipped.reduce((sum, p) => sum + computeEffectiveHours(p, shipped), 0)
+    const pendingHours = pending.reduce((sum, p) => sum + computeEffectiveHours(p, shipped), 0)
+    const inProgressHours = inProgress.reduce((sum, p) => sum + computeEffectiveHours(p, shipped), 0)
 
     const totalUsers = Number(usersCount[0]?.count || 0)
     const totalProjects = Number(projectsCount[0]?.count || 0)
-    const totalHours = Number(totalHoursResult[0]?.total || 0)
-    const pendingHours = Number(pendingHoursResult[0]?.total || 0)
-    const inProgressHours = Number(inProgressHoursResult[0]?.total || 0)
     const weightedGrants = Math.round(totalHours / 10 * 100) / 100
     const pendingWeightedGrants = Math.round(pendingHours / 10 * 100) / 100
     const inProgressWeightedGrants = Math.round(inProgressHours / 10 * 100) / 100

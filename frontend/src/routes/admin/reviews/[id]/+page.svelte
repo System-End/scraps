@@ -420,16 +420,6 @@
 				<span class="rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold"
 					>tier {project.tier}</span
 				>
-				{#if user?.role === 'admin' && project.status !== 'shipped'}
-					<button
-						onclick={syncHours}
-						disabled={syncing}
-						class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						<RefreshCw size={14} class={syncing ? 'animate-spin' : ''} />
-						{syncing ? 'syncing...' : 'sync hours'}
-					</button>
-				{/if}
 			</div>
 
 			{#if overlappingProjects.length > 0}
@@ -500,6 +490,16 @@
 						<Globe size={18} />
 						<span>{$t.project.tryItOut}</span>
 					</span>
+				{/if}
+				{#if user?.role === 'admin' && project.status !== 'shipped'}
+					<button
+						onclick={syncHours}
+						disabled={syncing}
+						class="inline-flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						<RefreshCw size={18} class={syncing ? 'animate-spin' : ''} />
+						<span>{syncing ? 'syncing...' : 'sync hours'}</span>
+					</button>
 				{/if}
 			</div>
 
