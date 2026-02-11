@@ -40,8 +40,7 @@ function buildJustification(project: {
 	action: string
 	reviewerName: string | null
 	createdAt: Date
-}[]): string {
-	const effectiveHours = project.hoursOverride ?? project.hours ?? 0
+}[], effectiveHours: number): string {
 	const lines: string[] = []
 
 	lines.push(`The user logged ${formatHoursMinutes(effectiveHours)} on hackatime.`)
@@ -82,6 +81,7 @@ async function syncProjectsToAirtable(): Promise<void> {
 				playableUrl: projectsTable.playableUrl,
 				hours: projectsTable.hours,
 				hoursOverride: projectsTable.hoursOverride,
+				hackatimeProject: projectsTable.hackatimeProject,
 				tier: projectsTable.tier,
 				status: projectsTable.status,
 				updateDescription: projectsTable.updateDescription,
@@ -182,7 +182,22 @@ async function syncProjectsToAirtable(): Promise<void> {
 			}
 			const userInfo = userInfoCache.get(project.userId)
 
-			const effectiveHours = project.hoursOverride ?? project.hours ?? 0
+			// Compute effective hours by deducting overlapping shipped project hours
+			let effectiveHours = project.hoursOverride ?? project.hours ?? 0
+			if (project.hackatimeProject) {
+				const hackatimeNames = project.hackatimeProject.split(',').map(n => n.trim()).filter(n => n.length > 0)
+				if (hackatimeNames.length > 0) {
+					for (const op of projects) {
+						if (op.id === project.id || op.userId !== project.userId) continue
+						if (!op.hackatimeProject) continue
+						const opNames = op.hackatimeProject.split(',').map(n => n.trim()).filter(n => n.length > 0)
+						if (opNames.some(name => hackatimeNames.includes(name))) {
+							effectiveHours -= (op.hoursOverride ?? op.hours ?? 0)
+						}
+					}
+					effectiveHours = Math.max(0, effectiveHours)
+				}
+			}
 
 			const firstName = userInfo?.given_name || (project.username || '').split(' ')[0] || ''
 			const lastName = userInfo?.family_name || (project.username || '').split(' ').slice(1).join(' ') || ''
@@ -209,7 +224,8 @@ async function syncProjectsToAirtable(): Promise<void> {
 				'Optional - Override Hours Spent': effectiveHours,
 				'Optional - Override Hours Spent Justification': buildJustification(
 					project,
-					reviewsByProjectId.get(project.id) || []
+					reviewsByProjectId.get(project.id) || [],
+					effectiveHours
 				),
 				'Playable URL': project.playableUrl || '',
 				'Screenshot': [{ url: project.image }] as any,
