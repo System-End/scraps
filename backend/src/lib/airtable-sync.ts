@@ -134,6 +134,7 @@ async function syncProjectsToAirtable(): Promise<void> {
 		// Fetch existing records from Airtable to find which ones to update vs create
 		const existingRecords: Map<string, string> = new Map() // github_url -> airtable record id
 		const approvedRecords: Set<string> = new Set() // github_urls that are already approved in Airtable
+		const airtableRecordsToDelete: string[] = [] // airtable record ids to delete (for rejected projects)
 		await new Promise<void>((resolve, reject) => {
 			table.select({
 				fields: ['Code URL', 'Review Status']
@@ -157,6 +158,49 @@ async function syncProjectsToAirtable(): Promise<void> {
 				}
 			)
 		})
+
+		// Find projects that were rejected in payout review (scraps_unawarded)
+		// Only remove their Airtable entries if they have NOT been later approved
+		if (projectIds.length > 0) {
+			// Get all rejected reviews
+			const rejectedReviews = await db
+				.select({
+					projectId: reviewsTable.projectId,
+					action: reviewsTable.action
+				})
+				.from(reviewsTable)
+				.where(and(
+					inArray(reviewsTable.projectId, projectIds),
+					eq(reviewsTable.action, 'scraps_unawarded')
+				))
+
+			// Get all approved reviews
+			const approvedReviews = await db
+				.select({
+					projectId: reviewsTable.projectId,
+					action: reviewsTable.action
+				})
+				.from(reviewsTable)
+				.where(and(
+					inArray(reviewsTable.projectId, projectIds),
+					eq(reviewsTable.action, 'approved')
+				))
+
+			const approvedProjectIds = new Set(approvedReviews.map(r => r.projectId))
+
+			for (const review of rejectedReviews) {
+				// Only delete if NOT later approved
+				if (approvedProjectIds.has(review.projectId)) continue
+				// Find githubUrl for this project
+				const project = projects.find(p => p.id === review.projectId)
+				if (project && project.githubUrl) {
+					const airtableId = existingRecords.get(project.githubUrl)
+					if (airtableId) {
+						airtableRecordsToDelete.push(airtableId)
+					}
+				}
+			}
+		}
 
 		const toCreate: Airtable.FieldSet[] = []
 		const toUpdate: { id: string; fields: Airtable.FieldSet }[] = []
@@ -283,6 +327,12 @@ async function syncProjectsToAirtable(): Promise<void> {
 			await table.update(batch)
 		}
 
+		// Delete Airtable records for rejected payout projects
+		for (let i = 0; i < airtableRecordsToDelete.length; i += 10) {
+			const batch = airtableRecordsToDelete.slice(i, i + 10)
+			await table.destroy(batch)
+		}
+
 		// Revert duplicate projects back to waiting_for_review
 		for (const projectId of duplicateProjectIds) {
 			await db
@@ -292,6 +342,10 @@ async function syncProjectsToAirtable(): Promise<void> {
 		}
 		if (duplicateProjectIds.length > 0) {
 			console.log(`[AIRTABLE-SYNC] Reverted ${duplicateProjectIds.length} duplicate projects back to waiting_for_review`)
+		}
+
+		if (airtableRecordsToDelete.length > 0) {
+			console.log(`[AIRTABLE-SYNC] Deleted ${airtableRecordsToDelete.length} rejected payout projects from Airtable`)
 		}
 
 		console.log(`[AIRTABLE-SYNC] Projects: ${toCreate.length} created, ${uniqueUpdates.length} updated`)
