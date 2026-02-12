@@ -46,15 +46,8 @@
 		}
 	}
 
-	function formatAddress(addr: ShippingAddress): string {
-		const parts = [
-			`${addr.firstName} ${addr.lastName}`,
-			addr.address1,
-			addr.address2,
-			`${addr.city}, ${addr.state} ${addr.postalCode}`,
-			addr.country
-		].filter(Boolean);
-		return parts.join(', ');
+	function formatName(addr: ShippingAddress): string {
+		return `${addr.firstName} ${addr.lastName}`.trim();
 	}
 
 	interface User {
@@ -273,13 +266,31 @@
 							{/if}
 
 							{#if parseShippingAddress(order.shippingAddress)}
-								{@const shippingAddr = parseShippingAddress(order.shippingAddress)!}
-								<div class="mt-2 rounded-lg border border-gray-300 bg-gray-100 p-2">
-									<p class="mb-1 text-xs font-bold text-gray-500">shipping address</p>
-									<p class="text-sm">{formatAddress(shippingAddr)}</p>
-									{#if order.phone || shippingAddr.phone}
-										<p class="mt-1 text-xs text-gray-500">phone: {order.phone || shippingAddr.phone}</p>
-									{/if}
+								{@const addr = parseShippingAddress(order.shippingAddress)!}
+								<div class="mt-2 rounded-lg border border-gray-300 bg-gray-100 p-3">
+									<p class="mb-2 text-xs font-bold text-gray-500 uppercase">shipping address</p>
+									<div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+										<span class="font-bold text-gray-500">name</span>
+										<span>{formatName(addr)}</span>
+										<span class="font-bold text-gray-500">address 1</span>
+										<span>{addr.address1}</span>
+										{#if addr.address2}
+											<span class="font-bold text-gray-500">address 2</span>
+											<span>{addr.address2}</span>
+										{/if}
+										<span class="font-bold text-gray-500">city</span>
+										<span>{addr.city}</span>
+										<span class="font-bold text-gray-500">state</span>
+										<span>{addr.state}</span>
+										<span class="font-bold text-gray-500">zip</span>
+										<span>{addr.postalCode}</span>
+										<span class="font-bold text-gray-500">country</span>
+										<span>{addr.country}</span>
+										{#if order.phone || addr.phone}
+											<span class="font-bold text-gray-500">phone</span>
+											<span>{order.phone || addr.phone}</span>
+										{/if}
+									</div>
 								</div>
 							{:else if order.orderType === 'win'}
 								<div class="mt-2 rounded-lg border border-yellow-300 bg-yellow-100 p-2">
@@ -287,7 +298,12 @@
 								</div>
 							{/if}
 							{#if order.phone && !parseShippingAddress(order.shippingAddress)}
-								<p class="mt-1 text-xs text-gray-500">phone: {order.phone}</p>
+								<div class="mt-2 rounded-lg border border-gray-300 bg-gray-100 p-3">
+									<div class="grid grid-cols-[auto_1fr] gap-x-3 text-sm">
+										<span class="font-bold text-gray-500">phone</span>
+										<span>{order.phone}</span>
+									</div>
+								</div>
 							{/if}
 						</div>
 

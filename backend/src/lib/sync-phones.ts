@@ -1,6 +1,7 @@
-import { eq } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { db } from '../db'
 import { usersTable } from '../schemas/users'
+import { shopOrdersTable } from '../schemas/shop'
 import { fetchUserIdentity } from './auth'
 
 export async function syncAllPhoneNumbers() {
@@ -17,6 +18,7 @@ export async function syncAllPhoneNumbers() {
 
 		let updated = 0
 		let failed = 0
+		let ordersUpdated = 0
 
 		for (const u of allUsers) {
 			if (!u.accessToken) {
@@ -36,11 +38,22 @@ export async function syncAllPhoneNumbers() {
 					.set({ phone, updatedAt: new Date() })
 					.where(eq(usersTable.id, u.id))
 				updated++
+
+				// Backfill phone on existing orders that don't have one
+				const result = await db
+					.update(shopOrdersTable)
+					.set({ phone, updatedAt: new Date() })
+					.where(and(
+						eq(shopOrdersTable.userId, u.id),
+						isNull(shopOrdersTable.phone)
+					))
+					.returning({ id: shopOrdersTable.id })
+				ordersUpdated += result.length
 			}
 		}
 
-		console.log(`[SYNC-PHONES] Done. Updated ${updated} of ${allUsers.length} users (${failed} failed)`)
-		return { total: allUsers.length, updated, failed }
+		console.log(`[SYNC-PHONES] Done. Updated ${updated} of ${allUsers.length} users, ${ordersUpdated} orders backfilled (${failed} failed)`)
+		return { total: allUsers.length, updated, ordersUpdated, failed }
 	} catch (err) {
 		console.error('[SYNC-PHONES] Error syncing phone numbers:', err)
 	}
