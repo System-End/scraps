@@ -51,4 +51,4 @@ if (process.env.NODE_ENV !== 'development') {
 }
 
 // Sync phone numbers from Hack Club Auth on startup
-syncAllPhoneNumbers()
+// syncAllPhoneNumbers()
