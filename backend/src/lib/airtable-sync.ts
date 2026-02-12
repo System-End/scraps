@@ -40,6 +40,7 @@ function buildJustification(project: {
 }, reviews: {
 	action: string
 	reviewerName: string | null
+	internalJustification: string | null
 	createdAt: Date
 }[], effectiveHours: number): string {
 	const lines: string[] = []
@@ -55,6 +56,9 @@ function buildJustification(project: {
 			const reviewerName = review.reviewerName || 'Unknown'
 			const date = review.createdAt.toISOString().split('T')[0]
 			lines.push(`- ${reviewerName} ${review.action} on ${date}`)
+			if (review.internalJustification) {
+				lines.push(`  Justification: ${review.internalJustification}`)
+			}
 		}
 	}
 
@@ -106,12 +110,13 @@ async function syncProjectsToAirtable(): Promise<void> {
 
 		// Fetch all reviews for shipped projects with reviewer usernames
 		const projectIds = projects.map(p => p.id)
-		let reviewsByProjectId = new Map<number, { action: string; reviewerName: string | null; createdAt: Date }[]>()
+		let reviewsByProjectId = new Map<number, { action: string; reviewerName: string | null; internalJustification: string | null; createdAt: Date }[]>()
 		if (projectIds.length > 0) {
 			const allReviews = await db
 				.select({
 					projectId: reviewsTable.projectId,
 					action: reviewsTable.action,
+					internalJustification: reviewsTable.internalJustification,
 					createdAt: reviewsTable.createdAt,
 					reviewerUsername: usersTable.username
 				})
@@ -124,6 +129,7 @@ async function syncProjectsToAirtable(): Promise<void> {
 				existing.push({
 					action: review.action,
 					reviewerName: review.reviewerUsername,
+					internalJustification: review.internalJustification,
 					createdAt: review.createdAt
 				})
 				reviewsByProjectId.set(review.projectId, existing)

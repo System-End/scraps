@@ -11,6 +11,7 @@ export const usersTable = pgTable('users', {
   username: varchar(),
   email: varchar().notNull(),
   avatar: varchar(),
+  phone: varchar(),
 
   // OAuth tokens
   accessToken: text('access_token'),

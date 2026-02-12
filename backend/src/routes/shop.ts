@@ -278,6 +278,15 @@ shop.post('/items/:id/purchase', async ({ params, body, headers }) => {
 
 	const totalPrice = item.price * quantity
 
+	// Get user's phone number for the order
+	const userPhone = await db
+		.select({ phone: usersTable.phone })
+		.from(usersTable)
+		.where(eq(usersTable.id, user.id))
+		.limit(1)
+
+	const phone = userPhone[0]?.phone || null
+
 	try {
 		const order = await db.transaction(async (tx) => {
 			// Lock the user row to serialize spend operations and prevent race conditions
@@ -317,6 +326,7 @@ shop.post('/items/:id/purchase', async ({ params, body, headers }) => {
 					pricePerItem: item.price,
 					totalPrice,
 					shippingAddress: shippingAddress || null,
+					phone,
 					status: 'pending'
 				})
 				.returning()
@@ -402,6 +412,15 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 		return { error: 'Out of stock' }
 	}
 
+	// Get user's phone number for orders
+	const userPhoneResult = await db
+		.select({ phone: usersTable.phone })
+		.from(usersTable)
+		.where(eq(usersTable.id, user.id))
+		.limit(1)
+
+	const userPhone = userPhoneResult[0]?.phone || null
+
 	try {
 		const result = await db.transaction(async (tx) => {
 			// Lock the user row to serialize spend operations and prevent race conditions
@@ -483,6 +502,7 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 						pricePerItem: rollCost,
 						totalPrice: rollCost,
 						shippingAddress: null,
+						phone: userPhone,
 						status: 'pending',
 						orderType: 'luck_win'
 					})
@@ -539,6 +559,7 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 					pricePerItem: rollCost,
 					totalPrice: rollCost,
 					shippingAddress: null,
+					phone: userPhone,
 					status: 'pending',
 					orderType: 'consolation',
 					notes: `Consolation scrap paper - rolled ${rolled}, needed ${effectiveProbability} or less`

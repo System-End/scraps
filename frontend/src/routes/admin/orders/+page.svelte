@@ -28,6 +28,7 @@
 		notes: string | null;
 		isFulfilled: boolean;
 		shippingAddress: string | null;
+		phone: string | null;
 		createdAt: string;
 		itemId: number;
 		itemName: string;
@@ -276,14 +277,17 @@
 								<div class="mt-2 rounded-lg border border-gray-300 bg-gray-100 p-2">
 									<p class="mb-1 text-xs font-bold text-gray-500">shipping address</p>
 									<p class="text-sm">{formatAddress(shippingAddr)}</p>
-									{#if shippingAddr.phone}
-										<p class="mt-1 text-xs text-gray-500">📞 {shippingAddr.phone}</p>
+									{#if order.phone || shippingAddr.phone}
+										<p class="mt-1 text-xs text-gray-500">phone: {order.phone || shippingAddr.phone}</p>
 									{/if}
 								</div>
 							{:else if order.orderType === 'win'}
 								<div class="mt-2 rounded-lg border border-yellow-300 bg-yellow-100 p-2">
-									<p class="text-xs font-bold text-yellow-700">⚠️ no shipping address provided</p>
+									<p class="text-xs font-bold text-yellow-700">no shipping address provided</p>
 								</div>
+							{/if}
+							{#if order.phone && !parseShippingAddress(order.shippingAddress)}
+								<p class="mt-1 text-xs text-gray-500">phone: {order.phone}</p>
 							{/if}
 						</div>
 

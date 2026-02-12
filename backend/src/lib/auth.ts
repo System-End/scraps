@@ -23,6 +23,7 @@ interface HackClubIdentity {
     verification_status?: string
     primary_email?: string
     slack_id?: string
+    phone_number?: string
     given_name?: string
     family_name?: string
     birthdate?: string
@@ -160,6 +161,7 @@ export async function createOrUpdateUser(identity: HackClubIdentity, tokens: OID
             username,
             email: identity.primary_email || "",
             avatar: avatarUrl,
+            phone: identity.phone_number || null,
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token,
             idToken: tokens.id_token,
@@ -172,6 +174,7 @@ export async function createOrUpdateUser(identity: HackClubIdentity, tokens: OID
                 email: sql`COALESCE(${identity.primary_email || null}, ${usersTable.email})`,
                 slackId: identity.slack_id,
                 avatar: sql`COALESCE(${avatarUrl}, ${usersTable.avatar})`,
+                phone: sql`COALESCE(${identity.phone_number || null}, ${usersTable.phone})`,
                 accessToken: tokens.access_token,
                 refreshToken: tokens.refresh_token,
                 idToken: tokens.id_token,

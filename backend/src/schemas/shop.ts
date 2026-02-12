@@ -36,6 +36,7 @@ export const shopOrdersTable = pgTable('shop_orders', {
 	status: varchar().notNull().default('pending'),
 	orderType: varchar('order_type').notNull().default('purchase'),
 	shippingAddress: text('shipping_address'),
+	phone: varchar(),
 	notes: text(),
 	isFulfilled: boolean('is_fulfilled').notNull().default(false),
 	createdAt: timestamp('created_at').defaultNow().notNull(),

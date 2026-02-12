@@ -1511,6 +1511,7 @@ admin.get('/orders', async ({ headers, query, status }) => {
                 notes: shopOrdersTable.notes,
                 isFulfilled: shopOrdersTable.isFulfilled,
                 shippingAddress: shopOrdersTable.shippingAddress,
+                phone: shopOrdersTable.phone,
                 createdAt: shopOrdersTable.createdAt,
                 itemId: shopItemsTable.id,
                 itemName: shopItemsTable.name,

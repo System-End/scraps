@@ -14,6 +14,7 @@ import slack from './routes/slack'
 import { startHackatimeSync } from './lib/hackatime-sync'
 import { startAirtableSync } from './lib/airtable-sync'
 import { startScrapsPayout } from './lib/scraps-payout'
+import { syncAllPhoneNumbers } from './lib/sync-phones'
 
 const api = new Elysia()
     .use(authRoutes)
@@ -48,3 +49,6 @@ if (process.env.NODE_ENV !== 'development') {
 } else {
 	console.log('[STARTUP] Skipping background syncs in development mode')
 }
+
+// Sync phone numbers from Hack Club Auth on startup
+syncAllPhoneNumbers()
