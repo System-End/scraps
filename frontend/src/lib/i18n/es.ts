@@ -15,7 +15,8 @@ export default {
 		orders: 'pedidos',
 		news: 'noticias',
 		escape: 'salir',
-		admin: 'admin'
+		admin: 'admin',
+		more: 'más'
 	},
 	landing: {
 		youShip: 'tú envías:',

@@ -22,7 +22,8 @@
 		Menu,
 		X,
 		Globe,
-		Languages
+		Languages,
+		ChevronDown
 	} from '@lucide/svelte';
 	import { logout, getUser, userScrapsStore, userScrapsPendingStore, nextPayoutDateStore } from '$lib/auth-client';
 	import { t, locale, setLocale, type Locale } from '$lib/i18n';
@@ -41,6 +42,7 @@
 	let loading = $state(true);
 	let showProfileMenu = $state(false);
 	let showMobileMenu = $state(false);
+	let showMoreMenu = $state(false);
 	let activeSection = $state('home');
 	let isScrolling = $state(false);
 	let countdownText = $state('');
@@ -51,6 +53,13 @@
 	let isReviewer = $derived(user?.role === 'admin' || user?.role === 'reviewer');
 	let isAdminOnly = $derived(user?.role === 'admin');
 	let isInAdminSection = $derived(currentPath.startsWith('/admin'));
+	let dashboardMoreActive = $derived(currentPath === '/leaderboard' || currentPath === '/shop' || currentPath === '/refinery');
+	let adminMoreActive = $derived(
+		currentPath.startsWith('/admin/second-pass') ||
+			currentPath.startsWith('/admin/shop') ||
+			currentPath.startsWith('/admin/news') ||
+			currentPath.startsWith('/admin/orders')
+	);
 
 	let observer: IntersectionObserver | null = null;
 
@@ -151,6 +160,14 @@
 		showProfileMenu = false;
 	}
 
+	function toggleMoreMenu() {
+		showMoreMenu = !showMoreMenu;
+	}
+
+	function closeMoreMenu() {
+		showMoreMenu = false;
+	}
+
 	function toggleMobileMenu() {
 		showMobileMenu = !showMobileMenu;
 	}
@@ -175,12 +192,15 @@
 		if (!target.closest('.profile-menu-container')) {
 			closeProfileMenu();
 		}
+		if (!target.closest('.more-menu-container')) {
+			closeMoreMenu();
+		}
 	}}
 />
 
 <!-- Desktop navbar -->
 <nav
-	class="fixed top-0 right-0 left-0 z-50 hidden items-center justify-between bg-white/90 px-6 py-4 backdrop-blur-sm md:flex md:px-12 lg:px-64"
+	class="fixed top-0 right-0 left-0 z-50 hidden items-center justify-between bg-white/90 px-6 py-4 backdrop-blur-sm md:flex md:px-8 lg:px-12 xl:px-24 2xl:px-64"
 >
 	<a href={isLoggedIn ? '/dashboard' : '/'} class="shrink-0">
 		<img src="/flag-standalone-bw.png" alt="Hack Club" class="h-8 md:h-10" />
@@ -263,20 +283,6 @@
 					<span class="text-lg font-bold">{$t.nav.reviews}</span>
 				</a>
 
-				{#if isAdminOnly}
-					<a
-						href="/admin/second-pass"
-						class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
-							'/admin/second-pass'
-						)
-							? 'border-yellow-500 bg-yellow-500 text-white'
-							: 'border-yellow-500 hover:border-dashed'}"
-					>
-						<ClipboardList size={18} />
-						<span class="text-lg font-bold">2nd pass</span>
-					</a>
-				{/if}
-
 				<a
 					href="/admin/users"
 					class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
@@ -290,9 +296,22 @@
 				</a>
 
 				{#if isAdminOnly}
+					<!-- Visible on xl+ only -->
+					<a
+						href="/admin/second-pass"
+						class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
+							'/admin/second-pass'
+						)
+							? 'border-yellow-500 bg-yellow-500 text-white'
+							: 'border-yellow-500 hover:border-dashed'}"
+					>
+						<ClipboardList size={18} />
+						<span class="text-lg font-bold">2nd pass</span>
+					</a>
+
 					<a
 						href="/admin/shop"
-						class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
+						class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
 							'/admin/shop'
 						)
 							? 'border-black bg-black text-white'
@@ -303,7 +322,7 @@
 					</a>
 					<a
 						href="/admin/news"
-						class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
+						class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
 							'/admin/news'
 						)
 							? 'border-black bg-black text-white'
@@ -314,7 +333,7 @@
 					</a>
 					<a
 						href="/admin/orders"
-						class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
+						class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
 							'/admin/orders'
 						)
 							? 'border-black bg-black text-white'
@@ -323,6 +342,55 @@
 						<PackageCheck size={18} />
 						<span class="text-lg font-bold">{$t.nav.orders}</span>
 					</a>
+
+					<!-- More dropdown for smaller screens -->
+					<div class="more-menu-container relative xl:hidden">
+						<button
+							onclick={toggleMoreMenu}
+							class="flex cursor-pointer items-center gap-1 rounded-full border-4 px-4 py-2 transition-all duration-300 {adminMoreActive
+								? 'border-black bg-black text-white'
+								: 'border-black hover:border-dashed'}"
+						>
+							<span class="text-lg font-bold">{$t.nav.more}</span>
+							<ChevronDown size={16} class="transition-transform duration-200 {showMoreMenu ? 'rotate-180' : ''}" />
+						</button>
+						{#if showMoreMenu}
+							<div class="absolute top-full left-0 z-50 mt-2 min-w-48 overflow-hidden rounded-2xl border-4 border-black bg-white">
+								<a
+									href="/admin/second-pass"
+									onclick={closeMoreMenu}
+									class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath.startsWith('/admin/second-pass') ? 'bg-yellow-50' : ''}"
+								>
+									<ClipboardList size={18} />
+									<span class="font-bold">2nd pass</span>
+								</a>
+								<a
+									href="/admin/shop"
+									onclick={closeMoreMenu}
+									class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath.startsWith('/admin/shop') ? 'bg-gray-100' : ''}"
+								>
+									<ShoppingBag size={18} />
+									<span class="font-bold">{$t.nav.shop}</span>
+								</a>
+								<a
+									href="/admin/news"
+									onclick={closeMoreMenu}
+									class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath.startsWith('/admin/news') ? 'bg-gray-100' : ''}"
+								>
+									<Newspaper size={18} />
+									<span class="font-bold">{$t.nav.news}</span>
+								</a>
+								<a
+									href="/admin/orders"
+									onclick={closeMoreMenu}
+									class="flex w-full cursor-pointer items-center gap-2 px-4 py-3 transition-colors hover:bg-gray-100 {currentPath.startsWith('/admin/orders') ? 'bg-gray-100' : ''}"
+								>
+									<PackageCheck size={18} />
+									<span class="font-bold">{$t.nav.orders}</span>
+								</a>
+							</div>
+						{/if}
+					</div>
 				{/if}
 			{/if}
 		</div>
@@ -351,9 +419,10 @@
 				<span class="text-lg font-bold">{$t.nav.explore}</span>
 			</a>
 
+			<!-- Visible on xl+ only -->
 			<a
 				href="/leaderboard"
-				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
+				class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
 				'/leaderboard'
 					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
@@ -364,7 +433,7 @@
 
 			<a
 				href="/shop"
-				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
+				class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
 				'/shop'
 					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
@@ -375,7 +444,7 @@
 
 			<a
 				href="/refinery"
-				class="flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
+				class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
 				'/refinery'
 					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
@@ -383,6 +452,47 @@
 				<Flame size={18} />
 				<span class="text-lg font-bold">{$t.nav.refinery}</span>
 			</a>
+
+			<!-- More dropdown for smaller screens -->
+			<div class="more-menu-container relative xl:hidden">
+				<button
+					onclick={toggleMoreMenu}
+					class="flex cursor-pointer items-center gap-1 rounded-full border-4 px-4 py-2 transition-all duration-300 {dashboardMoreActive
+						? 'border-black bg-black text-white'
+						: 'border-black hover:border-dashed'}"
+				>
+					<span class="text-lg font-bold">{$t.nav.more}</span>
+					<ChevronDown size={16} class="transition-transform duration-200 {showMoreMenu ? 'rotate-180' : ''}" />
+				</button>
+				{#if showMoreMenu}
+					<div class="absolute top-full left-0 z-50 mt-2 min-w-48 overflow-hidden rounded-2xl border-4 border-black bg-white">
+						<a
+							href="/leaderboard"
+							onclick={closeMoreMenu}
+							class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath === '/leaderboard' ? 'bg-gray-100 font-bold' : ''}"
+						>
+							<Trophy size={18} />
+							<span class="font-bold">{$t.nav.leaderboard}</span>
+						</a>
+						<a
+							href="/shop"
+							onclick={closeMoreMenu}
+							class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath === '/shop' ? 'bg-gray-100 font-bold' : ''}"
+						>
+							<Store size={18} />
+							<span class="font-bold">{$t.nav.shop}</span>
+						</a>
+						<a
+							href="/refinery"
+							onclick={closeMoreMenu}
+							class="flex w-full cursor-pointer items-center gap-2 px-4 py-3 transition-colors hover:bg-gray-100 {currentPath === '/refinery' ? 'bg-gray-100 font-bold' : ''}"
+						>
+							<Flame size={18} />
+							<span class="font-bold">{$t.nav.refinery}</span>
+						</a>
+					</div>
+				{/if}
+			</div>
 		</div>
 	{/if}
 
@@ -400,7 +510,7 @@
 			{:else if user}
 				<div
 					data-tutorial="scraps-counter"
-					class="flex flex-col items-center"
+					class="relative"
 					title={$userScrapsPendingStore > 0 ? `+${$userScrapsPendingStore} pending — payout in ${countdownText}` : countdownText ? `next payout in ${countdownText}` : ''}
 				>
 					<div class="flex items-center gap-2 rounded-full border-4 border-black px-6 py-2">
@@ -411,7 +521,7 @@
 						{/if}
 					</div>
 					{#if countdownText}
-						<span class="mt-0.5 text-xs text-gray-500">⏱ {countdownText}</span>
+						<span class="absolute top-full left-1/2 -translate-x-1/2 mt-0.5 text-xs text-gray-500 whitespace-nowrap">⏱ {countdownText}</span>
 					{/if}
 				</div>
 

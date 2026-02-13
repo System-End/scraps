@@ -15,7 +15,8 @@ export default {
 		orders: 'orders',
 		news: 'news',
 		escape: 'escape',
-		admin: 'admin'
+		admin: 'admin',
+		more: 'more'
 	},
 	landing: {
 		youShip: 'you ship:',
