@@ -1,7 +1,7 @@
 import { db } from '../db'
 import { projectsTable } from '../schemas/projects'
 import { usersTable } from '../schemas/users'
-import { sql, and, isNull, eq, or } from 'drizzle-orm'
+import { sql, and, isNull, eq, or, inArray } from 'drizzle-orm'
 import { config } from '../config'
 
 const PAYOUT_CHECK_INTERVAL_MS = 60 * 60 * 1000 // Check every hour
@@ -120,8 +120,26 @@ export async function payoutPendingScraps(): Promise<{ paidCount: number; totalS
 	const paidCount = pendingProjects.length
 	console.log(`[SCRAPS-PAYOUT] Paid out ${totalScraps} scraps across ${paidCount} projects for ${uniqueUserIds.length} users`)
 
+	// Look up Slack IDs for users who received payouts
+	const payoutUsers = await db
+		.select({ id: usersTable.id, slackId: usersTable.slackId, username: usersTable.username })
+		.from(usersTable)
+		.where(inArray(usersTable.id, uniqueUserIds))
+
+	const userMentions = payoutUsers
+		.map(u => u.slackId ? `<@${u.slackId}>` : u.username)
+		.filter(Boolean)
+		.join(', ')
+
 	const nextPayout = getNextPayoutDate()
-	const nextPayoutStr = `<!date^${Math.floor(nextPayout.getTime() / 1000)}^{date_short_pretty} at {time}|${nextPayout.toISOString()}>` 
+	const nextPayoutStr = nextPayout.toLocaleString('en-US', {
+		month: 'short',
+		day: 'numeric',
+		hour: 'numeric',
+		minute: '2-digit',
+		hour12: true,
+		timeZone: 'UTC'
+	}) + ' UTC'
 
 	// Send channel announcement
 	const blocks = [
@@ -129,13 +147,13 @@ export async function payoutPendingScraps(): Promise<{ paidCount: number; totalS
 			type: 'section',
 			text: {
 				type: 'mrkdwn',
-				text: `:scraps: *scraps payout complete!* :scraps:\n\n<!channel> — *${totalScraps.toLocaleString()} scraps* have been paid out across *${paidCount}* project${paidCount !== 1 ? 's' : ''} for *${uniqueUserIds.length}* user${uniqueUserIds.length !== 1 ? 's' : ''}!\n\nnext payout: ${nextPayoutStr}`
+				text: `:scraps: *scraps payout complete!* :scraps:\n\n${userMentions} — *${totalScraps.toLocaleString()} scraps* have been paid out across *${paidCount}* project${paidCount !== 1 ? 's' : ''} for *${uniqueUserIds.length}* user${uniqueUserIds.length !== 1 ? 's' : ''}!\n\nnext payout: ${nextPayoutStr}`
 			}
 		}
 	]
 
 	await sendChannelMessage(
-		`scraps payout complete! ${totalScraps} scraps paid out across ${paidCount} projects for ${uniqueUserIds.length} users.`,
+		`scraps payout complete! ${totalScraps} scraps paid out across ${paidCount} projects for ${uniqueUserIds.length} users. next payout: ${nextPayoutStr}`,
 		blocks
 	)
 
