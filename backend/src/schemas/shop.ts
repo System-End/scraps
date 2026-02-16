@@ -72,3 +72,11 @@ export const shopPenaltiesTable = pgTable('shop_penalties', {
 }, (table) => [
 	unique().on(table.userId, table.shopItemId)
 ])
+
+export const refinerySpendingHistoryTable = pgTable('refinery_spending_history', {
+	id: integer().primaryKey().generatedAlwaysAsIdentity(),
+	userId: integer('user_id').notNull().references(() => usersTable.id),
+	shopItemId: integer('shop_item_id').notNull().references(() => shopItemsTable.id),
+	cost: integer().notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull()
+})

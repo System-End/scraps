@@ -1,7 +1,7 @@
 import { Elysia } from 'elysia'
 import { eq, sql, and, desc, isNull, ne } from 'drizzle-orm'
 import { db } from '../db'
-import { shopItemsTable, shopHeartsTable, shopOrdersTable, shopRollsTable, refineryOrdersTable, shopPenaltiesTable } from '../schemas/shop'
+import { shopItemsTable, shopHeartsTable, shopOrdersTable, shopRollsTable, refineryOrdersTable, shopPenaltiesTable, refinerySpendingHistoryTable } from '../schemas/shop'
 import { usersTable } from '../schemas/users'
 import { getUserFromSession } from '../lib/auth'
 import { getUserScrapsBalance, canAfford, calculateRollCost } from '../lib/scraps'
@@ -673,6 +673,13 @@ shop.post('/items/:id/upgrade-probability', async ({ params, headers }) => {
 				shopItemId: itemId,
 				cost,
 				boostAmount
+			})
+
+			// Record spending in history (never deleted)
+			await tx.insert(refinerySpendingHistoryTable).values({
+				userId: user.id,
+				shopItemId: itemId,
+				cost
 			})
 
 			const newUpgradeCount = upgradeCount + 1
