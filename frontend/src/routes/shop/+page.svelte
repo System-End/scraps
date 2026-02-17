@@ -60,11 +60,11 @@
 		let items = [...filteredItems];
 		if (sortBy === 'favorites') {
 			return items.sort((a, b) => {
-				if (b.heartCount !== a.heartCount) {
-					return b.heartCount - a.heartCount;
-				}
 				if (a.userHearted !== b.userHearted) {
 					return a.userHearted ? -1 : 1;
+				}
+				if (b.heartCount !== a.heartCount) {
+					return b.heartCount - a.heartCount;
 				}
 				return a.id - b.id;
 			});
