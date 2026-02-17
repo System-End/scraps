@@ -936,6 +936,7 @@ shop.post('/items/:id/refinery/undo', async ({ params, headers }) => {
 		return { error: 'Item not found' }
 	}
 
+	try {
 	const result = await db.transaction(async (tx) => {
 		await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user.id} FOR UPDATE`)
 
@@ -1017,6 +1018,10 @@ shop.post('/items/:id/refinery/undo', async ({ params, headers }) => {
 	})
 
 	return result
+	} catch (e) {
+		console.error('[SHOP] refinery undo failed:', e)
+		return { error: 'Failed to undo refinery upgrade' }
+	}
 })
 
 export default shop
