@@ -267,8 +267,8 @@ async function syncProjectsToAirtable(): Promise<void> {
 				}
 			}
 
-			const firstName = userIdentity?.first_name || (project.username || '').split(' ')[0] || ''
-			const lastName = userIdentity?.last_name || (project.username || '').split(' ').slice(1).join(' ') || ''
+			const firstName = userIdentity?.given_name || (project.username || '').split(' ')[0] || ''
+			const lastName = userIdentity?.family_name || (project.username || '').split(' ').slice(1).join(' ') || ''
 
 			const descriptionParts = [project.description || '']
 			if (project.updateDescription) {
@@ -299,22 +299,25 @@ async function syncProjectsToAirtable(): Promise<void> {
 				'Screenshot': [{ url: project.image }] as any,
 			}
 
-			// Add full address from primary address
-			const primaryAddr = userIdentity?.addresses?.find(a => a.primary) ?? userIdentity?.addresses?.[0]
-			if (primaryAddr) {
-				const parts: string[] = []
-				if (primaryAddr.line_1) parts.push(primaryAddr.line_1)
-				if (primaryAddr.line_2) parts.push(primaryAddr.line_2)
-				if (primaryAddr.city) parts.push(primaryAddr.city)
-				if (primaryAddr.state) parts.push(primaryAddr.state)
-				if (primaryAddr.postal_code) parts.push(primaryAddr.postal_code)
-				if (primaryAddr.country) parts.push(primaryAddr.country)
-				if (parts.length > 0) fields['Loops - Special - setFullAddress'] = parts.join(', ')
+			// Add address fields from userinfo
+			if (userIdentity?.address) {
+				if (userIdentity.address.street_address) {
+					const lines = userIdentity.address.street_address.split('\n')
+					if (lines[0]) fields['Address (Line 1)'] = lines[0]
+					if (lines[1]) fields['Address (Line 2)'] = lines[1]
+				}
+				if (userIdentity.address.locality) fields['City'] = userIdentity.address.locality
+				if (userIdentity.address.region) fields['State / Province'] = userIdentity.address.region
+				if (userIdentity.address.postal_code) fields['ZIP / Postal Code'] = userIdentity.address.postal_code
+				if (userIdentity.address.country) fields['Country'] = userIdentity.address.country
 			}
 
-			// Add birthday from identity
-			if (userIdentity?.birthday) {
-				fields['Loops - birthday'] = userIdentity.birthday
+			// Add birthday and phone from identity
+			if (userIdentity?.birthdate) {
+				fields['Birthday'] = userIdentity.birthdate
+			}
+			if (userIdentity?.phone_number) {
+				fields['Phone Number'] = userIdentity.phone_number
 			}
 
 			const existingId = existingRecords.get(project.githubUrl)
