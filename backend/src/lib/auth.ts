@@ -17,6 +17,20 @@ interface OIDCTokenResponse {
     refresh_token?: string
 }
 
+interface HackClubAddress {
+    id: string
+    first_name?: string
+    last_name?: string
+    line_1?: string
+    line_2?: string
+    city?: string
+    state?: string
+    postal_code?: string
+    country?: string
+    phone_number?: string
+    primary?: boolean
+}
+
 interface HackClubIdentity {
     id: string
     ysws_eligible?: boolean
@@ -24,16 +38,12 @@ interface HackClubIdentity {
     primary_email?: string
     slack_id?: string
     phone_number?: string
-    given_name?: string
-    family_name?: string
-    birthdate?: string
-    address?: {
-        street_address?: string
-        locality?: string
-        region?: string
-        postal_code?: string
-        country?: string
-    }
+    first_name?: string
+    last_name?: string
+    birthday?: string
+    legal_first_name?: string
+    legal_last_name?: string
+    addresses?: HackClubAddress[]
 }
 
 interface HackClubMeResponse {

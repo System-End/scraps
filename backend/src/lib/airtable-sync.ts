@@ -267,9 +267,8 @@ async function syncProjectsToAirtable(): Promise<void> {
 				}
 			}
 
-			const firstName = userIdentity?.given_name || (project.username || '').split(' ')[0] || ''
-			const lastName = userIdentity?.family_name || (project.username || '').split(' ').slice(1).join(' ') || ''
-			const fullName = `${firstName} ${lastName}`.trim()
+			const firstName = userIdentity?.first_name || (project.username || '').split(' ')[0] || ''
+			const lastName = userIdentity?.last_name || (project.username || '').split(' ').slice(1).join(' ') || ''
 
 			const descriptionParts = [project.description || '']
 			if (project.updateDescription) {
@@ -283,7 +282,8 @@ async function syncProjectsToAirtable(): Promise<void> {
 				'Code URL': project.githubUrl,
 				'Description': descriptionParts.join('\n'),
 				'Email': project.email || '',
-				'Loops - Special - setFullName': fullName,
+				'First Name': firstName,
+				'Last Name': lastName,
 				'GitHub Username': project.username || '',
 				'How can we improve?': project.feedbackImprove || '',
 				'How did you hear about this?': project.feedbackSource || '',
@@ -299,20 +299,22 @@ async function syncProjectsToAirtable(): Promise<void> {
 				'Screenshot': [{ url: project.image }] as any,
 			}
 
-			// Add full address from userinfo
-			if (userIdentity?.address) {
+			// Add full address from primary address
+			const primaryAddr = userIdentity?.addresses?.find(a => a.primary) ?? userIdentity?.addresses?.[0]
+			if (primaryAddr) {
 				const parts: string[] = []
-				if (userIdentity.address.street_address) parts.push(userIdentity.address.street_address)
-				if (userIdentity.address.locality) parts.push(userIdentity.address.locality)
-				if (userIdentity.address.region) parts.push(userIdentity.address.region)
-				if (userIdentity.address.postal_code) parts.push(userIdentity.address.postal_code)
-				if (userIdentity.address.country) parts.push(userIdentity.address.country)
+				if (primaryAddr.line_1) parts.push(primaryAddr.line_1)
+				if (primaryAddr.line_2) parts.push(primaryAddr.line_2)
+				if (primaryAddr.city) parts.push(primaryAddr.city)
+				if (primaryAddr.state) parts.push(primaryAddr.state)
+				if (primaryAddr.postal_code) parts.push(primaryAddr.postal_code)
+				if (primaryAddr.country) parts.push(primaryAddr.country)
 				if (parts.length > 0) fields['Loops - Special - setFullAddress'] = parts.join(', ')
 			}
 
 			// Add birthday from identity
-			if (userIdentity?.birthdate) {
-				fields['Loops - birthday'] = userIdentity.birthdate
+			if (userIdentity?.birthday) {
+				fields['Loops - birthday'] = userIdentity.birthday
 			}
 
 			const existingId = existingRecords.get(project.githubUrl)
