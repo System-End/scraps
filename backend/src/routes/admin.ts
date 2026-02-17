@@ -313,11 +313,9 @@ admin.post('/users/:id/bonus', async ({ params, body, headers, status }) => {
 
         const { amount, reason } = body as { amount: number; reason: string }
 
-        if (!amount || typeof amount !== 'number') {
-            return status(400, { error: 'Amount is required and must be a number' })
+        if (!amount || typeof amount !== 'number' || !Number.isFinite(amount) || !Number.isInteger(amount) || amount === 0) {
+            return status(400, { error: 'Amount is required and must be a non-zero integer' })
         }
-
-        if (Number(amount))
 
         if (!reason || typeof reason !== 'string' || reason.trim().length === 0) {
             return status(400, { error: 'Reason is required' })
@@ -1660,6 +1658,103 @@ admin.post('/fix-negative-balances', async ({ headers, status }) => {
         console.error(err)
         return status(500, { error: 'Failed to fix negative balances' })
     }
+})
+
+// CSV export of shipped projects for YSWS
+admin.get('/export/shipped-csv', async ({ headers, status }) => {
+	try {
+		const user = await requireAdmin(headers as Record<string, string>)
+		if (!user) {
+			return status(401, { error: 'Unauthorized' })
+		}
+
+		const projects = await db
+			.select({
+				name: projectsTable.name,
+				githubUrl: projectsTable.githubUrl,
+				playableUrl: projectsTable.playableUrl,
+				hackatimeProject: projectsTable.hackatimeProject,
+				slackId: usersTable.slackId
+			})
+			.from(projectsTable)
+			.innerJoin(usersTable, eq(projectsTable.userId, usersTable.id))
+			.where(and(
+				eq(projectsTable.status, 'shipped'),
+				or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
+			))
+			.orderBy(desc(projectsTable.updatedAt))
+
+		const escapeCSV = (val: string | null | undefined): string => {
+			if (!val) return ''
+			if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+				return '"' + val.replace(/"/g, '""') + '"'
+			}
+			return val
+		}
+
+		const rows = ['name,code_link,demo_link,slack_id,hackatime_projects']
+		for (const p of projects) {
+			rows.push([
+				escapeCSV(p.name),
+				escapeCSV(p.githubUrl),
+				escapeCSV(p.playableUrl),
+				escapeCSV(p.slackId),
+				escapeCSV(p.hackatimeProject)
+			].join(','))
+		}
+
+		return new Response(rows.join('\n'), {
+			headers: {
+				'Content-Type': 'text/csv; charset=utf-8',
+				'Content-Disposition': 'attachment; filename="scraps-shipped-projects.csv"'
+			}
+		})
+	} catch (err) {
+		console.error(err)
+		return status(500, { error: 'Failed to export CSV' })
+	}
+})
+
+admin.get('/export/ysws-json', async ({ headers, status }) => {
+	try {
+		const user = await requireAdmin(headers as Record<string, string>)
+		if (!user) {
+			return status(401, { error: 'Unauthorized' })
+		}
+
+		const projects = await db
+			.select({
+				name: projectsTable.name,
+				githubUrl: projectsTable.githubUrl,
+				playableUrl: projectsTable.playableUrl,
+				hackatimeProject: projectsTable.hackatimeProject,
+				slackId: usersTable.slackId
+			})
+			.from(projectsTable)
+			.innerJoin(usersTable, eq(projectsTable.userId, usersTable.id))
+			.where(and(
+				eq(projectsTable.status, 'shipped'),
+				or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
+			))
+			.orderBy(desc(projectsTable.updatedAt))
+
+		return projects.map(p => {
+			const hackatimeProjects = p.hackatimeProject
+				? p.hackatimeProject.split(',').map((n: string) => n.trim()).filter((n: string) => n.length > 0)
+				: []
+
+			return {
+				name: p.name,
+				codeLink: p.githubUrl || '',
+				demoLink: p.playableUrl || '',
+				submitter: { slackId: p.slackId || '' },
+				hackatimeProjects
+			}
+		})
+	} catch (err) {
+		console.error(err)
+		return status(500, { error: 'Failed to export YSWS JSON' })
+	}
 })
 
 export default admin

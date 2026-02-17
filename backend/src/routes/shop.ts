@@ -936,72 +936,91 @@ shop.post('/items/:id/refinery/undo', async ({ params, headers }) => {
 		return { error: 'Item not found' }
 	}
 
-	// Get the most recent refinery order for this user and item
-	const orders = await db
-		.select()
-		.from(refineryOrdersTable)
-		.where(and(
-			eq(refineryOrdersTable.userId, user.id),
-			eq(refineryOrdersTable.shopItemId, itemId)
-		))
-		.orderBy(desc(refineryOrdersTable.createdAt))
-		.limit(1)
+	try {
+	const result = await db.transaction(async (tx) => {
+		await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user.id} FOR UPDATE`)
 
-	if (orders.length === 0) {
-		return { error: 'No refinery upgrades to undo' }
-	}
+		const orders = await tx
+			.select()
+			.from(refineryOrdersTable)
+			.where(and(
+				eq(refineryOrdersTable.userId, user.id),
+				eq(refineryOrdersTable.shopItemId, itemId)
+			))
+			.orderBy(desc(refineryOrdersTable.createdAt))
+			.limit(1)
 
-	const order = orders[0]
+		if (orders.length === 0) {
+			return { error: 'No refinery upgrades to undo' }
+		}
 
-	await db
-		.delete(refineryOrdersTable)
-		.where(eq(refineryOrdersTable.id, order.id))
+		const order = orders[0]
 
-	await db
-		.delete(refinerySpendingHistoryTable)
-		.where(and(
-			eq(refinerySpendingHistoryTable.userId, user.id),
-			eq(refinerySpendingHistoryTable.shopItemId, itemId),
-			eq(refinerySpendingHistoryTable.cost, order.cost)
-		))
+		await tx
+			.delete(refineryOrdersTable)
+			.where(eq(refineryOrdersTable.id, order.id))
 
-	const boost = await db
-		.select({
-			boostPercent: sql<number>`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`,
-			upgradeCount: sql<number>`COUNT(*)`
-		})
-		.from(refineryOrdersTable)
-		.where(and(
-			eq(refineryOrdersTable.userId, user.id),
-			eq(refineryOrdersTable.shopItemId, itemId)
-		))
+		// delete one specific spending history row instead of all with matching cost
+		const matchingHistory = await tx
+			.select({ id: refinerySpendingHistoryTable.id })
+			.from(refinerySpendingHistoryTable)
+			.where(and(
+				eq(refinerySpendingHistoryTable.userId, user.id),
+				eq(refinerySpendingHistoryTable.shopItemId, itemId),
+				eq(refinerySpendingHistoryTable.cost, order.cost)
+			))
+			.orderBy(desc(refinerySpendingHistoryTable.createdAt))
+			.limit(1)
 
-	const newBoostPercent = boost.length > 0 ? Number(boost[0].boostPercent) : 0
-	const newUpgradeCount = boost.length > 0 ? Number(boost[0].upgradeCount) : 0
-	const refundedCost = order.cost
+		if (matchingHistory.length > 0) {
+			await tx
+				.delete(refinerySpendingHistoryTable)
+				.where(eq(refinerySpendingHistoryTable.id, matchingHistory[0].id))
+		}
 
-	const penalty = await db
-		.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier })
-		.from(shopPenaltiesTable)
-		.where(and(
-			eq(shopPenaltiesTable.userId, user.id),
-			eq(shopPenaltiesTable.shopItemId, itemId)
-		))
-		.limit(1)
+		const boost = await tx
+			.select({
+				boostPercent: sql<number>`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`,
+				upgradeCount: sql<number>`COUNT(*)`
+			})
+			.from(refineryOrdersTable)
+			.where(and(
+				eq(refineryOrdersTable.userId, user.id),
+				eq(refineryOrdersTable.shopItemId, itemId)
+			))
 
-	const penaltyMultiplier = penalty.length > 0 ? penalty[0].probabilityMultiplier : 100
-	const adjustedBaseProbability = Math.floor(item[0].baseProbability * penaltyMultiplier / 100)
-	const maxBoost = 100 - adjustedBaseProbability
-	const nextCost = newBoostPercent >= maxBoost
-		? null
-		: Math.floor(item[0].baseUpgradeCost * Math.pow(item[0].costMultiplier / 100, newUpgradeCount))
+		const newBoostPercent = boost.length > 0 ? Number(boost[0].boostPercent) : 0
+		const newUpgradeCount = boost.length > 0 ? Number(boost[0].upgradeCount) : 0
 
-	return {
-		boostPercent: newBoostPercent,
-		upgradeCount: newUpgradeCount,
-		refundedCost,
-		effectiveProbability: Math.min(adjustedBaseProbability + newBoostPercent, 100),
-		nextCost
+		const penalty = await tx
+			.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier })
+			.from(shopPenaltiesTable)
+			.where(and(
+				eq(shopPenaltiesTable.userId, user.id),
+				eq(shopPenaltiesTable.shopItemId, itemId)
+			))
+			.limit(1)
+
+		const penaltyMultiplier = penalty.length > 0 ? penalty[0].probabilityMultiplier : 100
+		const adjustedBaseProbability = Math.floor(item[0].baseProbability * penaltyMultiplier / 100)
+		const maxBoost = 100 - adjustedBaseProbability
+		const nextCost = newBoostPercent >= maxBoost
+			? null
+			: Math.floor(item[0].baseUpgradeCost * Math.pow(item[0].costMultiplier / 100, newUpgradeCount))
+
+		return {
+			boostPercent: newBoostPercent,
+			upgradeCount: newUpgradeCount,
+			refundedCost: order.cost,
+			effectiveProbability: Math.min(adjustedBaseProbability + newBoostPercent, 100),
+			nextCost
+		}
+	})
+
+	return result
+	} catch (e) {
+		console.error('[SHOP] refinery undo failed:', e)
+		return { error: 'Failed to undo refinery upgrade' }
 	}
 })
 
