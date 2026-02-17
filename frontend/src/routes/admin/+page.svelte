@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Users, FolderKanban, Clock, Scale, Hourglass, ShieldAlert, Coins, XCircle } from '@lucide/svelte';
+	import { Users, FolderKanban, Clock, Scale, Hourglass, ShieldAlert, Coins, XCircle, Download } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { t } from '$lib/i18n';
@@ -146,6 +146,24 @@
 		}
 	}
 
+	async function downloadExport(endpoint: string, filename: string) {
+		try {
+			const res = await fetch(`${API_URL}/admin/export/${endpoint}`, {
+				credentials: 'include'
+			});
+			if (!res.ok) return;
+			const blob = await res.blob();
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement('a');
+			a.href = url;
+			a.download = filename;
+			a.click();
+			URL.revokeObjectURL(url);
+		} catch (e) {
+			console.error('Export failed:', e);
+		}
+	}
+
 	onMount(async () => {
 		const user = await getUser();
 		if (!user || (user.role !== 'admin' && user.role !== 'reviewer')) {
@@ -279,6 +297,35 @@
 			</div>
 		</div>
 	{/if}
+</div>
+
+<div class="mx-auto max-w-4xl px-6 pb-12 md:px-12">
+	<h2 class="mb-4 text-2xl font-bold">exports</h2>
+	<div class="rounded-2xl border-4 border-black p-6">
+		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+			<div>
+				<h3 class="flex items-center gap-2 text-lg font-bold">
+					<Download size={20} />
+					YSWS review export
+				</h3>
+				<p class="text-sm text-gray-500">download projects under review for YSWS fraud checking</p>
+			</div>
+			<div class="flex gap-3">
+				<button
+					onclick={() => downloadExport('review-csv', 'scraps-review-projects.csv')}
+					class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
+				>
+					CSV
+				</button>
+				<button
+					onclick={() => downloadExport('review-json', 'scraps-review.json')}
+					class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
+				>
+					JSON
+				</button>
+			</div>
+		</div>
+	</div>
 </div>
 
 {#if isAdmin}

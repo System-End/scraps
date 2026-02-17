@@ -1671,8 +1671,8 @@ admin.post('/fix-negative-balances', async ({ headers, status }) => {
     }
 })
 
-// CSV export of shipped projects for YSWS
-admin.get('/export/shipped-csv', async ({ headers, status }) => {
+// CSV export of projects under review for YSWS
+admin.get('/export/review-csv', async ({ headers, status }) => {
 	try {
 		const user = await requireReviewer(headers as Record<string, string>)
 		if (!user) {
@@ -1690,7 +1690,7 @@ admin.get('/export/shipped-csv', async ({ headers, status }) => {
 			.from(projectsTable)
 			.innerJoin(usersTable, eq(projectsTable.userId, usersTable.id))
 			.where(and(
-				eq(projectsTable.status, 'shipped'),
+				or(eq(projectsTable.status, 'waiting_for_review'), eq(projectsTable.status, 'pending_admin_approval')),
 				or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
 			))
 			.orderBy(desc(projectsTable.updatedAt))
@@ -1717,16 +1717,16 @@ admin.get('/export/shipped-csv', async ({ headers, status }) => {
 		return new Response(rows.join('\n'), {
 			headers: {
 				'Content-Type': 'text/csv; charset=utf-8',
-				'Content-Disposition': 'attachment; filename="scraps-shipped-projects.csv"'
+				'Content-Disposition': 'attachment; filename="scraps-review-projects.csv"'
 			}
 		})
 	} catch (err) {
 		console.error(err)
-		return status(500, { error: 'Failed to export CSV' })
+		return status(500, { error: 'Failed to export review CSV' })
 	}
 })
 
-admin.get('/export/ysws-json', async ({ headers, status }) => {
+admin.get('/export/review-json', async ({ headers, status }) => {
 	try {
 		const user = await requireReviewer(headers as Record<string, string>)
 		if (!user) {
@@ -1744,7 +1744,7 @@ admin.get('/export/ysws-json', async ({ headers, status }) => {
 			.from(projectsTable)
 			.innerJoin(usersTable, eq(projectsTable.userId, usersTable.id))
 			.where(and(
-				eq(projectsTable.status, 'shipped'),
+				or(eq(projectsTable.status, 'waiting_for_review'), eq(projectsTable.status, 'pending_admin_approval')),
 				or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
 			))
 			.orderBy(desc(projectsTable.updatedAt))
@@ -1764,7 +1764,7 @@ admin.get('/export/ysws-json', async ({ headers, status }) => {
 		})
 	} catch (err) {
 		console.error(err)
-		return status(500, { error: 'Failed to export YSWS JSON' })
+		return status(500, { error: 'Failed to export review JSON' })
 	}
 })
 
