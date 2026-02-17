@@ -88,6 +88,43 @@
 		}
 	}
 
+	async function undoAllRefinery(item: ShopItem) {
+		undoing = item.id;
+		try {
+			const res = await fetch(
+				`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/shop/items/${item.id}/refinery/undo-all`,
+				{
+					method: 'POST',
+					credentials: 'include'
+				}
+			);
+			const data = await res.json();
+			if (data.error) {
+				alertMessage = data.error;
+				return;
+			}
+			shopItemsStore.update((items) =>
+				items.map((i) =>
+					i.id === item.id
+						? {
+								...i,
+								userBoostPercent: data.boostPercent,
+								upgradeCount: data.upgradeCount,
+								effectiveProbability: data.effectiveProbability,
+								nextUpgradeCost: data.nextCost
+							}
+						: i
+				)
+			);
+			await refreshUserScraps();
+			alertMessage = `Refunded ${data.refundedCost} scraps (${data.undoneCount} upgrades)`;
+		} catch (e) {
+			alertMessage = 'Failed to undo upgrades';
+		} finally {
+			undoing = null;
+		}
+	}
+
 	onMount(async () => {
 		await getUser();
 		fetchShopItems();
@@ -157,32 +194,46 @@
 							</div>
 						</div>
 						<div class="flex items-center gap-2 sm:text-right">
-							{#if item.userBoostPercent > 0}
+							{#if soldOut && item.userBoostPercent > 0}
 								<button
-									onclick={() => undoRefinery(item)}
+									onclick={() => undoAllRefinery(item)}
 									disabled={undoing === item.id}
-									class="cursor-pointer rounded-full border-4 border-black px-4 py-2 text-sm font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50 sm:text-base"
+									class="cursor-pointer rounded-full border-4 border-red-600 px-4 py-2 text-sm font-bold text-red-600 transition-all duration-200 hover:border-dashed disabled:opacity-50 sm:text-base"
 								>
-									{$t.refinery.undo}
+									{undoing === item.id ? '...' : 'undo all'}
 								</button>
-							{/if}
-							{#if maxed || soldOut}
 								<span
 									class="rounded-full bg-gray-200 px-4 py-2 font-bold text-gray-600"
-									>{$t.refinery.maxed}</span
+									>{$t.shop.soldOut}</span
 								>
-							{:else if nextCost !== null}
-								<button
-									onclick={() => upgradeProbability(item)}
-									disabled={upgrading === item.id || $userScrapsStore < nextCost}
-									class="w-full cursor-pointer rounded-full bg-black px-4 py-2 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50 sm:w-auto sm:text-base"
-								>
-									{#if upgrading === item.id}
-										{$t.refinery.upgrading}
-									{:else}
-										+{item.boostAmount}% ({nextCost} {$t.common.scraps})
-									{/if}
-								</button>
+							{:else}
+								{#if item.userBoostPercent > 0}
+									<button
+										onclick={() => undoRefinery(item)}
+										disabled={undoing === item.id}
+										class="cursor-pointer rounded-full border-4 border-black px-4 py-2 text-sm font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50 sm:text-base"
+									>
+										{$t.refinery.undo}
+									</button>
+								{/if}
+								{#if maxed}
+									<span
+										class="rounded-full bg-gray-200 px-4 py-2 font-bold text-gray-600"
+										>{$t.refinery.maxed}</span
+									>
+								{:else if nextCost !== null}
+									<button
+										onclick={() => upgradeProbability(item)}
+										disabled={upgrading === item.id || $userScrapsStore < nextCost}
+										class="w-full cursor-pointer rounded-full bg-black px-4 py-2 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50 sm:w-auto sm:text-base"
+									>
+										{#if upgrading === item.id}
+											{$t.refinery.upgrading}
+										{:else}
+											+{item.boostAmount}% ({nextCost} {$t.common.scraps})
+										{/if}
+									</button>
+								{/if}
 							{/if}
 						</div>
 					</div>

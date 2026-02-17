@@ -1768,6 +1768,115 @@ admin.get('/export/review-json', async ({ headers, status }) => {
 	}
 })
 
+// Undo a shop order (admin only) - deletes the order and restores stock
+admin.post('/orders/:id/undo', async ({ params, headers, status }) => {
+    try {
+        const user = await requireAdmin(headers as Record<string, string>)
+        if (!user) return status(401, { error: 'Unauthorized' })
+
+        const orderId = parseInt(params.id)
+
+        const order = await db
+            .select({
+                id: shopOrdersTable.id,
+                userId: shopOrdersTable.userId,
+                shopItemId: shopOrdersTable.shopItemId,
+                quantity: shopOrdersTable.quantity,
+                totalPrice: shopOrdersTable.totalPrice,
+                orderType: shopOrdersTable.orderType
+            })
+            .from(shopOrdersTable)
+            .where(eq(shopOrdersTable.id, orderId))
+            .limit(1)
+
+        if (!order[0]) {
+            return status(404, { error: 'Order not found' })
+        }
+
+        await db.transaction(async (tx) => {
+            // Delete the order (scraps refund happens automatically since spent calculation uses shop_orders)
+            await tx.delete(shopOrdersTable).where(eq(shopOrdersTable.id, orderId))
+
+            // Restore item stock
+            await tx
+                .update(shopItemsTable)
+                .set({
+                    count: sql`${shopItemsTable.count} + ${order[0].quantity}`,
+                    updatedAt: new Date()
+                })
+                .where(eq(shopItemsTable.id, order[0].shopItemId))
+
+            // If this was a luck_win, also delete related refinery orders and spending history
+            // (the win consumed refinery orders, so undoing the win should restore them...
+            // but we can't restore deleted refinery orders. Just undo the purchase itself.)
+        })
+
+        return { success: true, refundedScraps: order[0].totalPrice }
+    } catch (err) {
+        console.error(err)
+        return status(500, { error: 'Failed to undo order' })
+    }
+})
+
+// Unship a shipped project (admin only) - sets it back to in_progress and zeros scraps
+admin.post('/projects/:id/unship', async ({ params, headers, body, status }) => {
+    try {
+        const user = await requireAdmin(headers as Record<string, string>)
+        if (!user) return status(401, { error: 'Unauthorized' })
+
+        const projectId = parseInt(params.id)
+        const { reason } = (body || {}) as { reason?: string }
+
+        const project = await db
+            .select({
+                id: projectsTable.id,
+                userId: projectsTable.userId,
+                name: projectsTable.name,
+                status: projectsTable.status,
+                scrapsAwarded: projectsTable.scrapsAwarded,
+                scrapsPaidAt: projectsTable.scrapsPaidAt
+            })
+            .from(projectsTable)
+            .where(eq(projectsTable.id, projectId))
+            .limit(1)
+
+        if (!project[0]) {
+            return status(404, { error: 'Project not found' })
+        }
+
+        if (project[0].status !== 'shipped') {
+            return status(400, { error: 'Project is not shipped' })
+        }
+
+        const previousScraps = project[0].scrapsAwarded
+
+        // Set project back to in_progress and zero out scraps
+        await db
+            .update(projectsTable)
+            .set({
+                status: 'in_progress',
+                scrapsAwarded: 0,
+                scrapsPaidAt: null,
+                updatedAt: new Date()
+            })
+            .where(eq(projectsTable.id, projectId))
+
+        // Add a review record so it shows in the review history
+        await db.insert(reviewsTable).values({
+            projectId,
+            reviewerId: user.id,
+            action: 'denied',
+            feedbackForAuthor: reason?.trim() || 'Project has been unshipped by an admin.',
+            internalJustification: `Unshipped: removed ${previousScraps} scraps`
+        })
+
+        return { success: true, previousScraps }
+    } catch (err) {
+        console.error(err)
+        return status(500, { error: 'Failed to unship project' })
+    }
+})
+
 // Get detailed financial timeline for a user (admin only)
 admin.get('/users/:id/timeline', async ({ params, headers, status }) => {
     try {
@@ -1861,6 +1970,7 @@ admin.get('/users/:id/timeline', async ({ params, headers, status }) => {
             locked?: boolean
             itemName?: string
             paid?: boolean
+            orderId?: number
         }
 
         const timeline: TimelineEvent[] = []
@@ -1893,7 +2003,8 @@ admin.get('/users/:id/timeline', async ({ params, headers, status }) => {
                 amount: -o.totalPrice,
                 description: o.itemName,
                 date: o.createdAt.toISOString(),
-                itemName: o.itemName
+                itemName: o.itemName,
+                orderId: o.id
             })
         }
 

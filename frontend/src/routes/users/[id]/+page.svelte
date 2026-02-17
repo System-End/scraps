@@ -388,6 +388,7 @@
 		{/if}
 
 		<!-- Refinements -->
+		{#if refinements.length > 0}
 		<div class="mt-6 rounded-2xl border-4 border-black p-6">
 			<div class="mb-4 flex items-center gap-2">
 				<Flame size={20} class="text-orange-500" />
@@ -413,6 +414,7 @@
 				</div>
 			{/if}
 		</div>
+	{/if}
 	{/if}
 </div>
 

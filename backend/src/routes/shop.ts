@@ -1057,4 +1057,140 @@ shop.post('/items/:id/refinery/undo', async ({ params, headers }) => {
 	}
 })
 
+shop.post('/items/:id/refinery/undo-all', async ({ params, headers }) => {
+	const user = await getUserFromSession(headers as Record<string, string>)
+	if (!user) {
+		return { error: 'Unauthorized' }
+	}
+
+	const itemId = parseInt(params.id)
+	if (!Number.isInteger(itemId)) {
+		return { error: 'Invalid item id' }
+	}
+
+	const item = await db
+		.select()
+		.from(shopItemsTable)
+		.where(eq(shopItemsTable.id, itemId))
+		.limit(1)
+
+	if (item.length === 0) {
+		return { error: 'Item not found' }
+	}
+
+	try {
+		const result = await db.transaction(async (tx) => {
+			await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user.id} FOR UPDATE`)
+
+			// Check if user has purchased or won this item
+			const lastPurchase = await tx
+				.select({ createdAt: shopOrdersTable.createdAt })
+				.from(shopOrdersTable)
+				.where(and(
+					eq(shopOrdersTable.userId, user.id),
+					eq(shopOrdersTable.shopItemId, itemId),
+					or(
+						eq(shopOrdersTable.orderType, 'purchase'),
+						eq(shopOrdersTable.orderType, 'luck_win')
+					)
+				))
+				.orderBy(desc(shopOrdersTable.createdAt))
+				.limit(1)
+
+			const orderConditions = [
+				eq(refineryOrdersTable.userId, user.id),
+				eq(refineryOrdersTable.shopItemId, itemId)
+			]
+
+			if (lastPurchase.length > 0) {
+				orderConditions.push(gt(refineryOrdersTable.createdAt, lastPurchase[0].createdAt))
+			}
+
+			const orders = await tx
+				.select()
+				.from(refineryOrdersTable)
+				.where(and(...orderConditions))
+
+			if (orders.length === 0) {
+				if (lastPurchase.length > 0) {
+					return { error: 'Cannot undo refinery upgrades from before your last purchase' }
+				}
+				return { error: 'No refinery upgrades to undo' }
+			}
+
+			let totalRefunded = 0
+
+			for (const order of orders) {
+				await tx
+					.delete(refineryOrdersTable)
+					.where(eq(refineryOrdersTable.id, order.id))
+
+				const matchingHistory = await tx
+					.select({ id: refinerySpendingHistoryTable.id })
+					.from(refinerySpendingHistoryTable)
+					.where(and(
+						eq(refinerySpendingHistoryTable.userId, user.id),
+						eq(refinerySpendingHistoryTable.shopItemId, itemId),
+						eq(refinerySpendingHistoryTable.cost, order.cost)
+					))
+					.orderBy(desc(refinerySpendingHistoryTable.createdAt))
+					.limit(1)
+
+				if (matchingHistory.length > 0) {
+					await tx
+						.delete(refinerySpendingHistoryTable)
+						.where(eq(refinerySpendingHistoryTable.id, matchingHistory[0].id))
+				}
+
+				totalRefunded += order.cost
+			}
+
+			// Get remaining boost (from locked orders before last purchase)
+			const boost = await tx
+				.select({
+					boostPercent: sql<number>`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`,
+					upgradeCount: sql<number>`COUNT(*)`
+				})
+				.from(refineryOrdersTable)
+				.where(and(
+					eq(refineryOrdersTable.userId, user.id),
+					eq(refineryOrdersTable.shopItemId, itemId)
+				))
+
+			const newBoostPercent = boost.length > 0 ? Number(boost[0].boostPercent) : 0
+			const newUpgradeCount = boost.length > 0 ? Number(boost[0].upgradeCount) : 0
+
+			const penalty = await tx
+				.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier })
+				.from(shopPenaltiesTable)
+				.where(and(
+					eq(shopPenaltiesTable.userId, user.id),
+					eq(shopPenaltiesTable.shopItemId, itemId)
+				))
+				.limit(1)
+
+			const penaltyMultiplier = penalty.length > 0 ? penalty[0].probabilityMultiplier : 100
+			const adjustedBaseProbability = Math.floor(item[0].baseProbability * penaltyMultiplier / 100)
+			const maxBoost = 100 - adjustedBaseProbability
+			const nextCost = newBoostPercent >= maxBoost
+				? null
+				: Math.floor(item[0].baseUpgradeCost * Math.pow(item[0].costMultiplier / 100, newUpgradeCount))
+
+			return {
+				boostPercent: newBoostPercent,
+				upgradeCount: newUpgradeCount,
+				refundedCost: totalRefunded,
+				undoneCount: orders.length,
+				effectiveProbability: Math.min(adjustedBaseProbability + newBoostPercent, 100),
+				nextCost
+			}
+		})
+
+		return result
+	} catch (e) {
+		console.error('[SHOP] refinery undo-all failed:', e)
+		return { error: 'Failed to undo refinery upgrades' }
+	}
+})
+
 export default shop

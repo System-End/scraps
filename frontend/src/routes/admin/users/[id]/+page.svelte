@@ -98,12 +98,23 @@
 		locked?: boolean;
 		itemName?: string;
 		paid?: boolean;
+		orderId?: number;
 	}
 
 	let timeline = $state<TimelineEvent[]>([]);
-	let timelineBalance = $state<{ earned: number; pending: number; spent: number; balance: number } | null>(null);
+	let timelineBalance = $state<{
+		earned: number;
+		pending: number;
+		spent: number;
+		balance: number;
+	} | null>(null);
 	let timelineLoading = $state(false);
 	let showTimeline = $state(false);
+	let undoingOrder = $state<number | null>(null);
+	let showUndoConfirm = $state<number | null>(null);
+	let showUnshipConfirm = $state<number | null>(null);
+	let unshipReason = $state('');
+	let unshipping = $state(false);
 
 	onMount(async () => {
 		currentUser = await getUser();
@@ -225,6 +236,54 @@
 		}
 	}
 
+	async function undoOrder(orderId: number) {
+		undoingOrder = orderId;
+		showUndoConfirm = null;
+		try {
+			const res = await fetch(`${API_URL}/admin/orders/${orderId}/undo`, {
+				method: 'POST',
+				credentials: 'include'
+			});
+			const result = await res.json();
+			if (result.error) {
+				alert(result.error);
+				return;
+			}
+			fetchTimeline();
+		} catch (e) {
+			console.error('Failed to undo order:', e);
+		} finally {
+			undoingOrder = null;
+		}
+	}
+
+	async function unshipProject(projectId: number) {
+		unshipping = true;
+		try {
+			const res = await fetch(`${API_URL}/admin/projects/${projectId}/unship`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ reason: unshipReason.trim() || undefined })
+			});
+			const result = await res.json();
+			if (result.error) {
+				console.error(result.error);
+				return;
+			}
+			// Update local project status
+			projects = projects.map((p) =>
+				p.id === projectId ? { ...p, status: 'in_progress' } : p
+			);
+			showUnshipConfirm = null;
+			unshipReason = '';
+		} catch (e) {
+			console.error('Failed to unship project:', e);
+		} finally {
+			unshipping = false;
+		}
+	}
+
 	function getTimelineIcon(type: string) {
 		switch (type) {
 			case 'earned':
@@ -239,15 +298,15 @@
 				return FileText;
 			case 'refinery_upgrade':
 				return Spool;
-			case 'refinery_undone':
-				return Undo2;
+			case 'refinery_consumed':
+				return TrendingDown;
 			default:
 				return Clock;
 		}
 	}
 
 	function getTimelineColor(type: string, amount: number) {
-		if (type === 'refinery_undone') return 'text-gray-400';
+		if (type === 'refinery_consumed') return 'text-orange-600';
 		if (amount > 0) return 'text-green-600';
 		if (amount < 0) return 'text-red-600';
 		return 'text-gray-600';
@@ -267,8 +326,8 @@
 				return 'consolation roll';
 			case 'refinery_upgrade':
 				return 'refinery upgrade';
-			case 'refinery_undone':
-				return 'refinery undone';
+			case 'refinery_consumed':
+				return 'consumed by win';
 			default:
 				return type;
 		}
@@ -532,6 +591,18 @@
 										{statusTag.label}
 									</span>
 								{/if}
+								{#if project.status === 'shipped' && currentUser?.role === 'admin'}
+									<button
+										onclick={(e) => {
+											e.preventDefault();
+											e.stopPropagation();
+											showUnshipConfirm = project.id;
+										}}
+										class="cursor-pointer rounded-full border-2 border-red-600 px-2 py-1 text-xs font-bold text-red-600 transition-all duration-200 hover:border-dashed"
+									>
+										unship
+									</button>
+								{/if}
 								<span class="text-xs text-gray-500">
 									{new Date(project.updatedAt).toLocaleDateString()}
 								</span>
@@ -588,7 +659,10 @@
 					</h2>
 					{#if !showTimeline}
 						<button
-							onclick={() => { showTimeline = true; fetchTimeline(); }}
+							onclick={() => {
+								showTimeline = true;
+								fetchTimeline();
+							}}
 							class="cursor-pointer rounded-full border-4 border-black px-4 py-2 text-sm font-bold transition-all duration-200 hover:border-dashed"
 						>
 							load timeline
@@ -628,45 +702,104 @@
 						<div class="space-y-2">
 							{#each timeline as event}
 								{@const Icon = getTimelineIcon(event.type)}
-								<div class="flex items-center gap-3 rounded-lg border-2 border-black p-3 {event.type === 'refinery_undone' ? 'border-dashed opacity-60' : ''}">
-									<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full {event.amount > 0 ? 'bg-green-100' : event.amount < 0 ? 'bg-red-100' : 'bg-gray-100'}">
+								<div class="flex items-center gap-3 rounded-lg border-2 border-black p-3">
+									<div
+										class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full {event.amount >
+										0
+											? 'bg-green-100'
+											: event.amount < 0
+												? 'bg-red-100'
+												: 'bg-gray-100'}"
+									>
 										<Icon size={16} class={getTimelineColor(event.type, event.amount)} />
 									</div>
 									<div class="min-w-0 flex-1">
-										<div class="flex items-center gap-2">
-											<span class="text-xs font-bold uppercase {getTimelineColor(event.type, event.amount)}">
+										<div class="flex flex-wrap items-center gap-2">
+											<span
+												class="text-xs font-bold uppercase {getTimelineColor(
+													event.type,
+													event.amount
+												)}"
+											>
 												{getTimelineLabel(event.type)}
 											</span>
 											{#if event.type === 'refinery_upgrade'}
 												{#if event.locked}
-													<span class="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
+													<span
+														class="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700"
+													>
 														<Lock size={10} />
 														locked
 													</span>
 												{:else}
-													<span class="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">
+													<span
+														class="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700"
+													>
 														<Unlock size={10} />
 														undoable
 													</span>
 												{/if}
 											{/if}
+											{#if event.type === 'refinery_consumed'}
+												<span
+													class="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-700"
+												>
+													consumed
+												</span>
+											{/if}
 											{#if event.type === 'earned' && !event.paid}
-												<span class="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-700">
+												<span
+													class="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-700"
+												>
 													unpaid
 												</span>
 											{/if}
 										</div>
 										<p class="truncate text-sm text-gray-700">{event.description}</p>
 									</div>
-									<div class="shrink-0 text-right">
-										<p class="font-bold {getTimelineColor(event.type, event.amount)}">
-											{#if event.amount !== 0}
-												{event.amount > 0 ? '+' : ''}{event.amount}
+									<div class="flex shrink-0 items-center gap-2">
+										{#if event.type.startsWith('shop_') && event.orderId}
+											{#if showUndoConfirm === event.orderId}
+												<div class="flex items-center gap-1">
+													<button
+														onclick={() => undoOrder(event.orderId ?? 0)}
+														disabled={undoingOrder === event.orderId}
+														class="cursor-pointer rounded-full bg-red-600 px-2 py-1 text-xs font-bold text-white transition-all duration-200 hover:bg-red-700 disabled:opacity-50"
+													>
+														{undoingOrder === event.orderId ? '...' : 'confirm'}
+													</button>
+													<button
+														onclick={() => (showUndoConfirm = null)}
+														class="cursor-pointer rounded-full border-2 border-black px-2 py-1 text-xs font-bold transition-all duration-200 hover:border-dashed"
+													>
+														cancel
+													</button>
+												</div>
+											{:else}
+												<button
+													onclick={() => (showUndoConfirm = event.orderId ?? null)}
+													class="cursor-pointer rounded-full border-2 border-red-600 px-2 py-1 text-xs font-bold text-red-600 transition-all duration-200 hover:border-dashed disabled:opacity-50"
+												>
+													<Undo2 size={12} />
+												</button>
 											{/if}
-										</p>
-										<p class="text-xs text-gray-500">
-											{new Date(event.date).toLocaleDateString()}
-										</p>
+										{/if}
+										<div class="text-right">
+											<p
+												class="font-bold {getTimelineColor(event.type, event.amount)}"
+											>
+												{#if event.amount !== 0}
+													{event.amount > 0 ? '+' : ''}{event.amount}
+												{/if}
+											</p>
+											<p class="text-xs text-gray-500">
+												{new Date(event.date).toLocaleDateString()}
+												{new Date(event.date).toLocaleTimeString([], {
+													hour: '2-digit',
+													minute: '2-digit'
+												})}
+											</p>
+										</div>
 									</div>
 								</div>
 							{/each}
@@ -679,6 +812,52 @@
 </div>
 
 <!-- Bonus Modal -->
+{#if showUnshipConfirm !== null}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+		onclick={(e) => e.target === e.currentTarget && (showUnshipConfirm = null)}
+		onkeydown={(e) => e.key === 'Escape' && (showUnshipConfirm = null)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
+			<h2 class="mb-4 text-2xl font-bold">unship project</h2>
+			<p class="mb-4 text-gray-600">
+				this will set the project back to in progress and remove all awarded scraps. this action cannot be undone.
+			</p>
+			<div class="mb-4">
+				<label for="unshipReason" class="mb-1 block text-sm font-bold">reason (optional)</label>
+				<textarea
+					id="unshipReason"
+					bind:value={unshipReason}
+					rows="3"
+					placeholder="why are you unshipping this project?"
+					class="w-full resize-none rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
+				></textarea>
+			</div>
+			<div class="flex gap-3">
+				<button
+					onclick={() => {
+						showUnshipConfirm = null;
+						unshipReason = '';
+					}}
+					disabled={unshipping}
+					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50"
+				>
+					cancel
+				</button>
+				<button
+					onclick={() => showUnshipConfirm !== null && unshipProject(showUnshipConfirm)}
+					disabled={unshipping}
+					class="flex-1 cursor-pointer rounded-full border-4 border-black bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{unshipping ? 'unshipping...' : 'unship project'}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
 {#if showBonusModal}
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"

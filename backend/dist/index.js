@@ -25765,7 +25765,8 @@ var config = {
   airtableToken: process.env.AIRTABLE_TOKEN,
   airtableBaseId: process.env.AIRTABLE_BASE_ID,
   airtableProjectsTableId: process.env.AIRTABLE_PROJECTS_TABLE_ID,
-  airtableUsersTableId: process.env.AIRTABLE_USERS_TABLE_ID
+  airtableUsersTableId: process.env.AIRTABLE_USERS_TABLE_ID,
+  fraudToken: process.env.FRAUD_TOKEN
 };
 
 // node_modules/drizzle-orm/entity.js
@@ -31557,6 +31558,46 @@ async function syncSingleProject(projectId) {
   }
 }
 
+// src/lib/ysws.ts
+var YSWS_API_URL = "https://joe.fraud.hackclub.com/api/v1/ysws/events/new-ui-api";
+async function submitProjectToYSWS(project) {
+  if (!config.fraudToken) {
+    console.log("[YSWS] Missing FRAUD_TOKEN, skipping submission");
+    return null;
+  }
+  const hackatimeProjects = project.hackatimeProject ? project.hackatimeProject.split(",").map((n) => n.trim()).filter((n) => n.length > 0) : [];
+  const payload = {
+    name: project.name,
+    codeLink: project.githubUrl || "",
+    demoLink: project.playableUrl || "",
+    submitter: {
+      slackId: project.slackId || ""
+    },
+    hackatimeProjects
+  };
+  try {
+    const res = await fetch(`${YSWS_API_URL}/projects`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.fraudToken}`
+      },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const text2 = await res.text();
+      console.error("[YSWS] submission failed:", res.status, text2);
+      return null;
+    }
+    const data = await res.json();
+    console.log("[YSWS] submitted project:", project.name);
+    return data;
+  } catch (e) {
+    console.error("[YSWS] submission error:", e);
+    return null;
+  }
+}
+
 // src/lib/effective-hours.ts
 async function getProjectShippedDates(projectIds) {
   if (projectIds.length === 0)
@@ -32038,6 +32079,13 @@ projects.post("/:id/submit", async ({ params, headers, body }) => {
     projectId: updated[0].id,
     action: "project_submitted"
   });
+  submitProjectToYSWS({
+    name: updated[0].name,
+    githubUrl: updated[0].githubUrl,
+    playableUrl: updated[0].playableUrl,
+    hackatimeProject: updated[0].hackatimeProject,
+    slackId: user.slackId
+  }).catch((err) => console.error("[YSWS] failed:", err));
   if (config.slackBotToken && user.slackId) {
     try {
       await notifyProjectSubmitted({
@@ -32215,8 +32263,8 @@ async function getUserScrapsBalance(userId, txOrDb = db) {
     total: sql`COALESCE(SUM(${shopOrdersTable.totalPrice}), 0)`
   }).from(shopOrdersTable).where(eq(shopOrdersTable.userId, userId));
   const upgradeSpentResult = await txOrDb.select({
-    total: sql`COALESCE(SUM(${refineryOrdersTable.cost}), 0)`
-  }).from(refineryOrdersTable).where(eq(refineryOrdersTable.userId, userId));
+    total: sql`COALESCE(SUM(${refinerySpendingHistoryTable.cost}), 0)`
+  }).from(refinerySpendingHistoryTable).where(eq(refinerySpendingHistoryTable.userId, userId));
   const projectEarned = Number(earnedResult[0]?.total) || 0;
   const pending = Number(pendingResult[0]?.total) || 0;
   const bonusEarned = Number(bonusResult[0]?.total) || 0;
@@ -32610,7 +32658,7 @@ user.get("/profile/:id", async ({ params, headers }) => {
     itemImage: shopItemsTable.image,
     baseProbability: shopItemsTable.baseProbability,
     totalBoost: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
-  }).from(refineryOrdersTable).innerJoin(shopItemsTable, eq(refineryOrdersTable.shopItemId, shopItemsTable.id)).where(eq(refineryOrdersTable.userId, parseInt(params.id))).groupBy(refineryOrdersTable.shopItemId, shopItemsTable.name, shopItemsTable.image, shopItemsTable.baseProbability);
+  }).from(refineryOrdersTable).innerJoin(shopItemsTable, eq(refineryOrdersTable.shopItemId, shopItemsTable.id)).where(eq(refineryOrdersTable.userId, parseInt(params.id))).groupBy(refineryOrdersTable.shopItemId, shopItemsTable.name, shopItemsTable.image, shopItemsTable.baseProbability).having(sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0) > 0`);
   return {
     user: {
       id: targetUser[0].id,
@@ -33027,6 +33075,10 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
   try {
     const result = await db.transaction(async (tx) => {
       await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user2.id} FOR UPDATE`);
+      const stockCheck = await tx.execute(sql`SELECT count FROM shop_items WHERE id = ${itemId} FOR UPDATE`);
+      if (!stockCheck.rows[0] || stockCheck.rows[0].count <= 0) {
+        throw { type: "out_of_stock" };
+      }
       const boostResult = await tx.select({
         boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`
       }).from(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
@@ -33066,6 +33118,9 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
     return result;
   } catch (e) {
     const err = e;
+    if (err.type === "out_of_stock") {
+      return { error: "Item is out of stock" };
+    }
     if (err.type === "max_probability") {
       return { error: "Already at maximum probability" };
     }
@@ -33259,6 +33314,72 @@ shop.post("/items/:id/refinery/undo", async ({ params, headers }) => {
   } catch (e) {
     console.error("[SHOP] refinery undo failed:", e);
     return { error: "Failed to undo refinery upgrade" };
+  }
+});
+shop.post("/items/:id/refinery/undo-all", async ({ params, headers }) => {
+  const user2 = await getUserFromSession(headers);
+  if (!user2) {
+    return { error: "Unauthorized" };
+  }
+  const itemId = parseInt(params.id);
+  if (!Number.isInteger(itemId)) {
+    return { error: "Invalid item id" };
+  }
+  const item = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
+  if (item.length === 0) {
+    return { error: "Item not found" };
+  }
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user2.id} FOR UPDATE`);
+      const lastPurchase = await tx.select({ createdAt: shopOrdersTable.createdAt }).from(shopOrdersTable).where(and(eq(shopOrdersTable.userId, user2.id), eq(shopOrdersTable.shopItemId, itemId), or(eq(shopOrdersTable.orderType, "purchase"), eq(shopOrdersTable.orderType, "luck_win")))).orderBy(desc(shopOrdersTable.createdAt)).limit(1);
+      const orderConditions = [
+        eq(refineryOrdersTable.userId, user2.id),
+        eq(refineryOrdersTable.shopItemId, itemId)
+      ];
+      if (lastPurchase.length > 0) {
+        orderConditions.push(gt(refineryOrdersTable.createdAt, lastPurchase[0].createdAt));
+      }
+      const orders = await tx.select().from(refineryOrdersTable).where(and(...orderConditions));
+      if (orders.length === 0) {
+        if (lastPurchase.length > 0) {
+          return { error: "Cannot undo refinery upgrades from before your last purchase" };
+        }
+        return { error: "No refinery upgrades to undo" };
+      }
+      let totalRefunded = 0;
+      for (const order of orders) {
+        await tx.delete(refineryOrdersTable).where(eq(refineryOrdersTable.id, order.id));
+        const matchingHistory = await tx.select({ id: refinerySpendingHistoryTable.id }).from(refinerySpendingHistoryTable).where(and(eq(refinerySpendingHistoryTable.userId, user2.id), eq(refinerySpendingHistoryTable.shopItemId, itemId), eq(refinerySpendingHistoryTable.cost, order.cost))).orderBy(desc(refinerySpendingHistoryTable.createdAt)).limit(1);
+        if (matchingHistory.length > 0) {
+          await tx.delete(refinerySpendingHistoryTable).where(eq(refinerySpendingHistoryTable.id, matchingHistory[0].id));
+        }
+        totalRefunded += order.cost;
+      }
+      const boost = await tx.select({
+        boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`,
+        upgradeCount: sql`COUNT(*)`
+      }).from(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
+      const newBoostPercent = boost.length > 0 ? Number(boost[0].boostPercent) : 0;
+      const newUpgradeCount = boost.length > 0 ? Number(boost[0].upgradeCount) : 0;
+      const penalty = await tx.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId))).limit(1);
+      const penaltyMultiplier = penalty.length > 0 ? penalty[0].probabilityMultiplier : 100;
+      const adjustedBaseProbability = Math.floor(item[0].baseProbability * penaltyMultiplier / 100);
+      const maxBoost = 100 - adjustedBaseProbability;
+      const nextCost = newBoostPercent >= maxBoost ? null : Math.floor(item[0].baseUpgradeCost * Math.pow(item[0].costMultiplier / 100, newUpgradeCount));
+      return {
+        boostPercent: newBoostPercent,
+        upgradeCount: newUpgradeCount,
+        refundedCost: totalRefunded,
+        undoneCount: orders.length,
+        effectiveProbability: Math.min(adjustedBaseProbability + newBoostPercent, 100),
+        nextCost
+      };
+    });
+    return result;
+  } catch (e) {
+    console.error("[SHOP] refinery undo-all failed:", e);
+    return { error: "Failed to undo refinery upgrades" };
   }
 });
 var shop_default = shop;
@@ -34037,7 +34158,12 @@ admin.get("/second-pass", async ({ headers, query }) => {
     const limit = Math.min(parseInt(query.limit) || 20, 100);
     const offset = (page - 1) * limit;
     const sort = query.sort || "oldest";
-    const orderClause = sort === "newest" ? desc(projectsTable.updatedAt) : asc(projectsTable.updatedAt);
+    const submittedAtOrderExpr = sql`COALESCE((
+            SELECT MAX(pa.created_at)
+            FROM project_activity pa
+            WHERE pa.project_id = projects.id
+              AND pa.action = 'project_submitted'
+        ), ${projectsTable.updatedAt})`;
     const [projects2, countResult] = await Promise.all([
       db.select({
         id: projectsTable.id,
@@ -34063,8 +34189,14 @@ admin.get("/second-pass", async ({ headers, query }) => {
         feedbackGood: projectsTable.feedbackGood,
         feedbackImprove: projectsTable.feedbackImprove,
         createdAt: projectsTable.createdAt,
-        updatedAt: projectsTable.updatedAt
-      }).from(projectsTable).where(eq(projectsTable.status, "pending_admin_approval")).orderBy(orderClause).limit(limit).offset(offset),
+        updatedAt: projectsTable.updatedAt,
+        submittedAt: sql`(
+                    SELECT MAX(pa.created_at)
+                    FROM project_activity pa
+                    WHERE pa.project_id = projects.id
+                      AND pa.action = 'project_submitted'
+                )`
+      }).from(projectsTable).where(eq(projectsTable.status, "pending_admin_approval")).orderBy(sort === "newest" ? desc(submittedAtOrderExpr) : asc(submittedAtOrderExpr)).limit(limit).offset(offset),
       db.select({ count: sql`count(*)` }).from(projectsTable).where(eq(projectsTable.status, "pending_admin_approval"))
     ]);
     const total = Number(countResult[0]?.count || 0);
@@ -34656,9 +34788,9 @@ admin.post("/fix-negative-balances", async ({ headers, status: status2 }) => {
     return status2(500, { error: "Failed to fix negative balances" });
   }
 });
-admin.get("/export/shipped-csv", async ({ headers, status: status2 }) => {
+admin.get("/export/review-csv", async ({ headers, status: status2 }) => {
   try {
-    const user2 = await requireAdmin(headers);
+    const user2 = await requireReviewer(headers);
     if (!user2) {
       return status2(401, { error: "Unauthorized" });
     }
@@ -34668,7 +34800,7 @@ admin.get("/export/shipped-csv", async ({ headers, status: status2 }) => {
       playableUrl: projectsTable.playableUrl,
       hackatimeProject: projectsTable.hackatimeProject,
       slackId: usersTable.slackId
-    }).from(projectsTable).innerJoin(usersTable, eq(projectsTable.userId, usersTable.id)).where(and(eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))).orderBy(desc(projectsTable.updatedAt));
+    }).from(projectsTable).innerJoin(usersTable, eq(projectsTable.userId, usersTable.id)).where(and(or(eq(projectsTable.status, "waiting_for_review"), eq(projectsTable.status, "pending_admin_approval")), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))).orderBy(desc(projectsTable.updatedAt));
     const escapeCSV = (val) => {
       if (!val)
         return "";
@@ -34692,17 +34824,17 @@ admin.get("/export/shipped-csv", async ({ headers, status: status2 }) => {
 `), {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="scraps-shipped-projects.csv"'
+        "Content-Disposition": 'attachment; filename="scraps-review-projects.csv"'
       }
     });
   } catch (err) {
     console.error(err);
-    return status2(500, { error: "Failed to export CSV" });
+    return status2(500, { error: "Failed to export review CSV" });
   }
 });
-admin.get("/export/ysws-json", async ({ headers, status: status2 }) => {
+admin.get("/export/review-json", async ({ headers, status: status2 }) => {
   try {
-    const user2 = await requireAdmin(headers);
+    const user2 = await requireReviewer(headers);
     if (!user2) {
       return status2(401, { error: "Unauthorized" });
     }
@@ -34712,7 +34844,7 @@ admin.get("/export/ysws-json", async ({ headers, status: status2 }) => {
       playableUrl: projectsTable.playableUrl,
       hackatimeProject: projectsTable.hackatimeProject,
       slackId: usersTable.slackId
-    }).from(projectsTable).innerJoin(usersTable, eq(projectsTable.userId, usersTable.id)).where(and(eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))).orderBy(desc(projectsTable.updatedAt));
+    }).from(projectsTable).innerJoin(usersTable, eq(projectsTable.userId, usersTable.id)).where(and(or(eq(projectsTable.status, "waiting_for_review"), eq(projectsTable.status, "pending_admin_approval")), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))).orderBy(desc(projectsTable.updatedAt));
     return projects2.map((p) => {
       const hackatimeProjects = p.hackatimeProject ? p.hackatimeProject.split(",").map((n) => n.trim()).filter((n) => n.length > 0) : [];
       return {
@@ -34725,7 +34857,78 @@ admin.get("/export/ysws-json", async ({ headers, status: status2 }) => {
     });
   } catch (err) {
     console.error(err);
-    return status2(500, { error: "Failed to export YSWS JSON" });
+    return status2(500, { error: "Failed to export review JSON" });
+  }
+});
+admin.post("/orders/:id/undo", async ({ params, headers, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2)
+      return status2(401, { error: "Unauthorized" });
+    const orderId = parseInt(params.id);
+    const order = await db.select({
+      id: shopOrdersTable.id,
+      userId: shopOrdersTable.userId,
+      shopItemId: shopOrdersTable.shopItemId,
+      quantity: shopOrdersTable.quantity,
+      totalPrice: shopOrdersTable.totalPrice,
+      orderType: shopOrdersTable.orderType
+    }).from(shopOrdersTable).where(eq(shopOrdersTable.id, orderId)).limit(1);
+    if (!order[0]) {
+      return status2(404, { error: "Order not found" });
+    }
+    await db.transaction(async (tx) => {
+      await tx.delete(shopOrdersTable).where(eq(shopOrdersTable.id, orderId));
+      await tx.update(shopItemsTable).set({
+        count: sql`${shopItemsTable.count} + ${order[0].quantity}`,
+        updatedAt: new Date
+      }).where(eq(shopItemsTable.id, order[0].shopItemId));
+    });
+    return { success: true, refundedScraps: order[0].totalPrice };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to undo order" });
+  }
+});
+admin.post("/projects/:id/unship", async ({ params, headers, body, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2)
+      return status2(401, { error: "Unauthorized" });
+    const projectId = parseInt(params.id);
+    const { reason } = body || {};
+    const project = await db.select({
+      id: projectsTable.id,
+      userId: projectsTable.userId,
+      name: projectsTable.name,
+      status: projectsTable.status,
+      scrapsAwarded: projectsTable.scrapsAwarded,
+      scrapsPaidAt: projectsTable.scrapsPaidAt
+    }).from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1);
+    if (!project[0]) {
+      return status2(404, { error: "Project not found" });
+    }
+    if (project[0].status !== "shipped") {
+      return status2(400, { error: "Project is not shipped" });
+    }
+    const previousScraps = project[0].scrapsAwarded;
+    await db.update(projectsTable).set({
+      status: "in_progress",
+      scrapsAwarded: 0,
+      scrapsPaidAt: null,
+      updatedAt: new Date
+    }).where(eq(projectsTable.id, projectId));
+    await db.insert(reviewsTable).values({
+      projectId,
+      reviewerId: user2.id,
+      action: "denied",
+      feedbackForAuthor: reason?.trim() || "Project has been unshipped by an admin.",
+      internalJustification: `Unshipped: removed ${previousScraps} scraps`
+    });
+    return { success: true, previousScraps };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to unship project" });
   }
 });
 admin.get("/users/:id/timeline", async ({ params, headers, status: status2 }) => {
@@ -34815,7 +35018,8 @@ admin.get("/users/:id/timeline", async ({ params, headers, status: status2 }) =>
         amount: -o.totalPrice,
         description: o.itemName,
         date: o.createdAt.toISOString(),
-        itemName: o.itemName
+        itemName: o.itemName,
+        orderId: o.id
       });
     }
     for (const r of refineryRows) {
@@ -34830,16 +35034,26 @@ admin.get("/users/:id/timeline", async ({ params, headers, status: status2 }) =>
         itemName: r.itemName
       });
     }
-    const usedOrderIds = new Set;
+    const orderCountByItem = new Map;
+    for (const r of refineryRows) {
+      orderCountByItem.set(r.shopItemId, (orderCountByItem.get(r.shopItemId) || 0) + 1);
+    }
+    const historyByItem = new Map;
     for (const h of refineryHistory) {
-      const matchingOrder = refineryRows.find((r) => r.shopItemId === h.shopItemId && r.cost === h.cost && !usedOrderIds.has(r.id) && Math.abs(new Date(r.createdAt).getTime() - new Date(h.createdAt).getTime()) < 2000);
-      if (matchingOrder) {
-        usedOrderIds.add(matchingOrder.id);
-      } else {
+      const list = historyByItem.get(h.shopItemId) || [];
+      list.push(h);
+      historyByItem.set(h.shopItemId, list);
+    }
+    for (const [itemId, entries] of historyByItem) {
+      const activeCount = orderCountByItem.get(itemId) || 0;
+      entries.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      const consumedCount = Math.max(0, entries.length - activeCount);
+      for (let i = 0;i < consumedCount; i++) {
+        const h = entries[i];
         timeline.push({
-          type: "refinery_undone",
-          amount: 0,
-          description: `undone +boost for "${h.itemName}" (was ${h.cost} scraps)`,
+          type: "refinery_consumed",
+          amount: -h.cost,
+          description: `upgrade consumed by win for "${h.itemName}"`,
           date: h.createdAt.toISOString(),
           itemName: h.itemName
         });

@@ -7,7 +7,7 @@ import { projectActivityTable } from '../schemas/activity'
 import { reviewsTable } from '../schemas/reviews'
 import { config } from '../config'
 import { eq, and, or, isNull, min, sql, inArray } from 'drizzle-orm'
-import { fetchUserInfo } from './auth'
+import { fetchUserIdentity } from './auth'
 import { getProjectShippedDates } from './effective-hours'
 
 const SYNC_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
@@ -213,8 +213,8 @@ async function syncProjectsToAirtable(): Promise<void> {
 		const toUpdate: { id: string; fields: Airtable.FieldSet }[] = []
 		const duplicateProjectIds: number[] = [] // projects with duplicate Code URLs to revert
 
-		// Cache userinfo per userId to avoid redundant API calls
-		const userInfoCache: Map<number, Awaited<ReturnType<typeof fetchUserInfo>>> = new Map()
+		// Cache user identity per userId to avoid redundant API calls
+		const userInfoCache: Map<number, Awaited<ReturnType<typeof fetchUserIdentity>>> = new Map()
 
 		// Batch-fetch first shipped dates from project_activity for all projects
 		const shippedDates = await getProjectShippedDates(projects.map(p => p.id))
@@ -237,12 +237,12 @@ async function syncProjectsToAirtable(): Promise<void> {
 			}
 			seenCodeUrls.add(project.githubUrl)
 
-			// Fetch userinfo if not cached
+			// Fetch user identity if not cached
 			if (!userInfoCache.has(project.userId) && project.accessToken) {
-				const info = await fetchUserInfo(project.accessToken)
+				const info = await fetchUserIdentity(project.accessToken)
 				userInfoCache.set(project.userId, info)
 			}
-			const userInfo = userInfoCache.get(project.userId)
+			const userIdentity = userInfoCache.get(project.userId)?.identity
 
 			// Compute effective hours by deducting overlapping shipped project hours
 			// Only deduct from projects that were shipped BEFORE this one (using activity-derived dates)
@@ -267,8 +267,8 @@ async function syncProjectsToAirtable(): Promise<void> {
 				}
 			}
 
-			const firstName = userInfo?.given_name || (project.username || '').split(' ')[0] || ''
-			const lastName = userInfo?.family_name || (project.username || '').split(' ').slice(1).join(' ') || ''
+			const firstName = userIdentity?.given_name || (project.username || '').split(' ')[0] || ''
+			const lastName = userIdentity?.family_name || (project.username || '').split(' ').slice(1).join(' ') || ''
 
 			const descriptionParts = [project.description || '']
 			if (project.updateDescription) {
@@ -300,21 +300,24 @@ async function syncProjectsToAirtable(): Promise<void> {
 			}
 
 			// Add address fields from userinfo
-			if (userInfo?.address) {
-				if (userInfo.address.street_address) {
-					const lines = userInfo.address.street_address.split('\n')
+			if (userIdentity?.address) {
+				if (userIdentity.address.street_address) {
+					const lines = userIdentity.address.street_address.split('\n')
 					if (lines[0]) fields['Address (Line 1)'] = lines[0]
 					if (lines[1]) fields['Address (Line 2)'] = lines[1]
 				}
-				if (userInfo.address.locality) fields['City'] = userInfo.address.locality
-				if (userInfo.address.region) fields['State / Province'] = userInfo.address.region
-				if (userInfo.address.postal_code) fields['ZIP / Postal Code'] = userInfo.address.postal_code
-				if (userInfo.address.country) fields['Country'] = userInfo.address.country
+				if (userIdentity.address.locality) fields['City'] = userIdentity.address.locality
+				if (userIdentity.address.region) fields['State / Province'] = userIdentity.address.region
+				if (userIdentity.address.postal_code) fields['ZIP / Postal Code'] = userIdentity.address.postal_code
+				if (userIdentity.address.country) fields['Country'] = userIdentity.address.country
 			}
 
-			// Add birthday from userinfo
-			if (userInfo?.birthdate) {
-				fields['Birthday'] = userInfo.birthdate
+			// Add birthday and phone from identity
+			if (userIdentity?.birthdate) {
+				fields['Birthday'] = userIdentity.birthdate
+			}
+			if (userIdentity?.phone_number) {
+				fields['Phone Number'] = userIdentity.phone_number
 			}
 
 			const existingId = existingRecords.get(project.githubUrl)

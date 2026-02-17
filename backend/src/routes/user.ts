@@ -205,8 +205,9 @@ user.get('/profile/:id', async ({ params, headers }) => {
         .innerJoin(shopItemsTable, eq(refineryOrdersTable.shopItemId, shopItemsTable.id))
         .where(eq(refineryOrdersTable.userId, parseInt(params.id)))
         .groupBy(refineryOrdersTable.shopItemId, shopItemsTable.name, shopItemsTable.image, shopItemsTable.baseProbability)
+        .having(sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0) > 0`)
 
-    return {
+        return {
         user: {
             id: targetUser[0].id,
             username: targetUser[0].username,
