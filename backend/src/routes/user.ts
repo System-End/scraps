@@ -75,35 +75,54 @@ user.post('/complete-tutorial', async ({ headers }) => {
         return { success: true, alreadyCompleted: true }
     }
 
-    // Check for existing tutorial bonus to prevent duplicates
-    const existingBonus = await db
-        .select({ id: userBonusesTable.id })
-        .from(userBonusesTable)
-        .where(and(
-            eq(userBonusesTable.userId, userData.id),
-            eq(userBonusesTable.reason, 'tutorial_completion')
-        ))
-        .limit(1)
+    const result = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT 1 FROM users WHERE id = ${userData.id} FOR UPDATE`)
 
-    if (existingBonus.length > 0) {
-        // Mark tutorial as completed but don't award bonus again
-        await db
+        // re-check inside transaction
+        const freshUser = await tx
+            .select({ tutorialCompleted: usersTable.tutorialCompleted })
+            .from(usersTable)
+            .where(eq(usersTable.id, userData.id))
+            .limit(1)
+
+        if (freshUser[0]?.tutorialCompleted) {
+            return { alreadyCompleted: true }
+        }
+
+        const existingBonus = await tx
+            .select({ id: userBonusesTable.id })
+            .from(userBonusesTable)
+            .where(and(
+                eq(userBonusesTable.userId, userData.id),
+                eq(userBonusesTable.reason, 'tutorial_completion')
+            ))
+            .limit(1)
+
+        if (existingBonus.length > 0) {
+            await tx
+                .update(usersTable)
+                .set({ tutorialCompleted: true, updatedAt: new Date() })
+                .where(eq(usersTable.id, userData.id))
+            return { alreadyCompleted: true }
+        }
+
+        await tx
             .update(usersTable)
             .set({ tutorialCompleted: true, updatedAt: new Date() })
             .where(eq(usersTable.id, userData.id))
+
+        await tx.insert(userBonusesTable).values({
+            userId: userData.id,
+            reason: 'tutorial_completion',
+            amount: 5
+        })
+
+        return { bonusAwarded: 5 }
+    })
+
+    if (result.alreadyCompleted) {
         return { success: true, alreadyCompleted: true }
     }
-
-    await db
-        .update(usersTable)
-        .set({ tutorialCompleted: true, updatedAt: new Date() })
-        .where(eq(usersTable.id, userData.id))
-
-    await db.insert(userBonusesTable).values({
-        userId: userData.id,
-        reason: 'tutorial_completion',
-        amount: 5
-    })
 
     // Log tutorial_completed activity
     await db.insert(userActivityTable).values({
@@ -112,7 +131,7 @@ user.post('/complete-tutorial', async ({ headers }) => {
         action: 'tutorial_completed'
     })
 
-    return { success: true, bonusAwarded: 5 }
+    return { success: true, bonusAwarded: result.bonusAwarded }
 })
 
 // Public profile - anyone logged in can view

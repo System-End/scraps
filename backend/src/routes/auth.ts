@@ -14,7 +14,7 @@ import { getNextPayoutDate } from "../lib/scraps-payout"
 import { db } from "../db"
 import { userActivityTable } from "../schemas/user-emails"
 import { userBonusesTable } from "../schemas/users"
-import { eq, and } from "drizzle-orm"
+import { eq, and, sql } from "drizzle-orm"
 
 const FRONTEND_URL = config.frontendUrl
 
@@ -132,23 +132,27 @@ authRoutes.get("/me", async ({ headers }) => {
 
     // Auto-award tutorial bonus if tutorial is completed but bonus wasn't given
     if (user.tutorialCompleted) {
-        const existingBonus = await db
-            .select({ id: userBonusesTable.id })
-            .from(userBonusesTable)
-            .where(and(
-                eq(userBonusesTable.userId, user.id),
-                eq(userBonusesTable.reason, 'tutorial_completion')
-            ))
-            .limit(1)
+        await db.transaction(async (tx) => {
+            await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user.id} FOR UPDATE`)
 
-        if (existingBonus.length === 0) {
-            await db.insert(userBonusesTable).values({
-                userId: user.id,
-                reason: 'tutorial_completion',
-                amount: 5
-            })
-            console.log("[AUTH] Auto-awarded tutorial bonus for user:", user.id)
-        }
+            const existingBonus = await tx
+                .select({ id: userBonusesTable.id })
+                .from(userBonusesTable)
+                .where(and(
+                    eq(userBonusesTable.userId, user.id),
+                    eq(userBonusesTable.reason, 'tutorial_completion')
+                ))
+                .limit(1)
+
+            if (existingBonus.length === 0) {
+                await tx.insert(userBonusesTable).values({
+                    userId: user.id,
+                    reason: 'tutorial_completion',
+                    amount: 5
+                })
+                console.log("[AUTH] Auto-awarded tutorial bonus for user:", user.id)
+            }
+        })
     }
 
     const scrapsBalance = await getUserScrapsBalance(user.id)
