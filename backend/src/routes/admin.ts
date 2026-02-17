@@ -1912,26 +1912,33 @@ admin.get('/users/:id/timeline', async ({ params, headers, status }) => {
             })
         }
 
-        // Undone refinery entries (in spending history but no matching active order)
-        // Match by finding history entries that don't correspond to any active order
-        // We pair them by item + cost + date proximity
-        const usedOrderIds = new Set<number>()
+        // Consumed refinery entries (in spending history but no matching active order)
+        // When a user wins, refinery orders are deleted but spending history stays
+        // When undone, both order AND history are deleted (no trace remains)
+        // So: history entries without a matching active order = consumed by a win
+        const orderCountByItem = new Map<number, number>()
+        for (const r of refineryRows) {
+            orderCountByItem.set(r.shopItemId, (orderCountByItem.get(r.shopItemId) || 0) + 1)
+        }
+
+        const historyByItem = new Map<number, typeof refineryHistory>()
         for (const h of refineryHistory) {
-            // Try to find a matching active refinery order
-            const matchingOrder = refineryRows.find(r =>
-                r.shopItemId === h.shopItemId &&
-                r.cost === h.cost &&
-                !usedOrderIds.has(r.id) &&
-                Math.abs(new Date(r.createdAt).getTime() - new Date(h.createdAt).getTime()) < 2000
-            )
-            if (matchingOrder) {
-                usedOrderIds.add(matchingOrder.id)
-            } else {
-                // This was undone - show it as a historical entry
+            const list = historyByItem.get(h.shopItemId) || []
+            list.push(h)
+            historyByItem.set(h.shopItemId, list)
+        }
+
+        for (const [itemId, entries] of historyByItem) {
+            const activeCount = orderCountByItem.get(itemId) || 0
+            // Sort oldest first - oldest entries beyond active count were consumed
+            entries.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+            const consumedCount = Math.max(0, entries.length - activeCount)
+            for (let i = 0; i < consumedCount; i++) {
+                const h = entries[i]
                 timeline.push({
-                    type: 'refinery_undone',
-                    amount: 0,
-                    description: `undone +boost for "${h.itemName}" (was ${h.cost} scraps)`,
+                    type: 'refinery_consumed',
+                    amount: -h.cost,
+                    description: `upgrade consumed by win for "${h.itemName}"`,
                     date: h.createdAt.toISOString(),
                     itemName: h.itemName
                 })
