@@ -106,6 +106,7 @@ export default {
 		sort: 'ordenar:',
 		default: 'predeterminado',
 		favorites: 'favoritos',
+		favoritesSortHint: 'más deseados, luego los tuyos',
 		probability: 'probabilidad',
 		cost: 'costo (bajo a alto)',
 		loadingItems: 'Cargando artículos...',

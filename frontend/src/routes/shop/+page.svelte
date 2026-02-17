@@ -232,7 +232,7 @@
 					? 'bg-black text-white'
 					: 'hover:border-dashed'}"
 			>
-				{$t.shop.favorites} (most wished, then yours)
+				{$t.shop.favorites} ({$t.shop.favoritesSortHint})
 			</button>
 			<button
 				onclick={() => (sortBy = 'probability')}
