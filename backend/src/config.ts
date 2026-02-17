@@ -36,5 +36,8 @@ export const config = {
 	airtableToken: process.env.AIRTABLE_TOKEN,
 	airtableBaseId: process.env.AIRTABLE_BASE_ID,
 	airtableProjectsTableId: process.env.AIRTABLE_PROJECTS_TABLE_ID!,
-	airtableUsersTableId: process.env.AIRTABLE_USERS_TABLE_ID!
+	airtableUsersTableId: process.env.AIRTABLE_USERS_TABLE_ID!,
+
+	// YSWS
+	fraudToken: process.env.FRAUD_TOKEN
 }
