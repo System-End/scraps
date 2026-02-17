@@ -953,12 +953,18 @@ shop.post('/items/:id/refinery/undo', async ({ params, headers }) => {
 
 	const order = orders[0]
 
-	// Delete the order (balance is calculated dynamically, so deleting this removes the cost from the spent total)
 	await db
 		.delete(refineryOrdersTable)
 		.where(eq(refineryOrdersTable.id, order.id))
 
-	// Get updated boost and upgrade count
+	await db
+		.delete(refinerySpendingHistoryTable)
+		.where(and(
+			eq(refinerySpendingHistoryTable.userId, user.id),
+			eq(refinerySpendingHistoryTable.shopItemId, itemId),
+			eq(refinerySpendingHistoryTable.cost, order.cost)
+		))
+
 	const boost = await db
 		.select({
 			boostPercent: sql<number>`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`,
@@ -974,7 +980,6 @@ shop.post('/items/:id/refinery/undo', async ({ params, headers }) => {
 	const newUpgradeCount = boost.length > 0 ? Number(boost[0].upgradeCount) : 0
 	const refundedCost = order.cost
 
-	// Get penalty for effective probability calculation
 	const penalty = await db
 		.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier })
 		.from(shopPenaltiesTable)
