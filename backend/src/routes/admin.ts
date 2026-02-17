@@ -775,9 +775,12 @@ admin.get('/second-pass', async ({ headers, query }) => {
         const offset = (page - 1) * limit
         const sort = (query.sort as string) || 'oldest'
 
-        const orderClause = sort === 'newest'
-            ? desc(projectsTable.updatedAt)
-            : asc(projectsTable.updatedAt)
+        const submittedAtOrderExpr = sql<Date | null>`COALESCE((
+            SELECT MAX(pa.created_at)
+            FROM project_activity pa
+            WHERE pa.project_id = projects.id
+              AND pa.action = 'project_submitted'
+        ), ${projectsTable.updatedAt})`
 
         const [projects, countResult] = await Promise.all([
             db.select({
@@ -804,10 +807,18 @@ admin.get('/second-pass', async ({ headers, query }) => {
                 feedbackGood: projectsTable.feedbackGood,
                 feedbackImprove: projectsTable.feedbackImprove,
                 createdAt: projectsTable.createdAt,
-                updatedAt: projectsTable.updatedAt
+                updatedAt: projectsTable.updatedAt,
+                submittedAt: sql<Date | null>`(
+                    SELECT MAX(pa.created_at)
+                    FROM project_activity pa
+                    WHERE pa.project_id = projects.id
+                      AND pa.action = 'project_submitted'
+                )`
             }).from(projectsTable)
                 .where(eq(projectsTable.status, 'pending_admin_approval'))
-                .orderBy(orderClause)
+                .orderBy(sort === 'newest'
+                    ? desc(submittedAtOrderExpr)
+                    : asc(submittedAtOrderExpr))
                 .limit(limit)
                 .offset(offset),
             db.select({ count: sql<number>`count(*)` }).from(projectsTable)

@@ -59,7 +59,15 @@
 	let sortedItems = $derived.by(() => {
 		let items = [...filteredItems];
 		if (sortBy === 'favorites') {
-			return items.sort((a, b) => b.heartCount - a.heartCount);
+			return items.sort((a, b) => {
+				if (b.heartCount !== a.heartCount) {
+					return b.heartCount - a.heartCount;
+				}
+				if (a.userHearted !== b.userHearted) {
+					return a.userHearted ? -1 : 1;
+				}
+				return a.id - b.id;
+			});
 		} else if (sortBy === 'probability') {
 			return items.sort((a, b) => b.effectiveProbability - a.effectiveProbability);
 		} else if (sortBy === 'cost') {
@@ -224,7 +232,7 @@
 					? 'bg-black text-white'
 					: 'hover:border-dashed'}"
 			>
-				{$t.shop.favorites}
+				{$t.shop.favorites} ({$t.shop.favoritesSortHint})
 			</button>
 			<button
 				onclick={() => (sortBy = 'probability')}

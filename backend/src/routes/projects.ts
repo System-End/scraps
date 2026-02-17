@@ -8,6 +8,7 @@ import { projectActivityTable } from '../schemas/activity'
 import { getUserFromSession, fetchUserIdentity } from '../lib/auth'
 import { syncSingleProject } from '../lib/hackatime-sync'
 import { notifyProjectSubmitted } from '../lib/slack'
+import { submitProjectToYSWS } from '../lib/ysws'
 import { config } from '../config'
 import { computeEffectiveHoursForProject } from '../lib/effective-hours'
 
@@ -642,6 +643,15 @@ projects.post("/:id/submit", async ({ params, headers, body }) => {
         projectId: updated[0].id,
         action: 'project_submitted'
     })
+
+    // Submit to YSWS
+    submitProjectToYSWS({
+        name: updated[0].name,
+        githubUrl: updated[0].githubUrl,
+        playableUrl: updated[0].playableUrl,
+        hackatimeProject: updated[0].hackatimeProject,
+        slackId: user.slackId
+    }).catch(err => console.error('[YSWS] failed:', err))
 
     // Send Slack DM notification that the project is waiting for review
     if (config.slackBotToken && user.slackId) {
