@@ -80,10 +80,8 @@
 				)
 			);
 			await refreshUserScraps();
-			alertType = 'info';
 			alertMessage = `Refunded ${data.refundedCost} scraps`;
 		} catch (e) {
-			alertType = 'error';
 			alertMessage = $t.refinery.failedToUndo || 'Failed to undo upgrade';
 		} finally {
 			undoing = null;

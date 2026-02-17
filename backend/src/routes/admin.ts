@@ -1674,7 +1674,7 @@ admin.post('/fix-negative-balances', async ({ headers, status }) => {
 // CSV export of shipped projects for YSWS
 admin.get('/export/shipped-csv', async ({ headers, status }) => {
 	try {
-		const user = await requireAdmin(headers as Record<string, string>)
+		const user = await requireReviewer(headers as Record<string, string>)
 		if (!user) {
 			return status(401, { error: 'Unauthorized' })
 		}
@@ -1728,7 +1728,7 @@ admin.get('/export/shipped-csv', async ({ headers, status }) => {
 
 admin.get('/export/ysws-json', async ({ headers, status }) => {
 	try {
-		const user = await requireAdmin(headers as Record<string, string>)
+		const user = await requireReviewer(headers as Record<string, string>)
 		if (!user) {
 			return status(401, { error: 'Unauthorized' })
 		}
