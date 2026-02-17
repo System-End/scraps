@@ -612,6 +612,10 @@ shop.post('/items/:id/upgrade-probability', async ({ params, headers }) => {
 
 	const item = items[0]
 
+	if (item.count <= 0) {
+		return { error: 'Item is out of stock' }
+	}
+
 	try {
 		const result = await db.transaction(async (tx) => {
 			// Lock the user row to serialize spend operations and prevent race conditions
