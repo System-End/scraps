@@ -557,7 +557,14 @@ export default {
 		of: 'de',
 		sortOldestFirst: 'más antiguos primero',
 		sortNewestFirst: 'más recientes primero',
-		sort: 'ordenar'
+		sort: 'ordenar',
+		removed: 'eliminados',
+		softDelete: 'eliminar',
+		restore: 'restaurar',
+		permanentDelete: 'eliminar permanentemente',
+		confirmSoftDelete: '¿estás seguro de que quieres eliminar este pedido? se puede restaurar después.',
+		confirmPermanentDelete: '¿estás seguro de que quieres eliminar permanentemente este pedido? esto reembolsará los scraps y restaurará el inventario. esto no se puede deshacer.',
+		adminUserPage: 'página de admin del usuario'
 	},
 	auth: {
 		error: 'error',

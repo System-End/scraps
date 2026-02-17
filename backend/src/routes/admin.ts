@@ -1553,7 +1553,7 @@ admin.patch('/orders/:id', async ({ params, body, headers, status }) => {
 
         const { status: orderStatus, notes, isFulfilled } = body as { status?: string; notes?: string; isFulfilled?: boolean }
 
-        const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
+        const validStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'deleted']
         if (orderStatus && !validStatuses.includes(orderStatus)) {
             return status(400, { error: 'Invalid status' })
         }
@@ -1768,8 +1768,67 @@ admin.get('/export/review-json', async ({ headers, status }) => {
 	}
 })
 
-// Undo a shop order (admin only) - deletes the order and restores stock
-admin.post('/orders/:id/undo', async ({ params, headers, status }) => {
+// Soft-delete a shop order (admin only) - marks the order as deleted
+admin.post('/orders/:id/soft-delete', async ({ params, headers, status }) => {
+    try {
+        const user = await requireAdmin(headers as Record<string, string>)
+        if (!user) return status(401, { error: 'Unauthorized' })
+
+        const orderId = parseInt(params.id)
+
+        const order = await db
+            .select({ id: shopOrdersTable.id, status: shopOrdersTable.status })
+            .from(shopOrdersTable)
+            .where(eq(shopOrdersTable.id, orderId))
+            .limit(1)
+
+        if (!order[0]) return status(404, { error: 'Order not found' })
+        if (order[0].status === 'deleted') return status(400, { error: 'Order is already deleted' })
+
+        await db
+            .update(shopOrdersTable)
+            .set({ status: 'deleted', updatedAt: new Date() })
+            .where(eq(shopOrdersTable.id, orderId))
+
+        return { success: true }
+    } catch (err) {
+        console.error(err)
+        return status(500, { error: 'Failed to soft-delete order' })
+    }
+})
+
+// Restore a soft-deleted shop order (admin only)
+admin.post('/orders/:id/restore', async ({ params, headers, status }) => {
+    try {
+        const user = await requireAdmin(headers as Record<string, string>)
+        if (!user) return status(401, { error: 'Unauthorized' })
+
+        const orderId = parseInt(params.id)
+
+        const order = await db
+            .select({ id: shopOrdersTable.id, status: shopOrdersTable.status })
+            .from(shopOrdersTable)
+            .where(eq(shopOrdersTable.id, orderId))
+            .limit(1)
+
+        if (!order[0]) return status(404, { error: 'Order not found' })
+        if (order[0].status !== 'deleted') return status(400, { error: 'Order is not deleted' })
+
+        await db
+            .update(shopOrdersTable)
+            .set({ status: 'pending', updatedAt: new Date() })
+            .where(eq(shopOrdersTable.id, orderId))
+
+        return { success: true }
+    } catch (err) {
+        console.error(err)
+        return status(500, { error: 'Failed to restore order' })
+    }
+})
+
+// Undo/refund a shop order (admin only) - must be soft-deleted first
+// Adds a bonus to refund scraps, restores inventory, keeps order row for timeline
+admin.delete('/orders/:id', async ({ params, headers, status }) => {
     try {
         const user = await requireAdmin(headers as Record<string, string>)
         if (!user) return status(401, { error: 'Unauthorized' })
@@ -1779,25 +1838,29 @@ admin.post('/orders/:id/undo', async ({ params, headers, status }) => {
         const order = await db
             .select({
                 id: shopOrdersTable.id,
-                userId: shopOrdersTable.userId,
+                status: shopOrdersTable.status,
                 shopItemId: shopOrdersTable.shopItemId,
                 quantity: shopOrdersTable.quantity,
                 totalPrice: shopOrdersTable.totalPrice,
-                orderType: shopOrdersTable.orderType
+                userId: shopOrdersTable.userId,
+                itemName: shopItemsTable.name
             })
             .from(shopOrdersTable)
+            .innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id))
             .where(eq(shopOrdersTable.id, orderId))
             .limit(1)
 
-        if (!order[0]) {
-            return status(404, { error: 'Order not found' })
-        }
+        if (!order[0]) return status(404, { error: 'Order not found' })
+        if (order[0].status !== 'deleted') return status(400, { error: 'Order must be marked as deleted before it can be refunded' })
 
         await db.transaction(async (tx) => {
-            // Delete the order (scraps refund happens automatically since spent calculation uses shop_orders)
-            await tx.delete(shopOrdersTable).where(eq(shopOrdersTable.id, orderId))
+            await tx.insert(userBonusesTable).values({
+                userId: order[0].userId,
+                amount: order[0].totalPrice,
+                reason: `order refund: ${order[0].itemName} (order #${orderId})`,
+                givenBy: user.id
+            })
 
-            // Restore item stock
             await tx
                 .update(shopItemsTable)
                 .set({
@@ -1805,16 +1868,12 @@ admin.post('/orders/:id/undo', async ({ params, headers, status }) => {
                     updatedAt: new Date()
                 })
                 .where(eq(shopItemsTable.id, order[0].shopItemId))
-
-            // If this was a luck_win, also delete related refinery orders and spending history
-            // (the win consumed refinery orders, so undoing the win should restore them...
-            // but we can't restore deleted refinery orders. Just undo the purchase itself.)
         })
 
         return { success: true, refundedScraps: order[0].totalPrice }
     } catch (err) {
         console.error(err)
-        return status(500, { error: 'Failed to undo order' })
+        return status(500, { error: 'Failed to refund order' })
     }
 })
 

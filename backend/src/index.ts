@@ -14,6 +14,7 @@ import slack from './routes/slack'
 import { startHackatimeSync } from './lib/hackatime-sync'
 import { startAirtableSync } from './lib/airtable-sync'
 import { startScrapsPayout } from './lib/scraps-payout'
+import { updateShopItemPricing } from './lib/shop-pricing'
 
 const api = new Elysia()
     .use(authRoutes)
@@ -39,6 +40,9 @@ const app = new Elysia()
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
 )
+
+// Update shop item pricing on startup
+updateShopItemPricing()
 
 // Start background syncs (skip in dev mode)
 if (process.env.NODE_ENV !== 'development') {

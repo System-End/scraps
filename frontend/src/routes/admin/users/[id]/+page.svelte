@@ -240,13 +240,23 @@
 		undoingOrder = orderId;
 		showUndoConfirm = null;
 		try {
-			const res = await fetch(`${API_URL}/admin/orders/${orderId}/undo`, {
+			const softDeleteRes = await fetch(`${API_URL}/admin/orders/${orderId}/soft-delete`, {
 				method: 'POST',
 				credentials: 'include'
 			});
-			const result = await res.json();
-			if (result.error) {
-				alert(result.error);
+			const softDeleteResult = await softDeleteRes.json();
+			if (softDeleteResult.error) {
+				console.error(softDeleteResult.error);
+				return;
+			}
+
+			const refundRes = await fetch(`${API_URL}/admin/orders/${orderId}`, {
+				method: 'DELETE',
+				credentials: 'include'
+			});
+			const refundResult = await refundRes.json();
+			if (refundResult.error) {
+				console.error(refundResult.error);
 				return;
 			}
 			fetchTimeline();

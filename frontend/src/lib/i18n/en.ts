@@ -554,7 +554,14 @@ export default {
 		of: 'of',
 		sortOldestFirst: 'oldest first',
 		sortNewestFirst: 'newest first',
-		sort: 'sort'
+		sort: 'sort',
+		removed: 'removed',
+		softDelete: 'remove',
+		restore: 'restore',
+		permanentDelete: 'permanently delete',
+		confirmSoftDelete: 'are you sure you want to remove this order? it can be restored later.',
+		confirmPermanentDelete: 'are you sure you want to permanently delete this order? this will refund the scraps and restore inventory. this cannot be undone.',
+		adminUserPage: 'admin user page'
 	},
 	auth: {
 		error: 'error',

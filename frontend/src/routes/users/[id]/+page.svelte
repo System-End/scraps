@@ -209,6 +209,13 @@
 								<Pencil size={12} />
 								{$t.profile.editRole}
 							</button>
+							<a
+								href="/admin/users/{profileUser.id}"
+								class="flex cursor-pointer items-center gap-1 rounded-full border-2 border-black px-2 py-0.5 text-xs font-bold transition-all hover:border-dashed"
+							>
+								<Shield size={12} />
+								{$t.admin.adminUserPage}
+							</a>
 						{/if}
 					</div>
 					<p class="text-sm text-gray-500">
