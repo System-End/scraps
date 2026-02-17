@@ -4,7 +4,7 @@ import { db } from '../db'
 import { usersTable, userBonusesTable } from '../schemas/users'
 import { projectsTable } from '../schemas/projects'
 import { reviewsTable } from '../schemas/reviews'
-import { shopItemsTable, shopOrdersTable, shopHeartsTable, shopRollsTable, refineryOrdersTable, shopPenaltiesTable } from '../schemas/shop'
+import { shopItemsTable, shopOrdersTable, shopHeartsTable, shopRollsTable, refineryOrdersTable, shopPenaltiesTable, refinerySpendingHistoryTable } from '../schemas/shop'
 import { newsTable } from '../schemas/news'
 import { projectActivityTable } from '../schemas/activity'
 import { getUserFromSession } from '../lib/auth'
@@ -1755,6 +1755,188 @@ admin.get('/export/ysws-json', async ({ headers, status }) => {
 		console.error(err)
 		return status(500, { error: 'Failed to export YSWS JSON' })
 	}
+})
+
+// Get detailed financial timeline for a user (admin only)
+admin.get('/users/:id/timeline', async ({ params, headers, status }) => {
+    try {
+        const user = await requireAdmin(headers as Record<string, string>)
+        if (!user) return status(401, { error: 'Unauthorized' })
+
+        const targetUserId = parseInt(params.id)
+
+        // Fetch all data sources in parallel
+        const [
+            paidProjects,
+            bonusRows,
+            shopOrders,
+            refineryRows,
+            refineryHistory
+        ] = await Promise.all([
+            db.select({
+                id: projectsTable.id,
+                name: projectsTable.name,
+                scrapsAwarded: projectsTable.scrapsAwarded,
+                scrapsPaidAt: projectsTable.scrapsPaidAt,
+                status: projectsTable.status,
+                createdAt: projectsTable.createdAt
+            })
+                .from(projectsTable)
+                .where(and(
+                    eq(projectsTable.userId, targetUserId),
+                    sql`${projectsTable.scrapsAwarded} > 0`
+                )),
+            db.select({
+                id: userBonusesTable.id,
+                amount: userBonusesTable.amount,
+                reason: userBonusesTable.reason,
+                givenBy: userBonusesTable.givenBy,
+                createdAt: userBonusesTable.createdAt
+            })
+                .from(userBonusesTable)
+                .where(eq(userBonusesTable.userId, targetUserId)),
+            db.select({
+                id: shopOrdersTable.id,
+                shopItemId: shopOrdersTable.shopItemId,
+                totalPrice: shopOrdersTable.totalPrice,
+                orderType: shopOrdersTable.orderType,
+                status: shopOrdersTable.status,
+                createdAt: shopOrdersTable.createdAt,
+                itemName: shopItemsTable.name
+            })
+                .from(shopOrdersTable)
+                .innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id))
+                .where(eq(shopOrdersTable.userId, targetUserId)),
+            db.select({
+                id: refineryOrdersTable.id,
+                shopItemId: refineryOrdersTable.shopItemId,
+                cost: refineryOrdersTable.cost,
+                boostAmount: refineryOrdersTable.boostAmount,
+                createdAt: refineryOrdersTable.createdAt,
+                itemName: shopItemsTable.name
+            })
+                .from(refineryOrdersTable)
+                .innerJoin(shopItemsTable, eq(refineryOrdersTable.shopItemId, shopItemsTable.id))
+                .where(eq(refineryOrdersTable.userId, targetUserId)),
+            db.select({
+                id: refinerySpendingHistoryTable.id,
+                shopItemId: refinerySpendingHistoryTable.shopItemId,
+                cost: refinerySpendingHistoryTable.cost,
+                createdAt: refinerySpendingHistoryTable.createdAt,
+                itemName: shopItemsTable.name
+            })
+                .from(refinerySpendingHistoryTable)
+                .innerJoin(shopItemsTable, eq(refinerySpendingHistoryTable.shopItemId, shopItemsTable.id))
+                .where(eq(refinerySpendingHistoryTable.userId, targetUserId))
+        ])
+
+        // Build a map of most recent purchase/win per item for lock detection
+        const lastPurchaseByItem = new Map<number, Date>()
+        for (const order of shopOrders) {
+            if (order.orderType === 'purchase' || order.orderType === 'luck_win') {
+                const existing = lastPurchaseByItem.get(order.shopItemId)
+                const orderDate = new Date(order.createdAt)
+                if (!existing || orderDate > existing) {
+                    lastPurchaseByItem.set(order.shopItemId, orderDate)
+                }
+            }
+        }
+
+        type TimelineEvent = {
+            type: string
+            amount: number
+            description: string
+            date: string
+            locked?: boolean
+            itemName?: string
+            paid?: boolean
+        }
+
+        const timeline: TimelineEvent[] = []
+
+        // Earned scraps from projects
+        for (const p of paidProjects) {
+            timeline.push({
+                type: 'earned',
+                amount: p.scrapsAwarded,
+                description: `project "${p.name}"`,
+                date: (p.scrapsPaidAt ?? p.createdAt ?? new Date()).toISOString(),
+                paid: !!p.scrapsPaidAt
+            })
+        }
+
+        // Bonuses
+        for (const b of bonusRows) {
+            timeline.push({
+                type: 'bonus',
+                amount: b.amount,
+                description: b.reason,
+                date: b.createdAt.toISOString()
+            })
+        }
+
+        // Shop orders
+        for (const o of shopOrders) {
+            timeline.push({
+                type: `shop_${o.orderType}`,
+                amount: -o.totalPrice,
+                description: o.itemName,
+                date: o.createdAt.toISOString(),
+                itemName: o.itemName
+            })
+        }
+
+        // Active refinery orders with lock status
+        for (const r of refineryRows) {
+            const lastPurchase = lastPurchaseByItem.get(r.shopItemId)
+            const locked = !!lastPurchase && new Date(r.createdAt) <= lastPurchase
+
+            timeline.push({
+                type: 'refinery_upgrade',
+                amount: -r.cost,
+                description: `+${r.boostAmount}% boost for "${r.itemName}"`,
+                date: r.createdAt.toISOString(),
+                locked,
+                itemName: r.itemName
+            })
+        }
+
+        // Undone refinery entries (in spending history but no matching active order)
+        // Match by finding history entries that don't correspond to any active order
+        // We pair them by item + cost + date proximity
+        const usedOrderIds = new Set<number>()
+        for (const h of refineryHistory) {
+            // Try to find a matching active refinery order
+            const matchingOrder = refineryRows.find(r =>
+                r.shopItemId === h.shopItemId &&
+                r.cost === h.cost &&
+                !usedOrderIds.has(r.id) &&
+                Math.abs(new Date(r.createdAt).getTime() - new Date(h.createdAt).getTime()) < 2000
+            )
+            if (matchingOrder) {
+                usedOrderIds.add(matchingOrder.id)
+            } else {
+                // This was undone - show it as a historical entry
+                timeline.push({
+                    type: 'refinery_undone',
+                    amount: 0,
+                    description: `undone +boost for "${h.itemName}" (was ${h.cost} scraps)`,
+                    date: h.createdAt.toISOString(),
+                    itemName: h.itemName
+                })
+            }
+        }
+
+        // Sort newest first
+        timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+        const balance = await getUserScrapsBalance(targetUserId)
+
+        return { timeline, balance }
+    } catch (err) {
+        console.error(err)
+        return status(500, { error: 'Failed to fetch user timeline' })
+    }
 })
 
 export default admin

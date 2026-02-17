@@ -1058,12 +1058,12 @@ var require_common = __commonJS((exports, module) => {
         if (!debug.enabled) {
           return;
         }
-        const self = debug;
+        const self2 = debug;
         const curr = Number(new Date);
         const ms = curr - (prevTime || curr);
-        self.diff = ms;
-        self.prev = prevTime;
-        self.curr = curr;
+        self2.diff = ms;
+        self2.prev = prevTime;
+        self2.curr = curr;
         prevTime = curr;
         args[0] = createDebug.coerce(args[0]);
         if (typeof args[0] !== "string") {
@@ -1078,15 +1078,15 @@ var require_common = __commonJS((exports, module) => {
           const formatter = createDebug.formatters[format];
           if (typeof formatter === "function") {
             const val = args[index];
-            match = formatter.call(self, val);
+            match = formatter.call(self2, val);
             args.splice(index, 1);
             index--;
           }
           return match;
         });
-        createDebug.formatArgs.call(self, args);
-        const logFn = self.log || createDebug.log;
-        logFn.apply(self, args);
+        createDebug.formatArgs.call(self2, args);
+        const logFn = self2.log || createDebug.log;
+        logFn.apply(self2, args);
       }
       debug.namespace = namespace;
       debug.useColors = createDebug.useColors();
@@ -7322,33 +7322,33 @@ var require_connection = __commonJS((exports, module) => {
       this.ssl = config2.ssl || false;
       this._ending = false;
       this._emitMessage = false;
-      const self = this;
+      const self2 = this;
       this.on("newListener", function(eventName) {
         if (eventName === "message") {
-          self._emitMessage = true;
+          self2._emitMessage = true;
         }
       });
     }
     connect(port, host) {
-      const self = this;
+      const self2 = this;
       this._connecting = true;
       this.stream.setNoDelay(true);
       this.stream.connect(port, host);
       this.stream.once("connect", function() {
-        if (self._keepAlive) {
-          self.stream.setKeepAlive(true, self._keepAliveInitialDelayMillis);
+        if (self2._keepAlive) {
+          self2.stream.setKeepAlive(true, self2._keepAliveInitialDelayMillis);
         }
-        self.emit("connect");
+        self2.emit("connect");
       });
       const reportStreamError = function(error) {
-        if (self._ending && (error.code === "ECONNRESET" || error.code === "EPIPE")) {
+        if (self2._ending && (error.code === "ECONNRESET" || error.code === "EPIPE")) {
           return;
         }
-        self.emit("error", error);
+        self2.emit("error", error);
       };
       this.stream.on("error", reportStreamError);
       this.stream.on("close", function() {
-        self.emit("end");
+        self2.emit("end");
       });
       if (!this.ssl) {
         return this.attachListeners(this.stream);
@@ -7359,19 +7359,19 @@ var require_connection = __commonJS((exports, module) => {
           case "S":
             break;
           case "N":
-            self.stream.end();
-            return self.emit("error", new Error("The server does not support SSL connections"));
+            self2.stream.end();
+            return self2.emit("error", new Error("The server does not support SSL connections"));
           default:
-            self.stream.end();
-            return self.emit("error", new Error("There was an error establishing an SSL connection"));
+            self2.stream.end();
+            return self2.emit("error", new Error("There was an error establishing an SSL connection"));
         }
         const options = {
-          socket: self.stream
+          socket: self2.stream
         };
-        if (self.ssl !== true) {
-          Object.assign(options, self.ssl);
-          if ("key" in self.ssl) {
-            options.key = self.ssl.key;
+        if (self2.ssl !== true) {
+          Object.assign(options, self2.ssl);
+          if ("key" in self2.ssl) {
+            options.key = self2.ssl.key;
           }
         }
         const net = __require("net");
@@ -7379,13 +7379,13 @@ var require_connection = __commonJS((exports, module) => {
           options.servername = host;
         }
         try {
-          self.stream = getSecureStream(options);
+          self2.stream = getSecureStream(options);
         } catch (err) {
-          return self.emit("error", err);
+          return self2.emit("error", err);
         }
-        self.attachListeners(self.stream);
-        self.stream.on("error", reportStreamError);
-        self.emit("sslconnect");
+        self2.attachListeners(self2.stream);
+        self2.stream.on("error", reportStreamError);
+        self2.emit("sslconnect");
       });
     }
     attachListeners(stream) {
@@ -7522,9 +7522,9 @@ var require_split2 = __commonJS((exports, module) => {
     }
     cb();
   }
-  function push(self, val) {
+  function push(self2, val) {
     if (val !== undefined) {
-      self.push(val);
+      self2.push(val);
     }
   }
   function noop(incoming) {
@@ -7849,7 +7849,7 @@ var require_client = __commonJS((exports, module) => {
       this._queryQueue.length = 0;
     }
     _connect(callback) {
-      const self = this;
+      const self2 = this;
       const con = this.connection;
       this._connectionCallback = callback;
       if (this._connecting || this._connected) {
@@ -7875,14 +7875,14 @@ var require_client = __commonJS((exports, module) => {
         con.connect(this.port, this.host);
       }
       con.on("connect", function() {
-        if (self.ssl) {
+        if (self2.ssl) {
           con.requestSsl();
         } else {
-          con.startup(self.getStartupConf());
+          con.startup(self2.getStartupConf());
         }
       });
       con.on("sslconnect", function() {
-        con.startup(self.getStartupConf());
+        con.startup(self2.getStartupConf());
       });
       this._attachListeners(con);
       con.once("end", () => {
@@ -8781,34 +8781,34 @@ var require_query2 = __commonJS((exports, module) => {
   };
   NativeQuery.prototype.submit = function(client) {
     this.state = "running";
-    const self = this;
+    const self2 = this;
     this.native = client.native;
     client.native.arrayMode = this._arrayMode;
     let after = function(err, rows, results) {
       client.native.arrayMode = false;
       setImmediate(function() {
-        self.emit("_done");
+        self2.emit("_done");
       });
       if (err) {
-        return self.handleError(err);
+        return self2.handleError(err);
       }
-      if (self._emitRowEvents) {
+      if (self2._emitRowEvents) {
         if (results.length > 1) {
           rows.forEach((rowOfRows, i) => {
             rowOfRows.forEach((row) => {
-              self.emit("row", row, results[i]);
+              self2.emit("row", row, results[i]);
             });
           });
         } else {
           rows.forEach(function(row) {
-            self.emit("row", row, results);
+            self2.emit("row", row, results);
           });
         }
       }
-      self.state = "end";
-      self.emit("end", results);
-      if (self.callback) {
-        self.callback(null, results);
+      self2.state = "end";
+      self2.emit("end", results);
+      if (self2.callback) {
+        self2.callback(null, results);
       }
     };
     if (process.domain) {
@@ -8831,8 +8831,8 @@ var require_query2 = __commonJS((exports, module) => {
       return client.native.prepare(this.name, this.text, values.length, function(err) {
         if (err)
           return after(err);
-        client.namedQueries[self.name] = self.text;
-        return self.native.execute(self.name, values, after);
+        client.namedQueries[self2.name] = self2.text;
+        return self2.native.execute(self2.name, values, after);
       });
     } else if (this.values) {
       if (!Array.isArray(this.values)) {
@@ -8907,36 +8907,36 @@ var require_client2 = __commonJS((exports, module) => {
     this._queryQueue.length = 0;
   };
   Client.prototype._connect = function(cb) {
-    const self = this;
+    const self2 = this;
     if (this._connecting) {
       process.nextTick(() => cb(new Error("Client has already been connected. You cannot reuse a client.")));
       return;
     }
     this._connecting = true;
     this.connectionParameters.getLibpqConnectionString(function(err, conString) {
-      if (self.connectionParameters.nativeConnectionString)
-        conString = self.connectionParameters.nativeConnectionString;
+      if (self2.connectionParameters.nativeConnectionString)
+        conString = self2.connectionParameters.nativeConnectionString;
       if (err)
         return cb(err);
-      self.native.connect(conString, function(err2) {
+      self2.native.connect(conString, function(err2) {
         if (err2) {
-          self.native.end();
+          self2.native.end();
           return cb(err2);
         }
-        self._connected = true;
-        self.native.on("error", function(err3) {
-          self._queryable = false;
-          self._errorAllQueries(err3);
-          self.emit("error", err3);
+        self2._connected = true;
+        self2.native.on("error", function(err3) {
+          self2._queryable = false;
+          self2._errorAllQueries(err3);
+          self2.emit("error", err3);
         });
-        self.native.on("notification", function(msg) {
-          self.emit("notification", {
+        self2.native.on("notification", function(msg) {
+          self2.emit("notification", {
             channel: msg.relname,
             payload: msg.extra
           });
         });
-        self.emit("connect");
-        self._pulseQueryQueue(true);
+        self2.emit("connect");
+        self2._pulseQueryQueue(true);
         cb(null, this);
       });
     });
@@ -9024,7 +9024,7 @@ var require_client2 = __commonJS((exports, module) => {
     return result;
   };
   Client.prototype.end = function(cb) {
-    const self = this;
+    const self2 = this;
     this._ending = true;
     if (!this._connected) {
       this.once("connect", this.end.bind(this, cb));
@@ -9036,9 +9036,9 @@ var require_client2 = __commonJS((exports, module) => {
       });
     }
     this.native.end(function() {
-      self._errorAllQueries(new Error("Connection terminated"));
+      self2._errorAllQueries(new Error("Connection terminated"));
       process.nextTick(() => {
-        self.emit("end");
+        self2.emit("end");
         if (cb)
           cb();
       });
@@ -9064,9 +9064,9 @@ var require_client2 = __commonJS((exports, module) => {
     }
     this._activeQuery = query;
     query.submit(this);
-    const self = this;
+    const self2 = this;
     query.once("_done", function() {
-      self._pulseQueryQueue();
+      self2._pulseQueryQueue();
     });
   };
   Client.prototype.cancel = function(query) {
@@ -9146,6 +9146,2669 @@ var require_lib2 = __commonJS((exports, module) => {
       return native;
     }
   });
+});
+
+// node_modules/lodash/isArray.js
+var require_isArray = __commonJS((exports, module) => {
+  var isArray = Array.isArray;
+  module.exports = isArray;
+});
+
+// node_modules/lodash/_freeGlobal.js
+var require__freeGlobal = __commonJS((exports, module) => {
+  var freeGlobal = typeof global == "object" && global && global.Object === Object && global;
+  module.exports = freeGlobal;
+});
+
+// node_modules/lodash/_root.js
+var require__root = __commonJS((exports, module) => {
+  var freeGlobal = require__freeGlobal();
+  var freeSelf = typeof self == "object" && self && self.Object === Object && self;
+  var root = freeGlobal || freeSelf || Function("return this")();
+  module.exports = root;
+});
+
+// node_modules/lodash/_Symbol.js
+var require__Symbol = __commonJS((exports, module) => {
+  var root = require__root();
+  var Symbol3 = root.Symbol;
+  module.exports = Symbol3;
+});
+
+// node_modules/lodash/_getRawTag.js
+var require__getRawTag = __commonJS((exports, module) => {
+  var Symbol3 = require__Symbol();
+  var objectProto = Object.prototype;
+  var hasOwnProperty = objectProto.hasOwnProperty;
+  var nativeObjectToString = objectProto.toString;
+  var symToStringTag = Symbol3 ? Symbol3.toStringTag : undefined;
+  function getRawTag(value) {
+    var isOwn = hasOwnProperty.call(value, symToStringTag), tag = value[symToStringTag];
+    try {
+      value[symToStringTag] = undefined;
+      var unmasked = true;
+    } catch (e) {}
+    var result = nativeObjectToString.call(value);
+    if (unmasked) {
+      if (isOwn) {
+        value[symToStringTag] = tag;
+      } else {
+        delete value[symToStringTag];
+      }
+    }
+    return result;
+  }
+  module.exports = getRawTag;
+});
+
+// node_modules/lodash/_objectToString.js
+var require__objectToString = __commonJS((exports, module) => {
+  var objectProto = Object.prototype;
+  var nativeObjectToString = objectProto.toString;
+  function objectToString(value) {
+    return nativeObjectToString.call(value);
+  }
+  module.exports = objectToString;
+});
+
+// node_modules/lodash/_baseGetTag.js
+var require__baseGetTag = __commonJS((exports, module) => {
+  var Symbol3 = require__Symbol();
+  var getRawTag = require__getRawTag();
+  var objectToString = require__objectToString();
+  var nullTag = "[object Null]";
+  var undefinedTag = "[object Undefined]";
+  var symToStringTag = Symbol3 ? Symbol3.toStringTag : undefined;
+  function baseGetTag(value) {
+    if (value == null) {
+      return value === undefined ? undefinedTag : nullTag;
+    }
+    return symToStringTag && symToStringTag in Object(value) ? getRawTag(value) : objectToString(value);
+  }
+  module.exports = baseGetTag;
+});
+
+// node_modules/lodash/isObjectLike.js
+var require_isObjectLike = __commonJS((exports, module) => {
+  function isObjectLike(value) {
+    return value != null && typeof value == "object";
+  }
+  module.exports = isObjectLike;
+});
+
+// node_modules/lodash/isSymbol.js
+var require_isSymbol = __commonJS((exports, module) => {
+  var baseGetTag = require__baseGetTag();
+  var isObjectLike = require_isObjectLike();
+  var symbolTag = "[object Symbol]";
+  function isSymbol(value) {
+    return typeof value == "symbol" || isObjectLike(value) && baseGetTag(value) == symbolTag;
+  }
+  module.exports = isSymbol;
+});
+
+// node_modules/lodash/_isKey.js
+var require__isKey = __commonJS((exports, module) => {
+  var isArray = require_isArray();
+  var isSymbol = require_isSymbol();
+  var reIsDeepProp = /\.|\[(?:[^[\]]*|(["'])(?:(?!\1)[^\\]|\\.)*?\1)\]/;
+  var reIsPlainProp = /^\w*$/;
+  function isKey(value, object) {
+    if (isArray(value)) {
+      return false;
+    }
+    var type = typeof value;
+    if (type == "number" || type == "symbol" || type == "boolean" || value == null || isSymbol(value)) {
+      return true;
+    }
+    return reIsPlainProp.test(value) || !reIsDeepProp.test(value) || object != null && value in Object(object);
+  }
+  module.exports = isKey;
+});
+
+// node_modules/lodash/isObject.js
+var require_isObject = __commonJS((exports, module) => {
+  function isObject2(value) {
+    var type = typeof value;
+    return value != null && (type == "object" || type == "function");
+  }
+  module.exports = isObject2;
+});
+
+// node_modules/lodash/isFunction.js
+var require_isFunction = __commonJS((exports, module) => {
+  var baseGetTag = require__baseGetTag();
+  var isObject2 = require_isObject();
+  var asyncTag = "[object AsyncFunction]";
+  var funcTag = "[object Function]";
+  var genTag = "[object GeneratorFunction]";
+  var proxyTag = "[object Proxy]";
+  function isFunction(value) {
+    if (!isObject2(value)) {
+      return false;
+    }
+    var tag = baseGetTag(value);
+    return tag == funcTag || tag == genTag || tag == asyncTag || tag == proxyTag;
+  }
+  module.exports = isFunction;
+});
+
+// node_modules/lodash/_coreJsData.js
+var require__coreJsData = __commonJS((exports, module) => {
+  var root = require__root();
+  var coreJsData = root["__core-js_shared__"];
+  module.exports = coreJsData;
+});
+
+// node_modules/lodash/_isMasked.js
+var require__isMasked = __commonJS((exports, module) => {
+  var coreJsData = require__coreJsData();
+  var maskSrcKey = function() {
+    var uid = /[^.]+$/.exec(coreJsData && coreJsData.keys && coreJsData.keys.IE_PROTO || "");
+    return uid ? "Symbol(src)_1." + uid : "";
+  }();
+  function isMasked(func) {
+    return !!maskSrcKey && maskSrcKey in func;
+  }
+  module.exports = isMasked;
+});
+
+// node_modules/lodash/_toSource.js
+var require__toSource = __commonJS((exports, module) => {
+  var funcProto = Function.prototype;
+  var funcToString = funcProto.toString;
+  function toSource(func) {
+    if (func != null) {
+      try {
+        return funcToString.call(func);
+      } catch (e) {}
+      try {
+        return func + "";
+      } catch (e) {}
+    }
+    return "";
+  }
+  module.exports = toSource;
+});
+
+// node_modules/lodash/_baseIsNative.js
+var require__baseIsNative = __commonJS((exports, module) => {
+  var isFunction = require_isFunction();
+  var isMasked = require__isMasked();
+  var isObject2 = require_isObject();
+  var toSource = require__toSource();
+  var reRegExpChar = /[\\^$.*+?()[\]{}|]/g;
+  var reIsHostCtor = /^\[object .+?Constructor\]$/;
+  var funcProto = Function.prototype;
+  var objectProto = Object.prototype;
+  var funcToString = funcProto.toString;
+  var hasOwnProperty = objectProto.hasOwnProperty;
+  var reIsNative = RegExp("^" + funcToString.call(hasOwnProperty).replace(reRegExpChar, "\\$&").replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, "$1.*?") + "$");
+  function baseIsNative(value) {
+    if (!isObject2(value) || isMasked(value)) {
+      return false;
+    }
+    var pattern = isFunction(value) ? reIsNative : reIsHostCtor;
+    return pattern.test(toSource(value));
+  }
+  module.exports = baseIsNative;
+});
+
+// node_modules/lodash/_getValue.js
+var require__getValue = __commonJS((exports, module) => {
+  function getValue(object, key) {
+    return object == null ? undefined : object[key];
+  }
+  module.exports = getValue;
+});
+
+// node_modules/lodash/_getNative.js
+var require__getNative = __commonJS((exports, module) => {
+  var baseIsNative = require__baseIsNative();
+  var getValue = require__getValue();
+  function getNative(object, key) {
+    var value = getValue(object, key);
+    return baseIsNative(value) ? value : undefined;
+  }
+  module.exports = getNative;
+});
+
+// node_modules/lodash/_nativeCreate.js
+var require__nativeCreate = __commonJS((exports, module) => {
+  var getNative = require__getNative();
+  var nativeCreate = getNative(Object, "create");
+  module.exports = nativeCreate;
+});
+
+// node_modules/lodash/_hashClear.js
+var require__hashClear = __commonJS((exports, module) => {
+  var nativeCreate = require__nativeCreate();
+  function hashClear() {
+    this.__data__ = nativeCreate ? nativeCreate(null) : {};
+    this.size = 0;
+  }
+  module.exports = hashClear;
+});
+
+// node_modules/lodash/_hashDelete.js
+var require__hashDelete = __commonJS((exports, module) => {
+  function hashDelete(key) {
+    var result = this.has(key) && delete this.__data__[key];
+    this.size -= result ? 1 : 0;
+    return result;
+  }
+  module.exports = hashDelete;
+});
+
+// node_modules/lodash/_hashGet.js
+var require__hashGet = __commonJS((exports, module) => {
+  var nativeCreate = require__nativeCreate();
+  var HASH_UNDEFINED = "__lodash_hash_undefined__";
+  var objectProto = Object.prototype;
+  var hasOwnProperty = objectProto.hasOwnProperty;
+  function hashGet(key) {
+    var data = this.__data__;
+    if (nativeCreate) {
+      var result = data[key];
+      return result === HASH_UNDEFINED ? undefined : result;
+    }
+    return hasOwnProperty.call(data, key) ? data[key] : undefined;
+  }
+  module.exports = hashGet;
+});
+
+// node_modules/lodash/_hashHas.js
+var require__hashHas = __commonJS((exports, module) => {
+  var nativeCreate = require__nativeCreate();
+  var objectProto = Object.prototype;
+  var hasOwnProperty = objectProto.hasOwnProperty;
+  function hashHas(key) {
+    var data = this.__data__;
+    return nativeCreate ? data[key] !== undefined : hasOwnProperty.call(data, key);
+  }
+  module.exports = hashHas;
+});
+
+// node_modules/lodash/_hashSet.js
+var require__hashSet = __commonJS((exports, module) => {
+  var nativeCreate = require__nativeCreate();
+  var HASH_UNDEFINED = "__lodash_hash_undefined__";
+  function hashSet(key, value) {
+    var data = this.__data__;
+    this.size += this.has(key) ? 0 : 1;
+    data[key] = nativeCreate && value === undefined ? HASH_UNDEFINED : value;
+    return this;
+  }
+  module.exports = hashSet;
+});
+
+// node_modules/lodash/_Hash.js
+var require__Hash = __commonJS((exports, module) => {
+  var hashClear = require__hashClear();
+  var hashDelete = require__hashDelete();
+  var hashGet = require__hashGet();
+  var hashHas = require__hashHas();
+  var hashSet = require__hashSet();
+  function Hash2(entries) {
+    var index = -1, length = entries == null ? 0 : entries.length;
+    this.clear();
+    while (++index < length) {
+      var entry = entries[index];
+      this.set(entry[0], entry[1]);
+    }
+  }
+  Hash2.prototype.clear = hashClear;
+  Hash2.prototype["delete"] = hashDelete;
+  Hash2.prototype.get = hashGet;
+  Hash2.prototype.has = hashHas;
+  Hash2.prototype.set = hashSet;
+  module.exports = Hash2;
+});
+
+// node_modules/lodash/_listCacheClear.js
+var require__listCacheClear = __commonJS((exports, module) => {
+  function listCacheClear() {
+    this.__data__ = [];
+    this.size = 0;
+  }
+  module.exports = listCacheClear;
+});
+
+// node_modules/lodash/eq.js
+var require_eq = __commonJS((exports, module) => {
+  function eq2(value, other) {
+    return value === other || value !== value && other !== other;
+  }
+  module.exports = eq2;
+});
+
+// node_modules/lodash/_assocIndexOf.js
+var require__assocIndexOf = __commonJS((exports, module) => {
+  var eq2 = require_eq();
+  function assocIndexOf(array, key) {
+    var length = array.length;
+    while (length--) {
+      if (eq2(array[length][0], key)) {
+        return length;
+      }
+    }
+    return -1;
+  }
+  module.exports = assocIndexOf;
+});
+
+// node_modules/lodash/_listCacheDelete.js
+var require__listCacheDelete = __commonJS((exports, module) => {
+  var assocIndexOf = require__assocIndexOf();
+  var arrayProto = Array.prototype;
+  var splice = arrayProto.splice;
+  function listCacheDelete(key) {
+    var data = this.__data__, index = assocIndexOf(data, key);
+    if (index < 0) {
+      return false;
+    }
+    var lastIndex = data.length - 1;
+    if (index == lastIndex) {
+      data.pop();
+    } else {
+      splice.call(data, index, 1);
+    }
+    --this.size;
+    return true;
+  }
+  module.exports = listCacheDelete;
+});
+
+// node_modules/lodash/_listCacheGet.js
+var require__listCacheGet = __commonJS((exports, module) => {
+  var assocIndexOf = require__assocIndexOf();
+  function listCacheGet(key) {
+    var data = this.__data__, index = assocIndexOf(data, key);
+    return index < 0 ? undefined : data[index][1];
+  }
+  module.exports = listCacheGet;
+});
+
+// node_modules/lodash/_listCacheHas.js
+var require__listCacheHas = __commonJS((exports, module) => {
+  var assocIndexOf = require__assocIndexOf();
+  function listCacheHas(key) {
+    return assocIndexOf(this.__data__, key) > -1;
+  }
+  module.exports = listCacheHas;
+});
+
+// node_modules/lodash/_listCacheSet.js
+var require__listCacheSet = __commonJS((exports, module) => {
+  var assocIndexOf = require__assocIndexOf();
+  function listCacheSet(key, value) {
+    var data = this.__data__, index = assocIndexOf(data, key);
+    if (index < 0) {
+      ++this.size;
+      data.push([key, value]);
+    } else {
+      data[index][1] = value;
+    }
+    return this;
+  }
+  module.exports = listCacheSet;
+});
+
+// node_modules/lodash/_ListCache.js
+var require__ListCache = __commonJS((exports, module) => {
+  var listCacheClear = require__listCacheClear();
+  var listCacheDelete = require__listCacheDelete();
+  var listCacheGet = require__listCacheGet();
+  var listCacheHas = require__listCacheHas();
+  var listCacheSet = require__listCacheSet();
+  function ListCache(entries) {
+    var index = -1, length = entries == null ? 0 : entries.length;
+    this.clear();
+    while (++index < length) {
+      var entry = entries[index];
+      this.set(entry[0], entry[1]);
+    }
+  }
+  ListCache.prototype.clear = listCacheClear;
+  ListCache.prototype["delete"] = listCacheDelete;
+  ListCache.prototype.get = listCacheGet;
+  ListCache.prototype.has = listCacheHas;
+  ListCache.prototype.set = listCacheSet;
+  module.exports = ListCache;
+});
+
+// node_modules/lodash/_Map.js
+var require__Map = __commonJS((exports, module) => {
+  var getNative = require__getNative();
+  var root = require__root();
+  var Map2 = getNative(root, "Map");
+  module.exports = Map2;
+});
+
+// node_modules/lodash/_mapCacheClear.js
+var require__mapCacheClear = __commonJS((exports, module) => {
+  var Hash2 = require__Hash();
+  var ListCache = require__ListCache();
+  var Map2 = require__Map();
+  function mapCacheClear() {
+    this.size = 0;
+    this.__data__ = {
+      hash: new Hash2,
+      map: new (Map2 || ListCache),
+      string: new Hash2
+    };
+  }
+  module.exports = mapCacheClear;
+});
+
+// node_modules/lodash/_isKeyable.js
+var require__isKeyable = __commonJS((exports, module) => {
+  function isKeyable(value) {
+    var type = typeof value;
+    return type == "string" || type == "number" || type == "symbol" || type == "boolean" ? value !== "__proto__" : value === null;
+  }
+  module.exports = isKeyable;
+});
+
+// node_modules/lodash/_getMapData.js
+var require__getMapData = __commonJS((exports, module) => {
+  var isKeyable = require__isKeyable();
+  function getMapData(map3, key) {
+    var data = map3.__data__;
+    return isKeyable(key) ? data[typeof key == "string" ? "string" : "hash"] : data.map;
+  }
+  module.exports = getMapData;
+});
+
+// node_modules/lodash/_mapCacheDelete.js
+var require__mapCacheDelete = __commonJS((exports, module) => {
+  var getMapData = require__getMapData();
+  function mapCacheDelete(key) {
+    var result = getMapData(this, key)["delete"](key);
+    this.size -= result ? 1 : 0;
+    return result;
+  }
+  module.exports = mapCacheDelete;
+});
+
+// node_modules/lodash/_mapCacheGet.js
+var require__mapCacheGet = __commonJS((exports, module) => {
+  var getMapData = require__getMapData();
+  function mapCacheGet(key) {
+    return getMapData(this, key).get(key);
+  }
+  module.exports = mapCacheGet;
+});
+
+// node_modules/lodash/_mapCacheHas.js
+var require__mapCacheHas = __commonJS((exports, module) => {
+  var getMapData = require__getMapData();
+  function mapCacheHas(key) {
+    return getMapData(this, key).has(key);
+  }
+  module.exports = mapCacheHas;
+});
+
+// node_modules/lodash/_mapCacheSet.js
+var require__mapCacheSet = __commonJS((exports, module) => {
+  var getMapData = require__getMapData();
+  function mapCacheSet(key, value) {
+    var data = getMapData(this, key), size = data.size;
+    data.set(key, value);
+    this.size += data.size == size ? 0 : 1;
+    return this;
+  }
+  module.exports = mapCacheSet;
+});
+
+// node_modules/lodash/_MapCache.js
+var require__MapCache = __commonJS((exports, module) => {
+  var mapCacheClear = require__mapCacheClear();
+  var mapCacheDelete = require__mapCacheDelete();
+  var mapCacheGet = require__mapCacheGet();
+  var mapCacheHas = require__mapCacheHas();
+  var mapCacheSet = require__mapCacheSet();
+  function MapCache(entries) {
+    var index = -1, length = entries == null ? 0 : entries.length;
+    this.clear();
+    while (++index < length) {
+      var entry = entries[index];
+      this.set(entry[0], entry[1]);
+    }
+  }
+  MapCache.prototype.clear = mapCacheClear;
+  MapCache.prototype["delete"] = mapCacheDelete;
+  MapCache.prototype.get = mapCacheGet;
+  MapCache.prototype.has = mapCacheHas;
+  MapCache.prototype.set = mapCacheSet;
+  module.exports = MapCache;
+});
+
+// node_modules/lodash/memoize.js
+var require_memoize = __commonJS((exports, module) => {
+  var MapCache = require__MapCache();
+  var FUNC_ERROR_TEXT = "Expected a function";
+  function memoize(func, resolver) {
+    if (typeof func != "function" || resolver != null && typeof resolver != "function") {
+      throw new TypeError(FUNC_ERROR_TEXT);
+    }
+    var memoized = function() {
+      var args = arguments, key = resolver ? resolver.apply(this, args) : args[0], cache = memoized.cache;
+      if (cache.has(key)) {
+        return cache.get(key);
+      }
+      var result = func.apply(this, args);
+      memoized.cache = cache.set(key, result) || cache;
+      return result;
+    };
+    memoized.cache = new (memoize.Cache || MapCache);
+    return memoized;
+  }
+  memoize.Cache = MapCache;
+  module.exports = memoize;
+});
+
+// node_modules/lodash/_memoizeCapped.js
+var require__memoizeCapped = __commonJS((exports, module) => {
+  var memoize = require_memoize();
+  var MAX_MEMOIZE_SIZE = 500;
+  function memoizeCapped(func) {
+    var result = memoize(func, function(key) {
+      if (cache.size === MAX_MEMOIZE_SIZE) {
+        cache.clear();
+      }
+      return key;
+    });
+    var cache = result.cache;
+    return result;
+  }
+  module.exports = memoizeCapped;
+});
+
+// node_modules/lodash/_stringToPath.js
+var require__stringToPath = __commonJS((exports, module) => {
+  var memoizeCapped = require__memoizeCapped();
+  var rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|$))/g;
+  var reEscapeChar = /\\(\\)?/g;
+  var stringToPath = memoizeCapped(function(string) {
+    var result = [];
+    if (string.charCodeAt(0) === 46) {
+      result.push("");
+    }
+    string.replace(rePropName, function(match, number, quote, subString) {
+      result.push(quote ? subString.replace(reEscapeChar, "$1") : number || match);
+    });
+    return result;
+  });
+  module.exports = stringToPath;
+});
+
+// node_modules/lodash/_arrayMap.js
+var require__arrayMap = __commonJS((exports, module) => {
+  function arrayMap(array, iteratee) {
+    var index = -1, length = array == null ? 0 : array.length, result = Array(length);
+    while (++index < length) {
+      result[index] = iteratee(array[index], index, array);
+    }
+    return result;
+  }
+  module.exports = arrayMap;
+});
+
+// node_modules/lodash/_baseToString.js
+var require__baseToString = __commonJS((exports, module) => {
+  var Symbol3 = require__Symbol();
+  var arrayMap = require__arrayMap();
+  var isArray = require_isArray();
+  var isSymbol = require_isSymbol();
+  var INFINITY = 1 / 0;
+  var symbolProto = Symbol3 ? Symbol3.prototype : undefined;
+  var symbolToString = symbolProto ? symbolProto.toString : undefined;
+  function baseToString(value) {
+    if (typeof value == "string") {
+      return value;
+    }
+    if (isArray(value)) {
+      return arrayMap(value, baseToString) + "";
+    }
+    if (isSymbol(value)) {
+      return symbolToString ? symbolToString.call(value) : "";
+    }
+    var result = value + "";
+    return result == "0" && 1 / value == -INFINITY ? "-0" : result;
+  }
+  module.exports = baseToString;
+});
+
+// node_modules/lodash/toString.js
+var require_toString = __commonJS((exports, module) => {
+  var baseToString = require__baseToString();
+  function toString(value) {
+    return value == null ? "" : baseToString(value);
+  }
+  module.exports = toString;
+});
+
+// node_modules/lodash/_castPath.js
+var require__castPath = __commonJS((exports, module) => {
+  var isArray = require_isArray();
+  var isKey = require__isKey();
+  var stringToPath = require__stringToPath();
+  var toString = require_toString();
+  function castPath(value, object) {
+    if (isArray(value)) {
+      return value;
+    }
+    return isKey(value, object) ? [value] : stringToPath(toString(value));
+  }
+  module.exports = castPath;
+});
+
+// node_modules/lodash/_toKey.js
+var require__toKey = __commonJS((exports, module) => {
+  var isSymbol = require_isSymbol();
+  var INFINITY = 1 / 0;
+  function toKey(value) {
+    if (typeof value == "string" || isSymbol(value)) {
+      return value;
+    }
+    var result = value + "";
+    return result == "0" && 1 / value == -INFINITY ? "-0" : result;
+  }
+  module.exports = toKey;
+});
+
+// node_modules/lodash/_baseGet.js
+var require__baseGet = __commonJS((exports, module) => {
+  var castPath = require__castPath();
+  var toKey = require__toKey();
+  function baseGet(object, path) {
+    path = castPath(path, object);
+    var index = 0, length = path.length;
+    while (object != null && index < length) {
+      object = object[toKey(path[index++])];
+    }
+    return index && index == length ? object : undefined;
+  }
+  module.exports = baseGet;
+});
+
+// node_modules/lodash/get.js
+var require_get = __commonJS((exports, module) => {
+  var baseGet = require__baseGet();
+  function get(object, path, defaultValue) {
+    var result = object == null ? undefined : baseGet(object, path);
+    return result === undefined ? defaultValue : result;
+  }
+  module.exports = get;
+});
+
+// node_modules/lodash/_overArg.js
+var require__overArg = __commonJS((exports, module) => {
+  function overArg(func, transform2) {
+    return function(arg) {
+      return func(transform2(arg));
+    };
+  }
+  module.exports = overArg;
+});
+
+// node_modules/lodash/_getPrototype.js
+var require__getPrototype = __commonJS((exports, module) => {
+  var overArg = require__overArg();
+  var getPrototype = overArg(Object.getPrototypeOf, Object);
+  module.exports = getPrototype;
+});
+
+// node_modules/lodash/isPlainObject.js
+var require_isPlainObject = __commonJS((exports, module) => {
+  var baseGetTag = require__baseGetTag();
+  var getPrototype = require__getPrototype();
+  var isObjectLike = require_isObjectLike();
+  var objectTag = "[object Object]";
+  var funcProto = Function.prototype;
+  var objectProto = Object.prototype;
+  var funcToString = funcProto.toString;
+  var hasOwnProperty = objectProto.hasOwnProperty;
+  var objectCtorString = funcToString.call(Object);
+  function isPlainObject(value) {
+    if (!isObjectLike(value) || baseGetTag(value) != objectTag) {
+      return false;
+    }
+    var proto = getPrototype(value);
+    if (proto === null) {
+      return true;
+    }
+    var Ctor = hasOwnProperty.call(proto, "constructor") && proto.constructor;
+    return typeof Ctor == "function" && Ctor instanceof Ctor && funcToString.call(Ctor) == objectCtorString;
+  }
+  module.exports = isPlainObject;
+});
+
+// node_modules/lodash/_baseTimes.js
+var require__baseTimes = __commonJS((exports, module) => {
+  function baseTimes(n, iteratee) {
+    var index = -1, result = Array(n);
+    while (++index < n) {
+      result[index] = iteratee(index);
+    }
+    return result;
+  }
+  module.exports = baseTimes;
+});
+
+// node_modules/lodash/_baseIsArguments.js
+var require__baseIsArguments = __commonJS((exports, module) => {
+  var baseGetTag = require__baseGetTag();
+  var isObjectLike = require_isObjectLike();
+  var argsTag = "[object Arguments]";
+  function baseIsArguments(value) {
+    return isObjectLike(value) && baseGetTag(value) == argsTag;
+  }
+  module.exports = baseIsArguments;
+});
+
+// node_modules/lodash/isArguments.js
+var require_isArguments = __commonJS((exports, module) => {
+  var baseIsArguments = require__baseIsArguments();
+  var isObjectLike = require_isObjectLike();
+  var objectProto = Object.prototype;
+  var hasOwnProperty = objectProto.hasOwnProperty;
+  var propertyIsEnumerable = objectProto.propertyIsEnumerable;
+  var isArguments = baseIsArguments(function() {
+    return arguments;
+  }()) ? baseIsArguments : function(value) {
+    return isObjectLike(value) && hasOwnProperty.call(value, "callee") && !propertyIsEnumerable.call(value, "callee");
+  };
+  module.exports = isArguments;
+});
+
+// node_modules/lodash/stubFalse.js
+var require_stubFalse = __commonJS((exports, module) => {
+  function stubFalse() {
+    return false;
+  }
+  module.exports = stubFalse;
+});
+
+// node_modules/lodash/isBuffer.js
+var require_isBuffer = __commonJS((exports, module) => {
+  var root = require__root();
+  var stubFalse = require_stubFalse();
+  var freeExports = typeof exports == "object" && exports && !exports.nodeType && exports;
+  var freeModule = freeExports && typeof module == "object" && module && !module.nodeType && module;
+  var moduleExports = freeModule && freeModule.exports === freeExports;
+  var Buffer2 = moduleExports ? root.Buffer : undefined;
+  var nativeIsBuffer = Buffer2 ? Buffer2.isBuffer : undefined;
+  var isBuffer = nativeIsBuffer || stubFalse;
+  module.exports = isBuffer;
+});
+
+// node_modules/lodash/_isIndex.js
+var require__isIndex = __commonJS((exports, module) => {
+  var MAX_SAFE_INTEGER = 9007199254740991;
+  var reIsUint = /^(?:0|[1-9]\d*)$/;
+  function isIndex(value, length) {
+    var type = typeof value;
+    length = length == null ? MAX_SAFE_INTEGER : length;
+    return !!length && (type == "number" || type != "symbol" && reIsUint.test(value)) && (value > -1 && value % 1 == 0 && value < length);
+  }
+  module.exports = isIndex;
+});
+
+// node_modules/lodash/isLength.js
+var require_isLength = __commonJS((exports, module) => {
+  var MAX_SAFE_INTEGER = 9007199254740991;
+  function isLength(value) {
+    return typeof value == "number" && value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+  }
+  module.exports = isLength;
+});
+
+// node_modules/lodash/_baseIsTypedArray.js
+var require__baseIsTypedArray = __commonJS((exports, module) => {
+  var baseGetTag = require__baseGetTag();
+  var isLength = require_isLength();
+  var isObjectLike = require_isObjectLike();
+  var argsTag = "[object Arguments]";
+  var arrayTag = "[object Array]";
+  var boolTag = "[object Boolean]";
+  var dateTag = "[object Date]";
+  var errorTag = "[object Error]";
+  var funcTag = "[object Function]";
+  var mapTag = "[object Map]";
+  var numberTag = "[object Number]";
+  var objectTag = "[object Object]";
+  var regexpTag = "[object RegExp]";
+  var setTag = "[object Set]";
+  var stringTag = "[object String]";
+  var weakMapTag = "[object WeakMap]";
+  var arrayBufferTag = "[object ArrayBuffer]";
+  var dataViewTag = "[object DataView]";
+  var float32Tag = "[object Float32Array]";
+  var float64Tag = "[object Float64Array]";
+  var int8Tag = "[object Int8Array]";
+  var int16Tag = "[object Int16Array]";
+  var int32Tag = "[object Int32Array]";
+  var uint8Tag = "[object Uint8Array]";
+  var uint8ClampedTag = "[object Uint8ClampedArray]";
+  var uint16Tag = "[object Uint16Array]";
+  var uint32Tag = "[object Uint32Array]";
+  var typedArrayTags = {};
+  typedArrayTags[float32Tag] = typedArrayTags[float64Tag] = typedArrayTags[int8Tag] = typedArrayTags[int16Tag] = typedArrayTags[int32Tag] = typedArrayTags[uint8Tag] = typedArrayTags[uint8ClampedTag] = typedArrayTags[uint16Tag] = typedArrayTags[uint32Tag] = true;
+  typedArrayTags[argsTag] = typedArrayTags[arrayTag] = typedArrayTags[arrayBufferTag] = typedArrayTags[boolTag] = typedArrayTags[dataViewTag] = typedArrayTags[dateTag] = typedArrayTags[errorTag] = typedArrayTags[funcTag] = typedArrayTags[mapTag] = typedArrayTags[numberTag] = typedArrayTags[objectTag] = typedArrayTags[regexpTag] = typedArrayTags[setTag] = typedArrayTags[stringTag] = typedArrayTags[weakMapTag] = false;
+  function baseIsTypedArray(value) {
+    return isObjectLike(value) && isLength(value.length) && !!typedArrayTags[baseGetTag(value)];
+  }
+  module.exports = baseIsTypedArray;
+});
+
+// node_modules/lodash/_baseUnary.js
+var require__baseUnary = __commonJS((exports, module) => {
+  function baseUnary(func) {
+    return function(value) {
+      return func(value);
+    };
+  }
+  module.exports = baseUnary;
+});
+
+// node_modules/lodash/_nodeUtil.js
+var require__nodeUtil = __commonJS((exports, module) => {
+  var freeGlobal = require__freeGlobal();
+  var freeExports = typeof exports == "object" && exports && !exports.nodeType && exports;
+  var freeModule = freeExports && typeof module == "object" && module && !module.nodeType && module;
+  var moduleExports = freeModule && freeModule.exports === freeExports;
+  var freeProcess = moduleExports && freeGlobal.process;
+  var nodeUtil = function() {
+    try {
+      var types3 = freeModule && freeModule.require && freeModule.require("util").types;
+      if (types3) {
+        return types3;
+      }
+      return freeProcess && freeProcess.binding && freeProcess.binding("util");
+    } catch (e) {}
+  }();
+  module.exports = nodeUtil;
+});
+
+// node_modules/lodash/isTypedArray.js
+var require_isTypedArray = __commonJS((exports, module) => {
+  var baseIsTypedArray = require__baseIsTypedArray();
+  var baseUnary = require__baseUnary();
+  var nodeUtil = require__nodeUtil();
+  var nodeIsTypedArray = nodeUtil && nodeUtil.isTypedArray;
+  var isTypedArray = nodeIsTypedArray ? baseUnary(nodeIsTypedArray) : baseIsTypedArray;
+  module.exports = isTypedArray;
+});
+
+// node_modules/lodash/_arrayLikeKeys.js
+var require__arrayLikeKeys = __commonJS((exports, module) => {
+  var baseTimes = require__baseTimes();
+  var isArguments = require_isArguments();
+  var isArray = require_isArray();
+  var isBuffer = require_isBuffer();
+  var isIndex = require__isIndex();
+  var isTypedArray = require_isTypedArray();
+  var objectProto = Object.prototype;
+  var hasOwnProperty = objectProto.hasOwnProperty;
+  function arrayLikeKeys(value, inherited) {
+    var isArr = isArray(value), isArg = !isArr && isArguments(value), isBuff = !isArr && !isArg && isBuffer(value), isType = !isArr && !isArg && !isBuff && isTypedArray(value), skipIndexes = isArr || isArg || isBuff || isType, result = skipIndexes ? baseTimes(value.length, String) : [], length = result.length;
+    for (var key in value) {
+      if ((inherited || hasOwnProperty.call(value, key)) && !(skipIndexes && (key == "length" || isBuff && (key == "offset" || key == "parent") || isType && (key == "buffer" || key == "byteLength" || key == "byteOffset") || isIndex(key, length)))) {
+        result.push(key);
+      }
+    }
+    return result;
+  }
+  module.exports = arrayLikeKeys;
+});
+
+// node_modules/lodash/_isPrototype.js
+var require__isPrototype = __commonJS((exports, module) => {
+  var objectProto = Object.prototype;
+  function isPrototype(value) {
+    var Ctor = value && value.constructor, proto = typeof Ctor == "function" && Ctor.prototype || objectProto;
+    return value === proto;
+  }
+  module.exports = isPrototype;
+});
+
+// node_modules/lodash/_nativeKeys.js
+var require__nativeKeys = __commonJS((exports, module) => {
+  var overArg = require__overArg();
+  var nativeKeys = overArg(Object.keys, Object);
+  module.exports = nativeKeys;
+});
+
+// node_modules/lodash/_baseKeys.js
+var require__baseKeys = __commonJS((exports, module) => {
+  var isPrototype = require__isPrototype();
+  var nativeKeys = require__nativeKeys();
+  var objectProto = Object.prototype;
+  var hasOwnProperty = objectProto.hasOwnProperty;
+  function baseKeys(object) {
+    if (!isPrototype(object)) {
+      return nativeKeys(object);
+    }
+    var result = [];
+    for (var key in Object(object)) {
+      if (hasOwnProperty.call(object, key) && key != "constructor") {
+        result.push(key);
+      }
+    }
+    return result;
+  }
+  module.exports = baseKeys;
+});
+
+// node_modules/lodash/isArrayLike.js
+var require_isArrayLike = __commonJS((exports, module) => {
+  var isFunction = require_isFunction();
+  var isLength = require_isLength();
+  function isArrayLike(value) {
+    return value != null && isLength(value.length) && !isFunction(value);
+  }
+  module.exports = isArrayLike;
+});
+
+// node_modules/lodash/keys.js
+var require_keys = __commonJS((exports, module) => {
+  var arrayLikeKeys = require__arrayLikeKeys();
+  var baseKeys = require__baseKeys();
+  var isArrayLike = require_isArrayLike();
+  function keys(object) {
+    return isArrayLike(object) ? arrayLikeKeys(object) : baseKeys(object);
+  }
+  module.exports = keys;
+});
+
+// node_modules/airtable/lib/fetch.js
+var require_fetch = __commonJS((exports, module) => {
+  var __importDefault = exports && exports.__importDefault || function(mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
+  var node_fetch_1 = __importDefault(__require("node-fetch"));
+  var browserGlobal = typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : null;
+  module.exports = !browserGlobal ? node_fetch_1.default : browserGlobal.fetch.bind(browserGlobal);
+});
+
+// node_modules/abortcontroller-polyfill/dist/cjs-ponyfill.js
+var require_cjs_ponyfill = __commonJS((exports) => {
+  Object.defineProperty(exports, "__esModule", { value: true });
+  function _arrayLikeToArray(r, a) {
+    (a == null || a > r.length) && (a = r.length);
+    for (var e = 0, n = Array(a);e < a; e++)
+      n[e] = r[e];
+    return n;
+  }
+  function _assertThisInitialized(e) {
+    if (e === undefined)
+      throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+    return e;
+  }
+  function _callSuper(t2, o, e) {
+    return o = _getPrototypeOf(o), _possibleConstructorReturn(t2, _isNativeReflectConstruct() ? Reflect.construct(o, e || [], _getPrototypeOf(t2).constructor) : o.apply(t2, e));
+  }
+  function _classCallCheck(a, n) {
+    if (!(a instanceof n))
+      throw new TypeError("Cannot call a class as a function");
+  }
+  function _defineProperties(e, r) {
+    for (var t2 = 0;t2 < r.length; t2++) {
+      var o = r[t2];
+      o.enumerable = o.enumerable || false, o.configurable = true, "value" in o && (o.writable = true), Object.defineProperty(e, _toPropertyKey(o.key), o);
+    }
+  }
+  function _createClass(e, r, t2) {
+    return r && _defineProperties(e.prototype, r), t2 && _defineProperties(e, t2), Object.defineProperty(e, "prototype", {
+      writable: false
+    }), e;
+  }
+  function _createForOfIteratorHelper(r, e) {
+    var t2 = typeof Symbol != "undefined" && r[Symbol.iterator] || r["@@iterator"];
+    if (!t2) {
+      if (Array.isArray(r) || (t2 = _unsupportedIterableToArray(r)) || e && r && typeof r.length == "number") {
+        t2 && (r = t2);
+        var n = 0, F = function() {};
+        return {
+          s: F,
+          n: function() {
+            return n >= r.length ? {
+              done: true
+            } : {
+              done: false,
+              value: r[n++]
+            };
+          },
+          e: function(r2) {
+            throw r2;
+          },
+          f: F
+        };
+      }
+      throw new TypeError(`Invalid attempt to iterate non-iterable instance.
+In order to be iterable, non-array objects must have a [Symbol.iterator]() method.`);
+    }
+    var o, a = true, u = false;
+    return {
+      s: function() {
+        t2 = t2.call(r);
+      },
+      n: function() {
+        var r2 = t2.next();
+        return a = r2.done, r2;
+      },
+      e: function(r2) {
+        u = true, o = r2;
+      },
+      f: function() {
+        try {
+          a || t2.return == null || t2.return();
+        } finally {
+          if (u)
+            throw o;
+        }
+      }
+    };
+  }
+  function _get() {
+    return _get = typeof Reflect != "undefined" && Reflect.get ? Reflect.get.bind() : function(e, t2, r) {
+      var p = _superPropBase(e, t2);
+      if (p) {
+        var n = Object.getOwnPropertyDescriptor(p, t2);
+        return n.get ? n.get.call(arguments.length < 3 ? e : r) : n.value;
+      }
+    }, _get.apply(null, arguments);
+  }
+  function _getPrototypeOf(t2) {
+    return _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf.bind() : function(t3) {
+      return t3.__proto__ || Object.getPrototypeOf(t3);
+    }, _getPrototypeOf(t2);
+  }
+  function _inherits(t2, e) {
+    if (typeof e != "function" && e !== null)
+      throw new TypeError("Super expression must either be null or a function");
+    t2.prototype = Object.create(e && e.prototype, {
+      constructor: {
+        value: t2,
+        writable: true,
+        configurable: true
+      }
+    }), Object.defineProperty(t2, "prototype", {
+      writable: false
+    }), e && _setPrototypeOf(t2, e);
+  }
+  function _isNativeReflectConstruct() {
+    try {
+      var t2 = !Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {}));
+    } catch (t3) {}
+    return (_isNativeReflectConstruct = function() {
+      return !!t2;
+    })();
+  }
+  function _possibleConstructorReturn(t2, e) {
+    if (e && (typeof e == "object" || typeof e == "function"))
+      return e;
+    if (e !== undefined)
+      throw new TypeError("Derived constructors may only return object or undefined");
+    return _assertThisInitialized(t2);
+  }
+  function _setPrototypeOf(t2, e) {
+    return _setPrototypeOf = Object.setPrototypeOf ? Object.setPrototypeOf.bind() : function(t3, e2) {
+      return t3.__proto__ = e2, t3;
+    }, _setPrototypeOf(t2, e);
+  }
+  function _superPropBase(t2, o) {
+    for (;!{}.hasOwnProperty.call(t2, o) && (t2 = _getPrototypeOf(t2)) !== null; )
+      ;
+    return t2;
+  }
+  function _superPropGet(t2, o, e, r) {
+    var p = _get(_getPrototypeOf(1 & r ? t2.prototype : t2), o, e);
+    return 2 & r && typeof p == "function" ? function(t3) {
+      return p.apply(e, t3);
+    } : p;
+  }
+  function _toPrimitive(t2, r) {
+    if (typeof t2 != "object" || !t2)
+      return t2;
+    var e = t2[Symbol.toPrimitive];
+    if (e !== undefined) {
+      var i = e.call(t2, r || "default");
+      if (typeof i != "object")
+        return i;
+      throw new TypeError("@@toPrimitive must return a primitive value.");
+    }
+    return (r === "string" ? String : Number)(t2);
+  }
+  function _toPropertyKey(t2) {
+    var i = _toPrimitive(t2, "string");
+    return typeof i == "symbol" ? i : i + "";
+  }
+  function _unsupportedIterableToArray(r, a) {
+    if (r) {
+      if (typeof r == "string")
+        return _arrayLikeToArray(r, a);
+      var t2 = {}.toString.call(r).slice(8, -1);
+      return t2 === "Object" && r.constructor && (t2 = r.constructor.name), t2 === "Map" || t2 === "Set" ? Array.from(r) : t2 === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t2) ? _arrayLikeToArray(r, a) : undefined;
+    }
+  }
+  (function(self2) {
+    return {
+      NativeAbortSignal: self2.AbortSignal,
+      NativeAbortController: self2.AbortController
+    };
+  })(typeof self !== "undefined" ? self : global);
+  function createAbortEvent(reason) {
+    var event;
+    try {
+      event = new Event("abort");
+    } catch (e) {
+      if (typeof document !== "undefined") {
+        if (!document.createEvent) {
+          event = document.createEventObject();
+          event.type = "abort";
+        } else {
+          event = document.createEvent("Event");
+          event.initEvent("abort", false, false);
+        }
+      } else {
+        event = {
+          type: "abort",
+          bubbles: false,
+          cancelable: false
+        };
+      }
+    }
+    event.reason = reason;
+    return event;
+  }
+  function normalizeAbortReason(reason) {
+    if (reason === undefined) {
+      if (typeof document === "undefined") {
+        reason = new Error("This operation was aborted");
+        reason.name = "AbortError";
+      } else {
+        try {
+          reason = new DOMException("signal is aborted without reason");
+          Object.defineProperty(reason, "name", {
+            value: "AbortError"
+          });
+        } catch (err) {
+          reason = new Error("This operation was aborted");
+          reason.name = "AbortError";
+        }
+      }
+    }
+    return reason;
+  }
+  var Emitter = /* @__PURE__ */ function() {
+    function Emitter2() {
+      _classCallCheck(this, Emitter2);
+      Object.defineProperty(this, "listeners", {
+        value: {},
+        writable: true,
+        configurable: true
+      });
+    }
+    return _createClass(Emitter2, [{
+      key: "addEventListener",
+      value: function addEventListener(type, callback, options) {
+        if (!(type in this.listeners)) {
+          this.listeners[type] = [];
+        }
+        this.listeners[type].push({
+          callback,
+          options
+        });
+      }
+    }, {
+      key: "removeEventListener",
+      value: function removeEventListener(type, callback) {
+        if (!(type in this.listeners)) {
+          return;
+        }
+        var stack = this.listeners[type];
+        for (var i = 0, l = stack.length;i < l; i++) {
+          if (stack[i].callback === callback) {
+            stack.splice(i, 1);
+            return;
+          }
+        }
+      }
+    }, {
+      key: "dispatchEvent",
+      value: function dispatchEvent(event) {
+        var _this = this;
+        if (!(event.type in this.listeners)) {
+          return;
+        }
+        var stack = this.listeners[event.type];
+        var stackToCall = stack.slice();
+        var _loop = function _loop2() {
+          var listener = stackToCall[i];
+          try {
+            listener.callback.call(_this, event);
+          } catch (e) {
+            Promise.resolve().then(function() {
+              throw e;
+            });
+          }
+          if (listener.options && listener.options.once) {
+            _this.removeEventListener(event.type, listener.callback);
+          }
+        };
+        for (var i = 0, l = stackToCall.length;i < l; i++) {
+          _loop();
+        }
+        return !event.defaultPrevented;
+      }
+    }]);
+  }();
+  var AbortSignal = /* @__PURE__ */ function(_Emitter) {
+    function AbortSignal2() {
+      var _this2;
+      _classCallCheck(this, AbortSignal2);
+      _this2 = _callSuper(this, AbortSignal2);
+      if (!_this2.listeners) {
+        Emitter.call(_this2);
+      }
+      Object.defineProperty(_this2, "aborted", {
+        value: false,
+        writable: true,
+        configurable: true
+      });
+      Object.defineProperty(_this2, "onabort", {
+        value: null,
+        writable: true,
+        configurable: true
+      });
+      Object.defineProperty(_this2, "reason", {
+        value: undefined,
+        writable: true,
+        configurable: true
+      });
+      return _this2;
+    }
+    _inherits(AbortSignal2, _Emitter);
+    return _createClass(AbortSignal2, [{
+      key: "toString",
+      value: function toString() {
+        return "[object AbortSignal]";
+      }
+    }, {
+      key: "dispatchEvent",
+      value: function dispatchEvent(event) {
+        if (event.type === "abort") {
+          this.aborted = true;
+          if (typeof this.onabort === "function") {
+            this.onabort.call(this, event);
+          }
+        }
+        _superPropGet(AbortSignal2, "dispatchEvent", this, 3)([event]);
+      }
+    }, {
+      key: "throwIfAborted",
+      value: function throwIfAborted() {
+        var aborted = this.aborted, _this$reason = this.reason, reason = _this$reason === undefined ? "Aborted" : _this$reason;
+        if (!aborted)
+          return;
+        throw reason;
+      }
+    }], [{
+      key: "timeout",
+      value: function timeout(time2) {
+        var controller = new AbortController;
+        setTimeout(function() {
+          return controller.abort(new DOMException("This signal is timeout in ".concat(time2, "ms"), "TimeoutError"));
+        }, time2);
+        return controller.signal;
+      }
+    }, {
+      key: "any",
+      value: function any(iterable) {
+        var controller = new AbortController;
+        function abort() {
+          controller.abort(this.reason);
+          clean2();
+        }
+        function clean2() {
+          var _iterator = _createForOfIteratorHelper(iterable), _step;
+          try {
+            for (_iterator.s();!(_step = _iterator.n()).done; ) {
+              var signal2 = _step.value;
+              signal2.removeEventListener("abort", abort);
+            }
+          } catch (err) {
+            _iterator.e(err);
+          } finally {
+            _iterator.f();
+          }
+        }
+        var _iterator2 = _createForOfIteratorHelper(iterable), _step2;
+        try {
+          for (_iterator2.s();!(_step2 = _iterator2.n()).done; ) {
+            var signal = _step2.value;
+            if (signal.aborted) {
+              controller.abort(signal.reason);
+              break;
+            } else
+              signal.addEventListener("abort", abort);
+          }
+        } catch (err) {
+          _iterator2.e(err);
+        } finally {
+          _iterator2.f();
+        }
+        return controller.signal;
+      }
+    }]);
+  }(Emitter);
+  var AbortController = /* @__PURE__ */ function() {
+    function AbortController2() {
+      _classCallCheck(this, AbortController2);
+      Object.defineProperty(this, "signal", {
+        value: new AbortSignal,
+        writable: true,
+        configurable: true
+      });
+    }
+    return _createClass(AbortController2, [{
+      key: "abort",
+      value: function abort(reason) {
+        var signalReason = normalizeAbortReason(reason);
+        var event = createAbortEvent(signalReason);
+        this.signal.reason = signalReason;
+        this.signal.dispatchEvent(event);
+      }
+    }, {
+      key: "toString",
+      value: function toString() {
+        return "[object AbortController]";
+      }
+    }]);
+  }();
+  if (typeof Symbol !== "undefined" && Symbol.toStringTag) {
+    AbortController.prototype[Symbol.toStringTag] = "AbortController";
+    AbortSignal.prototype[Symbol.toStringTag] = "AbortSignal";
+  }
+  function polyfillNeeded(self2) {
+    if (self2.__FORCE_INSTALL_ABORTCONTROLLER_POLYFILL) {
+      console.log("__FORCE_INSTALL_ABORTCONTROLLER_POLYFILL=true is set, will force install polyfill");
+      return true;
+    }
+    return typeof self2.Request === "function" && !self2.Request.prototype.hasOwnProperty("signal") || !self2.AbortController;
+  }
+  function abortableFetchDecorator(patchTargets) {
+    if (typeof patchTargets === "function") {
+      patchTargets = {
+        fetch: patchTargets
+      };
+    }
+    var _patchTargets = patchTargets, fetch2 = _patchTargets.fetch, _patchTargets$Request = _patchTargets.Request, NativeRequest = _patchTargets$Request === undefined ? fetch2.Request : _patchTargets$Request, NativeAbortController = _patchTargets.AbortController, _patchTargets$__FORCE = _patchTargets.__FORCE_INSTALL_ABORTCONTROLLER_POLYFILL, __FORCE_INSTALL_ABORTCONTROLLER_POLYFILL = _patchTargets$__FORCE === undefined ? false : _patchTargets$__FORCE;
+    if (!polyfillNeeded({
+      fetch: fetch2,
+      Request: NativeRequest,
+      AbortController: NativeAbortController,
+      __FORCE_INSTALL_ABORTCONTROLLER_POLYFILL
+    })) {
+      return {
+        fetch: fetch2,
+        Request: Request2
+      };
+    }
+    var Request2 = NativeRequest;
+    if (Request2 && !Request2.prototype.hasOwnProperty("signal") || __FORCE_INSTALL_ABORTCONTROLLER_POLYFILL) {
+      Request2 = function Request3(input, init) {
+        var signal;
+        if (init && init.signal) {
+          signal = init.signal;
+          delete init.signal;
+        }
+        var request = new NativeRequest(input, init);
+        if (signal) {
+          Object.defineProperty(request, "signal", {
+            writable: false,
+            enumerable: false,
+            configurable: true,
+            value: signal
+          });
+        }
+        return request;
+      };
+      Request2.prototype = NativeRequest.prototype;
+    }
+    var realFetch = fetch2;
+    var abortableFetch = function abortableFetch2(input, init) {
+      var signal = Request2 && Request2.prototype.isPrototypeOf(input) ? input.signal : init ? init.signal : undefined;
+      if (signal) {
+        var abortError;
+        try {
+          abortError = new DOMException("Aborted", "AbortError");
+        } catch (err) {
+          abortError = new Error("Aborted");
+          abortError.name = "AbortError";
+        }
+        if (signal.aborted) {
+          return Promise.reject(abortError);
+        }
+        var cancellation = new Promise(function(_2, reject) {
+          signal.addEventListener("abort", function() {
+            return reject(abortError);
+          }, {
+            once: true
+          });
+        });
+        if (init && init.signal) {
+          delete init.signal;
+        }
+        return Promise.race([cancellation, realFetch(input, init)]);
+      }
+      return realFetch(input, init);
+    };
+    return {
+      fetch: abortableFetch,
+      Request: Request2
+    };
+  }
+  exports.AbortController = AbortController;
+  exports.AbortSignal = AbortSignal;
+  exports.abortableFetch = abortableFetchDecorator;
+});
+
+// node_modules/airtable/lib/abort-controller.js
+var require_abort_controller = __commonJS((exports, module) => {
+  var AbortController;
+  var browserGlobal = typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : null;
+  if (!browserGlobal) {
+    AbortController = __require("abort-controller");
+  } else if ("signal" in new Request("https://airtable.com")) {
+    AbortController = browserGlobal.AbortController;
+  } else {
+    polyfill = require_cjs_ponyfill();
+    AbortController = polyfill.AbortController;
+  }
+  var polyfill;
+  module.exports = AbortController;
+});
+
+// node_modules/lodash/isNil.js
+var require_isNil = __commonJS((exports, module) => {
+  function isNil(value) {
+    return value == null;
+  }
+  module.exports = isNil;
+});
+
+// node_modules/airtable/lib/object_to_query_param_string.js
+var require_object_to_query_param_string = __commonJS((exports, module) => {
+  var __importDefault = exports && exports.__importDefault || function(mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
+  var isArray_1 = __importDefault(require_isArray());
+  var isNil_1 = __importDefault(require_isNil());
+  var keys_1 = __importDefault(require_keys());
+  function buildParams(prefix, obj, addFn) {
+    if (isArray_1.default(obj)) {
+      for (var index = 0;index < obj.length; index++) {
+        var value = obj[index];
+        if (/\[\]$/.test(prefix)) {
+          addFn(prefix, value);
+        } else {
+          buildParams(prefix + "[" + (typeof value === "object" && value !== null ? index : "") + "]", value, addFn);
+        }
+      }
+    } else if (typeof obj === "object") {
+      for (var _i = 0, _a = keys_1.default(obj);_i < _a.length; _i++) {
+        var key = _a[_i];
+        var value = obj[key];
+        buildParams(prefix + "[" + key + "]", value, addFn);
+      }
+    } else {
+      addFn(prefix, obj);
+    }
+  }
+  function objectToQueryParamString(obj) {
+    var parts = [];
+    var addFn = function(key2, value2) {
+      value2 = isNil_1.default(value2) ? "" : value2;
+      parts.push(encodeURIComponent(key2) + "=" + encodeURIComponent(value2));
+    };
+    for (var _i = 0, _a = keys_1.default(obj);_i < _a.length; _i++) {
+      var key = _a[_i];
+      var value = obj[key];
+      buildParams(key, value, addFn);
+    }
+    return parts.join("&").replace(/%20/g, "+");
+  }
+  module.exports = objectToQueryParamString;
+});
+
+// node_modules/airtable/lib/airtable_error.js
+var require_airtable_error = __commonJS((exports, module) => {
+  var AirtableError = function() {
+    function AirtableError2(error, message, statusCode) {
+      this.error = error;
+      this.message = message;
+      this.statusCode = statusCode;
+    }
+    AirtableError2.prototype.toString = function() {
+      return [
+        this.message,
+        "(",
+        this.error,
+        ")",
+        this.statusCode ? "[Http code " + this.statusCode + "]" : ""
+      ].join("");
+    };
+    return AirtableError2;
+  }();
+  module.exports = AirtableError;
+});
+
+// node_modules/airtable/lib/deprecate.js
+var require_deprecate = __commonJS((exports, module) => {
+  var didWarnForDeprecation = {};
+  function deprecate(fn, key, message) {
+    return function() {
+      var args = [];
+      for (var _i = 0;_i < arguments.length; _i++) {
+        args[_i] = arguments[_i];
+      }
+      if (!didWarnForDeprecation[key]) {
+        didWarnForDeprecation[key] = true;
+        console.warn(message);
+      }
+      fn.apply(this, args);
+    };
+  }
+  module.exports = deprecate;
+});
+
+// node_modules/airtable/lib/callback_to_promise.js
+var require_callback_to_promise = __commonJS((exports, module) => {
+  function callbackToPromise(fn, context, callbackArgIndex) {
+    if (callbackArgIndex === undefined) {
+      callbackArgIndex = undefined;
+    }
+    return function() {
+      var callArgs = [];
+      for (var _i = 0;_i < arguments.length; _i++) {
+        callArgs[_i] = arguments[_i];
+      }
+      var thisCallbackArgIndex;
+      if (callbackArgIndex === undefined) {
+        thisCallbackArgIndex = callArgs.length > 0 ? callArgs.length - 1 : 0;
+      } else {
+        thisCallbackArgIndex = callbackArgIndex;
+      }
+      var callbackArg = callArgs[thisCallbackArgIndex];
+      if (typeof callbackArg === "function") {
+        fn.apply(context, callArgs);
+        return;
+      } else {
+        var args_1 = [];
+        var argLen = Math.max(callArgs.length, thisCallbackArgIndex);
+        for (var i = 0;i < argLen; i++) {
+          args_1.push(callArgs[i]);
+        }
+        return new Promise(function(resolve, reject) {
+          args_1.push(function(err, result) {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(result);
+            }
+          });
+          fn.apply(context, args_1);
+        });
+      }
+    };
+  }
+  module.exports = callbackToPromise;
+});
+
+// node_modules/airtable/lib/record.js
+var require_record = __commonJS((exports, module) => {
+  var __assign = exports && exports.__assign || function() {
+    __assign = Object.assign || function(t2) {
+      for (var s, i = 1, n = arguments.length;i < n; i++) {
+        s = arguments[i];
+        for (var p in s)
+          if (Object.prototype.hasOwnProperty.call(s, p))
+            t2[p] = s[p];
+      }
+      return t2;
+    };
+    return __assign.apply(this, arguments);
+  };
+  var __importDefault = exports && exports.__importDefault || function(mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
+  var callback_to_promise_1 = __importDefault(require_callback_to_promise());
+  var Record2 = function() {
+    function Record3(table, recordId, recordJson) {
+      this._table = table;
+      this.id = recordId || recordJson.id;
+      if (recordJson) {
+        this.commentCount = recordJson.commentCount;
+      }
+      this.setRawJson(recordJson);
+      this.save = callback_to_promise_1.default(save, this);
+      this.patchUpdate = callback_to_promise_1.default(patchUpdate, this);
+      this.putUpdate = callback_to_promise_1.default(putUpdate, this);
+      this.destroy = callback_to_promise_1.default(destroy, this);
+      this.fetch = callback_to_promise_1.default(fetch2, this);
+      this.updateFields = this.patchUpdate;
+      this.replaceFields = this.putUpdate;
+    }
+    Record3.prototype.getId = function() {
+      return this.id;
+    };
+    Record3.prototype.get = function(columnName) {
+      return this.fields[columnName];
+    };
+    Record3.prototype.set = function(columnName, columnValue) {
+      this.fields[columnName] = columnValue;
+    };
+    Record3.prototype.setRawJson = function(rawJson) {
+      this._rawJson = rawJson;
+      this.fields = this._rawJson && this._rawJson.fields || {};
+    };
+    return Record3;
+  }();
+  function save(done) {
+    this.putUpdate(this.fields, done);
+  }
+  function patchUpdate(cellValuesByName, opts, done) {
+    var _this = this;
+    if (!done) {
+      done = opts;
+      opts = {};
+    }
+    var updateBody = __assign({ fields: cellValuesByName }, opts);
+    this._table._base.runAction("patch", "/" + this._table._urlEncodedNameOrId() + "/" + this.id, {}, updateBody, function(err, response, results) {
+      if (err) {
+        done(err);
+        return;
+      }
+      _this.setRawJson(results);
+      done(null, _this);
+    });
+  }
+  function putUpdate(cellValuesByName, opts, done) {
+    var _this = this;
+    if (!done) {
+      done = opts;
+      opts = {};
+    }
+    var updateBody = __assign({ fields: cellValuesByName }, opts);
+    this._table._base.runAction("put", "/" + this._table._urlEncodedNameOrId() + "/" + this.id, {}, updateBody, function(err, response, results) {
+      if (err) {
+        done(err);
+        return;
+      }
+      _this.setRawJson(results);
+      done(null, _this);
+    });
+  }
+  function destroy(done) {
+    var _this = this;
+    this._table._base.runAction("delete", "/" + this._table._urlEncodedNameOrId() + "/" + this.id, {}, null, function(err) {
+      if (err) {
+        done(err);
+        return;
+      }
+      done(null, _this);
+    });
+  }
+  function fetch2(done) {
+    var _this = this;
+    this._table._base.runAction("get", "/" + this._table._urlEncodedNameOrId() + "/" + this.id, {}, null, function(err, response, results) {
+      if (err) {
+        done(err);
+        return;
+      }
+      _this.setRawJson(results);
+      done(null, _this);
+    });
+  }
+  module.exports = Record2;
+});
+
+// node_modules/airtable/lib/has.js
+var require_has = __commonJS((exports, module) => {
+  function has(object, property) {
+    return Object.prototype.hasOwnProperty.call(object, property);
+  }
+  module.exports = has;
+});
+
+// node_modules/airtable/lib/typecheck.js
+var require_typecheck = __commonJS((exports, module) => {
+  function check2(fn, error) {
+    return function(value) {
+      if (fn(value)) {
+        return { pass: true };
+      } else {
+        return { pass: false, error };
+      }
+    };
+  }
+  check2.isOneOf = function isOneOf(options) {
+    return options.includes.bind(options);
+  };
+  check2.isArrayOf = function(itemValidator) {
+    return function(value) {
+      return Array.isArray(value) && value.every(itemValidator);
+    };
+  };
+  module.exports = check2;
+});
+
+// node_modules/lodash/isString.js
+var require_isString = __commonJS((exports, module) => {
+  var baseGetTag = require__baseGetTag();
+  var isArray = require_isArray();
+  var isObjectLike = require_isObjectLike();
+  var stringTag = "[object String]";
+  function isString(value) {
+    return typeof value == "string" || !isArray(value) && isObjectLike(value) && baseGetTag(value) == stringTag;
+  }
+  module.exports = isString;
+});
+
+// node_modules/lodash/isNumber.js
+var require_isNumber = __commonJS((exports, module) => {
+  var baseGetTag = require__baseGetTag();
+  var isObjectLike = require_isObjectLike();
+  var numberTag = "[object Number]";
+  function isNumber(value) {
+    return typeof value == "number" || isObjectLike(value) && baseGetTag(value) == numberTag;
+  }
+  module.exports = isNumber;
+});
+
+// node_modules/lodash/isBoolean.js
+var require_isBoolean = __commonJS((exports, module) => {
+  var baseGetTag = require__baseGetTag();
+  var isObjectLike = require_isObjectLike();
+  var boolTag = "[object Boolean]";
+  function isBoolean(value) {
+    return value === true || value === false || isObjectLike(value) && baseGetTag(value) == boolTag;
+  }
+  module.exports = isBoolean;
+});
+
+// node_modules/airtable/lib/query_params.js
+var require_query_params = __commonJS((exports) => {
+  var __importDefault = exports && exports.__importDefault || function(mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
+  Object.defineProperty(exports, "__esModule", { value: true });
+  exports.shouldListRecordsParamBePassedAsParameter = exports.URL_CHARACTER_LENGTH_LIMIT = exports.paramValidators = undefined;
+  var typecheck_1 = __importDefault(require_typecheck());
+  var isString_1 = __importDefault(require_isString());
+  var isNumber_1 = __importDefault(require_isNumber());
+  var isPlainObject_1 = __importDefault(require_isPlainObject());
+  var isBoolean_1 = __importDefault(require_isBoolean());
+  exports.paramValidators = {
+    fields: typecheck_1.default(typecheck_1.default.isArrayOf(isString_1.default), "the value for `fields` should be an array of strings"),
+    filterByFormula: typecheck_1.default(isString_1.default, "the value for `filterByFormula` should be a string"),
+    maxRecords: typecheck_1.default(isNumber_1.default, "the value for `maxRecords` should be a number"),
+    pageSize: typecheck_1.default(isNumber_1.default, "the value for `pageSize` should be a number"),
+    offset: typecheck_1.default(isNumber_1.default, "the value for `offset` should be a number"),
+    sort: typecheck_1.default(typecheck_1.default.isArrayOf(function(obj) {
+      return isPlainObject_1.default(obj) && isString_1.default(obj.field) && (obj.direction === undefined || ["asc", "desc"].includes(obj.direction));
+    }), "the value for `sort` should be an array of sort objects. " + "Each sort object must have a string `field` value, and an optional " + '`direction` value that is "asc" or "desc".'),
+    view: typecheck_1.default(isString_1.default, "the value for `view` should be a string"),
+    cellFormat: typecheck_1.default(function(cellFormat) {
+      return isString_1.default(cellFormat) && ["json", "string"].includes(cellFormat);
+    }, 'the value for `cellFormat` should be "json" or "string"'),
+    timeZone: typecheck_1.default(isString_1.default, "the value for `timeZone` should be a string"),
+    userLocale: typecheck_1.default(isString_1.default, "the value for `userLocale` should be a string"),
+    method: typecheck_1.default(function(method) {
+      return isString_1.default(method) && ["get", "post"].includes(method);
+    }, 'the value for `method` should be "get" or "post"'),
+    returnFieldsByFieldId: typecheck_1.default(isBoolean_1.default, "the value for `returnFieldsByFieldId` should be a boolean"),
+    recordMetadata: typecheck_1.default(typecheck_1.default.isArrayOf(isString_1.default), "the value for `recordMetadata` should be an array of strings")
+  };
+  exports.URL_CHARACTER_LENGTH_LIMIT = 15000;
+  exports.shouldListRecordsParamBePassedAsParameter = function(paramName) {
+    return paramName === "timeZone" || paramName === "userLocale";
+  };
+});
+
+// node_modules/airtable/lib/query.js
+var require_query3 = __commonJS((exports, module) => {
+  var __assign = exports && exports.__assign || function() {
+    __assign = Object.assign || function(t2) {
+      for (var s, i = 1, n = arguments.length;i < n; i++) {
+        s = arguments[i];
+        for (var p in s)
+          if (Object.prototype.hasOwnProperty.call(s, p))
+            t2[p] = s[p];
+      }
+      return t2;
+    };
+    return __assign.apply(this, arguments);
+  };
+  var __importDefault = exports && exports.__importDefault || function(mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
+  var isFunction_1 = __importDefault(require_isFunction());
+  var keys_1 = __importDefault(require_keys());
+  var record_1 = __importDefault(require_record());
+  var callback_to_promise_1 = __importDefault(require_callback_to_promise());
+  var has_1 = __importDefault(require_has());
+  var query_params_1 = require_query_params();
+  var object_to_query_param_string_1 = __importDefault(require_object_to_query_param_string());
+  var Query2 = function() {
+    function Query3(table, params) {
+      this._table = table;
+      this._params = params;
+      this.firstPage = callback_to_promise_1.default(firstPage, this);
+      this.eachPage = callback_to_promise_1.default(eachPage, this, 1);
+      this.all = callback_to_promise_1.default(all, this);
+    }
+    Query3.validateParams = function(params) {
+      var validParams = {};
+      var ignoredKeys = [];
+      var errors = [];
+      for (var _i = 0, _a = keys_1.default(params);_i < _a.length; _i++) {
+        var key = _a[_i];
+        var value = params[key];
+        if (has_1.default(Query3.paramValidators, key)) {
+          var validator = Query3.paramValidators[key];
+          var validationResult = validator(value);
+          if (validationResult.pass) {
+            validParams[key] = value;
+          } else {
+            errors.push(validationResult.error);
+          }
+        } else {
+          ignoredKeys.push(key);
+        }
+      }
+      return {
+        validParams,
+        ignoredKeys,
+        errors
+      };
+    };
+    Query3.paramValidators = query_params_1.paramValidators;
+    return Query3;
+  }();
+  function firstPage(done) {
+    if (!isFunction_1.default(done)) {
+      throw new Error("The first parameter to `firstPage` must be a function");
+    }
+    this.eachPage(function(records) {
+      done(null, records);
+    }, function(error) {
+      done(error, null);
+    });
+  }
+  function eachPage(pageCallback, done) {
+    var _this = this;
+    if (!isFunction_1.default(pageCallback)) {
+      throw new Error("The first parameter to `eachPage` must be a function");
+    }
+    if (!isFunction_1.default(done) && done !== undefined) {
+      throw new Error("The second parameter to `eachPage` must be a function or undefined");
+    }
+    var params = __assign({}, this._params);
+    var pathAndParamsAsString = "/" + this._table._urlEncodedNameOrId() + "?" + object_to_query_param_string_1.default(params);
+    var queryParams = {};
+    var requestData = null;
+    var method;
+    var path;
+    if (params.method === "post" || pathAndParamsAsString.length > query_params_1.URL_CHARACTER_LENGTH_LIMIT) {
+      requestData = params;
+      method = "post";
+      path = "/" + this._table._urlEncodedNameOrId() + "/listRecords";
+      var paramNames = Object.keys(params);
+      for (var _i = 0, paramNames_1 = paramNames;_i < paramNames_1.length; _i++) {
+        var paramName = paramNames_1[_i];
+        if (query_params_1.shouldListRecordsParamBePassedAsParameter(paramName)) {
+          queryParams[paramName] = params[paramName];
+        } else {
+          requestData[paramName] = params[paramName];
+        }
+      }
+    } else {
+      method = "get";
+      queryParams = params;
+      path = "/" + this._table._urlEncodedNameOrId();
+    }
+    var inner = function() {
+      _this._table._base.runAction(method, path, queryParams, requestData, function(err, response, result) {
+        if (err) {
+          done(err, null);
+        } else {
+          var next = undefined;
+          if (result.offset) {
+            params.offset = result.offset;
+            next = inner;
+          } else {
+            next = function() {
+              done(null);
+            };
+          }
+          var records = result.records.map(function(recordJson) {
+            return new record_1.default(_this._table, null, recordJson);
+          });
+          pageCallback(records, next);
+        }
+      });
+    };
+    inner();
+  }
+  function all(done) {
+    if (!isFunction_1.default(done)) {
+      throw new Error("The first parameter to `all` must be a function");
+    }
+    var allRecords = [];
+    this.eachPage(function(pageRecords, fetchNextPage) {
+      allRecords.push.apply(allRecords, pageRecords);
+      fetchNextPage();
+    }, function(err) {
+      if (err) {
+        done(err, null);
+      } else {
+        done(null, allRecords);
+      }
+    });
+  }
+  module.exports = Query2;
+});
+
+// node_modules/airtable/lib/table.js
+var require_table = __commonJS((exports, module) => {
+  var __assign = exports && exports.__assign || function() {
+    __assign = Object.assign || function(t2) {
+      for (var s, i = 1, n = arguments.length;i < n; i++) {
+        s = arguments[i];
+        for (var p in s)
+          if (Object.prototype.hasOwnProperty.call(s, p))
+            t2[p] = s[p];
+      }
+      return t2;
+    };
+    return __assign.apply(this, arguments);
+  };
+  var __importDefault = exports && exports.__importDefault || function(mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
+  var isPlainObject_1 = __importDefault(require_isPlainObject());
+  var deprecate_1 = __importDefault(require_deprecate());
+  var query_1 = __importDefault(require_query3());
+  var query_params_1 = require_query_params();
+  var object_to_query_param_string_1 = __importDefault(require_object_to_query_param_string());
+  var record_1 = __importDefault(require_record());
+  var callback_to_promise_1 = __importDefault(require_callback_to_promise());
+  var Table2 = function() {
+    function Table3(base, tableId, tableName) {
+      if (!tableId && !tableName) {
+        throw new Error("Table name or table ID is required");
+      }
+      this._base = base;
+      this.id = tableId;
+      this.name = tableName;
+      this.find = callback_to_promise_1.default(this._findRecordById, this);
+      this.select = this._selectRecords.bind(this);
+      this.create = callback_to_promise_1.default(this._createRecords, this);
+      this.update = callback_to_promise_1.default(this._updateRecords.bind(this, false), this);
+      this.replace = callback_to_promise_1.default(this._updateRecords.bind(this, true), this);
+      this.destroy = callback_to_promise_1.default(this._destroyRecord, this);
+      this.list = deprecate_1.default(this._listRecords.bind(this), "table.list", "Airtable: `list()` is deprecated. Use `select()` instead.");
+      this.forEach = deprecate_1.default(this._forEachRecord.bind(this), "table.forEach", "Airtable: `forEach()` is deprecated. Use `select()` instead.");
+    }
+    Table3.prototype._findRecordById = function(recordId, done) {
+      var record = new record_1.default(this, recordId);
+      record.fetch(done);
+    };
+    Table3.prototype._selectRecords = function(params) {
+      if (params === undefined) {
+        params = {};
+      }
+      if (arguments.length > 1) {
+        console.warn("Airtable: `select` takes only one parameter, but it was given " + arguments.length + " parameters. Use `eachPage` or `firstPage` to fetch records.");
+      }
+      if (isPlainObject_1.default(params)) {
+        var validationResults = query_1.default.validateParams(params);
+        if (validationResults.errors.length) {
+          var formattedErrors = validationResults.errors.map(function(error) {
+            return "  * " + error;
+          });
+          throw new Error("Airtable: invalid parameters for `select`:\n" + formattedErrors.join(`
+`));
+        }
+        if (validationResults.ignoredKeys.length) {
+          console.warn("Airtable: the following parameters to `select` will be ignored: " + validationResults.ignoredKeys.join(", "));
+        }
+        return new query_1.default(this, validationResults.validParams);
+      } else {
+        throw new Error("Airtable: the parameter for `select` should be a plain object or undefined.");
+      }
+    };
+    Table3.prototype._urlEncodedNameOrId = function() {
+      return this.id || encodeURIComponent(this.name);
+    };
+    Table3.prototype._createRecords = function(recordsData, optionalParameters, done) {
+      var _this = this;
+      var isCreatingMultipleRecords = Array.isArray(recordsData);
+      if (!done) {
+        done = optionalParameters;
+        optionalParameters = {};
+      }
+      var requestData;
+      if (isCreatingMultipleRecords) {
+        requestData = __assign({ records: recordsData }, optionalParameters);
+      } else {
+        requestData = __assign({ fields: recordsData }, optionalParameters);
+      }
+      this._base.runAction("post", "/" + this._urlEncodedNameOrId() + "/", {}, requestData, function(err, resp, body) {
+        if (err) {
+          done(err);
+          return;
+        }
+        var result;
+        if (isCreatingMultipleRecords) {
+          result = body.records.map(function(record) {
+            return new record_1.default(_this, record.id, record);
+          });
+        } else {
+          result = new record_1.default(_this, body.id, body);
+        }
+        done(null, result);
+      });
+    };
+    Table3.prototype._updateRecords = function(isDestructiveUpdate, recordsDataOrRecordId, recordDataOrOptsOrDone, optsOrDone, done) {
+      var _this = this;
+      var opts;
+      if (Array.isArray(recordsDataOrRecordId)) {
+        var recordsData = recordsDataOrRecordId;
+        opts = isPlainObject_1.default(recordDataOrOptsOrDone) ? recordDataOrOptsOrDone : {};
+        done = optsOrDone || recordDataOrOptsOrDone;
+        var method = isDestructiveUpdate ? "put" : "patch";
+        var requestData = __assign({ records: recordsData }, opts);
+        this._base.runAction(method, "/" + this._urlEncodedNameOrId() + "/", {}, requestData, function(err, resp, body) {
+          if (err) {
+            done(err);
+            return;
+          }
+          var result = body.records.map(function(record2) {
+            return new record_1.default(_this, record2.id, record2);
+          });
+          done(null, result);
+        });
+      } else {
+        var recordId = recordsDataOrRecordId;
+        var recordData = recordDataOrOptsOrDone;
+        opts = isPlainObject_1.default(optsOrDone) ? optsOrDone : {};
+        done = done || optsOrDone;
+        var record = new record_1.default(this, recordId);
+        if (isDestructiveUpdate) {
+          record.putUpdate(recordData, opts, done);
+        } else {
+          record.patchUpdate(recordData, opts, done);
+        }
+      }
+    };
+    Table3.prototype._destroyRecord = function(recordIdsOrId, done) {
+      var _this = this;
+      if (Array.isArray(recordIdsOrId)) {
+        var queryParams = { records: recordIdsOrId };
+        this._base.runAction("delete", "/" + this._urlEncodedNameOrId(), queryParams, null, function(err, response, results) {
+          if (err) {
+            done(err);
+            return;
+          }
+          var records = results.records.map(function(_a) {
+            var id = _a.id;
+            return new record_1.default(_this, id, null);
+          });
+          done(null, records);
+        });
+      } else {
+        var record = new record_1.default(this, recordIdsOrId);
+        record.destroy(done);
+      }
+    };
+    Table3.prototype._listRecords = function(pageSize, offset, opts, done) {
+      var _this = this;
+      if (!done) {
+        done = opts;
+        opts = {};
+      }
+      var pathAndParamsAsString = "/" + this._urlEncodedNameOrId() + "?" + object_to_query_param_string_1.default(opts);
+      var path;
+      var listRecordsParameters = {};
+      var listRecordsData = null;
+      var method;
+      if (typeof opts !== "function" && opts.method === "post" || pathAndParamsAsString.length > query_params_1.URL_CHARACTER_LENGTH_LIMIT) {
+        path = "/" + this._urlEncodedNameOrId() + "/listRecords";
+        listRecordsData = __assign(__assign({}, pageSize && { pageSize }), offset && { offset });
+        method = "post";
+        var paramNames = Object.keys(opts);
+        for (var _i = 0, paramNames_1 = paramNames;_i < paramNames_1.length; _i++) {
+          var paramName = paramNames_1[_i];
+          if (query_params_1.shouldListRecordsParamBePassedAsParameter(paramName)) {
+            listRecordsParameters[paramName] = opts[paramName];
+          } else {
+            listRecordsData[paramName] = opts[paramName];
+          }
+        }
+      } else {
+        method = "get";
+        path = "/" + this._urlEncodedNameOrId() + "/";
+        listRecordsParameters = __assign({ limit: pageSize, offset }, opts);
+      }
+      this._base.runAction(method, path, listRecordsParameters, listRecordsData, function(err, response, results) {
+        if (err) {
+          done(err);
+          return;
+        }
+        var records = results.records.map(function(recordJson) {
+          return new record_1.default(_this, null, recordJson);
+        });
+        done(null, records, results.offset);
+      });
+    };
+    Table3.prototype._forEachRecord = function(opts, callback, done) {
+      var _this = this;
+      if (arguments.length === 2) {
+        done = callback;
+        callback = opts;
+        opts = {};
+      }
+      var limit = Table3.__recordsPerPageForIteration || 100;
+      var offset = null;
+      var nextPage = function() {
+        _this._listRecords(limit, offset, opts, function(err, page, newOffset) {
+          if (err) {
+            done(err);
+            return;
+          }
+          for (var index = 0;index < page.length; index++) {
+            callback(page[index]);
+          }
+          if (newOffset) {
+            offset = newOffset;
+            nextPage();
+          } else {
+            done();
+          }
+        });
+      };
+      nextPage();
+    };
+    return Table3;
+  }();
+  module.exports = Table2;
+});
+
+// node_modules/airtable/lib/http_headers.js
+var require_http_headers = __commonJS((exports, module) => {
+  var __importDefault = exports && exports.__importDefault || function(mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
+  var keys_1 = __importDefault(require_keys());
+  var isBrowser = typeof window !== "undefined";
+  var HttpHeaders = function() {
+    function HttpHeaders2() {
+      this._headersByLowercasedKey = {};
+    }
+    HttpHeaders2.prototype.set = function(headerKey, headerValue) {
+      var lowercasedKey = headerKey.toLowerCase();
+      if (lowercasedKey === "x-airtable-user-agent") {
+        lowercasedKey = "user-agent";
+        headerKey = "User-Agent";
+      }
+      this._headersByLowercasedKey[lowercasedKey] = {
+        headerKey,
+        headerValue
+      };
+    };
+    HttpHeaders2.prototype.toJSON = function() {
+      var result = {};
+      for (var _i = 0, _a = keys_1.default(this._headersByLowercasedKey);_i < _a.length; _i++) {
+        var lowercasedKey = _a[_i];
+        var headerDefinition = this._headersByLowercasedKey[lowercasedKey];
+        var headerKey = undefined;
+        if (isBrowser && lowercasedKey === "user-agent") {
+          headerKey = "X-Airtable-User-Agent";
+        } else {
+          headerKey = headerDefinition.headerKey;
+        }
+        result[headerKey] = headerDefinition.headerValue;
+      }
+      return result;
+    };
+    return HttpHeaders2;
+  }();
+  module.exports = HttpHeaders;
+});
+
+// node_modules/airtable/lib/internal_config.json
+var require_internal_config = __commonJS((exports, module) => {
+  module.exports = {
+    INITIAL_RETRY_DELAY_IF_RATE_LIMITED: 5000,
+    MAX_RETRY_DELAY_IF_RATE_LIMITED: 600000
+  };
+});
+
+// node_modules/airtable/lib/exponential_backoff_with_jitter.js
+var require_exponential_backoff_with_jitter = __commonJS((exports, module) => {
+  var __importDefault = exports && exports.__importDefault || function(mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
+  var internal_config_json_1 = __importDefault(require_internal_config());
+  function exponentialBackoffWithJitter(numberOfRetries) {
+    var rawBackoffTimeMs = internal_config_json_1.default.INITIAL_RETRY_DELAY_IF_RATE_LIMITED * Math.pow(2, numberOfRetries);
+    var clippedBackoffTimeMs = Math.min(internal_config_json_1.default.MAX_RETRY_DELAY_IF_RATE_LIMITED, rawBackoffTimeMs);
+    var jitteredBackoffTimeMs = Math.random() * clippedBackoffTimeMs;
+    return jitteredBackoffTimeMs;
+  }
+  module.exports = exponentialBackoffWithJitter;
+});
+
+// node_modules/airtable/package.json
+var require_package2 = __commonJS((exports, module) => {
+  module.exports = {
+    name: "airtable",
+    version: "0.12.2",
+    license: "MIT",
+    homepage: "https://github.com/airtable/airtable.js",
+    repository: "git://github.com/airtable/airtable.js.git",
+    private: false,
+    scripts: {
+      pretest: "npm run lint && npm run prepare && cp build/airtable.browser.js test/test_files; true",
+      lint: "eslint '*/**/*.{js,ts,tsx}'",
+      format: "prettier --write '**/*.[j|t]s'",
+      test: "jest --env node --coverage --no-cache",
+      "test-unit": "jest --env node",
+      prepare: "rm -rf lib/* && rm -f build/airtable.browser.js && tsc && cp lib/airtable.js lib/tmp_airtable.js && grunt browserify && rm lib/tmp_airtable.js"
+    },
+    dependencies: {
+      "@types/node": ">=8.0.0 <15",
+      "abort-controller": "^3.0.0",
+      "abortcontroller-polyfill": "^1.4.0",
+      lodash: "^4.17.21",
+      "node-fetch": "^2.6.7"
+    },
+    main: "./lib/airtable.js",
+    types: "./lib/airtable.d.ts",
+    browser: {
+      "node-fetch": false,
+      "abort-controller": false,
+      "./lib/airtable.js": "./lib/airtable.umd.js",
+      "./lib/package_version": "./lib/package_version_browser"
+    },
+    files: [
+      "/README.md",
+      "/CHANGELOG.md",
+      "/LICENSE.txt",
+      "/build/airtable.browser.js",
+      "/lib/"
+    ],
+    jest: {
+      coverageThreshold: {
+        global: {
+          branches: 100,
+          functions: 100,
+          lines: 100,
+          statements: 100
+        }
+      }
+    },
+    devDependencies: {
+      "@types/jest": "^26.0.3",
+      "@types/lodash": "^4.14.157",
+      "@typescript-eslint/eslint-plugin": "^3.4.0",
+      "@typescript-eslint/parser": "^3.4.0",
+      "body-parser": "^1.19.0",
+      envify: "^4.1.0",
+      eslint: "^6.8.0",
+      express: "^4.17.1",
+      "get-port": "^5.0.0",
+      grunt: "^1.3.0",
+      "grunt-browserify": "^5.3.0",
+      husky: "^3.0.9",
+      jest: "^24.9.0",
+      prettier: "^1.18.2",
+      "pretty-quick": "^2.0.0",
+      semver: "^6.3.0",
+      typescript: "^3.9.5"
+    },
+    keywords: [
+      "airtable",
+      "productivity",
+      "database",
+      "spreadsheet"
+    ],
+    engines: {
+      node: ">=8.0.0"
+    }
+  };
+});
+
+// node_modules/airtable/lib/package_version.js
+var require_package_version = __commonJS((exports, module) => {
+  module.exports = require_package2().version;
+});
+
+// node_modules/airtable/lib/run_action.js
+var require_run_action = __commonJS((exports, module) => {
+  var __importDefault = exports && exports.__importDefault || function(mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
+  var exponential_backoff_with_jitter_1 = __importDefault(require_exponential_backoff_with_jitter());
+  var object_to_query_param_string_1 = __importDefault(require_object_to_query_param_string());
+  var package_version_1 = __importDefault(require_package_version());
+  var fetch_1 = __importDefault(require_fetch());
+  var abort_controller_1 = __importDefault(require_abort_controller());
+  var userAgent = "Airtable.js/" + package_version_1.default;
+  function runAction(base, method, path, queryParams, bodyData, callback, numAttempts) {
+    var url = base._airtable._endpointUrl + "/v" + base._airtable._apiVersionMajor + "/" + base._id + path + "?" + object_to_query_param_string_1.default(queryParams);
+    var headers = {
+      authorization: "Bearer " + base._airtable._apiKey,
+      "x-api-version": base._airtable._apiVersion,
+      "x-airtable-application-id": base.getId(),
+      "content-type": "application/json"
+    };
+    var isBrowser = typeof window !== "undefined";
+    if (isBrowser) {
+      headers["x-airtable-user-agent"] = userAgent;
+    } else {
+      headers["User-Agent"] = userAgent;
+    }
+    var controller = new abort_controller_1.default;
+    var normalizedMethod = method.toUpperCase();
+    var options = {
+      method: normalizedMethod,
+      headers,
+      signal: controller.signal
+    };
+    if (bodyData !== null) {
+      if (normalizedMethod === "GET" || normalizedMethod === "HEAD") {
+        console.warn("body argument to runAction are ignored with GET or HEAD requests");
+      } else {
+        options.body = JSON.stringify(bodyData);
+      }
+    }
+    var timeout = setTimeout(function() {
+      controller.abort();
+    }, base._airtable._requestTimeout);
+    fetch_1.default(url, options).then(function(resp) {
+      clearTimeout(timeout);
+      if (resp.status === 429 && !base._airtable._noRetryIfRateLimited) {
+        var backoffDelayMs = exponential_backoff_with_jitter_1.default(numAttempts);
+        setTimeout(function() {
+          runAction(base, method, path, queryParams, bodyData, callback, numAttempts + 1);
+        }, backoffDelayMs);
+      } else {
+        resp.json().then(function(body) {
+          var error = base._checkStatusForError(resp.status, body);
+          var r = {};
+          Object.keys(resp).forEach(function(property) {
+            r[property] = resp[property];
+          });
+          r.body = body;
+          r.statusCode = resp.status;
+          callback(error, r, body);
+        }).catch(function() {
+          callback(base._checkStatusForError(resp.status));
+        });
+      }
+    }).catch(function(error) {
+      clearTimeout(timeout);
+      callback(error);
+    });
+  }
+  module.exports = runAction;
+});
+
+// node_modules/airtable/lib/base.js
+var require_base = __commonJS((exports, module) => {
+  var __assign = exports && exports.__assign || function() {
+    __assign = Object.assign || function(t2) {
+      for (var s, i = 1, n = arguments.length;i < n; i++) {
+        s = arguments[i];
+        for (var p in s)
+          if (Object.prototype.hasOwnProperty.call(s, p))
+            t2[p] = s[p];
+      }
+      return t2;
+    };
+    return __assign.apply(this, arguments);
+  };
+  var __importDefault = exports && exports.__importDefault || function(mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
+  var get_1 = __importDefault(require_get());
+  var isPlainObject_1 = __importDefault(require_isPlainObject());
+  var keys_1 = __importDefault(require_keys());
+  var fetch_1 = __importDefault(require_fetch());
+  var abort_controller_1 = __importDefault(require_abort_controller());
+  var object_to_query_param_string_1 = __importDefault(require_object_to_query_param_string());
+  var airtable_error_1 = __importDefault(require_airtable_error());
+  var table_1 = __importDefault(require_table());
+  var http_headers_1 = __importDefault(require_http_headers());
+  var run_action_1 = __importDefault(require_run_action());
+  var package_version_1 = __importDefault(require_package_version());
+  var exponential_backoff_with_jitter_1 = __importDefault(require_exponential_backoff_with_jitter());
+  var userAgent = "Airtable.js/" + package_version_1.default;
+  var Base = function() {
+    function Base2(airtable, baseId) {
+      this._airtable = airtable;
+      this._id = baseId;
+    }
+    Base2.prototype.table = function(tableName) {
+      return new table_1.default(this, null, tableName);
+    };
+    Base2.prototype.makeRequest = function(options) {
+      var _this = this;
+      var _a;
+      if (options === undefined) {
+        options = {};
+      }
+      var method = get_1.default(options, "method", "GET").toUpperCase();
+      var url = this._airtable._endpointUrl + "/v" + this._airtable._apiVersionMajor + "/" + this._id + get_1.default(options, "path", "/") + "?" + object_to_query_param_string_1.default(get_1.default(options, "qs", {}));
+      var controller = new abort_controller_1.default;
+      var headers = this._getRequestHeaders(Object.assign({}, this._airtable._customHeaders, (_a = options.headers) !== null && _a !== undefined ? _a : {}));
+      var requestOptions = {
+        method,
+        headers,
+        signal: controller.signal
+      };
+      if ("body" in options && _canRequestMethodIncludeBody(method)) {
+        requestOptions.body = JSON.stringify(options.body);
+      }
+      var timeout = setTimeout(function() {
+        controller.abort();
+      }, this._airtable._requestTimeout);
+      return new Promise(function(resolve, reject) {
+        fetch_1.default(url, requestOptions).then(function(resp) {
+          clearTimeout(timeout);
+          if (resp.status === 429 && !_this._airtable._noRetryIfRateLimited) {
+            var numAttempts_1 = get_1.default(options, "_numAttempts", 0);
+            var backoffDelayMs = exponential_backoff_with_jitter_1.default(numAttempts_1);
+            setTimeout(function() {
+              var newOptions = __assign(__assign({}, options), { _numAttempts: numAttempts_1 + 1 });
+              _this.makeRequest(newOptions).then(resolve).catch(reject);
+            }, backoffDelayMs);
+          } else {
+            resp.json().then(function(body) {
+              var err = _this._checkStatusForError(resp.status, body) || _getErrorForNonObjectBody(resp.status, body);
+              if (err) {
+                reject(err);
+              } else {
+                resolve({
+                  statusCode: resp.status,
+                  headers: resp.headers,
+                  body
+                });
+              }
+            }).catch(function() {
+              var err = _getErrorForNonObjectBody(resp.status);
+              reject(err);
+            });
+          }
+        }).catch(function(err) {
+          clearTimeout(timeout);
+          err = new airtable_error_1.default("CONNECTION_ERROR", err.message, null);
+          reject(err);
+        });
+      });
+    };
+    Base2.prototype.runAction = function(method, path, queryParams, bodyData, callback) {
+      run_action_1.default(this, method, path, queryParams, bodyData, callback, 0);
+    };
+    Base2.prototype._getRequestHeaders = function(headers) {
+      var result = new http_headers_1.default;
+      result.set("Authorization", "Bearer " + this._airtable._apiKey);
+      result.set("User-Agent", userAgent);
+      result.set("Content-Type", "application/json");
+      for (var _i = 0, _a = keys_1.default(headers);_i < _a.length; _i++) {
+        var headerKey = _a[_i];
+        result.set(headerKey, headers[headerKey]);
+      }
+      return result.toJSON();
+    };
+    Base2.prototype._checkStatusForError = function(statusCode, body) {
+      var _a = (body !== null && body !== undefined ? body : { error: {} }).error, error = _a === undefined ? {} : _a;
+      var { type, message } = error;
+      if (statusCode === 401) {
+        return new airtable_error_1.default("AUTHENTICATION_REQUIRED", "You should provide valid api key to perform this operation", statusCode);
+      } else if (statusCode === 403) {
+        return new airtable_error_1.default("NOT_AUTHORIZED", "You are not authorized to perform this operation", statusCode);
+      } else if (statusCode === 404) {
+        return new airtable_error_1.default("NOT_FOUND", message !== null && message !== undefined ? message : "Could not find what you are looking for", statusCode);
+      } else if (statusCode === 413) {
+        return new airtable_error_1.default("REQUEST_TOO_LARGE", "Request body is too large", statusCode);
+      } else if (statusCode === 422) {
+        return new airtable_error_1.default(type !== null && type !== undefined ? type : "UNPROCESSABLE_ENTITY", message !== null && message !== undefined ? message : "The operation cannot be processed", statusCode);
+      } else if (statusCode === 429) {
+        return new airtable_error_1.default("TOO_MANY_REQUESTS", "You have made too many requests in a short period of time. Please retry your request later", statusCode);
+      } else if (statusCode === 500) {
+        return new airtable_error_1.default("SERVER_ERROR", "Try again. If the problem persists, contact support.", statusCode);
+      } else if (statusCode === 503) {
+        return new airtable_error_1.default("SERVICE_UNAVAILABLE", "The service is temporarily unavailable. Please retry shortly.", statusCode);
+      } else if (statusCode >= 400) {
+        return new airtable_error_1.default(type !== null && type !== undefined ? type : "UNEXPECTED_ERROR", message !== null && message !== undefined ? message : "An unexpected error occurred", statusCode);
+      } else {
+        return null;
+      }
+    };
+    Base2.prototype.doCall = function(tableName) {
+      return this.table(tableName);
+    };
+    Base2.prototype.getId = function() {
+      return this._id;
+    };
+    Base2.createFunctor = function(airtable, baseId) {
+      var base = new Base2(airtable, baseId);
+      var baseFn = function(tableName) {
+        return base.doCall(tableName);
+      };
+      baseFn._base = base;
+      baseFn.table = base.table.bind(base);
+      baseFn.makeRequest = base.makeRequest.bind(base);
+      baseFn.runAction = base.runAction.bind(base);
+      baseFn.getId = base.getId.bind(base);
+      return baseFn;
+    };
+    return Base2;
+  }();
+  function _canRequestMethodIncludeBody(method) {
+    return method !== "GET" && method !== "DELETE";
+  }
+  function _getErrorForNonObjectBody(statusCode, body) {
+    if (isPlainObject_1.default(body)) {
+      return null;
+    } else {
+      return new airtable_error_1.default("UNEXPECTED_ERROR", "The response from Airtable was invalid JSON. Please try again soon.", statusCode);
+    }
+  }
+  module.exports = Base;
+});
+
+// node_modules/airtable/lib/airtable.js
+var require_airtable = __commonJS((exports, module) => {
+  var __importDefault = exports && exports.__importDefault || function(mod) {
+    return mod && mod.__esModule ? mod : { default: mod };
+  };
+  var base_1 = __importDefault(require_base());
+  var record_1 = __importDefault(require_record());
+  var table_1 = __importDefault(require_table());
+  var airtable_error_1 = __importDefault(require_airtable_error());
+  var Airtable = function() {
+    function Airtable2(opts) {
+      if (opts === undefined) {
+        opts = {};
+      }
+      var defaultConfig = Airtable2.default_config();
+      var apiVersion = opts.apiVersion || Airtable2.apiVersion || defaultConfig.apiVersion;
+      Object.defineProperties(this, {
+        _apiKey: {
+          value: opts.apiKey || Airtable2.apiKey || defaultConfig.apiKey
+        },
+        _apiVersion: {
+          value: apiVersion
+        },
+        _apiVersionMajor: {
+          value: apiVersion.split(".")[0]
+        },
+        _customHeaders: {
+          value: opts.customHeaders || {}
+        },
+        _endpointUrl: {
+          value: opts.endpointUrl || Airtable2.endpointUrl || defaultConfig.endpointUrl
+        },
+        _noRetryIfRateLimited: {
+          value: opts.noRetryIfRateLimited || Airtable2.noRetryIfRateLimited || defaultConfig.noRetryIfRateLimited
+        },
+        _requestTimeout: {
+          value: opts.requestTimeout || Airtable2.requestTimeout || defaultConfig.requestTimeout
+        }
+      });
+      if (!this._apiKey) {
+        throw new Error("An API key is required to connect to Airtable");
+      }
+    }
+    Airtable2.prototype.base = function(baseId) {
+      return base_1.default.createFunctor(this, baseId);
+    };
+    Airtable2.default_config = function() {
+      return {
+        endpointUrl: process.env.AIRTABLE_ENDPOINT_URL || "https://api.airtable.com",
+        apiVersion: "0.1.0",
+        apiKey: process.env.AIRTABLE_API_KEY,
+        noRetryIfRateLimited: false,
+        requestTimeout: 300 * 1000
+      };
+    };
+    Airtable2.configure = function(_a) {
+      var { apiKey, endpointUrl, apiVersion, noRetryIfRateLimited, requestTimeout } = _a;
+      Airtable2.apiKey = apiKey;
+      Airtable2.endpointUrl = endpointUrl;
+      Airtable2.apiVersion = apiVersion;
+      Airtable2.noRetryIfRateLimited = noRetryIfRateLimited;
+      Airtable2.requestTimeout = requestTimeout;
+    };
+    Airtable2.base = function(baseId) {
+      return new Airtable2().base(baseId);
+    };
+    Airtable2.Base = base_1.default;
+    Airtable2.Record = record_1.default;
+    Airtable2.Table = table_1.default;
+    Airtable2.Error = airtable_error_1.default;
+    return Airtable2;
+  }();
+  module.exports = Airtable;
 });
 
 // node_modules/@sinclair/typebox/build/esm/type/guard/value.mjs
@@ -13275,8 +15938,8 @@ function FromConstructor6(schema, references) {
       return class {
         constructor() {
           for (const [key, val] of Object.entries(value)) {
-            const self = this;
-            self[key] = val;
+            const self2 = this;
+            self2[key] = val;
           }
         }
       };
@@ -23097,7 +25760,12 @@ var config = {
     redirectUri: isDev ? "http://localhost:3000/auth/callback" : process.env.HCAUTH_REDIRECT_URI
   },
   slackBotToken: process.env.SLACK_BOT_TOKEN,
-  hccdnKey: process.env.HCCDN_KEY
+  hccdnKey: process.env.HCCDN_KEY,
+  hackatimeAdminKey: process.env.HACKATIME_ADMIN,
+  airtableToken: process.env.AIRTABLE_TOKEN,
+  airtableBaseId: process.env.AIRTABLE_BASE_ID,
+  airtableProjectsTableId: process.env.AIRTABLE_PROJECTS_TABLE_ID,
+  airtableUsersTableId: process.env.AIRTABLE_USERS_TABLE_ID
 };
 
 // node_modules/drizzle-orm/entity.js
@@ -26085,6 +28753,11 @@ function mapRelationalRow(tablesConfig, tableConfig, row, buildQueryResultSelect
   return result;
 }
 
+// node_modules/drizzle-orm/sql/functions/aggregate.js
+function min(expression) {
+  return sql`min(${expression})`.mapWith(is(expression, Column) ? expression : String);
+}
+
 // node_modules/pg/esm/index.mjs
 var import_lib = __toESM(require_lib2(), 1);
 var Client = import_lib.default.Client;
@@ -27125,12 +29798,12 @@ class QueryBuilder {
     return { as };
   };
   with(...queries) {
-    const self = this;
+    const self2 = this;
     function select(fields) {
       return new PgSelectBuilder({
         fields: fields ?? undefined,
         session: undefined,
-        dialect: self.getDialect(),
+        dialect: self2.getDialect(),
         withList: queries
       });
     }
@@ -27138,7 +29811,7 @@ class QueryBuilder {
       return new PgSelectBuilder({
         fields: fields ?? undefined,
         session: undefined,
-        dialect: self.getDialect(),
+        dialect: self2.getDialect(),
         distinct: true
       });
     }
@@ -27146,7 +29819,7 @@ class QueryBuilder {
       return new PgSelectBuilder({
         fields: fields ?? undefined,
         session: undefined,
-        dialect: self.getDialect(),
+        dialect: self2.getDialect(),
         distinct: { on }
       });
     }
@@ -27763,10 +30436,10 @@ class PgDatabase {
   static [entityKind] = "PgDatabase";
   query;
   $with = (alias, selection) => {
-    const self = this;
+    const self2 = this;
     const as = (qb) => {
       if (typeof qb === "function") {
-        qb = qb(new QueryBuilder(self.dialect));
+        qb = qb(new QueryBuilder(self2.dialect));
       }
       return new Proxy(new WithSubquery(qb.getSQL(), selection ?? ("getSelectedFields" in qb ? qb.getSelectedFields() ?? {} : {}), alias, true), new SelectionProxyHandler({ alias, sqlAliasedBehavior: "alias", sqlBehavior: "error" }));
     };
@@ -27777,20 +30450,20 @@ class PgDatabase {
   }
   $cache;
   with(...queries) {
-    const self = this;
+    const self2 = this;
     function select(fields) {
       return new PgSelectBuilder({
         fields: fields ?? undefined,
-        session: self.session,
-        dialect: self.dialect,
+        session: self2.session,
+        dialect: self2.dialect,
         withList: queries
       });
     }
     function selectDistinct(fields) {
       return new PgSelectBuilder({
         fields: fields ?? undefined,
-        session: self.session,
-        dialect: self.dialect,
+        session: self2.session,
+        dialect: self2.dialect,
         withList: queries,
         distinct: true
       });
@@ -27798,20 +30471,20 @@ class PgDatabase {
     function selectDistinctOn(on, fields) {
       return new PgSelectBuilder({
         fields: fields ?? undefined,
-        session: self.session,
-        dialect: self.dialect,
+        session: self2.session,
+        dialect: self2.dialect,
         withList: queries,
         distinct: { on }
       });
     }
     function update(table) {
-      return new PgUpdateBuilder(table, self.session, self.dialect, queries);
+      return new PgUpdateBuilder(table, self2.session, self2.dialect, queries);
     }
     function insert(table) {
-      return new PgInsertBuilder(table, self.session, self.dialect, queries);
+      return new PgInsertBuilder(table, self2.session, self2.dialect, queries);
     }
     function delete_(table) {
-      return new PgDeleteBase(table, self.session, self.dialect, queries);
+      return new PgDeleteBase(table, self2.session, self2.dialect, queries);
     }
     return { select, selectDistinct, selectDistinctOn, update, insert, delete: delete_ };
   }
@@ -28300,6 +30973,7 @@ var usersTable = pgTable("users", {
   username: varchar(),
   email: varchar().notNull(),
   avatar: varchar(),
+  phone: varchar(),
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   idToken: text("id_token"),
@@ -28307,6 +30981,7 @@ var usersTable = pgTable("users", {
   internalNotes: text("internal_notes"),
   verificationStatus: varchar("verification_status"),
   tutorialCompleted: boolean("tutorial_completed").notNull().default(false),
+  language: varchar().notNull().default("en"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
@@ -28336,7 +31011,14 @@ var projectsTable = pgTable("projects", {
   status: varchar().notNull().default("in_progress"),
   deleted: integer("deleted").default(0),
   scrapsAwarded: integer("scraps_awarded").notNull().default(0),
+  scrapsPaidAt: timestamp("scraps_paid_at"),
   views: integer().notNull().default(0),
+  updateDescription: text("update_description"),
+  aiDescription: text("ai_description"),
+  reviewerNotes: text("reviewer_notes"),
+  feedbackSource: text("feedback_source"),
+  feedbackGood: text("feedback_good"),
+  feedbackImprove: text("feedback_improve"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
@@ -28353,7 +31035,7 @@ var reviewsTable = pgTable("reviews", {
 });
 
 // src/schemas/activity.ts
-var activityTable = pgTable("activity", {
+var projectActivityTable = pgTable("project_activity", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   userId: integer("user_id").notNull().references(() => usersTable.id),
   projectId: integer("project_id").references(() => projectsTable.id),
@@ -28391,6 +31073,202 @@ async function getSlackProfile(slackId, token) {
 }
 function getAvatarUrl(profile) {
   return profile.image_192 || profile.image_512 || profile.image_72 || profile.image_48;
+}
+async function sendSlackDM(slackId, token, text2, blocks) {
+  try {
+    const openRes = await fetch("https://slack.com/api/conversations.open", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ users: slackId })
+    });
+    const openData = await openRes.json();
+    if (!openData.ok || !openData.channel) {
+      console.error("Failed to open Slack DM channel:", openData.error);
+      return false;
+    }
+    const channelId = openData.channel.id;
+    const payload = {
+      channel: channelId,
+      text: text2,
+      unfurl_links: false,
+      unfurl_media: false
+    };
+    if (blocks) {
+      payload.blocks = blocks;
+    }
+    const msgRes = await fetch("https://slack.com/api/chat.postMessage", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+    const msgData = await msgRes.json();
+    if (!msgData.ok) {
+      console.error("Failed to send Slack DM:", msgData.error);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Failed to send Slack DM:", error);
+    return false;
+  }
+}
+async function notifyProjectSubmitted({
+  userSlackId,
+  projectName,
+  projectId,
+  frontendUrl,
+  token
+}) {
+  const projectUrl = `${frontendUrl}/projects/${projectId}`;
+  const fallbackText = `:scraps: hey <@${userSlackId}>! your scraps project ${projectName} is currently waiting for a review. a reviewer will take a look at it soon! :blobhaj_party:`;
+  const blocks = [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `:scraps: hey <@${userSlackId}>! :blobhaj_party:
+
+your scraps project *<${projectUrl}|${projectName}>* is currently waiting for a review. a reviewer will take a look at it soon!`
+      }
+    },
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: { type: "plain_text", text: ":scraps: view your project", emoji: true },
+          url: projectUrl,
+          action_id: "view_project"
+        }
+      ]
+    }
+  ];
+  return sendSlackDM(userSlackId, token, fallbackText, blocks);
+}
+async function notifyProjectReview({
+  userSlackId,
+  projectName,
+  projectId,
+  action,
+  feedbackForAuthor,
+  reviewerSlackId,
+  adminSlackIds,
+  scrapsAwarded,
+  frontendUrl,
+  token
+}) {
+  const projectUrl = `${frontendUrl}/projects/${projectId}`;
+  let fallbackText = "";
+  let blocks = [];
+  if (action === "approved") {
+    fallbackText = `:scraps: hey <@${userSlackId}>! your scraps project ${projectName} has passed the review! you've been awarded ${scrapsAwarded ?? 0} scraps for your work. scraps are paid out every few days, so they may take a bit to appear in your balance. :blobhaj_party:`;
+    blocks = [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `:scraps: hey <@${userSlackId}>! :blobhaj_party:
+
+your scraps project *<${projectUrl}|${projectName}>* has passed the review! you've been awarded scraps for your work.
+
+*total scraps awarded:* ${scrapsAwarded ?? 0} scraps
+
+_scraps are paid out every few days, so they may take a bit to appear in your balance._
+
+keep building and ship again for more scraps! :blobhaj_party:`
+        }
+      },
+      {
+        type: "context",
+        elements: [
+          {
+            type: "mrkdwn",
+            text: `:scraps: *reviewer feedback:* ${feedbackForAuthor}`
+          }
+        ]
+      },
+      {
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: { type: "plain_text", text: ":scraps: view your project", emoji: true },
+            url: projectUrl,
+            action_id: "view_project"
+          }
+        ]
+      }
+    ];
+  } else if (action === "denied") {
+    const reviewerMention = reviewerSlackId ? `<@${reviewerSlackId}>` : "a reviewer";
+    fallbackText = `:scraps: hey <@${userSlackId}>! your scraps project ${projectName} needs some changes before it can be approved for scraps. here's some feedback from your reviewer, ${reviewerMention}: ${feedbackForAuthor}`;
+    blocks = [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `:scraps: hey <@${userSlackId}>! :scraps:
+
+your scraps project *<${projectUrl}|${projectName}>* needs some changes before it can be approved for scraps. here's some feedback from your reviewer, ${reviewerMention}:
+
+> ${feedbackForAuthor}
+
+don't worry \u2014 make the requested changes and resubmit! :scraps:`
+        }
+      },
+      {
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: { type: "plain_text", text: ":scraps: view your project", emoji: true },
+            url: projectUrl,
+            action_id: "view_project"
+          }
+        ]
+      }
+    ];
+  } else if (action === "permanently_rejected") {
+    const reviewerMention = reviewerSlackId ? `<@${reviewerSlackId}>` : "a reviewer";
+    const adminMentions = adminSlackIds.length > 0 ? adminSlackIds.map((id) => `<@${id}>`).join(", ") : "an admin";
+    fallbackText = `:scraps: hey <@${userSlackId}>! unfortunately, your scraps project ${projectName} has been permanently rejected by ${reviewerMention}. reason: ${feedbackForAuthor}. if you have any questions, please reach out to an admin: ${adminMentions}`;
+    blocks = [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `:scraps: hey <@${userSlackId}>! :scraps:
+
+unfortunately, your scraps project *<${projectUrl}|${projectName}>* has been *permanently rejected* by ${reviewerMention}.
+
+*reason:*
+> ${feedbackForAuthor}
+
+if you have any questions about this decision, please reach out to one of our admins: ${adminMentions} :scraps:`
+        }
+      },
+      {
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: { type: "plain_text", text: ":scraps: view your project", emoji: true },
+            url: projectUrl,
+            action_id: "view_project"
+          }
+        ]
+      }
+    ];
+  }
+  if (!fallbackText)
+    return false;
+  return sendSlackDM(userSlackId, token, fallbackText, blocks);
 }
 
 // src/lib/auth.ts
@@ -28468,6 +31346,7 @@ async function createOrUpdateUser(identity, tokens) {
     username,
     email: identity.primary_email || "",
     avatar: avatarUrl,
+    phone: identity.phone_number || null,
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
     idToken: tokens.id_token,
@@ -28479,6 +31358,7 @@ async function createOrUpdateUser(identity, tokens) {
       email: sql`COALESCE(${identity.primary_email || null}, ${usersTable.email})`,
       slackId: identity.slack_id,
       avatar: sql`COALESCE(${avatarUrl}, ${usersTable.avatar})`,
+      phone: sql`COALESCE(${identity.phone_number || null}, ${usersTable.phone})`,
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,
       idToken: tokens.id_token,
@@ -28528,29 +31408,78 @@ async function checkUserEligibility(accessToken) {
   };
 }
 
-// src/routes/projects.ts
-var HACKATIME_API = "https://hackatime.hackclub.com/api/v1";
+// src/schemas/user-emails.ts
+var userActivityTable = pgTable("user_activity", {
+  id: serial().primaryKey(),
+  userId: integer("user_id").references(() => usersTable.id),
+  email: varchar(),
+  action: varchar().notNull(),
+  metadata: text(),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
+// src/lib/hackatime-sync.ts
+var HACKATIME_API = "https://hackatime.hackclub.com/api/admin/v1";
 var SCRAPS_START_DATE = "2026-02-03";
-async function fetchHackatimeHours(slackId, projectName) {
+var SYNC_INTERVAL_MS = 2 * 60 * 1000;
+var hackatimeUserCache = new Map;
+async function getHackatimeUser(email) {
+  const cached = hackatimeUserCache.get(email);
+  if (cached !== undefined)
+    return cached;
+  try {
+    const emailResponse = await fetch(`${HACKATIME_API}/user/get_user_by_email`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.hackatimeAdminKey}`,
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({ email })
+    });
+    if (!emailResponse.ok)
+      return null;
+    const { user_id } = await emailResponse.json();
+    const infoResponse = await fetch(`${HACKATIME_API}/user/info?user_id=${user_id}`, {
+      headers: {
+        Authorization: `Bearer ${config.hackatimeAdminKey}`,
+        Accept: "application/json"
+      }
+    });
+    if (!infoResponse.ok)
+      return null;
+    const info = await infoResponse.json();
+    const user = {
+      user_id: info.user.user_id,
+      username: info.user.username,
+      slack_uid: info.user.slack_uid || undefined
+    };
+    hackatimeUserCache.set(email, user);
+    return user;
+  } catch {
+    return null;
+  }
+}
+async function fetchUserProjects(username) {
   try {
     const params = new URLSearchParams({
       features: "projects",
-      start_date: SCRAPS_START_DATE,
-      filter_by_project: projectName
+      start_date: SCRAPS_START_DATE
     });
-    const url = `${HACKATIME_API}/users/${encodeURIComponent(slackId)}/stats?${params}`;
-    const response = await fetch(url, {
-      headers: { Accept: "application/json" }
+    const response = await fetch(`https://hackatime.hackclub.com/api/v1/users/${encodeURIComponent(username)}/stats?${params}`, {
+      headers: {
+        Accept: "application/json"
+      }
     });
     if (!response.ok)
-      return 0;
+      return null;
     const data = await response.json();
-    const project = data.data?.projects?.find((p) => p.name === projectName);
-    if (!project)
-      return 0;
-    return Math.round(project.total_seconds / 3600 * 10) / 10;
+    return (data.data?.projects || []).map((p) => ({
+      name: p.name,
+      total_duration: p.total_seconds
+    }));
   } catch {
-    return 0;
+    return null;
   }
 }
 function parseHackatimeProject(hackatimeProject) {
@@ -28558,16 +31487,201 @@ function parseHackatimeProject(hackatimeProject) {
     return null;
   const slashIndex = hackatimeProject.indexOf("/");
   if (slashIndex === -1)
+    return hackatimeProject;
+  return hackatimeProject.substring(slashIndex + 1);
+}
+function parseHackatimeProjectSlackId(hackatimeProject) {
+  if (!hackatimeProject)
     return null;
+  const slashIndex = hackatimeProject.indexOf("/");
+  if (slashIndex === -1)
+    return null;
+  return hackatimeProject.substring(0, slashIndex);
+}
+function parseHackatimeProjects(hackatimeProject) {
+  if (!hackatimeProject)
+    return [];
+  return hackatimeProject.split(",").map((p) => p.trim()).filter((p) => p.length > 0).map((p) => ({
+    slackId: parseHackatimeProjectSlackId(p),
+    projectName: parseHackatimeProject(p)
+  })).filter((p) => p.projectName !== null);
+}
+async function syncSingleProject(projectId) {
+  try {
+    const [project] = await db.select({
+      id: projectsTable.id,
+      hackatimeProject: projectsTable.hackatimeProject,
+      hours: projectsTable.hours,
+      userEmail: usersTable.email
+    }).from(projectsTable).innerJoin(usersTable, eq(projectsTable.userId, usersTable.id)).where(eq(projectsTable.id, projectId)).limit(1);
+    if (!project)
+      return { hours: 0, updated: false, error: "Project not found" };
+    if (!project.hackatimeProject)
+      return { hours: project.hours ?? 0, updated: false, error: "No Hackatime project linked" };
+    const entries = parseHackatimeProjects(project.hackatimeProject);
+    if (entries.length === 0)
+      return { hours: project.hours ?? 0, updated: false, error: "Invalid Hackatime project format" };
+    const hackatimeUser = await getHackatimeUser(project.userEmail);
+    if (hackatimeUser === null)
+      return { hours: project.hours ?? 0, updated: false, error: "Could not find Hackatime user" };
+    const identifier = hackatimeUser.slack_uid || hackatimeUser.username;
+    let totalSeconds = 0;
+    const entriesBySlackId = new Map;
+    for (const entry of entries) {
+      const key = entry.slackId || identifier;
+      const existing = entriesBySlackId.get(key) || [];
+      existing.push(entry.projectName);
+      entriesBySlackId.set(key, existing);
+    }
+    for (const [entryIdentifier, projectNames] of entriesBySlackId) {
+      const projectsData = await fetchUserProjects(entryIdentifier);
+      if (projectsData === null)
+        continue;
+      for (const name of projectNames) {
+        const hackatimeProject = projectsData.find((p) => p.name === name);
+        if (hackatimeProject) {
+          totalSeconds += hackatimeProject.total_duration;
+        }
+      }
+    }
+    const hours = Math.round(totalSeconds / 3600 * 10) / 10;
+    if (hours !== project.hours) {
+      await db.update(projectsTable).set({ hours, updatedAt: new Date }).where(eq(projectsTable.id, projectId));
+      console.log(`[HACKATIME-SYNC] Manual sync project ${projectId}: ${project.hours}h -> ${hours}h`);
+      return { hours, updated: true };
+    }
+    return { hours, updated: false };
+  } catch (error) {
+    console.error(`[HACKATIME-SYNC] Error syncing project ${projectId}:`, error);
+    return { hours: 0, updated: false, error: "Sync failed" };
+  }
+}
+
+// src/lib/effective-hours.ts
+async function getProjectShippedDates(projectIds) {
+  if (projectIds.length === 0)
+    return new Map;
+  const rows = await db.select({
+    projectId: projectActivityTable.projectId,
+    firstShipped: min(projectActivityTable.createdAt)
+  }).from(projectActivityTable).where(and(inArray(projectActivityTable.projectId, projectIds), eq(projectActivityTable.action, "project_shipped"))).groupBy(projectActivityTable.projectId);
+  const map3 = new Map;
+  for (const row of rows) {
+    if (row.projectId != null && row.firstShipped != null) {
+      map3.set(row.projectId, row.firstShipped);
+    }
+  }
+  return map3;
+}
+async function getProjectShippedDate(projectId) {
+  const map3 = await getProjectShippedDates([projectId]);
+  return map3.get(projectId) ?? null;
+}
+async function hasProjectBeenShipped(projectId) {
+  const date3 = await getProjectShippedDate(projectId);
+  return date3 !== null;
+}
+function computeEffectiveHours(project, allShipped) {
+  const hours = project.hoursOverride ?? project.hours ?? 0;
+  if (!project.hackatimeProject || !project.shippedDate)
+    return hours;
+  const hackatimeNames = project.hackatimeProject.split(",").map((n) => n.trim()).filter((n) => n.length > 0);
+  if (hackatimeNames.length === 0)
+    return hours;
+  let deducted = 0;
+  for (const op of allShipped) {
+    if (op.id === project.id || op.userId !== project.userId)
+      continue;
+    if (!op.hackatimeProject || !op.shippedDate)
+      continue;
+    if (op.shippedDate >= project.shippedDate)
+      continue;
+    const opNames = op.hackatimeProject.split(",").map((n) => n.trim()).filter((n) => n.length > 0);
+    if (opNames.some((name) => hackatimeNames.includes(name))) {
+      deducted += op.hoursOverride ?? op.hours ?? 0;
+    }
+  }
+  return Math.max(0, hours - deducted);
+}
+async function computeEffectiveHoursForProject(project) {
+  const projectHours = project.hoursOverride ?? project.hours ?? 0;
+  if (!project.hackatimeProject)
+    return { overlappingProjects: [], deductedHours: 0, effectiveHours: projectHours };
+  const hackatimeNames = project.hackatimeProject.split(",").map((p) => p.trim()).filter((p) => p.length > 0);
+  if (hackatimeNames.length === 0)
+    return { overlappingProjects: [], deductedHours: 0, effectiveHours: projectHours };
+  const projectShippedDate = await getProjectShippedDate(project.id);
+  const deductBeforeDate = projectShippedDate || new Date;
+  const shipped = await db.select({
+    id: projectsTable.id,
+    name: projectsTable.name,
+    hours: projectsTable.hours,
+    hoursOverride: projectsTable.hoursOverride,
+    hackatimeProject: projectsTable.hackatimeProject
+  }).from(projectsTable).where(and(eq(projectsTable.userId, project.userId), eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), sql`${projectsTable.id} != ${project.id}`));
+  if (shipped.length === 0)
+    return { overlappingProjects: [], deductedHours: 0, effectiveHours: projectHours };
+  const shippedDates = await getProjectShippedDates(shipped.map((s) => s.id));
+  const overlapping = shipped.filter((op) => {
+    if (!op.hackatimeProject)
+      return false;
+    const opShippedDate = shippedDates.get(op.id);
+    if (!opShippedDate || opShippedDate >= deductBeforeDate)
+      return false;
+    const opNames = op.hackatimeProject.split(",").map((p) => p.trim()).filter((p) => p.length > 0);
+    return opNames.some((name) => hackatimeNames.includes(name));
+  }).map((op) => ({
+    id: op.id,
+    name: op.name,
+    hours: op.hoursOverride ?? op.hours ?? 0
+  }));
+  const deductedHours = overlapping.reduce((sum2, op) => sum2 + op.hours, 0);
   return {
-    slackId: hackatimeProject.substring(0, slashIndex),
-    projectName: hackatimeProject.substring(slashIndex + 1)
+    overlappingProjects: overlapping,
+    deductedHours,
+    effectiveHours: Math.max(0, projectHours - deductedHours)
   };
+}
+
+// src/routes/projects.ts
+var ALLOWED_IMAGE_DOMAIN = "cdn.hackclub.com";
+function parseHackatimeProjects2(hackatimeProject) {
+  if (!hackatimeProject)
+    return null;
+  return hackatimeProject.split(",").map((p) => p.trim()).filter((p) => p.length > 0).join(",") || null;
+}
+function validateImageUrl(imageUrl) {
+  if (!imageUrl)
+    return true;
+  try {
+    const url = new URL(imageUrl);
+    return url.hostname === ALLOWED_IMAGE_DOMAIN;
+  } catch {
+    return false;
+  }
+}
+function validatePlayableUrl(playableUrl) {
+  if (!playableUrl || !playableUrl.trim())
+    return { valid: true };
+  const trimmed = playableUrl.trim();
+  let url;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return { valid: false, error: "Playable URL is not a valid URL" };
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    return { valid: false, error: "Playable URL must use http or https" };
+  }
+  if (!url.hostname.includes(".")) {
+    return { valid: false, error: "Playable URL must be a valid public URL" };
+  }
+  return { valid: true };
 }
 var projects = new Elysia({ prefix: "/projects" });
 projects.get("/explore", async ({ query }) => {
   const page = parseInt(query.page) || 1;
-  const limit = Math.min(parseInt(query.limit) || 20, 50);
+  const limit = Math.min(parseInt(query.limit) || 18, 48);
   const offset = (page - 1) * limit;
   const search = query.search?.trim() || "";
   const tier = query.tier ? parseInt(query.tier) : null;
@@ -28575,7 +31689,7 @@ projects.get("/explore", async ({ query }) => {
   const sortBy = query.sortBy || "default";
   const conditions = [
     or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
-    or(eq(projectsTable.status, "shipped"), eq(projectsTable.status, "in_progress"))
+    or(eq(projectsTable.status, "shipped"), eq(projectsTable.status, "in_progress"), eq(projectsTable.status, "waiting_for_review"), eq(projectsTable.status, "pending_admin_approval"))
   ];
   if (search) {
     conditions.push(or(ilike(projectsTable.name, `%${search}%`), ilike(projectsTable.description, `%${search}%`)));
@@ -28585,6 +31699,8 @@ projects.get("/explore", async ({ query }) => {
   }
   if (status2 === "shipped" || status2 === "in_progress") {
     conditions[1] = eq(projectsTable.status, status2);
+  } else if (status2 === "waiting_for_review") {
+    conditions[1] = or(eq(projectsTable.status, "waiting_for_review"), eq(projectsTable.status, "pending_admin_approval"));
   }
   const whereClause = and(...conditions);
   let orderClause;
@@ -28602,6 +31718,7 @@ projects.get("/explore", async ({ query }) => {
       description: projectsTable.description,
       image: projectsTable.image,
       hours: projectsTable.hours,
+      hoursOverride: projectsTable.hoursOverride,
       tier: projectsTable.tier,
       status: projectsTable.status,
       views: projectsTable.views,
@@ -28621,9 +31738,9 @@ projects.get("/explore", async ({ query }) => {
       name: p.name,
       description: p.description.substring(0, 150) + (p.description.length > 150 ? "..." : ""),
       image: p.image,
-      hours: p.hours,
+      hours: p.hoursOverride ?? p.hours,
       tier: p.tier,
-      status: p.status,
+      status: p.status === "pending_admin_approval" ? "waiting_for_review" : p.status,
       views: p.views,
       username: users.find((u) => u.id === p.userId)?.username || null
     })),
@@ -28648,7 +31765,10 @@ projects.get("/", async ({ headers, query }) => {
   ]);
   const total = Number(countResult[0]?.count || 0);
   return {
-    data: projectsList,
+    data: projectsList.map((p) => ({
+      ...p,
+      status: p.status === "pending_admin_approval" ? "waiting_for_review" : p.status
+    })),
     pagination: {
       page,
       limit,
@@ -28665,7 +31785,7 @@ projects.get("/:id", async ({ params, headers }) => {
   if (!project[0])
     return { error: "Not found" };
   const isOwner = project[0].userId === user.id;
-  if (!isOwner && project[0].status !== "shipped" && project[0].status !== "in_progress") {
+  if (!isOwner && project[0].status !== "shipped" && project[0].status !== "in_progress" && project[0].status !== "waiting_for_review" && project[0].status !== "pending_admin_approval") {
     return { error: "Not found" };
   }
   if (!isOwner) {
@@ -28673,57 +31793,72 @@ projects.get("/:id", async ({ params, headers }) => {
   }
   const projectOwner = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
   let activity = [];
-  if (isOwner) {
-    const reviews = await db.select({
-      id: reviewsTable.id,
-      reviewerId: reviewsTable.reviewerId,
-      action: reviewsTable.action,
-      feedbackForAuthor: reviewsTable.feedbackForAuthor,
-      createdAt: reviewsTable.createdAt
-    }).from(reviewsTable).where(eq(reviewsTable.projectId, parseInt(params.id)));
-    const reviewerIds = reviews.map((r) => r.reviewerId);
-    let reviewers = [];
-    if (reviewerIds.length > 0) {
-      reviewers = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
-    }
-    for (const r of reviews) {
-      activity.push({
-        type: "review",
-        action: r.action,
-        feedbackForAuthor: r.feedbackForAuthor,
-        createdAt: r.createdAt,
-        reviewer: reviewers.find((rv) => rv.id === r.reviewerId) || null
-      });
-    }
-    const activityEntries = await db.select({
-      id: activityTable.id,
-      action: activityTable.action,
-      createdAt: activityTable.createdAt
-    }).from(activityTable).where(and(eq(activityTable.projectId, parseInt(params.id)), or(eq(activityTable.action, "project_submitted"), sql`${activityTable.action} LIKE 'earned % scraps'`)));
-    for (const entry of activityEntries) {
-      if (entry.action === "project_submitted") {
-        activity.push({
-          type: "submitted",
-          createdAt: entry.createdAt
-        });
-      } else if (entry.action.startsWith("earned ") && entry.action.endsWith(" scraps")) {
-        activity.push({
-          type: "scraps_earned",
-          action: entry.action,
-          createdAt: entry.createdAt
-        });
-      }
-    }
+  const reviews = await db.select({
+    id: reviewsTable.id,
+    reviewerId: reviewsTable.reviewerId,
+    action: reviewsTable.action,
+    feedbackForAuthor: reviewsTable.feedbackForAuthor,
+    createdAt: reviewsTable.createdAt
+  }).from(reviewsTable).where(eq(reviewsTable.projectId, parseInt(params.id)));
+  const reviewerIds = reviews.map((r) => r.reviewerId);
+  let reviewers = [];
+  if (reviewerIds.length > 0) {
+    reviewers = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
+  }
+  const isPendingAdmin = project[0].status === "pending_admin_approval";
+  for (const r of reviews) {
+    if (isPendingAdmin && r.action === "approved")
+      continue;
     activity.push({
-      type: "created",
-      createdAt: project[0].createdAt
-    });
-    activity.sort((a, b) => {
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return dateB - dateA;
+      type: "review",
+      action: r.action,
+      feedbackForAuthor: r.feedbackForAuthor,
+      createdAt: r.createdAt,
+      reviewer: reviewers.find((rv) => rv.id === r.reviewerId) || null
     });
   }
+  const activityEntries = await db.select({
+    id: projectActivityTable.id,
+    action: projectActivityTable.action,
+    createdAt: projectActivityTable.createdAt
+  }).from(projectActivityTable).where(and(eq(projectActivityTable.projectId, parseInt(params.id)), or(eq(projectActivityTable.action, "project_submitted"), eq(projectActivityTable.action, "project_unsubmitted"), sql`${projectActivityTable.action} LIKE 'earned % scraps'`)));
+  for (const entry of activityEntries) {
+    if (entry.action === "project_submitted") {
+      activity.push({
+        type: "submitted",
+        createdAt: entry.createdAt
+      });
+    } else if (entry.action === "project_unsubmitted") {
+      activity.push({
+        type: "unsubmitted",
+        createdAt: entry.createdAt
+      });
+    } else if (entry.action.startsWith("earned ") && entry.action.endsWith(" scraps")) {
+      activity.push({
+        type: "scraps_earned",
+        action: entry.action,
+        createdAt: entry.createdAt
+      });
+    }
+  }
+  activity.push({
+    type: "created",
+    createdAt: project[0].createdAt
+  });
+  activity.sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
+  });
+  let hasSubmittedFeedback = false;
+  if (isOwner) {
+    const feedbackCheck = await db.select({ id: projectsTable.id }).from(projectsTable).where(and(eq(projectsTable.userId, user.id), or(isNotNull(projectsTable.feedbackSource), isNotNull(projectsTable.feedbackGood), isNotNull(projectsTable.feedbackImprove)))).limit(1);
+    hasSubmittedFeedback = feedbackCheck.length > 0;
+  }
+  const projectHours = project[0].hoursOverride ?? project[0].hours ?? 0;
+  const effectiveHoursResult = await computeEffectiveHoursForProject(project[0]);
+  const effectiveHours = effectiveHoursResult.effectiveHours;
+  const deductedHours = effectiveHoursResult.deductedHours;
   return {
     project: {
       id: project[0].id,
@@ -28733,19 +31868,26 @@ projects.get("/:id", async ({ params, headers }) => {
       githubUrl: project[0].githubUrl,
       playableUrl: project[0].playableUrl,
       hackatimeProject: isOwner ? project[0].hackatimeProject : undefined,
-      hours: project[0].hoursOverride ?? project[0].hours,
+      hours: projectHours,
       hoursOverride: isOwner ? project[0].hoursOverride : undefined,
       tier: project[0].tier,
       tierOverride: isOwner ? project[0].tierOverride : undefined,
-      status: project[0].status,
+      status: project[0].status === "pending_admin_approval" ? "waiting_for_review" : project[0].status,
       scrapsAwarded: project[0].scrapsAwarded,
       views: project[0].views,
+      updateDescription: project[0].updateDescription,
+      aiDescription: isOwner ? project[0].aiDescription : undefined,
+      reviewerNotes: isOwner ? project[0].reviewerNotes : undefined,
+      usedAi: !!project[0].aiDescription,
+      effectiveHours,
+      deductedHours,
       createdAt: project[0].createdAt,
       updatedAt: project[0].updatedAt
     },
     owner: projectOwner[0] || null,
     isOwner,
-    activity: isOwner ? activity : undefined
+    hasSubmittedFeedback: isOwner ? hasSubmittedFeedback : undefined,
+    activity
   };
 });
 projects.post("/", async ({ body, headers }) => {
@@ -28753,11 +31895,10 @@ projects.post("/", async ({ body, headers }) => {
   if (!user)
     return { error: "Unauthorized" };
   const data = body;
-  let hours = 0;
-  const parsed = parseHackatimeProject(data.hackatimeProject || null);
-  if (parsed) {
-    hours = await fetchHackatimeHours(parsed.slackId, parsed.projectName);
+  if (!validateImageUrl(data.image)) {
+    return { error: "Image must be from cdn.hackclub.com" };
   }
+  const projectName = parseHackatimeProjects2(data.hackatimeProject || null);
   const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : 1;
   const newProject = await db.insert(projectsTable).values({
     userId: user.id,
@@ -28765,11 +31906,17 @@ projects.post("/", async ({ body, headers }) => {
     description: data.description,
     image: data.image || null,
     githubUrl: data.githubUrl || null,
-    hackatimeProject: data.hackatimeProject || null,
-    hours,
-    tier
+    hackatimeProject: projectName || null,
+    hours: 0,
+    tier,
+    updateDescription: data.updateDescription || null,
+    aiDescription: data.aiDescription || null
   }).returning();
-  await db.insert(activityTable).values({
+  if (projectName) {
+    const syncResult = await syncSingleProject(newProject[0].id);
+    newProject[0].hours = syncResult.hours;
+  }
+  await db.insert(projectActivityTable).values({
     userId: user.id,
     projectId: newProject[0].id,
     action: "project_created"
@@ -28783,15 +31930,18 @@ projects.put("/:id", async ({ params, body, headers }) => {
   const existing = await db.select().from(projectsTable).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).limit(1);
   if (!existing[0])
     return { error: "Not found" };
-  if (existing[0].status === "waiting_for_review") {
+  if (existing[0].status === "waiting_for_review" || existing[0].status === "pending_admin_approval") {
     return { error: "Cannot edit project while waiting for review" };
   }
   const data = body;
-  let hours = 0;
-  const parsed = parseHackatimeProject(data.hackatimeProject || null);
-  if (parsed) {
-    hours = await fetchHackatimeHours(parsed.slackId, parsed.projectName);
+  if (!validateImageUrl(data.image)) {
+    return { error: "Image must be from cdn.hackclub.com" };
   }
+  const playableCheck = validatePlayableUrl(data.playableUrl);
+  if (!playableCheck.valid) {
+    return { error: playableCheck.error };
+  }
+  const projectName = parseHackatimeProjects2(data.hackatimeProject || null);
   const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : undefined;
   const updated = await db.update(projectsTable).set({
     name: data.name,
@@ -28799,12 +31949,20 @@ projects.put("/:id", async ({ params, body, headers }) => {
     image: data.image,
     githubUrl: data.githubUrl,
     playableUrl: data.playableUrl,
-    hackatimeProject: data.hackatimeProject,
-    hours,
+    hackatimeProject: projectName,
     tier,
+    updateDescription: data.updateDescription !== undefined ? data.updateDescription || null : undefined,
+    aiDescription: data.aiDescription !== undefined ? data.aiDescription || null : undefined,
+    reviewerNotes: data.reviewerNotes !== undefined ? data.reviewerNotes || null : undefined,
     updatedAt: new Date
   }).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).returning();
-  return updated[0] || { error: "Not found" };
+  if (!updated[0])
+    return { error: "Not found" };
+  if (projectName) {
+    const syncResult = await syncSingleProject(updated[0].id);
+    updated[0].hours = syncResult.hours;
+  }
+  return updated[0];
 });
 projects.delete("/:id", async ({ params, headers }) => {
   const user = await getUserFromSession(headers);
@@ -28813,17 +31971,42 @@ projects.delete("/:id", async ({ params, headers }) => {
   const updated = await db.update(projectsTable).set({ deleted: 1, updatedAt: new Date }).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).returning();
   if (!updated[0])
     return { error: "Not found" };
-  await db.insert(activityTable).values({
+  await db.insert(projectActivityTable).values({
     userId: user.id,
     projectId: updated[0].id,
     action: "project_deleted"
   });
   return { success: true };
 });
-projects.post("/:id/submit", async ({ params, headers }) => {
+projects.post("/:id/unsubmit", async ({ params, headers }) => {
   const user = await getUserFromSession(headers);
   if (!user)
     return { error: "Unauthorized" };
+  const project = await db.select().from(projectsTable).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).limit(1);
+  if (!project[0])
+    return { error: "Not found" };
+  if (project[0].status !== "waiting_for_review" && project[0].status !== "pending_admin_approval") {
+    return { error: "Project can only be unsubmitted while waiting for review" };
+  }
+  if (project[0].status === "pending_admin_approval") {
+    await db.delete(reviewsTable).where(and(eq(reviewsTable.projectId, parseInt(params.id)), eq(reviewsTable.action, "approved")));
+  }
+  const updated = await db.update(projectsTable).set({
+    status: "in_progress",
+    updatedAt: new Date
+  }).where(eq(projectsTable.id, parseInt(params.id))).returning();
+  await db.insert(projectActivityTable).values({
+    userId: user.id,
+    projectId: updated[0].id,
+    action: "project_unsubmitted"
+  });
+  return updated[0];
+});
+projects.post("/:id/submit", async ({ params, headers, body }) => {
+  const user = await getUserFromSession(headers);
+  if (!user)
+    return { error: "Unauthorized" };
+  const data = body;
   if (user.accessToken) {
     const meResponse = await fetchUserIdentity(user.accessToken);
     if (meResponse) {
@@ -28837,20 +32020,37 @@ projects.post("/:id/submit", async ({ params, headers }) => {
   const project = await db.select().from(projectsTable).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).limit(1);
   if (!project[0])
     return { error: "Not found" };
-  if (project[0].status !== "in_progress") {
+  if (project[0].status !== "in_progress" && project[0].status !== "shipped") {
     return { error: "Project cannot be submitted in current status" };
   }
-  let hours = project[0].hours;
-  const parsed = parseHackatimeProject(project[0].hackatimeProject);
-  if (parsed) {
-    hours = await fetchHackatimeHours(parsed.slackId, parsed.projectName);
+  if (project[0].hackatimeProject) {
+    await syncSingleProject(parseInt(params.id));
   }
-  const updated = await db.update(projectsTable).set({ status: "waiting_for_review", hours, updatedAt: new Date }).where(eq(projectsTable.id, parseInt(params.id))).returning();
-  await db.insert(activityTable).values({
+  const updated = await db.update(projectsTable).set({
+    status: "waiting_for_review",
+    feedbackSource: data.feedbackSource || null,
+    feedbackGood: data.feedbackGood || null,
+    feedbackImprove: data.feedbackImprove || null,
+    updatedAt: new Date
+  }).where(eq(projectsTable.id, parseInt(params.id))).returning();
+  await db.insert(projectActivityTable).values({
     userId: user.id,
     projectId: updated[0].id,
     action: "project_submitted"
   });
+  if (config.slackBotToken && user.slackId) {
+    try {
+      await notifyProjectSubmitted({
+        userSlackId: user.slackId,
+        projectName: updated[0].name,
+        projectId: updated[0].id,
+        frontendUrl: config.frontendUrl,
+        token: config.slackBotToken
+      });
+    } catch (slackErr) {
+      console.error("Failed to send Slack submission notification:", slackErr);
+    }
+  }
   return updated[0];
 });
 projects.get("/:id/reviews", async ({ params, headers }) => {
@@ -28872,7 +32072,8 @@ projects.get("/:id/reviews", async ({ params, headers }) => {
   if (reviewerIds.length > 0) {
     reviewers = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
   }
-  return reviews.map((r) => ({
+  const filteredReviews = project[0].status === "pending_admin_approval" ? reviews.filter((r) => r.action !== "approved") : reviews;
+  return filteredReviews.map((r) => ({
     id: r.id,
     action: r.action,
     feedbackForAuthor: r.feedbackForAuthor,
@@ -28940,6 +32141,7 @@ var shopOrdersTable = pgTable("shop_orders", {
   status: varchar().notNull().default("pending"),
   orderType: varchar("order_type").notNull().default("purchase"),
   shippingAddress: text("shipping_address"),
+  phone: varchar(),
   notes: text(),
   isFulfilled: boolean("is_fulfilled").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -28972,6 +32174,13 @@ var shopPenaltiesTable = pgTable("shop_penalties", {
 }, (table) => [
   unique().on(table.userId, table.shopItemId)
 ]);
+var refinerySpendingHistoryTable = pgTable("refinery_spending_history", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => usersTable.id),
+  shopItemId: integer("shop_item_id").notNull().references(() => shopItemsTable.id),
+  cost: integer().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
 
 // src/lib/scraps.ts
 var PHI = (1 + Math.sqrt(5)) / 2;
@@ -28995,7 +32204,10 @@ function calculateScrapsFromHours(hours, tier = 1) {
 async function getUserScrapsBalance(userId, txOrDb = db) {
   const earnedResult = await txOrDb.select({
     total: sql`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`
-  }).from(projectsTable).where(eq(projectsTable.userId, userId));
+  }).from(projectsTable).where(sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsPaidAt} IS NOT NULL`);
+  const pendingResult = await txOrDb.select({
+    total: sql`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`
+  }).from(projectsTable).where(sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsAwarded} > 0 AND ${projectsTable.scrapsPaidAt} IS NULL AND ${projectsTable.status} = 'shipped' AND (${projectsTable.deleted} = 0 OR ${projectsTable.deleted} IS NULL)`);
   const bonusResult = await txOrDb.select({
     total: sql`COALESCE(SUM(${userBonusesTable.amount}), 0)`
   }).from(userBonusesTable).where(eq(userBonusesTable.userId, userId));
@@ -29006,13 +32218,14 @@ async function getUserScrapsBalance(userId, txOrDb = db) {
     total: sql`COALESCE(SUM(${refineryOrdersTable.cost}), 0)`
   }).from(refineryOrdersTable).where(eq(refineryOrdersTable.userId, userId));
   const projectEarned = Number(earnedResult[0]?.total) || 0;
+  const pending = Number(pendingResult[0]?.total) || 0;
   const bonusEarned = Number(bonusResult[0]?.total) || 0;
   const earned = projectEarned + bonusEarned;
   const shopSpent = Number(spentResult[0]?.total) || 0;
   const upgradeSpent = Number(upgradeSpentResult[0]?.total) || 0;
   const spent = shopSpent + upgradeSpent;
   const balance = earned - spent;
-  return { earned, spent, balance };
+  return { earned, pending, spent, balance };
 }
 async function canAfford(userId, cost, txOrDb = db) {
   if (cost < 0)
@@ -29024,19 +32237,133 @@ async function canAfford(userId, cost, txOrDb = db) {
     return false;
   return balance >= cost;
 }
-// src/schemas/user-emails.ts
-var userEmailsTable = pgTable("user_emails", {
-  id: serial().primaryKey(),
-  email: varchar().notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull()
-});
+
+// src/lib/scraps-payout.ts
+var PAYOUT_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+var PAYOUT_INTERVAL_DAYS = 2;
+var SCRAPS_CHANNEL_ID = "C0AE5RQV26S";
+function getNextPayoutDate() {
+  const epoch = new Date("2026-02-03T00:00:00Z");
+  const now = new Date;
+  const msSinceEpoch = now.getTime() - epoch.getTime();
+  const daysSinceEpoch = msSinceEpoch / (24 * 60 * 60 * 1000);
+  const cyclesPassed = Math.floor(daysSinceEpoch / PAYOUT_INTERVAL_DAYS);
+  const nextCycle = cyclesPassed + 1;
+  return new Date(epoch.getTime() + nextCycle * PAYOUT_INTERVAL_DAYS * 24 * 60 * 60 * 1000);
+}
+async function sendChannelMessage(text2, blocks) {
+  const token = config.slackBotToken;
+  if (!token) {
+    console.error("[SCRAPS-PAYOUT] No Slack bot token configured");
+    return false;
+  }
+  try {
+    const payload = {
+      channel: SCRAPS_CHANNEL_ID,
+      text: text2,
+      unfurl_links: false,
+      unfurl_media: false
+    };
+    if (blocks) {
+      payload.blocks = blocks;
+    }
+    const res = await fetch("https://slack.com/api/chat.postMessage", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      console.error("[SCRAPS-PAYOUT] Failed to send channel message:", data.error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[SCRAPS-PAYOUT] Error sending channel message:", err);
+    return false;
+  }
+}
+async function payoutPendingScraps() {
+  const now = new Date;
+  const pendingProjects = await db.select({
+    id: projectsTable.id,
+    scrapsAwarded: projectsTable.scrapsAwarded,
+    userId: projectsTable.userId
+  }).from(projectsTable).where(and(eq(projectsTable.status, "shipped"), sql`${projectsTable.scrapsAwarded} > 0`, isNull(projectsTable.scrapsPaidAt), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))));
+  if (pendingProjects.length === 0) {
+    return { paidCount: 0, totalScraps: 0 };
+  }
+  const projectIds = pendingProjects.map((p) => p.id);
+  const totalScraps = pendingProjects.reduce((sum2, p) => sum2 + p.scrapsAwarded, 0);
+  const uniqueUserIds = [...new Set(pendingProjects.map((p) => p.userId))];
+  await db.update(projectsTable).set({ scrapsPaidAt: now }).where(sql`${projectsTable.id} IN ${projectIds}`);
+  const paidCount = pendingProjects.length;
+  console.log(`[SCRAPS-PAYOUT] Paid out ${totalScraps} scraps across ${paidCount} projects for ${uniqueUserIds.length} users`);
+  const payoutUsers = await db.select({ id: usersTable.id, slackId: usersTable.slackId, username: usersTable.username }).from(usersTable).where(inArray(usersTable.id, uniqueUserIds));
+  const userMentions = payoutUsers.map((u) => u.slackId ? `<@${u.slackId}>` : u.username).filter(Boolean).join(", ");
+  const nextPayout = getNextPayoutDate();
+  const nextPayoutStr = nextPayout.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC"
+  }) + " UTC";
+  const blocks = [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `:scraps: *scraps payout complete!* :scraps:
+
+${userMentions} \u2014 *${totalScraps.toLocaleString()} scraps* have been paid out across *${paidCount}* project${paidCount !== 1 ? "s" : ""} for *${uniqueUserIds.length}* user${uniqueUserIds.length !== 1 ? "s" : ""}!
+
+next payout: ${nextPayoutStr}`
+      }
+    }
+  ];
+  await sendChannelMessage(`scraps payout complete! ${totalScraps} scraps paid out across ${paidCount} projects for ${uniqueUserIds.length} users. next payout: ${nextPayoutStr}`, blocks);
+  return { paidCount, totalScraps };
+}
+async function notifyShopWin(userId, itemName, itemImage) {
+  const users = await db.select({ slackId: usersTable.slackId, username: usersTable.username }).from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  const user = users[0];
+  if (!user)
+    return;
+  const userMention = user.slackId ? `<@${user.slackId}>` : user.username ?? `User #${userId}`;
+  const blocks = [];
+  if (itemImage) {
+    blocks.push({
+      type: "image",
+      image_url: itemImage,
+      alt_text: itemName,
+      title: {
+        type: "plain_text",
+        text: itemName
+      }
+    });
+  }
+  blocks.push({
+    type: "section",
+    text: {
+      type: "mrkdwn",
+      text: `:blobhaj_party: *${userMention}* just won *${itemName}* from the scraps shop! :scraps:`
+    }
+  });
+  await sendChannelMessage(`${user.username ?? `User #${userId}`} just won ${itemName} from the scraps shop!`, blocks);
+}
+
 // src/routes/auth.ts
 var FRONTEND_URL = config.frontendUrl;
 var authRoutes = new Elysia({ prefix: "/auth" });
 authRoutes.post("/collect-email", async ({ body }) => {
   const { email } = body;
   console.log("[AUTH] Collecting email:", email);
-  await db.insert(userEmailsTable).values({ email });
+  await db.insert(userActivityTable).values({ email, action: "auth_started" });
   return { success: true };
 }, {
   body: t.Object({
@@ -29082,8 +32409,12 @@ authRoutes.get("/callback", async ({ query, redirect: redirect2, cookie }) => {
       return redirect2(`${FRONTEND_URL}/auth/error?reason=not-eligible`);
     }
     const user = await createOrUpdateUser(identity, tokens);
-    await db.delete(userEmailsTable).where(eq(userEmailsTable.email, identity.primary_email));
-    console.log("[AUTH] Deleted collected email:", identity.primary_email);
+    await db.insert(userActivityTable).values({
+      userId: user.id,
+      email: identity.primary_email,
+      action: "auth_completed"
+    });
+    console.log("[AUTH] Logged auth_completed for:", identity.primary_email);
     if (user.role === "banned") {
       console.log("[AUTH] Banned user attempted login:", { userId: user.id, username: user.username });
       return redirect2("https://fraud.land");
@@ -29117,15 +32448,18 @@ authRoutes.get("/me", async ({ headers }) => {
     return { user: null, banned: true };
   }
   if (user.tutorialCompleted) {
-    const existingBonus = await db.select({ id: userBonusesTable.id }).from(userBonusesTable).where(and(eq(userBonusesTable.userId, user.id), eq(userBonusesTable.reason, "tutorial_completion"))).limit(1);
-    if (existingBonus.length === 0) {
-      await db.insert(userBonusesTable).values({
-        userId: user.id,
-        reason: "tutorial_completion",
-        amount: 5
-      });
-      console.log("[AUTH] Auto-awarded tutorial bonus for user:", user.id);
-    }
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user.id} FOR UPDATE`);
+      const existingBonus = await tx.select({ id: userBonusesTable.id }).from(userBonusesTable).where(and(eq(userBonusesTable.userId, user.id), eq(userBonusesTable.reason, "tutorial_completion"))).limit(1);
+      if (existingBonus.length === 0) {
+        await tx.insert(userBonusesTable).values({
+          userId: user.id,
+          reason: "tutorial_completion",
+          amount: 5
+        });
+        console.log("[AUTH] Auto-awarded tutorial bonus for user:", user.id);
+      }
+    });
   }
   const scrapsBalance = await getUserScrapsBalance(user.id);
   return {
@@ -29136,6 +32470,8 @@ authRoutes.get("/me", async ({ headers }) => {
       avatar: user.avatar,
       slackId: user.slackId,
       scraps: scrapsBalance.balance,
+      scrapsPending: scrapsBalance.pending,
+      nextPayoutDate: getNextPayoutDate().toISOString(),
       role: user.role,
       tutorialCompleted: user.tutorialCompleted
     }
@@ -29177,10 +32513,28 @@ user.get("/me", async ({ headers }) => {
     scraps: scrapsBalance.balance,
     scrapsEarned: scrapsBalance.earned,
     scrapsSpent: scrapsBalance.spent,
+    scrapsPending: scrapsBalance.pending,
     yswsEligible,
     verificationStatus,
-    tutorialCompleted: userData.tutorialCompleted
+    tutorialCompleted: userData.tutorialCompleted,
+    language: userData.language
   };
+});
+user.put("/language", async ({ headers, body }) => {
+  const userData = await getUserFromSession(headers);
+  if (!userData)
+    return { error: "Unauthorized" };
+  const { language } = body;
+  if (!language || typeof language !== "string")
+    return { error: "Language is required" };
+  await db.update(usersTable).set({ language, updatedAt: new Date }).where(eq(usersTable.id, userData.id));
+  await db.insert(userActivityTable).values({
+    userId: userData.id,
+    email: userData.email,
+    action: "language_changed",
+    metadata: language
+  });
+  return { success: true };
 });
 user.post("/complete-tutorial", async ({ headers }) => {
   const userData = await getUserFromSession(headers);
@@ -29189,18 +32543,34 @@ user.post("/complete-tutorial", async ({ headers }) => {
   if (userData.tutorialCompleted) {
     return { success: true, alreadyCompleted: true };
   }
-  const existingBonus = await db.select({ id: userBonusesTable.id }).from(userBonusesTable).where(and(eq(userBonusesTable.userId, userData.id), eq(userBonusesTable.reason, "tutorial_completion"))).limit(1);
-  if (existingBonus.length > 0) {
-    await db.update(usersTable).set({ tutorialCompleted: true, updatedAt: new Date }).where(eq(usersTable.id, userData.id));
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT 1 FROM users WHERE id = ${userData.id} FOR UPDATE`);
+    const freshUser = await tx.select({ tutorialCompleted: usersTable.tutorialCompleted }).from(usersTable).where(eq(usersTable.id, userData.id)).limit(1);
+    if (freshUser[0]?.tutorialCompleted) {
+      return { alreadyCompleted: true };
+    }
+    const existingBonus = await tx.select({ id: userBonusesTable.id }).from(userBonusesTable).where(and(eq(userBonusesTable.userId, userData.id), eq(userBonusesTable.reason, "tutorial_completion"))).limit(1);
+    if (existingBonus.length > 0) {
+      await tx.update(usersTable).set({ tutorialCompleted: true, updatedAt: new Date }).where(eq(usersTable.id, userData.id));
+      return { alreadyCompleted: true };
+    }
+    await tx.update(usersTable).set({ tutorialCompleted: true, updatedAt: new Date }).where(eq(usersTable.id, userData.id));
+    await tx.insert(userBonusesTable).values({
+      userId: userData.id,
+      reason: "tutorial_completion",
+      amount: 5
+    });
+    return { bonusAwarded: 5 };
+  });
+  if (result.alreadyCompleted) {
     return { success: true, alreadyCompleted: true };
   }
-  await db.update(usersTable).set({ tutorialCompleted: true, updatedAt: new Date }).where(eq(usersTable.id, userData.id));
-  await db.insert(userBonusesTable).values({
+  await db.insert(userActivityTable).values({
     userId: userData.id,
-    reason: "tutorial_completion",
-    amount: 5
+    email: userData.email,
+    action: "tutorial_completed"
   });
-  return { success: true, bonusAwarded: 5 };
+  return { success: true, bonusAwarded: result.bonusAwarded };
 });
 user.get("/profile/:id", async ({ params, headers }) => {
   const currentUser = await getUserFromSession(headers);
@@ -29219,9 +32589,9 @@ user.get("/profile/:id", async ({ params, headers }) => {
   const visibleProjects = allProjects.filter((p) => !p.deleted && (p.status === "shipped" || p.status === "in_progress" || p.status === "waiting_for_review"));
   const shippedCount = allProjects.filter((p) => !p.deleted && p.status === "shipped").length;
   const inProgressCount = allProjects.filter((p) => !p.deleted && (p.status === "in_progress" || p.status === "waiting_for_review")).length;
-  const shippedHours = allProjects.filter((p) => !p.deleted && p.status === "shipped").reduce((sum, p) => sum + (p.hoursOverride ?? p.hours ?? 0), 0);
-  const inProgressHours = allProjects.filter((p) => !p.deleted && (p.status === "in_progress" || p.status === "waiting_for_review")).reduce((sum, p) => sum + (p.hoursOverride ?? p.hours ?? 0), 0);
-  const totalHours = shippedHours + inProgressHours;
+  const shippedHours = allProjects.filter((p) => !p.deleted && p.status === "shipped").reduce((sum2, p) => sum2 + (p.hoursOverride ?? p.hours ?? 0), 0);
+  const inProgressHours = allProjects.filter((p) => !p.deleted && (p.status === "in_progress" || p.status === "waiting_for_review")).reduce((sum2, p) => sum2 + (p.hoursOverride ?? p.hours ?? 0), 0);
+  const totalHours = Math.round((shippedHours + inProgressHours) * 10) / 10;
   const userHearts = await db.select({ shopItemId: shopHeartsTable.shopItemId }).from(shopHeartsTable).where(eq(shopHeartsTable.userId, parseInt(params.id)));
   const heartedItemIds = userHearts.map((h) => h.shopItemId);
   let heartedItems = [];
@@ -29248,6 +32618,7 @@ user.get("/profile/:id", async ({ params, headers }) => {
       avatar: targetUser[0].avatar,
       role: targetUser[0].role,
       scraps: scrapsBalance.balance,
+      scrapsPending: scrapsBalance.pending,
       createdAt: targetUser[0].createdAt
     },
     isAdmin: currentUser.role === "admin",
@@ -29455,6 +32826,8 @@ shop.post("/items/:id/purchase", async ({ params, body, headers }) => {
     return { error: "Not enough stock available" };
   }
   const totalPrice = item.price * quantity;
+  const userPhone = await db.select({ phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, user2.id)).limit(1);
+  const phone = userPhone[0]?.phone || null;
   try {
     const order = await db.transaction(async (tx) => {
       await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user2.id} FOR UPDATE`);
@@ -29478,6 +32851,7 @@ shop.post("/items/:id/purchase", async ({ params, body, headers }) => {
         pricePerItem: item.price,
         totalPrice,
         shippingAddress: shippingAddress || null,
+        phone,
         status: "pending"
       }).returning();
       return newOrder[0];
@@ -29541,14 +32915,11 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
   if (item.count < 1) {
     return { error: "Out of stock" };
   }
+  const userPhoneResult = await db.select({ phone: usersTable.phone }).from(usersTable).where(eq(usersTable.id, user2.id)).limit(1);
+  const userPhone = userPhoneResult[0]?.phone || null;
   try {
     const result = await db.transaction(async (tx) => {
       await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user2.id} FOR UPDATE`);
-      const affordable = await canAfford(user2.id, item.price, tx);
-      if (!affordable) {
-        const { balance } = await getUserScrapsBalance(user2.id, tx);
-        throw { type: "insufficient_funds", balance };
-      }
       const currentItem = await tx.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
       if (currentItem.length === 0 || currentItem[0].count < 1) {
         throw { type: "out_of_stock" };
@@ -29588,6 +32959,7 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
           pricePerItem: rollCost,
           totalPrice: rollCost,
           shippingAddress: null,
+          phone: userPhone,
           status: "pending",
           orderType: "luck_win"
         }).returning();
@@ -29615,6 +32987,7 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
         pricePerItem: rollCost,
         totalPrice: rollCost,
         shippingAddress: null,
+        phone: userPhone,
         status: "pending",
         orderType: "consolation",
         notes: `Consolation scrap paper - rolled ${rolled}, needed ${effectiveProbability} or less`
@@ -29622,6 +32995,7 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
       return { won: false, effectiveProbability, rolled, rollCost, consolationOrderId: consolationOrder[0].id };
     });
     if (result.won) {
+      notifyShopWin(user2.id, item.name, item.image ?? "").catch((err) => console.error("[SHOP] Failed to notify shop win:", err));
       return { success: true, won: true, orderId: result.orderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, rollCost: result.rollCost, refineryReset: true, probabilityHalved: true };
     }
     return { success: true, won: false, consolationOrderId: result.consolationOrderId, effectiveProbability: result.effectiveProbability, rolled: result.rolled, rollCost: result.rollCost };
@@ -29680,6 +33054,11 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
         cost,
         boostAmount
       });
+      await tx.insert(refinerySpendingHistoryTable).values({
+        userId: user2.id,
+        shopItemId: itemId,
+        cost
+      });
       const newUpgradeCount = upgradeCount + 1;
       const nextCost = newBoost >= maxBoost ? null : Math.floor(item.baseUpgradeCost * Math.pow(item.costMultiplier / 100, newUpgradeCount));
       return { boostPercent: newBoost, boostAmount, nextCost, effectiveProbability: Math.min(adjustedBaseProbability + newBoost, 100) };
@@ -29729,7 +33108,7 @@ shop.get("/items/:id/buyers", async ({ params }) => {
     avatar: usersTable.avatar,
     quantity: shopOrdersTable.quantity,
     purchasedAt: shopOrdersTable.createdAt
-  }).from(shopOrdersTable).innerJoin(usersTable, eq(shopOrdersTable.userId, usersTable.id)).where(eq(shopOrdersTable.shopItemId, itemId)).orderBy(desc(shopOrdersTable.createdAt)).limit(20);
+  }).from(shopOrdersTable).innerJoin(usersTable, eq(shopOrdersTable.userId, usersTable.id)).where(and(eq(shopOrdersTable.shopItemId, itemId), ne(shopOrdersTable.orderType, "consolation"))).orderBy(desc(shopOrdersTable.createdAt)).limit(20);
   return buyers;
 });
 shop.get("/items/:id/hearts", async ({ params }) => {
@@ -29820,6 +33199,68 @@ shop.post("/orders/:id/address", async ({ params, body, headers }) => {
   }).where(eq(shopOrdersTable.id, orderId));
   return { success: true };
 });
+shop.post("/items/:id/refinery/undo", async ({ params, headers }) => {
+  const user2 = await getUserFromSession(headers);
+  if (!user2) {
+    return { error: "Unauthorized" };
+  }
+  const itemId = parseInt(params.id);
+  if (!Number.isInteger(itemId)) {
+    return { error: "Invalid item id" };
+  }
+  const item = await db.select().from(shopItemsTable).where(eq(shopItemsTable.id, itemId)).limit(1);
+  if (item.length === 0) {
+    return { error: "Item not found" };
+  }
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user2.id} FOR UPDATE`);
+      const lastPurchase = await tx.select({ createdAt: shopOrdersTable.createdAt }).from(shopOrdersTable).where(and(eq(shopOrdersTable.userId, user2.id), eq(shopOrdersTable.shopItemId, itemId), or(eq(shopOrdersTable.orderType, "purchase"), eq(shopOrdersTable.orderType, "luck_win")))).orderBy(desc(shopOrdersTable.createdAt)).limit(1);
+      const orderConditions = [
+        eq(refineryOrdersTable.userId, user2.id),
+        eq(refineryOrdersTable.shopItemId, itemId)
+      ];
+      if (lastPurchase.length > 0) {
+        orderConditions.push(gt(refineryOrdersTable.createdAt, lastPurchase[0].createdAt));
+      }
+      const orders = await tx.select().from(refineryOrdersTable).where(and(...orderConditions)).orderBy(desc(refineryOrdersTable.createdAt)).limit(1);
+      if (orders.length === 0) {
+        if (lastPurchase.length > 0) {
+          return { error: "Cannot undo refinery upgrades from before your last purchase" };
+        }
+        return { error: "No refinery upgrades to undo" };
+      }
+      const order = orders[0];
+      await tx.delete(refineryOrdersTable).where(eq(refineryOrdersTable.id, order.id));
+      const matchingHistory = await tx.select({ id: refinerySpendingHistoryTable.id }).from(refinerySpendingHistoryTable).where(and(eq(refinerySpendingHistoryTable.userId, user2.id), eq(refinerySpendingHistoryTable.shopItemId, itemId), eq(refinerySpendingHistoryTable.cost, order.cost))).orderBy(desc(refinerySpendingHistoryTable.createdAt)).limit(1);
+      if (matchingHistory.length > 0) {
+        await tx.delete(refinerySpendingHistoryTable).where(eq(refinerySpendingHistoryTable.id, matchingHistory[0].id));
+      }
+      const boost = await tx.select({
+        boostPercent: sql`COALESCE(SUM(${refineryOrdersTable.boostAmount}), 0)`,
+        upgradeCount: sql`COUNT(*)`
+      }).from(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, user2.id), eq(refineryOrdersTable.shopItemId, itemId)));
+      const newBoostPercent = boost.length > 0 ? Number(boost[0].boostPercent) : 0;
+      const newUpgradeCount = boost.length > 0 ? Number(boost[0].upgradeCount) : 0;
+      const penalty = await tx.select({ probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, user2.id), eq(shopPenaltiesTable.shopItemId, itemId))).limit(1);
+      const penaltyMultiplier = penalty.length > 0 ? penalty[0].probabilityMultiplier : 100;
+      const adjustedBaseProbability = Math.floor(item[0].baseProbability * penaltyMultiplier / 100);
+      const maxBoost = 100 - adjustedBaseProbability;
+      const nextCost = newBoostPercent >= maxBoost ? null : Math.floor(item[0].baseUpgradeCost * Math.pow(item[0].costMultiplier / 100, newUpgradeCount));
+      return {
+        boostPercent: newBoostPercent,
+        upgradeCount: newUpgradeCount,
+        refundedCost: order.cost,
+        effectiveProbability: Math.min(adjustedBaseProbability + newBoostPercent, 100),
+        nextCost
+      };
+    });
+    return result;
+  } catch (e) {
+    console.error("[SHOP] refinery undo failed:", e);
+    return { error: "Failed to undo refinery upgrade" };
+  }
+});
 var shop_default = shop;
 
 // src/routes/leaderboard.ts
@@ -29831,8 +33272,10 @@ leaderboard.get("/", async ({ query }) => {
       id: usersTable.id,
       username: usersTable.username,
       avatar: usersTable.avatar,
-      scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0)`.as("scraps_earned"),
-      scrapsSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_spent"),
+      scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected' AND scraps_paid_at IS NOT NULL), 0)`.as("scraps_earned"),
+      scrapsBonus: sql`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as("scraps_bonus"),
+      scrapsShopSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_shop_spent"),
+      scrapsRefinerySpent: sql`COALESCE((SELECT SUM(cost) FROM refinery_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_refinery_spent"),
       hours: sql`COALESCE(SUM(${projectsTable.hours}), 0)`.as("total_hours"),
       projectCount: sql`COUNT(${projectsTable.id})`.as("project_count")
     }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), sql`${projectsTable.status} != 'permanently_rejected'`)).groupBy(usersTable.id).orderBy(desc(sql`total_hours`)).limit(10);
@@ -29842,7 +33285,7 @@ leaderboard.get("/", async ({ query }) => {
       username: user2.username,
       avatar: user2.avatar,
       hours: Number(user2.hours),
-      scraps: Number(user2.scrapsEarned) - Number(user2.scrapsSpent),
+      scraps: Number(user2.scrapsEarned) + Number(user2.scrapsBonus) - Number(user2.scrapsShopSpent) - Number(user2.scrapsRefinerySpent),
       scrapsEarned: Number(user2.scrapsEarned),
       projectCount: Number(user2.projectCount)
     }));
@@ -29851,18 +33294,20 @@ leaderboard.get("/", async ({ query }) => {
     id: usersTable.id,
     username: usersTable.username,
     avatar: usersTable.avatar,
-    scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0)`.as("scraps_earned"),
-    scrapsSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_spent"),
+    scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected' AND scraps_paid_at IS NOT NULL), 0)`.as("scraps_earned"),
+    scrapsBonus: sql`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as("scraps_bonus"),
+    scrapsShopSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_shop_spent"),
+    scrapsRefinerySpent: sql`COALESCE((SELECT SUM(cost) FROM refinery_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_refinery_spent"),
     hours: sql`COALESCE(SUM(${projectsTable.hours}), 0)`.as("total_hours"),
     projectCount: sql`COUNT(${projectsTable.id})`.as("project_count")
-  }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), sql`${projectsTable.status} != 'permanently_rejected'`)).groupBy(usersTable.id).orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected'), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`)).limit(10);
+  }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), sql`${projectsTable.status} != 'permanently_rejected'`)).groupBy(usersTable.id).orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND status != 'permanently_rejected' AND scraps_paid_at IS NOT NULL), 0) + COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(cost) FROM refinery_orders WHERE user_id = ${usersTable.id}), 0)`)).limit(10);
   return results.map((user2, index) => ({
     rank: index + 1,
     id: user2.id,
     username: user2.username,
     avatar: user2.avatar,
     hours: Number(user2.hours),
-    scraps: Number(user2.scrapsEarned) - Number(user2.scrapsSpent),
+    scraps: Number(user2.scrapsEarned) + Number(user2.scrapsBonus) - Number(user2.scrapsShopSpent) - Number(user2.scrapsRefinerySpent),
     scrapsEarned: Number(user2.scrapsEarned),
     projectCount: Number(user2.projectCount)
   }));
@@ -30088,18 +33533,31 @@ admin.get("/stats", async ({ headers, status: status2 }) => {
   if (!user2) {
     return status2(401, { error: "Unauthorized" });
   }
-  const [usersCount, projectsCount, totalHoursResult, pendingHoursResult, inProgressHoursResult] = await Promise.all([
+  const [usersCount, projectsCount, allProjects] = await Promise.all([
     db.select({ count: sql`count(*)` }).from(usersTable),
     db.select({ count: sql`count(*)` }).from(projectsTable).where(or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)),
-    db.select({ total: sql`COALESCE(SUM(COALESCE(${projectsTable.hoursOverride}, ${projectsTable.hours})), 0)` }).from(projectsTable).where(and(eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`))),
-    db.select({ total: sql`COALESCE(SUM(COALESCE(${projectsTable.hoursOverride}, ${projectsTable.hours})), 0)` }).from(projectsTable).where(and(eq(projectsTable.status, "waiting_for_review"), or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`))),
-    db.select({ total: sql`COALESCE(SUM(COALESCE(${projectsTable.hoursOverride}, ${projectsTable.hours})), 0)` }).from(projectsTable).where(and(eq(projectsTable.status, "in_progress"), or(eq(projectsTable.deleted, 0), sql`${projectsTable.deleted} IS NULL`)))
+    db.select({
+      id: projectsTable.id,
+      userId: projectsTable.userId,
+      hours: projectsTable.hours,
+      hoursOverride: projectsTable.hoursOverride,
+      hackatimeProject: projectsTable.hackatimeProject,
+      status: projectsTable.status
+    }).from(projectsTable).where(or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))
   ]);
+  const shipped = allProjects.filter((p) => p.status === "shipped");
+  const pending = allProjects.filter((p) => p.status === "waiting_for_review");
+  const inProgress = allProjects.filter((p) => p.status === "in_progress");
+  const allProjectIds = allProjects.map((p) => p.id);
+  const shippedDates = await getProjectShippedDates(allProjectIds);
+  const shippedWithDates = shipped.map((p) => ({ ...p, shippedDate: shippedDates.get(p.id) ?? null }));
+  const pendingWithDates = pending.map((p) => ({ ...p, shippedDate: shippedDates.get(p.id) ?? null }));
+  const inProgressWithDates = inProgress.map((p) => ({ ...p, shippedDate: shippedDates.get(p.id) ?? null }));
+  const totalHours = shippedWithDates.reduce((sum2, p) => sum2 + computeEffectiveHours(p, shippedWithDates), 0);
+  const pendingHours = pendingWithDates.reduce((sum2, p) => sum2 + computeEffectiveHours(p, shippedWithDates), 0);
+  const inProgressHours = inProgressWithDates.reduce((sum2, p) => sum2 + computeEffectiveHours(p, shippedWithDates), 0);
   const totalUsers = Number(usersCount[0]?.count || 0);
   const totalProjects = Number(projectsCount[0]?.count || 0);
-  const totalHours = Number(totalHoursResult[0]?.total || 0);
-  const pendingHours = Number(pendingHoursResult[0]?.total || 0);
-  const inProgressHours = Number(inProgressHoursResult[0]?.total || 0);
   const weightedGrants = Math.round(totalHours / 10 * 100) / 100;
   const pendingWeightedGrants = Math.round(pendingHours / 10 * 100) / 100;
   const inProgressWeightedGrants = Math.round(inProgressHours / 10 * 100) / 100;
@@ -30124,8 +33582,10 @@ admin.get("/users", async ({ headers, query, status: status2 }) => {
     const limit = Math.min(parseInt(query.limit) || 20, 100);
     const offset = (page - 1) * limit;
     const search = query.search?.trim() || "";
-    const searchCondition = search ? or(sql`${usersTable.username} ILIKE ${"%" + search + "%"}`, sql`${usersTable.email} ILIKE ${"%" + search + "%"}`, sql`${usersTable.slackId} ILIKE ${"%" + search + "%"}`) : undefined;
-    const [users, countResult] = await Promise.all([
+    const searchIsNumeric = search && /^\d+$/.test(search);
+    const searchCondition = search ? or(...searchIsNumeric ? [eq(usersTable.id, parseInt(search))] : [], sql`${usersTable.username} ILIKE ${"%" + search + "%"}`, sql`${usersTable.email} ILIKE ${"%" + search + "%"}`, sql`${usersTable.slackId} ILIKE ${"%" + search + "%"}`) : undefined;
+    const orderClause = searchIsNumeric ? [sql`CASE WHEN ${usersTable.id} = ${parseInt(search)} THEN 0 ELSE 1 END`, desc(usersTable.createdAt)] : [desc(usersTable.createdAt)];
+    const [userIds, countResult] = await Promise.all([
       db.select({
         id: usersTable.id,
         username: usersTable.username,
@@ -30134,21 +33594,26 @@ admin.get("/users", async ({ headers, query, status: status2 }) => {
         email: usersTable.email,
         role: usersTable.role,
         internalNotes: usersTable.internalNotes,
-        createdAt: usersTable.createdAt,
-        scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id}), 0)`.as("scraps_earned"),
-        scrapsSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_spent")
-      }).from(usersTable).where(searchCondition).orderBy(desc(usersTable.createdAt)).limit(limit).offset(offset),
+        createdAt: usersTable.createdAt
+      }).from(usersTable).where(searchCondition).orderBy(...orderClause).limit(limit).offset(offset),
       db.select({ count: sql`count(*)` }).from(usersTable).where(searchCondition)
     ]);
     const total = Number(countResult[0]?.count || 0);
+    const usersWithScraps = await Promise.all(userIds.map(async (u) => {
+      const balance = await getUserScrapsBalance(u.id);
+      return {
+        ...u,
+        scraps: balance.balance
+      };
+    }));
     return {
-      data: users.map((u) => ({
+      data: usersWithScraps.map((u) => ({
         id: u.id,
         username: u.username,
         avatar: u.avatar,
         slackId: u.slackId,
         email: user2.role === "admin" ? u.email : undefined,
-        scraps: Number(u.scrapsEarned) - Number(u.scrapsSpent),
+        scraps: u.scraps,
         role: u.role,
         internalNotes: u.internalNotes,
         createdAt: u.createdAt
@@ -30192,7 +33657,7 @@ admin.get("/users/:id", async ({ params, headers, status: status2 }) => {
       waitingForReview: projects2.filter((p) => p.status === "waiting_for_review").length,
       rejected: projects2.filter((p) => p.status === "permanently_rejected").length
     };
-    const totalHours = projects2.reduce((sum, p) => sum + (p.hoursOverride ?? p.hours ?? 0), 0);
+    const totalHours = projects2.reduce((sum2, p) => sum2 + (p.hoursOverride ?? p.hours ?? 0), 0);
     const scrapsBalance = await getUserScrapsBalance(targetUserId) || 0;
     return {
       user: {
@@ -30267,13 +33732,11 @@ admin.post("/users/:id/bonus", async ({ params, body, headers, status: status2 }
       return status2(401, { error: "Unauthorized" });
     }
     const { amount, reason } = body;
-    if (!amount || typeof amount !== "number") {
-      return status2(400, { error: "Amount is required and must be a number" });
+    if (!amount || typeof amount !== "number" || !Number.isFinite(amount) || !Number.isInteger(amount) || amount === 0) {
+      return status2(400, { error: "Amount is required and must be a non-zero integer" });
     }
-    if (Number(amount)) {
-      if (!reason || typeof reason !== "string" || reason.trim().length === 0) {
-        return status2(400, { error: "Reason is required" });
-      }
+    if (!reason || typeof reason !== "string" || reason.trim().length === 0) {
+      return status2(400, { error: "Reason is required" });
     }
     if (reason.length > 500) {
       return status2(400, { error: "Reason is too long (max 500 characters)" });
@@ -30329,13 +33792,44 @@ admin.get("/reviews", async ({ headers, query }) => {
     const page = parseInt(query.page) || 1;
     const limit = Math.min(parseInt(query.limit) || 20, 100);
     const offset = (page - 1) * limit;
+    const sort = query.sort || "oldest";
+    const orderClause = sort === "newest" ? desc(projectsTable.updatedAt) : asc(projectsTable.updatedAt);
     const [projects2, countResult] = await Promise.all([
-      db.select().from(projectsTable).where(eq(projectsTable.status, "waiting_for_review")).orderBy(desc(projectsTable.updatedAt)).limit(limit).offset(offset),
+      db.select({
+        id: projectsTable.id,
+        userId: projectsTable.userId,
+        name: projectsTable.name,
+        description: projectsTable.description,
+        image: projectsTable.image,
+        githubUrl: projectsTable.githubUrl,
+        playableUrl: projectsTable.playableUrl,
+        hours: projectsTable.hours,
+        hoursOverride: projectsTable.hoursOverride,
+        hackatimeProject: projectsTable.hackatimeProject,
+        tier: projectsTable.tier,
+        tierOverride: projectsTable.tierOverride,
+        status: projectsTable.status,
+        deleted: projectsTable.deleted,
+        scrapsAwarded: projectsTable.scrapsAwarded,
+        scrapsPaidAt: projectsTable.scrapsPaidAt,
+        views: projectsTable.views,
+        updateDescription: projectsTable.updateDescription,
+        aiDescription: projectsTable.aiDescription,
+        feedbackSource: projectsTable.feedbackSource,
+        feedbackGood: projectsTable.feedbackGood,
+        feedbackImprove: projectsTable.feedbackImprove,
+        createdAt: projectsTable.createdAt,
+        updatedAt: projectsTable.updatedAt
+      }).from(projectsTable).where(eq(projectsTable.status, "waiting_for_review")).orderBy(orderClause).limit(limit).offset(offset),
       db.select({ count: sql`count(*)` }).from(projectsTable).where(eq(projectsTable.status, "waiting_for_review"))
     ]);
     const total = Number(countResult[0]?.count || 0);
+    const projectsWithEffective = await Promise.all(projects2.map(async (p) => {
+      const result = await computeEffectiveHoursForProject(p);
+      return { ...p, effectiveHours: result.effectiveHours, deductedHours: result.deductedHours };
+    }));
     return {
-      data: projects2,
+      data: projectsWithEffective,
       pagination: {
         page,
         limit,
@@ -30368,15 +33862,18 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
     if (reviewerIds.length > 0) {
       reviewers = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
     }
+    const isAdmin = user2.role === "admin";
+    const maskedProject = !isAdmin && project[0].status === "pending_admin_approval" ? { ...project[0], status: "waiting_for_review" } : project[0];
+    const visibleReviews = !isAdmin && project[0].status === "pending_admin_approval" ? reviews.filter((r) => r.action !== "approved") : reviews;
     return {
-      project: project[0],
+      project: maskedProject,
       user: projectUser[0] ? {
         id: projectUser[0].id,
         username: projectUser[0].username,
         avatar: projectUser[0].avatar,
         internalNotes: projectUser[0].internalNotes
       } : null,
-      reviews: reviews.map((r) => {
+      reviews: visibleReviews.map((r) => {
         const reviewer = reviewers.find((rv) => rv.id === r.reviewerId);
         return {
           ...r,
@@ -30384,7 +33881,8 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
           reviewerAvatar: reviewer?.avatar,
           reviewerId: r.reviewerId
         };
-      })
+      }),
+      ...await computeEffectiveHoursForProject(project[0])
     };
   } catch (err) {
     console.error(err);
@@ -30423,10 +33921,17 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
       feedbackForAuthor,
       internalJustification
     });
+    if (action === "approved" && project[0].githubUrl) {
+      const duplicates = await db.select({ id: projectsTable.id }).from(projectsTable).where(and(eq(projectsTable.githubUrl, project[0].githubUrl), eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))).limit(1);
+      if (duplicates.length > 0) {
+        return { error: "A shipped project with this Code URL already exists. This project has been kept in review.", duplicateCodeUrl: true };
+      }
+    }
     let newStatus = "in_progress";
+    const isAdmin = user2.role === "admin";
     switch (action) {
       case "approved":
-        newStatus = "shipped";
+        newStatus = isAdmin ? "shipped" : "pending_admin_approval";
         break;
       case "denied":
         newStatus = "in_progress";
@@ -30451,26 +33956,385 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
     if (action === "approved") {
       const hours = hoursOverride ?? project[0].hours ?? 0;
       const tier = tierOverride ?? project[0].tier ?? 1;
-      scrapsAwarded = calculateScrapsFromHours(hours, tier);
-      updateData.scrapsAwarded = scrapsAwarded;
+      const { effectiveHours } = await computeEffectiveHoursForProject({
+        ...project[0],
+        hoursOverride: hoursOverride ?? project[0].hoursOverride
+      });
+      const newScrapsAwarded = calculateScrapsFromHours(effectiveHours, tier);
+      if (isAdmin) {
+        const previouslyShipped = await hasProjectBeenShipped(projectId);
+        if (previouslyShipped && project[0].scrapsAwarded > 0) {
+          scrapsAwarded = Math.max(0, newScrapsAwarded - project[0].scrapsAwarded);
+        } else {
+          scrapsAwarded = newScrapsAwarded;
+        }
+        updateData.scrapsAwarded = newScrapsAwarded;
+      }
     }
     await db.update(projectsTable).set(updateData).where(eq(projectsTable.id, projectId));
-    if (action === "approved" && scrapsAwarded > 0) {
-      await db.insert(activityTable).values({
-        userId: project[0].userId,
-        projectId,
-        action: `earned ${scrapsAwarded} scraps`
-      });
+    if (action === "approved") {
+      const previouslyShipped = await hasProjectBeenShipped(projectId);
+      if (scrapsAwarded > 0) {
+        await db.insert(projectActivityTable).values({
+          userId: project[0].userId,
+          projectId,
+          action: previouslyShipped ? `earned ${scrapsAwarded} additional scraps (update)` : `earned ${scrapsAwarded} scraps`
+        });
+      }
+      if (isAdmin) {
+        await db.insert(projectActivityTable).values({
+          userId: project[0].userId,
+          projectId,
+          action: previouslyShipped ? "project_updated" : "project_shipped"
+        });
+      }
     }
     if (userInternalNotes !== undefined) {
       if (userInternalNotes.length <= 2500) {
         await db.update(usersTable).set({ internalNotes: userInternalNotes, updatedAt: new Date }).where(eq(usersTable.id, project[0].userId));
       }
     }
+    const shouldNotify = isAdmin || action !== "approved";
+    if (config.slackBotToken && shouldNotify) {
+      try {
+        const projectAuthor = await db.select({ slackId: usersTable.slackId }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
+        if (projectAuthor[0]?.slackId) {
+          let adminSlackIds = [];
+          if (action === "permanently_rejected") {
+            const admins = await db.select({ slackId: usersTable.slackId }).from(usersTable).where(eq(usersTable.role, "admin"));
+            adminSlackIds = admins.map((a) => a.slackId).filter((id) => !!id);
+          }
+          const reviewerSlackId = user2.slackId ?? null;
+          await notifyProjectReview({
+            userSlackId: projectAuthor[0].slackId,
+            projectName: project[0].name,
+            projectId,
+            action,
+            feedbackForAuthor,
+            reviewerSlackId,
+            adminSlackIds,
+            scrapsAwarded,
+            frontendUrl: config.frontendUrl,
+            token: config.slackBotToken
+          });
+        }
+      } catch (slackErr) {
+        console.error("Failed to send Slack DM notification:", slackErr);
+      }
+    }
     return { success: true };
   } catch (err) {
     console.error(err);
     return { error: "Failed to submit review" };
+  }
+});
+admin.get("/second-pass", async ({ headers, query }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2)
+      return { error: "Unauthorized" };
+    const page = parseInt(query.page) || 1;
+    const limit = Math.min(parseInt(query.limit) || 20, 100);
+    const offset = (page - 1) * limit;
+    const sort = query.sort || "oldest";
+    const orderClause = sort === "newest" ? desc(projectsTable.updatedAt) : asc(projectsTable.updatedAt);
+    const [projects2, countResult] = await Promise.all([
+      db.select({
+        id: projectsTable.id,
+        userId: projectsTable.userId,
+        name: projectsTable.name,
+        description: projectsTable.description,
+        image: projectsTable.image,
+        githubUrl: projectsTable.githubUrl,
+        playableUrl: projectsTable.playableUrl,
+        hours: projectsTable.hours,
+        hoursOverride: projectsTable.hoursOverride,
+        hackatimeProject: projectsTable.hackatimeProject,
+        tier: projectsTable.tier,
+        tierOverride: projectsTable.tierOverride,
+        status: projectsTable.status,
+        deleted: projectsTable.deleted,
+        scrapsAwarded: projectsTable.scrapsAwarded,
+        scrapsPaidAt: projectsTable.scrapsPaidAt,
+        views: projectsTable.views,
+        updateDescription: projectsTable.updateDescription,
+        aiDescription: projectsTable.aiDescription,
+        feedbackSource: projectsTable.feedbackSource,
+        feedbackGood: projectsTable.feedbackGood,
+        feedbackImprove: projectsTable.feedbackImprove,
+        createdAt: projectsTable.createdAt,
+        updatedAt: projectsTable.updatedAt
+      }).from(projectsTable).where(eq(projectsTable.status, "pending_admin_approval")).orderBy(orderClause).limit(limit).offset(offset),
+      db.select({ count: sql`count(*)` }).from(projectsTable).where(eq(projectsTable.status, "pending_admin_approval"))
+    ]);
+    const total = Number(countResult[0]?.count || 0);
+    const projectsWithEffective = await Promise.all(projects2.map(async (p) => {
+      const result = await computeEffectiveHoursForProject(p);
+      return { ...p, effectiveHours: result.effectiveHours, deductedHours: result.deductedHours };
+    }));
+    return {
+      data: projectsWithEffective,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  } catch (err) {
+    console.error(err);
+    return { error: "Failed to fetch second-pass reviews" };
+  }
+});
+admin.get("/second-pass/:id", async ({ params, headers }) => {
+  const user2 = await requireAdmin(headers);
+  if (!user2)
+    return { error: "Unauthorized" };
+  try {
+    const project = await db.select().from(projectsTable).where(eq(projectsTable.id, parseInt(params.id))).limit(1);
+    if (project.length <= 0)
+      return { error: "Project not found!" };
+    if (project[0].status !== "pending_admin_approval") {
+      return { error: "Project is not pending admin approval" };
+    }
+    const projectUser = await db.select({
+      id: usersTable.id,
+      username: usersTable.username,
+      avatar: usersTable.avatar,
+      internalNotes: usersTable.internalNotes
+    }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
+    const reviews = await db.select().from(reviewsTable).where(eq(reviewsTable.projectId, parseInt(params.id)));
+    const reviewerIds = reviews.map((r) => r.reviewerId);
+    let reviewers = [];
+    if (reviewerIds.length > 0) {
+      reviewers = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
+    }
+    const effectiveHoursData = await computeEffectiveHoursForProject(project[0]);
+    return {
+      project: project[0],
+      user: projectUser[0] ? {
+        id: projectUser[0].id,
+        username: projectUser[0].username,
+        avatar: projectUser[0].avatar,
+        internalNotes: projectUser[0].internalNotes
+      } : null,
+      reviews: reviews.map((r) => {
+        const reviewer = reviewers.find((rv) => rv.id === r.reviewerId);
+        return {
+          ...r,
+          reviewerName: reviewer?.username,
+          reviewerAvatar: reviewer?.avatar,
+          reviewerId: r.reviewerId
+        };
+      }),
+      ...effectiveHoursData
+    };
+  } catch (err) {
+    console.error(err);
+    return { error: "Something went wrong while trying to get project" };
+  }
+});
+admin.post("/second-pass/:id", async ({ params, body, headers }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2)
+      return { error: "Unauthorized" };
+    const { action, feedbackForAuthor, hoursOverride } = body;
+    if (!["accept", "reject"].includes(action)) {
+      return { error: 'Invalid action. Must be "accept" or "reject"' };
+    }
+    const projectId = parseInt(params.id);
+    const project = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1);
+    if (!project[0])
+      return { error: "Project not found" };
+    if (project[0].status !== "pending_admin_approval") {
+      return { error: "Project is not pending admin approval" };
+    }
+    if (action === "accept") {
+      const tier = project[0].tierOverride ?? project[0].tier ?? 1;
+      if (hoursOverride !== undefined) {
+        await db.update(projectsTable).set({ hoursOverride }).where(eq(projectsTable.id, projectId));
+        project[0].hoursOverride = hoursOverride;
+      }
+      const { effectiveHours } = await computeEffectiveHoursForProject(project[0]);
+      const newScrapsAwarded = calculateScrapsFromHours(effectiveHours, tier);
+      const previouslyShipped = await hasProjectBeenShipped(projectId);
+      let scrapsAwarded = 0;
+      const updateData = {
+        status: "shipped",
+        updatedAt: new Date
+      };
+      if (previouslyShipped && project[0].scrapsAwarded > 0) {
+        scrapsAwarded = Math.max(0, newScrapsAwarded - project[0].scrapsAwarded);
+      } else {
+        scrapsAwarded = newScrapsAwarded;
+      }
+      updateData.scrapsAwarded = newScrapsAwarded;
+      await db.update(projectsTable).set(updateData).where(eq(projectsTable.id, projectId));
+      if (scrapsAwarded > 0) {
+        await db.insert(projectActivityTable).values({
+          userId: project[0].userId,
+          projectId,
+          action: previouslyShipped ? `earned ${scrapsAwarded} additional scraps (update)` : `earned ${scrapsAwarded} scraps`
+        });
+      }
+      await db.insert(projectActivityTable).values({
+        userId: project[0].userId,
+        projectId,
+        action: previouslyShipped ? "project_updated" : "project_shipped"
+      });
+      if (config.slackBotToken) {
+        try {
+          const projectAuthor = await db.select({ slackId: usersTable.slackId }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
+          if (projectAuthor[0]?.slackId) {
+            await notifyProjectReview({
+              userSlackId: projectAuthor[0].slackId,
+              projectName: project[0].name,
+              projectId,
+              action: "approved",
+              feedbackForAuthor: "Your project has been approved and shipped!",
+              reviewerSlackId: user2.slackId ?? null,
+              adminSlackIds: [],
+              scrapsAwarded,
+              frontendUrl: config.frontendUrl,
+              token: config.slackBotToken
+            });
+          }
+        } catch (slackErr) {
+          console.error("Failed to send Slack notification:", slackErr);
+        }
+      }
+      return { success: true, scrapsAwarded };
+    } else {
+      await db.delete(reviewsTable).where(and(eq(reviewsTable.projectId, projectId), eq(reviewsTable.action, "approved")));
+      await db.insert(reviewsTable).values({
+        projectId,
+        reviewerId: user2.id,
+        action: "denied",
+        feedbackForAuthor: feedbackForAuthor || "The admin has rejected the initial approval. Please make improvements and resubmit.",
+        internalJustification: "Second-pass rejection"
+      });
+      await db.update(projectsTable).set({ status: "in_progress", updatedAt: new Date }).where(eq(projectsTable.id, projectId));
+      if (config.slackBotToken) {
+        try {
+          const projectAuthor = await db.select({ slackId: usersTable.slackId }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
+          if (projectAuthor[0]?.slackId) {
+            await notifyProjectReview({
+              userSlackId: projectAuthor[0].slackId,
+              projectName: project[0].name,
+              projectId,
+              action: "denied",
+              feedbackForAuthor: feedbackForAuthor || "The admin has rejected the initial approval. Please make improvements and resubmit.",
+              reviewerSlackId: user2.slackId ?? null,
+              adminSlackIds: [],
+              scrapsAwarded: 0,
+              frontendUrl: config.frontendUrl,
+              token: config.slackBotToken
+            });
+          }
+        } catch (slackErr) {
+          console.error("Failed to send Slack notification:", slackErr);
+        }
+      }
+      return { success: true };
+    }
+  } catch (err) {
+    console.error(err);
+    return { error: "Failed to process second-pass review" };
+  }
+});
+admin.get("/scraps-payout", async ({ headers }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2)
+      return { error: "Unauthorized" };
+    const pendingProjects = await db.select({
+      id: projectsTable.id,
+      name: projectsTable.name,
+      image: projectsTable.image,
+      scrapsAwarded: projectsTable.scrapsAwarded,
+      hours: projectsTable.hours,
+      hoursOverride: projectsTable.hoursOverride,
+      userId: projectsTable.userId,
+      status: projectsTable.status,
+      createdAt: projectsTable.createdAt
+    }).from(projectsTable).where(and(eq(projectsTable.status, "shipped"), sql`${projectsTable.scrapsAwarded} > 0`, isNull(projectsTable.scrapsPaidAt), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))));
+    const userIds = [...new Set(pendingProjects.map((p) => p.userId))];
+    let users = [];
+    if (userIds.length > 0) {
+      users = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(inArray(usersTable.id, userIds));
+    }
+    const projectsWithUsers = pendingProjects.map((p) => {
+      const owner = users.find((u) => u.id === p.userId);
+      return {
+        ...p,
+        owner: owner ? { id: owner.id, username: owner.username, avatar: owner.avatar } : null
+      };
+    });
+    return {
+      pendingProjects: pendingProjects.length,
+      pendingScraps: pendingProjects.reduce((sum2, p) => sum2 + p.scrapsAwarded, 0),
+      projects: projectsWithUsers,
+      nextPayoutDate: getNextPayoutDate().toISOString()
+    };
+  } catch (err) {
+    console.error(err);
+    return { error: "Failed to fetch payout info" };
+  }
+});
+admin.post("/scraps-payout", async ({ headers }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2)
+      return { error: "Unauthorized" };
+    const { paidCount, totalScraps } = await payoutPendingScraps();
+    return { success: true, paidCount, totalScraps };
+  } catch (err) {
+    console.error(err);
+    return { error: "Failed to trigger payout" };
+  }
+});
+admin.post("/scraps-payout/reject", async ({ headers, body, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2)
+      return status2(401, { error: "Unauthorized" });
+    const { projectId, reason } = body;
+    if (!projectId || typeof projectId !== "number") {
+      return status2(400, { error: "Project ID is required" });
+    }
+    if (!reason?.trim()) {
+      return status2(400, { error: "A reason is required" });
+    }
+    const project = await db.select({
+      id: projectsTable.id,
+      userId: projectsTable.userId,
+      scrapsAwarded: projectsTable.scrapsAwarded,
+      scrapsPaidAt: projectsTable.scrapsPaidAt,
+      status: projectsTable.status,
+      name: projectsTable.name
+    }).from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1);
+    if (!project[0]) {
+      return status2(404, { error: "Project not found" });
+    }
+    if (project[0].scrapsPaidAt) {
+      return status2(400, { error: "Scraps have already been paid out for this project" });
+    }
+    if (project[0].scrapsAwarded <= 0) {
+      return status2(400, { error: "No scraps to reject for this project" });
+    }
+    const previousScraps = project[0].scrapsAwarded;
+    await db.update(projectsTable).set({ scrapsAwarded: 0, status: "in_progress", updatedAt: new Date }).where(eq(projectsTable.id, projectId));
+    await db.insert(reviewsTable).values({
+      projectId,
+      reviewerId: user2.id,
+      action: "scraps_unawarded",
+      feedbackForAuthor: `Payout rejected (${previousScraps} scraps): ${reason.trim()}`
+    });
+    return { success: true, previousScraps };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to reject payout" });
   }
 });
 admin.get("/shop/items", async ({ headers }) => {
@@ -30681,6 +34545,7 @@ admin.get("/orders", async ({ headers, query, status: status2 }) => {
       notes: shopOrdersTable.notes,
       isFulfilled: shopOrdersTable.isFulfilled,
       shippingAddress: shopOrdersTable.shippingAddress,
+      phone: shopOrdersTable.phone,
       createdAt: shopOrdersTable.createdAt,
       itemId: shopItemsTable.id,
       itemName: shopItemsTable.name,
@@ -30736,90 +34601,309 @@ admin.patch("/orders/:id", async ({ params, body, headers, status: status2 }) =>
     return status2(500, { error: "Failed to update order" });
   }
 });
-var admin_default = admin;
-
-// src/lib/hackatime-sync.ts
-var HACKATIME_API3 = "https://hackatime.hackclub.com/api/v1";
-var SCRAPS_START_DATE3 = "2026-02-03";
-var SYNC_INTERVAL_MS = 2 * 60 * 1000;
-async function fetchHackatimeHours2(slackId, projectName) {
-  try {
-    const params = new URLSearchParams({
-      features: "projects",
-      start_date: SCRAPS_START_DATE3,
-      filter_by_project: projectName
-    });
-    const url = `${HACKATIME_API3}/users/${encodeURIComponent(slackId)}/stats?${params}`;
-    const response = await fetch(url, {
-      headers: { Accept: "application/json" }
-    });
-    if (!response.ok)
-      return -1;
-    const data = await response.json();
-    const project = data.data?.projects?.find((p) => p.name === projectName);
-    if (!project)
-      return 0;
-    return Math.round(project.total_seconds / 3600 * 10) / 10;
-  } catch {
-    return -1;
+admin.post("/projects/:id/sync-hours", async ({ headers, params, status: status2 }) => {
+  const user2 = await requireReviewer(headers);
+  if (!user2) {
+    return status2(401, { error: "Unauthorized" });
   }
-}
-function parseHackatimeProject2(hackatimeProject) {
-  if (!hackatimeProject)
-    return null;
-  const slashIndex = hackatimeProject.indexOf("/");
-  if (slashIndex === -1)
-    return null;
-  return {
-    slackId: hackatimeProject.substring(0, slashIndex),
-    projectName: hackatimeProject.substring(slashIndex + 1)
-  };
-}
-async function syncAllProjects() {
-  console.log("[HACKATIME-SYNC] Starting sync...");
-  const startTime = Date.now();
   try {
-    const projects2 = await db.select({
-      id: projectsTable.id,
-      hackatimeProject: projectsTable.hackatimeProject,
-      hours: projectsTable.hours
-    }).from(projectsTable).where(and(isNotNull(projectsTable.hackatimeProject), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))));
-    let updated = 0;
-    let errors = 0;
-    for (const project of projects2) {
-      const parsed = parseHackatimeProject2(project.hackatimeProject);
-      if (!parsed)
-        continue;
-      const hours = await fetchHackatimeHours2(parsed.slackId, parsed.projectName);
-      if (hours < 0) {
-        errors++;
-        continue;
-      }
-      if (hours !== project.hours) {
-        await db.update(projectsTable).set({ hours, updatedAt: new Date }).where(eq(projectsTable.id, project.id));
-        updated++;
+    const [proj] = await db.select({ status: projectsTable.status }).from(projectsTable).where(eq(projectsTable.id, parseInt(params.id))).limit(1);
+    if (!proj) {
+      return status2(404, { error: "Project not found" });
+    }
+    if (proj.status === "shipped") {
+      return status2(400, { error: "Cannot sync hours for shipped projects \u2014 hours are frozen at approval time" });
+    }
+    const result = await syncSingleProject(parseInt(params.id));
+    if (result.error) {
+      return { hours: result.hours, updated: result.updated, error: result.error };
+    }
+    return { hours: result.hours, updated: result.updated };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to sync hours" });
+  }
+});
+admin.post("/fix-negative-balances", async ({ headers, status: status2 }) => {
+  const adminUser = await requireAdmin(headers);
+  if (!adminUser) {
+    return status2(401, { error: "Unauthorized" });
+  }
+  try {
+    const allUsers = await db.select({ id: usersTable.id }).from(usersTable);
+    const fixed = [];
+    for (const u of allUsers) {
+      const { balance } = await getUserScrapsBalance(u.id);
+      if (balance < 0) {
+        const deficit = Math.abs(balance);
+        await db.insert(userBonusesTable).values({
+          userId: u.id,
+          amount: deficit,
+          reason: "negative_balance_fix",
+          givenBy: adminUser.id
+        });
+        const userInfo = await db.select({ username: usersTable.username }).from(usersTable).where(eq(usersTable.id, u.id)).limit(1);
+        fixed.push({
+          userId: u.id,
+          username: userInfo[0]?.username ?? null,
+          deficit
+        });
       }
     }
-    const elapsed = Date.now() - startTime;
-    console.log(`[HACKATIME-SYNC] Completed: ${projects2.length} projects, ${updated} updated, ${errors} errors, ${elapsed}ms`);
-  } catch (error) {
-    console.error("[HACKATIME-SYNC] Error:", error);
+    return { success: true, fixedCount: fixed.length, fixed };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to fix negative balances" });
   }
-}
-var syncInterval = null;
-function startHackatimeSync() {
-  if (syncInterval)
-    return;
-  console.log("[HACKATIME-SYNC] Starting background sync (every 2 minutes)");
-  syncAllProjects();
-  syncInterval = setInterval(syncAllProjects, SYNC_INTERVAL_MS);
-}
+});
+admin.get("/export/shipped-csv", async ({ headers, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2) {
+      return status2(401, { error: "Unauthorized" });
+    }
+    const projects2 = await db.select({
+      name: projectsTable.name,
+      githubUrl: projectsTable.githubUrl,
+      playableUrl: projectsTable.playableUrl,
+      hackatimeProject: projectsTable.hackatimeProject,
+      slackId: usersTable.slackId
+    }).from(projectsTable).innerJoin(usersTable, eq(projectsTable.userId, usersTable.id)).where(and(eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))).orderBy(desc(projectsTable.updatedAt));
+    const escapeCSV = (val) => {
+      if (!val)
+        return "";
+      if (val.includes(",") || val.includes('"') || val.includes(`
+`)) {
+        return '"' + val.replace(/"/g, '""') + '"';
+      }
+      return val;
+    };
+    const rows = ["name,code_link,demo_link,slack_id,hackatime_projects"];
+    for (const p of projects2) {
+      rows.push([
+        escapeCSV(p.name),
+        escapeCSV(p.githubUrl),
+        escapeCSV(p.playableUrl),
+        escapeCSV(p.slackId),
+        escapeCSV(p.hackatimeProject)
+      ].join(","));
+    }
+    return new Response(rows.join(`
+`), {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": 'attachment; filename="scraps-shipped-projects.csv"'
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to export CSV" });
+  }
+});
+admin.get("/export/ysws-json", async ({ headers, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2) {
+      return status2(401, { error: "Unauthorized" });
+    }
+    const projects2 = await db.select({
+      name: projectsTable.name,
+      githubUrl: projectsTable.githubUrl,
+      playableUrl: projectsTable.playableUrl,
+      hackatimeProject: projectsTable.hackatimeProject,
+      slackId: usersTable.slackId
+    }).from(projectsTable).innerJoin(usersTable, eq(projectsTable.userId, usersTable.id)).where(and(eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))).orderBy(desc(projectsTable.updatedAt));
+    return projects2.map((p) => {
+      const hackatimeProjects = p.hackatimeProject ? p.hackatimeProject.split(",").map((n) => n.trim()).filter((n) => n.length > 0) : [];
+      return {
+        name: p.name,
+        codeLink: p.githubUrl || "",
+        demoLink: p.playableUrl || "",
+        submitter: { slackId: p.slackId || "" },
+        hackatimeProjects
+      };
+    });
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to export YSWS JSON" });
+  }
+});
+admin.get("/users/:id/timeline", async ({ params, headers, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2)
+      return status2(401, { error: "Unauthorized" });
+    const targetUserId = parseInt(params.id);
+    const [
+      paidProjects,
+      bonusRows,
+      shopOrders,
+      refineryRows,
+      refineryHistory
+    ] = await Promise.all([
+      db.select({
+        id: projectsTable.id,
+        name: projectsTable.name,
+        scrapsAwarded: projectsTable.scrapsAwarded,
+        scrapsPaidAt: projectsTable.scrapsPaidAt,
+        status: projectsTable.status,
+        createdAt: projectsTable.createdAt
+      }).from(projectsTable).where(and(eq(projectsTable.userId, targetUserId), sql`${projectsTable.scrapsAwarded} > 0`)),
+      db.select({
+        id: userBonusesTable.id,
+        amount: userBonusesTable.amount,
+        reason: userBonusesTable.reason,
+        givenBy: userBonusesTable.givenBy,
+        createdAt: userBonusesTable.createdAt
+      }).from(userBonusesTable).where(eq(userBonusesTable.userId, targetUserId)),
+      db.select({
+        id: shopOrdersTable.id,
+        shopItemId: shopOrdersTable.shopItemId,
+        totalPrice: shopOrdersTable.totalPrice,
+        orderType: shopOrdersTable.orderType,
+        status: shopOrdersTable.status,
+        createdAt: shopOrdersTable.createdAt,
+        itemName: shopItemsTable.name
+      }).from(shopOrdersTable).innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id)).where(eq(shopOrdersTable.userId, targetUserId)),
+      db.select({
+        id: refineryOrdersTable.id,
+        shopItemId: refineryOrdersTable.shopItemId,
+        cost: refineryOrdersTable.cost,
+        boostAmount: refineryOrdersTable.boostAmount,
+        createdAt: refineryOrdersTable.createdAt,
+        itemName: shopItemsTable.name
+      }).from(refineryOrdersTable).innerJoin(shopItemsTable, eq(refineryOrdersTable.shopItemId, shopItemsTable.id)).where(eq(refineryOrdersTable.userId, targetUserId)),
+      db.select({
+        id: refinerySpendingHistoryTable.id,
+        shopItemId: refinerySpendingHistoryTable.shopItemId,
+        cost: refinerySpendingHistoryTable.cost,
+        createdAt: refinerySpendingHistoryTable.createdAt,
+        itemName: shopItemsTable.name
+      }).from(refinerySpendingHistoryTable).innerJoin(shopItemsTable, eq(refinerySpendingHistoryTable.shopItemId, shopItemsTable.id)).where(eq(refinerySpendingHistoryTable.userId, targetUserId))
+    ]);
+    const lastPurchaseByItem = new Map;
+    for (const order of shopOrders) {
+      if (order.orderType === "purchase" || order.orderType === "luck_win") {
+        const existing = lastPurchaseByItem.get(order.shopItemId);
+        const orderDate = new Date(order.createdAt);
+        if (!existing || orderDate > existing) {
+          lastPurchaseByItem.set(order.shopItemId, orderDate);
+        }
+      }
+    }
+    const timeline = [];
+    for (const p of paidProjects) {
+      timeline.push({
+        type: "earned",
+        amount: p.scrapsAwarded,
+        description: `project "${p.name}"`,
+        date: (p.scrapsPaidAt ?? p.createdAt ?? new Date).toISOString(),
+        paid: !!p.scrapsPaidAt
+      });
+    }
+    for (const b of bonusRows) {
+      timeline.push({
+        type: "bonus",
+        amount: b.amount,
+        description: b.reason,
+        date: b.createdAt.toISOString()
+      });
+    }
+    for (const o of shopOrders) {
+      timeline.push({
+        type: `shop_${o.orderType}`,
+        amount: -o.totalPrice,
+        description: o.itemName,
+        date: o.createdAt.toISOString(),
+        itemName: o.itemName
+      });
+    }
+    for (const r of refineryRows) {
+      const lastPurchase = lastPurchaseByItem.get(r.shopItemId);
+      const locked = !!lastPurchase && new Date(r.createdAt) <= lastPurchase;
+      timeline.push({
+        type: "refinery_upgrade",
+        amount: -r.cost,
+        description: `+${r.boostAmount}% boost for "${r.itemName}"`,
+        date: r.createdAt.toISOString(),
+        locked,
+        itemName: r.itemName
+      });
+    }
+    const usedOrderIds = new Set;
+    for (const h of refineryHistory) {
+      const matchingOrder = refineryRows.find((r) => r.shopItemId === h.shopItemId && r.cost === h.cost && !usedOrderIds.has(r.id) && Math.abs(new Date(r.createdAt).getTime() - new Date(h.createdAt).getTime()) < 2000);
+      if (matchingOrder) {
+        usedOrderIds.add(matchingOrder.id);
+      } else {
+        timeline.push({
+          type: "refinery_undone",
+          amount: 0,
+          description: `undone +boost for "${h.itemName}" (was ${h.cost} scraps)`,
+          date: h.createdAt.toISOString(),
+          itemName: h.itemName
+        });
+      }
+    }
+    timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const balance = await getUserScrapsBalance(targetUserId);
+    return { timeline, balance };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to fetch user timeline" });
+  }
+});
+var admin_default = admin;
+
+// src/routes/slack.ts
+var slack = new Elysia({ prefix: "/slack" });
+slack.post("/events", async ({ body, status: status2 }) => {
+  const event = body;
+  if (event.type === "url_verification") {
+    return { challenge: event.challenge };
+  }
+  if (event.type === "event_callback" && event.event) {
+    const { type, channel, user: user2, ts } = event.event;
+    if (type === "app_mention") {
+      if (!config.slackBotToken) {
+        console.error("No SLACK_BOT_TOKEN configured for app_mention response");
+        return status2(200, { ok: true });
+      }
+      try {
+        await fetch("https://slack.com/api/chat.postMessage", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${config.slackBotToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            channel,
+            thread_ts: ts,
+            text: ":scraps: join scraps ---> <https://scraps.hackclub.com?utm_source=slack_mention|https://scraps.hackclub.com> :scraps:",
+            unfurl_links: false,
+            unfurl_media: false
+          })
+        });
+      } catch (err) {
+        console.error("Failed to respond to app_mention:", err);
+      }
+    }
+  }
+  return { ok: true };
+});
+var slack_default = slack;
+
+// src/lib/airtable-sync.ts
+var import_airtable = __toESM(require_airtable(), 1);
+var SYNC_INTERVAL_MS2 = 5 * 60 * 1000;
 
 // src/index.ts
-var api = new Elysia().use(auth_default).use(projects_default).use(news_default).use(user_default).use(shop_default).use(leaderboard_default).use(hackatime_default).use(upload_default).use(admin_default).get("/", () => "if you dm @notaroomba abt finding this you may get cool stickers");
+var api = new Elysia().use(auth_default).use(projects_default).use(news_default).use(user_default).use(shop_default).use(leaderboard_default).use(hackatime_default).use(upload_default).use(admin_default).use(slack_default).get("/", () => "if you dm @notaroomba abt finding this you may get cool stickers");
 var app = new Elysia().use(cors({
   origin: [config.frontendUrl],
   credentials: true
 })).use(api).listen(config.port);
 console.log(`\uD83E\uDD8A Elysia is running at ${app.server?.hostname}:${app.server?.port}`);
-startHackatimeSync();
+if (false) {} else {
+  console.log("[STARTUP] Skipping background syncs in development mode");
+}

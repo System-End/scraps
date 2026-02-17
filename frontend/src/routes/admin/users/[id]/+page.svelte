@@ -10,7 +10,16 @@
 		AlertTriangle,
 		Plus,
 		Gift,
-		Spool
+		Spool,
+		Lock,
+		Unlock,
+		History,
+		TrendingUp,
+		TrendingDown,
+		Undo2,
+		ShoppingCart,
+		Dices,
+		FileText
 	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
@@ -80,6 +89,21 @@
 	let bonusReason = $state('');
 	let savingBonus = $state(false);
 	let bonusError = $state<string | null>(null);
+
+	interface TimelineEvent {
+		type: string;
+		amount: number;
+		description: string;
+		date: string;
+		locked?: boolean;
+		itemName?: string;
+		paid?: boolean;
+	}
+
+	let timeline = $state<TimelineEvent[]>([]);
+	let timelineBalance = $state<{ earned: number; pending: number; spent: number; balance: number } | null>(null);
+	let timelineLoading = $state(false);
+	let showTimeline = $state(false);
 
 	onMount(async () => {
 		currentUser = await getUser();
@@ -179,6 +203,74 @@
 			bonusError = e instanceof Error ? e.message : 'Failed to save bonus';
 		} finally {
 			savingBonus = false;
+		}
+	}
+
+	async function fetchTimeline() {
+		if (!targetUser) return;
+		timelineLoading = true;
+		try {
+			const res = await fetch(`${API_URL}/admin/users/${targetUser.id}/timeline`, {
+				credentials: 'include'
+			});
+			if (res.ok) {
+				const result = await res.json();
+				timeline = result.timeline;
+				timelineBalance = result.balance;
+			}
+		} catch (e) {
+			console.error('Failed to fetch timeline:', e);
+		} finally {
+			timelineLoading = false;
+		}
+	}
+
+	function getTimelineIcon(type: string) {
+		switch (type) {
+			case 'earned':
+				return TrendingUp;
+			case 'bonus':
+				return Gift;
+			case 'shop_purchase':
+				return ShoppingCart;
+			case 'shop_luck_win':
+				return Dices;
+			case 'shop_consolation':
+				return FileText;
+			case 'refinery_upgrade':
+				return Spool;
+			case 'refinery_undone':
+				return Undo2;
+			default:
+				return Clock;
+		}
+	}
+
+	function getTimelineColor(type: string, amount: number) {
+		if (type === 'refinery_undone') return 'text-gray-400';
+		if (amount > 0) return 'text-green-600';
+		if (amount < 0) return 'text-red-600';
+		return 'text-gray-600';
+	}
+
+	function getTimelineLabel(type: string) {
+		switch (type) {
+			case 'earned':
+				return 'scraps earned';
+			case 'bonus':
+				return 'bonus';
+			case 'shop_purchase':
+				return 'shop purchase';
+			case 'shop_luck_win':
+				return 'lucky win';
+			case 'shop_consolation':
+				return 'consolation roll';
+			case 'refinery_upgrade':
+				return 'refinery upgrade';
+			case 'refinery_undone':
+				return 'refinery undone';
+			default:
+				return type;
 		}
 	}
 
@@ -484,6 +576,102 @@
 							</div>
 						{/each}
 					</div>
+				{/if}
+			</div>
+
+			<!-- Financial Timeline -->
+			<div class="mt-6 rounded-2xl border-4 border-black p-6">
+				<div class="mb-4 flex items-center justify-between">
+					<h2 class="flex items-center gap-2 text-xl font-bold">
+						<History size={20} />
+						financial timeline
+					</h2>
+					{#if !showTimeline}
+						<button
+							onclick={() => { showTimeline = true; fetchTimeline(); }}
+							class="cursor-pointer rounded-full border-4 border-black px-4 py-2 text-sm font-bold transition-all duration-200 hover:border-dashed"
+						>
+							load timeline
+						</button>
+					{/if}
+				</div>
+
+				{#if !showTimeline}
+					<p class="text-gray-500">click "load timeline" to view the full financial history</p>
+				{:else if timelineLoading}
+					<div class="py-8 text-center text-gray-500">{$t.common.loading}</div>
+				{:else}
+					{#if timelineBalance}
+						<div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+							<div class="rounded-lg border-2 border-black p-3 text-center">
+								<p class="text-xl font-bold text-green-600">{timelineBalance.earned}</p>
+								<p class="text-xs text-gray-500">earned</p>
+							</div>
+							<div class="rounded-lg border-2 border-black p-3 text-center">
+								<p class="text-xl font-bold text-yellow-600">{timelineBalance.pending}</p>
+								<p class="text-xs text-gray-500">pending</p>
+							</div>
+							<div class="rounded-lg border-2 border-black p-3 text-center">
+								<p class="text-xl font-bold text-red-600">{timelineBalance.spent}</p>
+								<p class="text-xs text-gray-500">spent</p>
+							</div>
+							<div class="rounded-lg border-2 border-black p-3 text-center">
+								<p class="text-xl font-bold">{timelineBalance.balance}</p>
+								<p class="text-xs text-gray-500">balance</p>
+							</div>
+						</div>
+					{/if}
+
+					{#if timeline.length === 0}
+						<p class="text-gray-500">no financial activity yet</p>
+					{:else}
+						<div class="space-y-2">
+							{#each timeline as event}
+								{@const Icon = getTimelineIcon(event.type)}
+								<div class="flex items-center gap-3 rounded-lg border-2 border-black p-3 {event.type === 'refinery_undone' ? 'border-dashed opacity-60' : ''}">
+									<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full {event.amount > 0 ? 'bg-green-100' : event.amount < 0 ? 'bg-red-100' : 'bg-gray-100'}">
+										<Icon size={16} class={getTimelineColor(event.type, event.amount)} />
+									</div>
+									<div class="min-w-0 flex-1">
+										<div class="flex items-center gap-2">
+											<span class="text-xs font-bold uppercase {getTimelineColor(event.type, event.amount)}">
+												{getTimelineLabel(event.type)}
+											</span>
+											{#if event.type === 'refinery_upgrade'}
+												{#if event.locked}
+													<span class="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
+														<Lock size={10} />
+														locked
+													</span>
+												{:else}
+													<span class="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">
+														<Unlock size={10} />
+														undoable
+													</span>
+												{/if}
+											{/if}
+											{#if event.type === 'earned' && !event.paid}
+												<span class="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-bold text-yellow-700">
+													unpaid
+												</span>
+											{/if}
+										</div>
+										<p class="truncate text-sm text-gray-700">{event.description}</p>
+									</div>
+									<div class="shrink-0 text-right">
+										<p class="font-bold {getTimelineColor(event.type, event.amount)}">
+											{#if event.amount !== 0}
+												{event.amount > 0 ? '+' : ''}{event.amount}
+											{/if}
+										</p>
+										<p class="text-xs text-gray-500">
+											{new Date(event.date).toLocaleDateString()}
+										</p>
+									</div>
+								</div>
+							{/each}
+						</div>
+					{/if}
 				{/if}
 			</div>
 		{/if}

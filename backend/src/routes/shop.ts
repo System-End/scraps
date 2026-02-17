@@ -1,5 +1,5 @@
 import { Elysia } from 'elysia'
-import { eq, sql, and, desc, isNull, ne } from 'drizzle-orm'
+import { eq, sql, and, desc, isNull, ne, or, gt } from 'drizzle-orm'
 import { db } from '../db'
 import { shopItemsTable, shopHeartsTable, shopOrdersTable, shopRollsTable, refineryOrdersTable, shopPenaltiesTable, refinerySpendingHistoryTable } from '../schemas/shop'
 import { usersTable } from '../schemas/users'
@@ -940,17 +940,41 @@ shop.post('/items/:id/refinery/undo', async ({ params, headers }) => {
 	const result = await db.transaction(async (tx) => {
 		await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user.id} FOR UPDATE`)
 
+		// Check if user has purchased or won this item - only allow undoing upgrades made AFTER the most recent purchase
+		const lastPurchase = await tx
+			.select({ createdAt: shopOrdersTable.createdAt })
+			.from(shopOrdersTable)
+			.where(and(
+				eq(shopOrdersTable.userId, user.id),
+				eq(shopOrdersTable.shopItemId, itemId),
+				or(
+					eq(shopOrdersTable.orderType, 'purchase'),
+					eq(shopOrdersTable.orderType, 'luck_win')
+				)
+			))
+			.orderBy(desc(shopOrdersTable.createdAt))
+			.limit(1)
+
+		const orderConditions = [
+			eq(refineryOrdersTable.userId, user.id),
+			eq(refineryOrdersTable.shopItemId, itemId)
+		]
+
+		if (lastPurchase.length > 0) {
+			orderConditions.push(gt(refineryOrdersTable.createdAt, lastPurchase[0].createdAt))
+		}
+
 		const orders = await tx
 			.select()
 			.from(refineryOrdersTable)
-			.where(and(
-				eq(refineryOrdersTable.userId, user.id),
-				eq(refineryOrdersTable.shopItemId, itemId)
-			))
+			.where(and(...orderConditions))
 			.orderBy(desc(refineryOrdersTable.createdAt))
 			.limit(1)
 
 		if (orders.length === 0) {
+			if (lastPurchase.length > 0) {
+				return { error: 'Cannot undo refinery upgrades from before your last purchase' }
+			}
 			return { error: 'No refinery upgrades to undo' }
 		}
 

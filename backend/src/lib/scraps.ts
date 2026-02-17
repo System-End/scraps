@@ -2,7 +2,7 @@ import { eq, sql } from 'drizzle-orm'
 import type { PgTransaction } from 'drizzle-orm/pg-core'
 import { db } from '../db'
 import { projectsTable } from '../schemas/projects'
-import { shopOrdersTable, refineryOrdersTable, refinerySpendingHistoryTable } from '../schemas/shop'
+import { shopOrdersTable, refineryOrdersTable } from '../schemas/shop'
 import { userBonusesTable } from '../schemas/users'
 
 export const PHI = (1 + Math.sqrt(5)) / 2
@@ -128,13 +128,13 @@ export async function getUserScrapsBalance(userId: number, txOrDb: DbOrTx = db):
 		.from(shopOrdersTable)
 		.where(eq(shopOrdersTable.userId, userId))
 
-	// Calculate scraps spent on probability upgrades from refinery spending history (never deleted)
+	// Calculate scraps spent on active refinery orders (deleted on win/undo = automatic refund)
 	const upgradeSpentResult = await txOrDb
 		.select({
-			total: sql<number>`COALESCE(SUM(${refinerySpendingHistoryTable.cost}), 0)`
+			total: sql<number>`COALESCE(SUM(${refineryOrdersTable.cost}), 0)`
 		})
-		.from(refinerySpendingHistoryTable)
-		.where(eq(refinerySpendingHistoryTable.userId, userId))
+		.from(refineryOrdersTable)
+		.where(eq(refineryOrdersTable.userId, userId))
 
 	const projectEarned = Number(earnedResult[0]?.total) || 0
 	const pending = Number(pendingResult[0]?.total) || 0
