@@ -612,14 +612,16 @@ shop.post('/items/:id/upgrade-probability', async ({ params, headers }) => {
 
 	const item = items[0]
 
-	if (item.count <= 0) {
-		return { error: 'Item is out of stock' }
-	}
-
 	try {
 		const result = await db.transaction(async (tx) => {
 			// Lock the user row to serialize spend operations and prevent race conditions
 			await tx.execute(sql`SELECT 1 FROM users WHERE id = ${user.id} FOR UPDATE`)
+
+			// Lock the item row and check stock atomically
+			const stockCheck = await tx.execute(sql`SELECT count FROM shop_items WHERE id = ${itemId} FOR UPDATE`)
+			if (!stockCheck.rows[0] || (stockCheck.rows[0] as { count: number }).count <= 0) {
+				throw { type: 'out_of_stock' }
+			}
 
 			const boostResult = await tx
 				.select({
@@ -697,6 +699,9 @@ shop.post('/items/:id/upgrade-probability', async ({ params, headers }) => {
 		return result
 	} catch (e) {
 		const err = e as { type?: string; balance?: number; cost?: number }
+		if (err.type === 'out_of_stock') {
+			return { error: 'Item is out of stock' }
+		}
 		if (err.type === 'max_probability') {
 			return { error: 'Already at maximum probability' }
 		}
