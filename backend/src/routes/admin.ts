@@ -313,11 +313,9 @@ admin.post('/users/:id/bonus', async ({ params, body, headers, status }) => {
 
         const { amount, reason } = body as { amount: number; reason: string }
 
-        if (!amount || typeof amount !== 'number') {
-            return status(400, { error: 'Amount is required and must be a number' })
+        if (!amount || typeof amount !== 'number' || !Number.isFinite(amount) || !Number.isInteger(amount) || amount <= 0) {
+            return status(400, { error: 'Amount is required and must be a positive integer' })
         }
-
-        if (Number(amount))
 
         if (!reason || typeof reason !== 'string' || reason.trim().length === 0) {
             return status(400, { error: 'Reason is required' })
