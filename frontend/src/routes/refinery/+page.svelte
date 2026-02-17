@@ -80,10 +80,8 @@
 				)
 			);
 			await refreshUserScraps();
-			alertType = 'info';
 			alertMessage = `Refunded ${data.refundedCost} scraps`;
 		} catch (e) {
-			alertType = 'error';
 			alertMessage = $t.refinery.failedToUndo || 'Failed to undo upgrade';
 		} finally {
 			undoing = null;
@@ -168,7 +166,7 @@
 									{$t.refinery.undo}
 								</button>
 							{/if}
-							{#if maxed}
+							{#if maxed || soldOut}
 								<span
 									class="rounded-full bg-gray-200 px-4 py-2 font-bold text-gray-600"
 									>{$t.refinery.maxed}</span
