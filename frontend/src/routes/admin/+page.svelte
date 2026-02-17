@@ -306,19 +306,19 @@
 			<div>
 				<h3 class="flex items-center gap-2 text-lg font-bold">
 					<Download size={20} />
-					YSWS export
+					YSWS review export
 				</h3>
-				<p class="text-sm text-gray-500">download shipped projects for YSWS fraud checking</p>
+				<p class="text-sm text-gray-500">download projects under review for YSWS fraud checking</p>
 			</div>
 			<div class="flex gap-3">
 				<button
-					onclick={() => downloadExport('shipped-csv', 'scraps-shipped-projects.csv')}
+					onclick={() => downloadExport('review-csv', 'scraps-review-projects.csv')}
 					class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
 				>
 					CSV
 				</button>
 				<button
-					onclick={() => downloadExport('ysws-json', 'scraps-ysws.json')}
+					onclick={() => downloadExport('review-json', 'scraps-review.json')}
 					class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
 				>
 					JSON
