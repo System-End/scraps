@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Users, FolderKanban, Clock, Scale, Hourglass, ShieldAlert, Coins, XCircle, Download } from '@lucide/svelte';
+	import { Users, FolderKanban, Clock, Scale, Hourglass, ShieldAlert, Coins, XCircle, Download, RefreshCw } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { t } from '$lib/i18n';
@@ -52,6 +52,11 @@
 	let fixingBalances = $state(false);
 	let fixResult = $state<{ fixedCount: number; fixed: { userId: number; username: string | null; deficit: number }[] } | null>(null);
 	let fixError = $state<string | null>(null);
+
+	// YSWS sync state
+	let yswsSyncing = $state(false);
+	let yswsResult = $state<{ synced: number; failed: number; total: number } | null>(null);
+	let yswsError = $state<string | null>(null);
 
 	async function fetchPayoutInfo() {
 		payoutLoading = true;
@@ -143,6 +148,28 @@
 			fixError = 'Failed to fix negative balances';
 		} finally {
 			fixingBalances = false;
+		}
+	}
+
+	async function syncYSWS() {
+		yswsSyncing = true;
+		yswsResult = null;
+		yswsError = null;
+		try {
+			const res = await fetch(`${API_URL}/admin/sync-ysws`, {
+				method: 'POST',
+				credentials: 'include'
+			});
+			const data = await res.json();
+			if (data.error) {
+				yswsError = data.error;
+			} else {
+				yswsResult = data;
+			}
+		} catch {
+			yswsError = 'Failed to sync projects to YSWS';
+		} finally {
+			yswsSyncing = false;
 		}
 	}
 
@@ -441,6 +468,43 @@
 							{/if}
 						{/each}
 					</div>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Sync to YSWS -->
+		<div class="mb-6 rounded-2xl border-4 border-black p-6">
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<h3 class="flex items-center gap-2 text-lg font-bold">
+						<RefreshCw size={20} />
+						sync projects to YSWS
+					</h3>
+					<p class="text-sm text-gray-500">
+						submit all submitted/pending/shipped projects to the YSWS fraud API
+					</p>
+				</div>
+				<button
+					onclick={syncYSWS}
+					disabled={yswsSyncing}
+					class="cursor-pointer rounded-full bg-black px-6 py-2 font-bold text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{yswsSyncing ? 'syncing...' : 'sync now'}
+				</button>
+			</div>
+
+			{#if yswsError}
+				<div class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">{yswsError}</div>
+			{/if}
+
+			{#if yswsResult}
+				<div class="mt-4 rounded-lg bg-green-50 p-4">
+					<p class="font-bold text-green-700">
+						synced {yswsResult.synced} of {yswsResult.total} project{yswsResult.total !== 1 ? 's' : ''}
+						{#if yswsResult.failed > 0}
+							<span class="text-red-600">({yswsResult.failed} failed)</span>
+						{/if}
+					</p>
 				</div>
 			{/if}
 		</div>

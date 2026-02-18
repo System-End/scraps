@@ -11,6 +11,7 @@ import { getUserFromSession } from '../lib/auth'
 import { calculateScrapsFromHours, getUserScrapsBalance } from '../lib/scraps'
 import { payoutPendingScraps, getNextPayoutDate } from '../lib/scraps-payout'
 import { syncSingleProject } from '../lib/hackatime-sync'
+import { submitProjectToYSWS } from '../lib/ysws'
 import { notifyProjectReview } from '../lib/slack'
 import { config } from '../config'
 import { computeEffectiveHours, getProjectShippedDates, hasProjectBeenShipped, computeEffectiveHoursForProject } from '../lib/effective-hours'
@@ -2174,6 +2175,73 @@ admin.get('/users/:id/timeline', async ({ params, headers, status }) => {
     } catch (err) {
         console.error(err)
         return status(500, { error: 'Failed to fetch user timeline' })
+    }
+})
+
+// Sync all submitted/pending projects to YSWS
+admin.post('/sync-ysws', async ({ headers, set }) => {
+    const user = await requireAdmin(headers as Record<string, string>)
+    if (!user) return { error: 'Unauthorized' }
+
+    try {
+        const projects = await db
+            .select({
+                id: projectsTable.id,
+                name: projectsTable.name,
+                githubUrl: projectsTable.githubUrl,
+                playableUrl: projectsTable.playableUrl,
+                hackatimeProject: projectsTable.hackatimeProject,
+                userId: projectsTable.userId
+            })
+            .from(projectsTable)
+            .where(and(
+                or(
+                    eq(projectsTable.status, 'waiting_for_review'),
+                    eq(projectsTable.status, 'pending_admin_approval'),
+                    eq(projectsTable.status, 'shipped')
+                ),
+                or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
+            ))
+
+        // Get emails for all project owners
+        const userIds = [...new Set(projects.map(p => p.userId))]
+        const users = userIds.length > 0
+            ? await db
+                .select({ id: usersTable.id, email: usersTable.email })
+                .from(usersTable)
+                .where(inArray(usersTable.id, userIds))
+            : []
+        const emailMap = new Map(users.map(u => [u.id, u.email]))
+
+        let synced = 0
+        let failed = 0
+
+        for (const project of projects) {
+            const email = emailMap.get(project.userId)
+            if (!email) {
+                failed++
+                continue
+            }
+
+            try {
+                await submitProjectToYSWS({
+                    name: project.name,
+                    githubUrl: project.githubUrl,
+                    playableUrl: project.playableUrl,
+                    hackatimeProject: project.hackatimeProject,
+                    email
+                })
+                synced++
+            } catch {
+                failed++
+            }
+        }
+
+        console.log(`[ADMIN] YSWS sync complete: ${synced} synced, ${failed} failed out of ${projects.length} projects`)
+        return { synced, failed, total: projects.length }
+    } catch (err) {
+        console.error('[ADMIN] YSWS sync error:', err)
+        return { error: 'Failed to sync projects to YSWS' }
     }
 })
 
