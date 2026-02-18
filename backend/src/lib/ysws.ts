@@ -1,6 +1,6 @@
 import { config } from '../config'
 
-const YSWS_API_URL = 'https://joe.fraud.hackclub.com/api/v1/ysws/events/new-ui-api'
+const YSWS_API_URL = 'https://joe.fraud.hackclub.com/api/v1/ysws/events/ysws-scraps'
 
 async function lookupHackatimeId(email: string): Promise<number | null> {
 	if (!config.hackatimeAdminKey) return null
