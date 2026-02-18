@@ -35,7 +35,11 @@ export async function submitProjectToYSWS(project: {
 	}
 
 	const hackatimeProjects = project.hackatimeProject
-		? project.hackatimeProject.split(',').map(n => n.trim()).filter(n => n.length > 0)
+		? project.hackatimeProject.split(',').map(n => {
+			const trimmed = n.trim()
+			const slashIndex = trimmed.indexOf('/')
+			return slashIndex !== -1 ? trimmed.substring(slashIndex + 1) : trimmed
+		}).filter(n => n.length > 0)
 		: []
 
 	const hackatimeId = await lookupHackatimeId(project.email)
