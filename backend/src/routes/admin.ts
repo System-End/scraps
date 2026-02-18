@@ -10,7 +10,7 @@ import { projectActivityTable } from '../schemas/activity'
 import { getUserFromSession } from '../lib/auth'
 import { calculateScrapsFromHours, getUserScrapsBalance } from '../lib/scraps'
 import { payoutPendingScraps, getNextPayoutDate } from '../lib/scraps-payout'
-import { syncSingleProject, getHackatimeUser } from '../lib/hackatime-sync'
+import { syncSingleProject } from '../lib/hackatime-sync'
 import { notifyProjectReview } from '../lib/slack'
 import { config } from '../config'
 import { computeEffectiveHours, getProjectShippedDates, hasProjectBeenShipped, computeEffectiveHoursForProject } from '../lib/effective-hours'
@@ -502,13 +502,26 @@ admin.get('/reviews/:id', async ({ params, headers }) => {
                 .where(inArray(usersTable.id, reviewerIds))
         }
 
-        // Look up Hackatime user ID
+        // Look up Hackatime user ID by email
         let hackatimeUserId: number | null = null
         if (projectUser[0]?.email) {
-            console.log('[ADMIN] Looking up hackatime user for:', projectUser[0].email)
-            const htUser = await getHackatimeUser(projectUser[0].email)
-            console.log('[ADMIN] Hackatime user result:', htUser)
-            if (htUser) hackatimeUserId = htUser.user_id
+            try {
+                const htResponse = await fetch('https://hackatime.hackclub.com/api/admin/v1/user/get_user_by_email', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${config.hackatimeAdminKey}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email: projectUser[0].email })
+                })
+                if (htResponse.ok) {
+                    const htData = await htResponse.json() as { user_id: number }
+                    hackatimeUserId = htData.user_id
+                }
+            } catch (e) {
+                console.error('[ADMIN] Failed to look up hackatime user:', e)
+            }
         }
 
         const isAdmin = user.role === 'admin'
@@ -903,11 +916,26 @@ admin.get('/second-pass/:id', async ({ params, headers }) => {
                 .where(inArray(usersTable.id, reviewerIds))
         }
 
-        // Look up Hackatime user ID
+        // Look up Hackatime user ID by email
         let hackatimeUserId: number | null = null
         if (projectUser[0]?.email) {
-            const htUser = await getHackatimeUser(projectUser[0].email)
-            if (htUser) hackatimeUserId = htUser.user_id
+            try {
+                const htResponse = await fetch('https://hackatime.hackclub.com/api/admin/v1/user/get_user_by_email', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${config.hackatimeAdminKey}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ email: projectUser[0].email })
+                })
+                if (htResponse.ok) {
+                    const htData = await htResponse.json() as { user_id: number }
+                    hackatimeUserId = htData.user_id
+                }
+            } catch (e) {
+                console.error('[ADMIN] Failed to look up hackatime user:', e)
+            }
         }
 
         // Calculate effective hours and overlapping projects
