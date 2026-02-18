@@ -267,8 +267,8 @@ async function syncProjectsToAirtable(): Promise<void> {
 				}
 			}
 
-			const firstName = userIdentity?.given_name || (project.username || '').split(' ')[0] || ''
-			const lastName = userIdentity?.family_name || (project.username || '').split(' ').slice(1).join(' ') || ''
+			const firstName = userIdentity?.first_name || (project.username || '').split(' ')[0] || ''
+			const lastName = userIdentity?.last_name || (project.username || '').split(' ').slice(1).join(' ') || ''
 
 			const descriptionParts = [project.description || '']
 			if (project.updateDescription) {
@@ -300,21 +300,20 @@ async function syncProjectsToAirtable(): Promise<void> {
 			}
 
 			// Add address fields from userinfo
-			if (userIdentity?.address) {
-				if (userIdentity.address.street_address) {
-					const lines = userIdentity.address.street_address.split('\n')
-					if (lines[0]) fields['Address (Line 1)'] = lines[0]
-					if (lines[1]) fields['Address (Line 2)'] = lines[1]
+			if (userIdentity?.addresses) {
+				if (userIdentity.addresses[0]) {
+					if (userIdentity.addresses[0].line_1) fields['Address (Line 1)'] = userIdentity.addresses[0].line_1
+					if (userIdentity.addresses[0].line_2) fields['Address (Line 2)'] = userIdentity.addresses[0].line_2
 				}
-				if (userIdentity.address.locality) fields['City'] = userIdentity.address.locality
-				if (userIdentity.address.region) fields['State / Province'] = userIdentity.address.region
-				if (userIdentity.address.postal_code) fields['ZIP / Postal Code'] = userIdentity.address.postal_code
-				if (userIdentity.address.country) fields['Country'] = userIdentity.address.country
+				if (userIdentity.addresses[0].city) fields['City'] = userIdentity.addresses[0].city
+				if (userIdentity.addresses[0].state) fields['State / Province'] = userIdentity.addresses[0].state
+				if (userIdentity.addresses[0].postal_code) fields['ZIP / Postal Code'] = userIdentity.addresses[0].postal_code
+				if (userIdentity.addresses[0].country) fields['Country'] = userIdentity.addresses[0].country
 			}
 
 			// Add birthday and phone from identity
-			if (userIdentity?.birthdate) {
-				fields['Birthday'] = userIdentity.birthdate
+			if (userIdentity?.birthday) {
+				fields['Birthday'] = userIdentity.birthday
 			}
 			if (userIdentity?.phone_number) {
 				fields['Phone Number'] = userIdentity.phone_number
