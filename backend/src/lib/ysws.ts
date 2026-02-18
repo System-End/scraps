@@ -2,12 +2,32 @@ import { config } from '../config'
 
 const YSWS_API_URL = 'https://joe.fraud.hackclub.com/api/v1/ysws/events/new-ui-api'
 
+async function lookupHackatimeId(email: string): Promise<number | null> {
+	if (!config.hackatimeAdminKey) return null
+	try {
+		const res = await fetch('https://hackatime.hackclub.com/api/admin/v1/user/get_user_by_email', {
+			method: 'POST',
+			headers: {
+				'Authorization': `Bearer ${config.hackatimeAdminKey}`,
+				'Content-Type': 'application/json',
+				'Accept': 'application/json'
+			},
+			body: JSON.stringify({ email })
+		})
+		if (!res.ok) return null
+		const data = await res.json() as { user_id: number }
+		return data.user_id
+	} catch {
+		return null
+	}
+}
+
 export async function submitProjectToYSWS(project: {
 	name: string
 	githubUrl: string | null
 	playableUrl: string | null
 	hackatimeProject: string | null
-	slackId: string | null
+	email: string
 }) {
 	if (!config.fraudToken) {
 		console.log('[YSWS] Missing FRAUD_TOKEN, skipping submission')
@@ -18,12 +38,14 @@ export async function submitProjectToYSWS(project: {
 		? project.hackatimeProject.split(',').map(n => n.trim()).filter(n => n.length > 0)
 		: []
 
+	const hackatimeId = await lookupHackatimeId(project.email)
+
 	const payload = {
 		name: project.name,
 		codeLink: project.githubUrl || '',
 		demoLink: project.playableUrl || '',
 		submitter: {
-			slackId: project.slackId || ''
+			hackatimeId: hackatimeId || 0
 		},
 		hackatimeProjects
 	}

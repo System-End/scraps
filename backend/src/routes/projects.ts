@@ -650,7 +650,7 @@ projects.post("/:id/submit", async ({ params, headers, body }) => {
         githubUrl: updated[0].githubUrl,
         playableUrl: updated[0].playableUrl,
         hackatimeProject: updated[0].hackatimeProject,
-        slackId: user.slackId
+        email: user.email
     }).catch(err => console.error('[YSWS] failed:', err))
 
     // Send Slack DM notification that the project is waiting for review
