@@ -315,9 +315,9 @@ async function syncProjectsToAirtable(): Promise<void> {
 			if (userIdentity?.birthday) {
 				fields['Birthday'] = userIdentity.birthday
 			}
-			if (userIdentity?.phone_number) {
-				fields['Phone Number'] = userIdentity.phone_number
-			}
+			// if (userIdentity?.phone_number) {
+			// 	fields['Phone Number'] = userIdentity.phone_number
+			// }
 
 			const existingId = existingRecords.get(project.githubUrl)
 			if (existingId) {
