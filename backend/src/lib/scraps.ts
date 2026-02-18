@@ -39,9 +39,9 @@ export function calculateShopItemPricing(monetaryValue: number, stockCount: numb
 	// Roll cost = price * (baseProbability / 100) - fixed, doesn't change with upgrades
 	const rollCost = Math.max(1, Math.round(price * (baseProbability / 100)))
 	
-	// Total budget = 2.0x price
-	// Upgrade budget = 2.0x price - rollCost
-	const upgradeBudget = Math.max(0, price * 2.0 - rollCost)
+	// Total budget = 1.5x price
+	// Upgrade budget = 1.5x price - rollCost
+	const upgradeBudget = Math.max(0, price * 1.5 - rollCost)
 	
 	// Number of upgrades needed to go from baseProbability to 100%
 	const probabilityGap = 100 - baseProbability
