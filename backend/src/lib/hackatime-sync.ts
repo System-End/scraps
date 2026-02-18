@@ -41,7 +41,7 @@ interface HackatimeStatsResponse {
 // Cache of email -> hackatime user to avoid repeated lookups
 const hackatimeUserCache = new Map<string, HackatimeUser>()
 
-async function getHackatimeUser(email: string): Promise<HackatimeUser | null> {
+export async function getHackatimeUser(email: string): Promise<HackatimeUser | null> {
 	const cached = hackatimeUserCache.get(email)
 	if (cached !== undefined) return cached
 

@@ -10,7 +10,7 @@ import { projectActivityTable } from '../schemas/activity'
 import { getUserFromSession } from '../lib/auth'
 import { calculateScrapsFromHours, getUserScrapsBalance } from '../lib/scraps'
 import { payoutPendingScraps, getNextPayoutDate } from '../lib/scraps-payout'
-import { syncSingleProject } from '../lib/hackatime-sync'
+import { syncSingleProject, getHackatimeUser } from '../lib/hackatime-sync'
 import { notifyProjectReview } from '../lib/slack'
 import { config } from '../config'
 import { computeEffectiveHours, getProjectShippedDates, hasProjectBeenShipped, computeEffectiveHoursForProject } from '../lib/effective-hours'
@@ -480,6 +480,7 @@ admin.get('/reviews/:id', async ({ params, headers }) => {
             .select({
                 id: usersTable.id,
                 username: usersTable.username,
+                email: usersTable.email,
                 avatar: usersTable.avatar,
                 internalNotes: usersTable.internalNotes
             })
@@ -501,6 +502,15 @@ admin.get('/reviews/:id', async ({ params, headers }) => {
                 .where(inArray(usersTable.id, reviewerIds))
         }
 
+        // Look up Hackatime user ID
+        let hackatimeUserId: number | null = null
+        if (projectUser[0]?.email) {
+            console.log('[ADMIN] Looking up hackatime user for:', projectUser[0].email)
+            const htUser = await getHackatimeUser(projectUser[0].email)
+            console.log('[ADMIN] Hackatime user result:', htUser)
+            if (htUser) hackatimeUserId = htUser.user_id
+        }
+
         const isAdmin = user.role === 'admin'
         // Hide pending_admin_approval from non-admin reviewers
         const maskedProject = (!isAdmin && project[0].status === 'pending_admin_approval')
@@ -514,9 +524,11 @@ admin.get('/reviews/:id', async ({ params, headers }) => {
 
         return {
             project: maskedProject,
+            hackatimeUserId,
             user: projectUser[0] ? {
                 id: projectUser[0].id,
                 username: projectUser[0].username,
+                email: projectUser[0].email,
                 avatar: projectUser[0].avatar,
                 internalNotes: projectUser[0].internalNotes
             } : null,
@@ -869,6 +881,7 @@ admin.get('/second-pass/:id', async ({ params, headers }) => {
             .select({
                 id: usersTable.id,
                 username: usersTable.username,
+                email: usersTable.email,
                 avatar: usersTable.avatar,
                 internalNotes: usersTable.internalNotes
             })
@@ -890,14 +903,23 @@ admin.get('/second-pass/:id', async ({ params, headers }) => {
                 .where(inArray(usersTable.id, reviewerIds))
         }
 
+        // Look up Hackatime user ID
+        let hackatimeUserId: number | null = null
+        if (projectUser[0]?.email) {
+            const htUser = await getHackatimeUser(projectUser[0].email)
+            if (htUser) hackatimeUserId = htUser.user_id
+        }
+
         // Calculate effective hours and overlapping projects
         const effectiveHoursData = await computeEffectiveHoursForProject(project[0])
 
         return {
             project: project[0],
+            hackatimeUserId,
             user: projectUser[0] ? {
                 id: projectUser[0].id,
                 username: projectUser[0].username,
+                email: projectUser[0].email,
                 avatar: projectUser[0].avatar,
                 internalNotes: projectUser[0].internalNotes
             } : null,

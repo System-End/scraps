@@ -14,7 +14,9 @@
 		ArrowLeft,
 		RefreshCw,
 		Bot,
-		MessageSquare
+		MessageSquare,
+		ShieldAlert,
+		Lock
 	} from '@lucide/svelte';
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
 	import { getUser } from '$lib/auth-client';
@@ -82,6 +84,7 @@
 	let projectUser = $state<ProjectUser | null>(null);
 	let reviews = $state<Review[]>([]);
 	let overlappingProjects = $state<OverlappingProject[]>([]);
+	let hackatimeUserId = $state<number | null>(null);
 	let loading = $state(true);
 	let submitting = $state(false);
 	let error = $state<string | null>(null);
@@ -129,6 +132,7 @@
 				projectUser = data.user;
 				reviews = data.reviews || [];
 				overlappingProjects = data.overlappingProjects || [];
+				hackatimeUserId = data.hackatimeUserId ?? null;
 				if (data.project?.hoursOverride != null) {
 					hoursOverride = data.project.hoursOverride;
 				}
@@ -411,6 +415,31 @@
 						<Globe size={18} />
 						<span>try it out</span>
 					</span>
+				{/if}
+				{#if hackatimeUserId}
+					<a
+						href="https://joe.fraud.hackclub.com/profile/{hackatimeUserId}"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="inline-flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
+					>
+						<ShieldAlert size={18} />
+						<span>fraud check</span>
+					</a>
+				{/if}
+				{#if project.githubUrl}
+					<button
+						onclick={async () => {
+							if (project?.githubUrl) {
+								await navigator.clipboard.writeText(project.githubUrl);
+								window.open('https://airlock.hackclub.com/', '_blank');
+							}
+						}}
+						class="inline-flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
+					>
+						<Lock size={18} />
+						<span>airlock</span>
+					</button>
 				{/if}
 			</div>
 
