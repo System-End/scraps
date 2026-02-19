@@ -41,7 +41,7 @@ authRoutes.get("/login", ({ redirect }) => {
 })
 
 // GET /auth/callback - Handle OIDC callback
-authRoutes.get("/callback", async ({ query, redirect, cookie }) => {
+authRoutes.get("/callback", async ({ query, redirect }) => {
     console.log("[AUTH] Callback received")
     const code = query.code as string | undefined
 
@@ -101,16 +101,26 @@ authRoutes.get("/callback", async ({ query, redirect, cookie }) => {
         const sessionToken = await createSession(user.id)
         console.log("[AUTH] User authenticated successfully:", { userId: user.id, username: user.username })
 
-        cookie.session.set({
-            value: sessionToken,
-            httpOnly: true,
-            secure: !config.isDev,
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60,
-            path: "/"
-        })
+        const cookieParts = [
+            `session=${sessionToken}`,
+            'HttpOnly',
+            'Path=/',
+            `Max-Age=${7 * 24 * 60 * 60}`,
+            'SameSite=Lax'
+        ]
+        if (!config.isDev) cookieParts.push('Secure')
 
-        return redirect(`${FRONTEND_URL}/dashboard`)
+        const redirectUrl = `${FRONTEND_URL}/dashboard`
+        return new Response(
+            `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${redirectUrl}"></head><body>Redirecting...</body></html>`,
+            {
+                status: 200,
+                headers: {
+                    'Content-Type': 'text/html',
+                    'Set-Cookie': cookieParts.join('; ')
+                }
+            }
+        )
     } catch (error) {
         const msg = error instanceof Error ? error.message : "unknown"
         console.log("[AUTH] Callback error:", msg, error)

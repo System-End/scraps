@@ -232,7 +232,7 @@ export async function deleteSession(token: string): Promise<void> {
 
 export async function getUserFromSession(headers: Record<string, string | undefined>) {
     const cookie = headers.cookie || ""
-    const match = cookie.match(/session=([^;]+)/)
+    const match = cookie.match(/(?:^|;\s*)session=([^;]+)/)
     if (!match) return null
 
     const userId = await getSessionUserId(match[1])
