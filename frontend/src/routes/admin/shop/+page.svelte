@@ -41,6 +41,7 @@
 		upgradeLevel: number;
 		boostPercent: number;
 		effectiveProbability: number;
+		actualWinChance: number;
 		rollCost: number;
 		upgradeCostCumulative: number;
 		expectedRolls: number;
@@ -51,13 +52,9 @@
 
 	interface EVSummary {
 		results: EVResult[];
-		optimalLevel: number;
-		optimalCost: number;
-		optimalRatio: number;
-		baseExpectedCost: number;
-		baseRatio: number;
-		maxUpgradeExpectedCost: number;
-		maxUpgradeRatio: number;
+		bestPlayerLevel: number;
+		bestPlayerCost: number;
+		bestPlayerRatio: number;
 		isExploitable: boolean;
 		houseEdgePercent: number;
 	}
@@ -90,9 +87,15 @@
 	const SCRAPS_PER_DOLLAR = SCRAPS_PER_HOUR / DOLLARS_PER_HOUR;
 
 	// Must match backend calculateRollCost exactly
-	// NOTE: backend always passes baseProbability here, NOT effectiveProbability
-	function calculateRollCost(basePrice: number, baseProbability: number): number {
-		return Math.max(1, Math.round(basePrice * (baseProbability / 100)));
+	// Backend scales roll cost with effectiveProbability so expected spend ≈ price always
+	function calculateRollCost(basePrice: number, effectiveProbability: number): number {
+		return Math.max(1, Math.round(basePrice * (effectiveProbability / 100)));
+	}
+
+	// Must match backend computeRollThreshold exactly
+	// 15% house edge: displayed 50% → actual 42%, displayed 100% → actual 85%
+	function computeRollThreshold(probability: number): number {
+		return Math.max(1, Math.floor((probability * 17) / 20));
 	}
 
 	// Must match backend calculateShopItemPricing exactly
@@ -140,9 +143,6 @@
 		const maxUpgrades = boostAmount > 0 ? Math.ceil(probabilityGap / boostAmount) : 0;
 		const multiplierDecimal = costMultiplier / 100;
 
-		// Roll cost is FIXED based on baseProbability, matching backend exactly
-		const rollCost = calculateRollCost(price, baseProbability);
-
 		let bestLevel = 0;
 		let bestCost = Infinity;
 
@@ -150,15 +150,19 @@
 			const boostPercent = k * boostAmount;
 			const effectiveProbability = Math.min(baseProbability + boostPercent, 100);
 
+			// Backend: roll cost scales with effectiveProbability
+			const rollCost = calculateRollCost(price, effectiveProbability);
+
 			// Cumulative upgrade cost (geometric series)
 			let upgradeCostCumulative = 0;
 			for (let i = 0; i < k; i++) {
 				upgradeCostCumulative += Math.floor(baseUpgradeCost * Math.pow(multiplierDecimal, i));
 			}
 
-			// Backend: won = rolled <= effectiveProbability (no threshold scaling)
-			const winChance = effectiveProbability / 100;
-			const expectedRolls = winChance > 0 ? 1 / winChance : Infinity;
+			// Backend applies 17/20 house edge via computeRollThreshold
+			const actualThreshold = computeRollThreshold(effectiveProbability);
+			const actualWinChance = actualThreshold / 100;
+			const expectedRolls = actualWinChance > 0 ? 1 / actualWinChance : Infinity;
 			const expectedRollCost = rollCost * expectedRolls;
 			const expectedTotalCost = upgradeCostCumulative + expectedRollCost;
 			const evRatio = price > 0 ? expectedTotalCost / price : Infinity;
@@ -167,6 +171,7 @@
 				upgradeLevel: k,
 				boostPercent,
 				effectiveProbability,
+				actualWinChance: Math.round(actualWinChance * 10000) / 100,
 				rollCost,
 				upgradeCostCumulative,
 				expectedRolls: Math.round(expectedRolls * 100) / 100,
@@ -181,27 +186,20 @@
 			}
 		}
 
-		const baseResult = results[0];
-		const maxResult = results[results.length - 1];
-		const optimalResult = results[bestLevel];
-
+		const bestResult = results[bestLevel];
 		const isExploitable = bestCost < price;
 
-		// House edge: at base level, expected cost vs price
+		// House edge: at player's best strategy, how much more than price they spend
 		const houseEdgePercent =
-			baseResult && price > 0
-				? Math.round(((baseResult.expectedTotalCost - price) / price) * 1000) / 10
+			bestResult && price > 0
+				? Math.round(((bestResult.expectedTotalCost - price) / price) * 1000) / 10
 				: 0;
 
 		return {
 			results,
-			optimalLevel: bestLevel,
-			optimalCost: Math.round(bestCost),
-			optimalRatio: optimalResult?.evRatio ?? 0,
-			baseExpectedCost: baseResult?.expectedTotalCost ?? 0,
-			baseRatio: baseResult?.evRatio ?? 0,
-			maxUpgradeExpectedCost: maxResult?.expectedTotalCost ?? 0,
-			maxUpgradeRatio: maxResult?.evRatio ?? 0,
+			bestPlayerLevel: bestLevel,
+			bestPlayerCost: Math.round(bestCost),
+			bestPlayerRatio: bestResult?.evRatio ?? 0,
 			isExploitable,
 			houseEdgePercent
 		};
@@ -548,28 +546,22 @@
 						{/if}
 						<span class="text-gray-500">·</span>
 						<span>
-							<span class="text-gray-500">EV no upgrades:</span>
-							<span class="font-bold">{ev.baseExpectedCost}</span>
-							<span class="text-gray-500">({ev.baseRatio}×)</span>
-						</span>
-						<span class="text-gray-500">·</span>
-						<span>
-							<span class="text-gray-500">EV optimal (lv{ev.optimalLevel}):</span>
-							<span class="font-bold {ev.optimalRatio < 1 ? 'text-red-600' : ''}"
-								>{ev.optimalCost}</span
-							>
-							<span class="text-gray-500 {ev.optimalRatio < 1 ? 'text-red-600' : ''}"
-								>({ev.optimalRatio}×)</span
+							<span class="text-gray-500">house edge:</span>
+							<span class="font-bold {ev.houseEdgePercent < 0 ? 'text-red-600' : ''}"
+								>+{ev.houseEdgePercent}%</span
 							>
 						</span>
 						<span class="text-gray-500">·</span>
 						<span>
-							<span class="text-gray-500">edge:</span>
-							<span class="font-bold">+{ev.houseEdgePercent}%</span>
+							<span class="text-gray-500">player best (lv{ev.bestPlayerLevel}):</span>
+							<span class="font-bold {ev.bestPlayerRatio < 1 ? 'text-red-600' : ''}"
+								>{ev.bestPlayerCost} scraps</span
+							>
+							<span class="text-gray-500">({ev.bestPlayerRatio}×)</span>
 						</span>
 						<span class="text-gray-500">·</span>
 						<span>
-							<span class="text-gray-500">roll cost:</span>
+							<span class="text-gray-500">base roll:</span>
 							<span class="font-bold"
 								>{calculateRollCost(item.price, item.baseProbability)} scraps</span
 							>
@@ -828,32 +820,20 @@
 
 						<div class="grid grid-cols-2 gap-3 text-xs">
 							<div>
-								<span class="text-gray-500">no upgrades EV:</span>
-								<span class="ml-1 font-bold"
-									>{formEV.baseExpectedCost} scraps ({formEV.baseRatio}× price)</span
-								>
+								<span class="text-gray-500">house edge:</span>
+								<span class="ml-1 font-bold">+{formEV.houseEdgePercent}%</span>
 							</div>
 							<div>
-								<span class="text-gray-500">roll cost (fixed):</span>
+								<span class="text-gray-500">base roll cost:</span>
 								<span class="ml-1 font-bold"
 									>{calculateRollCost(formPrice, formBaseProbability)} scraps</span
 								>
 							</div>
 							<div>
-								<span class="text-gray-500">optimal strategy (lv{formEV.optimalLevel}):</span>
-								<span class="ml-1 font-bold {formEV.optimalRatio < 1 ? 'text-red-600' : ''}">
-									{formEV.optimalCost} scraps ({formEV.optimalRatio}× price)
+								<span class="text-gray-500">player best (lv{formEV.bestPlayerLevel}):</span>
+								<span class="ml-1 font-bold {formEV.bestPlayerRatio < 1 ? 'text-red-600' : ''}">
+									{formEV.bestPlayerCost} scraps ({formEV.bestPlayerRatio}× price)
 								</span>
-							</div>
-							<div>
-								<span class="text-gray-500">max upgrade EV:</span>
-								<span class="ml-1 font-bold"
-									>{formEV.maxUpgradeExpectedCost} scraps ({formEV.maxUpgradeRatio}× price)</span
-								>
-							</div>
-							<div>
-								<span class="text-gray-500">house edge:</span>
-								<span class="ml-1 font-bold">+{formEV.houseEdgePercent}%</span>
 							</div>
 							<div>
 								<span class="text-gray-500">upgrades to 100%:</span>
@@ -867,7 +847,7 @@
 
 						{#if formEV.isExploitable}
 							<div class="mt-3 rounded-lg bg-red-100 p-2 text-xs font-bold text-red-700">
-								⚠ Users can profit at upgrade level {formEV.optimalLevel} — expected cost ({formEV.optimalCost})
+								⚠ Users can profit at upgrade level {formEV.bestPlayerLevel} — expected cost ({formEV.bestPlayerCost})
 								is below item price ({formPrice}). Increase upgrade costs or lower boost amount.
 							</div>
 						{/if}
@@ -878,9 +858,10 @@
 									<thead class="sticky top-0 bg-white">
 										<tr class="border-b border-gray-300">
 											<th class="px-1 py-1">lv</th>
-											<th class="px-1 py-1">eff %</th>
+											<th class="px-1 py-1">displayed</th>
+											<th class="px-1 py-1">actual</th>
 											<th class="px-1 py-1">roll cost</th>
-											<th class="px-1 py-1">upgrades Σ</th>
+											<th class="px-1 py-1">upgr cost</th>
 											<th class="px-1 py-1">E[rolls]</th>
 											<th class="px-1 py-1">E[total]</th>
 											<th class="px-1 py-1">ratio</th>
@@ -889,7 +870,7 @@
 									<tbody>
 										{#each formEV.results as r}
 											<tr
-												class="border-b border-gray-200 {r.upgradeLevel === formEV.optimalLevel
+												class="border-b border-gray-200 {r.upgradeLevel === formEV.bestPlayerLevel
 													? formEV.isExploitable
 														? 'bg-red-200 font-bold'
 														: 'bg-green-200 font-bold'
@@ -897,6 +878,7 @@
 											>
 												<td class="px-1 py-1">{r.upgradeLevel}</td>
 												<td class="px-1 py-1">{r.effectiveProbability}%</td>
+												<td class="px-1 py-1">{r.actualWinChance}%</td>
 												<td class="px-1 py-1">{r.rollCost}</td>
 												<td class="px-1 py-1">{r.upgradeCostCumulative}</td>
 												<td class="px-1 py-1">{r.expectedRolls}</td>
