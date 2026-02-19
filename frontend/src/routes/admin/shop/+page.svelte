@@ -487,7 +487,7 @@
 						/>
 						<div class="min-w-0 flex-1">
 							<h3 class="text-xl font-bold">{item.name}</h3>
-							<p class="truncate text-sm text-gray-600">{item.description}</p>
+							<p class="text-sm text-gray-600 wrap-break-word">{item.description}</p>
 							<div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
 								<span class="font-bold">${(item.price / SCRAPS_PER_DOLLAR).toFixed(2)}</span>
 								<span class="text-gray-500">·</span>
