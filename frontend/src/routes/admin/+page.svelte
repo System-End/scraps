@@ -20,6 +20,11 @@
 	import { API_URL } from '$lib/config';
 	import { t } from '$lib/i18n';
 
+	const PHI = (1 + Math.sqrt(5)) / 2;
+	const SCRAPS_PER_HOUR = PHI * 10;
+	const DOLLARS_PER_HOUR = 4;
+	const SCRAPS_PER_DOLLAR = SCRAPS_PER_HOUR / DOLLARS_PER_HOUR;
+
 	interface ShopStats {
 		totalScrapsSpent: number;
 		shopPurchases: number;
@@ -395,9 +400,9 @@
 					<div>
 						<p class="text-sm font-bold text-gray-500">cost per hour</p>
 						<p class="text-4xl font-bold text-green-700">
-							{stats.shopStats.costPerHour.toLocaleString()}
+							${(stats.shopStats.costPerHour / SCRAPS_PER_DOLLAR).toFixed(2)}
 						</p>
-						<p class="text-xs text-gray-400">scraps spent ÷ shipped hours</p>
+						<p class="text-xs text-gray-400">scraps spent ÷ shipped hours (in USD)</p>
 					</div>
 				</div>
 
