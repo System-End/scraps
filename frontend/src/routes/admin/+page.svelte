@@ -405,67 +405,70 @@
 			{#if payoutInfo && payoutInfo.projects && payoutInfo.projects.length > 0}
 				<div class="mt-6">
 					<h4 class="mb-3 text-sm font-bold text-gray-500 uppercase">pending payout projects</h4>
-					<div class="space-y-3 max-h-96 overflow-y-auto">
+					<div class="space-y-3 max-h-96 overflow-y-auto overflow-x-hidden">
 						{#each payoutInfo.projects as project}
-							<div class="flex items-center gap-4 rounded-xl border-2 border-gray-200 bg-gray-50 p-4 transition-all hover:border-gray-300">
-								{#if project.image}
-									<img src={project.image} alt={project.name} class="h-12 w-12 rounded-lg border-2 border-black object-cover" />
-								{:else}
-									<div class="h-12 w-12 rounded-lg border-2 border-gray-300 bg-gray-200"></div>
-								{/if}
-								<div class="flex-1 min-w-0">
-									<a href="/projects/{project.id}" class="font-bold hover:underline truncate block">{project.name}</a>
-									<div class="flex items-center gap-2 text-sm text-gray-500">
-										{#if project.owner}
-											<a href="/users/{project.owner.id}" class="hover:underline">
-												{project.owner.username ?? `User #${project.owner.id}`}
-											</a>
+							<div class="rounded-xl border-2 border-gray-200 bg-gray-50 p-3 transition-all hover:border-gray-300 sm:p-4">
+								<div class="flex items-center gap-3 sm:gap-4">
+									{#if project.image}
+										<img src={project.image} alt={project.name} class="h-10 w-10 shrink-0 rounded-lg border-2 border-black object-cover sm:h-12 sm:w-12" />
+									{:else}
+										<div class="h-10 w-10 shrink-0 rounded-lg border-2 border-gray-300 bg-gray-200 sm:h-12 sm:w-12"></div>
+									{/if}
+									<div class="min-w-0 flex-1">
+										<a href="/projects/{project.id}" class="block truncate font-bold hover:underline">{project.name}</a>
+										<div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-gray-500">
+											{#if project.owner}
+												<a href="/users/{project.owner.id}" class="truncate hover:underline">
+													{project.owner.username ?? `User #${project.owner.id}`}
+												</a>
+												<span>·</span>
+											{/if}
+											<span>{(project.hoursOverride ?? project.hours ?? 0).toFixed(1)}h</span>
 											<span>·</span>
-										{/if}
-										<span>{(project.hoursOverride ?? project.hours ?? 0).toFixed(1)}h</span>
-										<span>·</span>
-										<span class="font-bold text-green-600">{project.scrapsAwarded} scraps</span>
+											<span class="font-bold text-green-600">{project.scrapsAwarded} scraps</span>
+										</div>
 									</div>
+									{#if rejectingProjectId !== project.id}
+										<button
+											onclick={() => { rejectingProjectId = project.id; rejectReason = ''; rejectError = null; }}
+											class="flex shrink-0 cursor-pointer items-center gap-1 rounded-full border-2 border-red-300 px-3 py-1.5 text-sm font-bold text-red-600 transition-all hover:border-red-400 hover:bg-red-50"
+											title="Reject payout for this project"
+										>
+											<XCircle size={14} />
+											<span class="hidden sm:inline">reject</span>
+										</button>
+									{/if}
 								</div>
-								<div class="flex items-center gap-2 shrink-0">
-									{#if rejectingProjectId === project.id}
-										<div class="flex items-center gap-2">
-											<input
-												type="text"
-												bind:value={rejectReason}
-												placeholder="reason for rejection..."
-												class="rounded-lg border-2 border-gray-300 px-3 py-1.5 text-sm focus:border-red-500 focus:outline-none w-48"
-												onkeydown={(e) => e.key === 'Enter' && rejectPayout(project.id)}
-											/>
+								{#if rejectingProjectId === project.id}
+									<div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+										<input
+											type="text"
+											bind:value={rejectReason}
+											placeholder="reason for rejection..."
+											class="w-full rounded-lg border-2 border-gray-300 px-3 py-1.5 text-sm focus:border-red-500 focus:outline-none sm:flex-1"
+											onkeydown={(e) => e.key === 'Enter' && rejectPayout(project.id)}
+										/>
+										<div class="flex gap-2">
 											<button
 												onclick={() => rejectPayout(project.id)}
 												disabled={rejectLoading || !rejectReason.trim()}
-												class="cursor-pointer rounded-full bg-red-600 px-4 py-1.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+												class="flex-1 cursor-pointer rounded-full bg-red-600 px-4 py-1.5 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
 											>
 												{rejectLoading ? '...' : 'reject'}
 											</button>
 											<button
 												onclick={() => { rejectingProjectId = null; rejectReason = ''; rejectError = null; }}
-												class="cursor-pointer rounded-full border-2 border-gray-300 px-3 py-1.5 text-sm font-bold text-gray-600 hover:border-gray-400"
+												class="flex-1 cursor-pointer rounded-full border-2 border-gray-300 px-3 py-1.5 text-sm font-bold text-gray-600 hover:border-gray-400 sm:flex-none"
 											>
 												cancel
 											</button>
 										</div>
-									{:else}
-										<button
-											onclick={() => { rejectingProjectId = project.id; rejectReason = ''; rejectError = null; }}
-											class="cursor-pointer flex items-center gap-1 rounded-full border-2 border-red-300 px-3 py-1.5 text-sm font-bold text-red-600 transition-all hover:bg-red-50 hover:border-red-400"
-											title="Reject payout for this project"
-										>
-											<XCircle size={14} />
-											reject
-										</button>
+									</div>
+									{#if rejectError}
+										<div class="mt-2 rounded-lg bg-red-50 p-2 text-xs text-red-600">{rejectError}</div>
 									{/if}
-								</div>
+								{/if}
 							</div>
-							{#if rejectError && rejectingProjectId === project.id}
-								<div class="ml-16 rounded-lg bg-red-50 p-2 text-xs text-red-600">{rejectError}</div>
-							{/if}
 						{/each}
 					</div>
 				</div>
