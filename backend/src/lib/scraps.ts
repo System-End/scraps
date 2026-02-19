@@ -8,7 +8,7 @@ import { userBonusesTable } from "../schemas/users";
 export const PHI = (1 + Math.sqrt(5)) / 2;
 export const MULTIPLIER = 10;
 export const SCRAPS_PER_HOUR = PHI * MULTIPLIER;
-export const DOLLARS_PER_HOUR = 5;
+export const DOLLARS_PER_HOUR = 4;
 export const SCRAPS_PER_DOLLAR = SCRAPS_PER_HOUR / DOLLARS_PER_HOUR;
 
 export const TIER_MULTIPLIERS: Record<number, number> = {
