@@ -1,10 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Users, FolderKanban, Clock, Scale, Hourglass, ShieldAlert, Coins, XCircle, Download, RefreshCw } from '@lucide/svelte';
+	import { Users, FolderKanban, Clock, Scale, Hourglass, ShieldAlert, Coins, XCircle, Download, RefreshCw, ShoppingCart, DollarSign } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { t } from '$lib/i18n';
+
+	interface ShopStats {
+		totalScrapsSpent: number;
+		shopPurchases: number;
+		shopConsolations: number;
+		shopLuckWins: number;
+		refineryUpgrades: number;
+		costPerHour: number;
+	}
 
 	interface Stats {
 		totalUsers: number;
@@ -15,6 +24,7 @@
 		pendingWeightedGrants: number;
 		inProgressHours: number;
 		inProgressWeightedGrants: number;
+		shopStats?: ShopStats;
 	}
 
 	interface PendingProject {
@@ -323,6 +333,73 @@
 				</div>
 			</div>
 		</div>
+
+		{#if stats.shopStats}
+			<h2 class="mt-10 mb-6 text-2xl font-bold">shop spending</h2>
+			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-green-500 bg-green-50 p-6">
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-white">
+						<DollarSign size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">cost per hour</p>
+						<p class="text-4xl font-bold text-green-700">{stats.shopStats.costPerHour.toLocaleString()}</p>
+						<p class="text-xs text-gray-400">scraps spent ÷ shipped hours</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-green-500 bg-green-50 p-6">
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-white">
+						<ShoppingCart size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">total scraps spent</p>
+						<p class="text-4xl font-bold text-green-700">{stats.shopStats.totalScrapsSpent.toLocaleString()}</p>
+						<p class="text-xs text-gray-400">shop + refinery</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
+						<Coins size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">shop purchases</p>
+						<p class="text-4xl font-bold">{stats.shopStats.shopPurchases.toLocaleString()}</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
+						<Coins size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">consolation scraps</p>
+						<p class="text-4xl font-bold">{stats.shopStats.shopConsolations.toLocaleString()}</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
+						<Coins size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">luck wins</p>
+						<p class="text-4xl font-bold">{stats.shopStats.shopLuckWins.toLocaleString()}</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
+						<Coins size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">refinery upgrades</p>
+						<p class="text-4xl font-bold">{stats.shopStats.refineryUpgrades.toLocaleString()}</p>
+					</div>
+				</div>
+			</div>
+		{/if}
 	{/if}
 </div>
 

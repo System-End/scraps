@@ -80,15 +80,45 @@ admin.get('/stats', async ({ headers, status }) => {
     const pendingWeightedGrants = Math.round(pendingHours / 10 * 100) / 100
     const inProgressWeightedGrants = Math.round(inProgressHours / 10 * 100) / 100
 
+    // Shop spending stats
+    const [shopSpending, refinerySpending] = await Promise.all([
+        db.select({
+            totalSpent: sql<number>`COALESCE(SUM(${shopOrdersTable.totalPrice}), 0)`,
+            purchaseSpent: sql<number>`COALESCE(SUM(CASE WHEN ${shopOrdersTable.orderType} = 'purchase' THEN ${shopOrdersTable.totalPrice} ELSE 0 END), 0)`,
+            consolationSpent: sql<number>`COALESCE(SUM(CASE WHEN ${shopOrdersTable.orderType} = 'consolation' THEN ${shopOrdersTable.totalPrice} ELSE 0 END), 0)`,
+            luckWinSpent: sql<number>`COALESCE(SUM(CASE WHEN ${shopOrdersTable.orderType} = 'luck_win' THEN ${shopOrdersTable.totalPrice} ELSE 0 END), 0)`
+        }).from(shopOrdersTable),
+        db.select({
+            totalSpent: sql<number>`COALESCE(SUM(${refinerySpendingHistoryTable.cost}), 0)`
+        }).from(refinerySpendingHistoryTable)
+    ])
+
+    const shopTotal = Number(shopSpending[0]?.totalSpent) || 0
+    const shopPurchases = Number(shopSpending[0]?.purchaseSpent) || 0
+    const shopConsolations = Number(shopSpending[0]?.consolationSpent) || 0
+    const shopLuckWins = Number(shopSpending[0]?.luckWinSpent) || 0
+    const refineryTotal = Number(refinerySpending[0]?.totalSpent) || 0
+    const totalScrapsSpent = shopTotal + refineryTotal
+    const roundedTotalHours = Math.round(totalHours * 10) / 10
+    const costPerHour = roundedTotalHours > 0 ? Math.round(totalScrapsSpent / roundedTotalHours * 100) / 100 : 0
+
     return {
         totalUsers,
         totalProjects,
-        totalHours: Math.round(totalHours * 10) / 10,
+        totalHours: roundedTotalHours,
         weightedGrants,
         pendingHours: Math.round(pendingHours * 10) / 10,
         pendingWeightedGrants,
         inProgressHours: Math.round(inProgressHours * 10) / 10,
-        inProgressWeightedGrants
+        inProgressWeightedGrants,
+        shopStats: {
+            totalScrapsSpent,
+            shopPurchases,
+            shopConsolations,
+            shopLuckWins,
+            refineryUpgrades: refineryTotal,
+            costPerHour
+        }
     }
 })
 
