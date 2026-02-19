@@ -1,7 +1,21 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Users, FolderKanban, Clock, Scale, Hourglass, ShieldAlert, Coins, XCircle, Download, RefreshCw, ShoppingCart, DollarSign } from '@lucide/svelte';
+	import {
+		Users,
+		FolderKanban,
+		Clock,
+		Scale,
+		Hourglass,
+		ShieldAlert,
+		Coins,
+		XCircle,
+		Download,
+		RefreshCw,
+		ShoppingCart,
+		DollarSign,
+		Calculator
+	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { t } from '$lib/i18n';
@@ -47,7 +61,12 @@
 
 	// Payout state
 	let payoutLoading = $state(false);
-	let payoutInfo = $state<{ pendingProjects: number; pendingScraps: number; projects: PendingProject[]; nextPayoutDate: string } | null>(null);
+	let payoutInfo = $state<{
+		pendingProjects: number;
+		pendingScraps: number;
+		projects: PendingProject[];
+		nextPayoutDate: string;
+	} | null>(null);
 	let payoutResult = $state<{ paidCount: number; totalScraps: number } | null>(null);
 	let payoutError = $state<string | null>(null);
 	let payingOut = $state(false);
@@ -60,13 +79,21 @@
 
 	// Fix balances state
 	let fixingBalances = $state(false);
-	let fixResult = $state<{ fixedCount: number; fixed: { userId: number; username: string | null; deficit: number }[] } | null>(null);
+	let fixResult = $state<{
+		fixedCount: number;
+		fixed: { userId: number; username: string | null; deficit: number }[];
+	} | null>(null);
 	let fixError = $state<string | null>(null);
 
 	// YSWS sync state
 	let yswsSyncing = $state(false);
 	let yswsResult = $state<{ synced: number; failed: number; total: number } | null>(null);
 	let yswsError = $state<string | null>(null);
+
+	// Shop pricing recalculation state
+	let pricingRecalcing = $state(false);
+	let pricingResult = $state<{ updatedCount: number } | null>(null);
+	let pricingError = $state<string | null>(null);
 
 	async function fetchPayoutInfo() {
 		payoutLoading = true;
@@ -158,6 +185,28 @@
 			fixError = 'Failed to fix negative balances';
 		} finally {
 			fixingBalances = false;
+		}
+	}
+
+	async function recalculateShopPricing() {
+		pricingRecalcing = true;
+		pricingResult = null;
+		pricingError = null;
+		try {
+			const res = await fetch(`${API_URL}/admin/recalculate-shop-pricing`, {
+				method: 'POST',
+				credentials: 'include'
+			});
+			const data = await res.json();
+			if (data.error) {
+				pricingError = data.error;
+			} else {
+				pricingResult = data;
+			}
+		} catch {
+			pricingError = 'Failed to recalculate shop pricing';
+		} finally {
+			pricingRecalcing = false;
 		}
 	}
 
@@ -338,23 +387,31 @@
 			<h2 class="mt-10 mb-6 text-2xl font-bold">shop spending</h2>
 			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 				<div class="flex items-center gap-4 rounded-2xl border-4 border-green-500 bg-green-50 p-6">
-					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-white">
+					<div
+						class="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-white"
+					>
 						<DollarSign size={32} />
 					</div>
 					<div>
 						<p class="text-sm font-bold text-gray-500">cost per hour</p>
-						<p class="text-4xl font-bold text-green-700">{stats.shopStats.costPerHour.toLocaleString()}</p>
+						<p class="text-4xl font-bold text-green-700">
+							{stats.shopStats.costPerHour.toLocaleString()}
+						</p>
 						<p class="text-xs text-gray-400">scraps spent ÷ shipped hours</p>
 					</div>
 				</div>
 
 				<div class="flex items-center gap-4 rounded-2xl border-4 border-green-500 bg-green-50 p-6">
-					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-white">
+					<div
+						class="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-white"
+					>
 						<ShoppingCart size={32} />
 					</div>
 					<div>
 						<p class="text-sm font-bold text-gray-500">total scraps spent</p>
-						<p class="text-4xl font-bold text-green-700">{stats.shopStats.totalScrapsSpent.toLocaleString()}</p>
+						<p class="text-4xl font-bold text-green-700">
+							{stats.shopStats.totalScrapsSpent.toLocaleString()}
+						</p>
 						<p class="text-xs text-gray-400">shop + refinery</p>
 					</div>
 				</div>
@@ -445,11 +502,15 @@
 						scraps payout
 					</h3>
 					<p class="text-sm text-gray-500">
-						manually pay out all pending scraps right now (normally happens every 2 days at midnight UTC)
+						manually pay out all pending scraps right now (normally happens every 2 days at midnight
+						UTC)
 					</p>
 					{#if payoutInfo}
 						<p class="mt-1 text-sm text-gray-600">
-							<span class="font-bold">{payoutInfo.pendingProjects}</span> pending project{payoutInfo.pendingProjects !== 1 ? 's' : ''}
+							<span class="font-bold">{payoutInfo.pendingProjects}</span> pending project{payoutInfo.pendingProjects !==
+							1
+								? 's'
+								: ''}
 							· <span class="font-bold">{payoutInfo.pendingScraps}</span> scraps to pay out
 						</p>
 						<p class="mt-0.5 text-xs text-gray-400">
@@ -459,7 +520,7 @@
 				</div>
 				<button
 					onclick={triggerPayout}
-					disabled={payingOut || (payoutInfo?.pendingProjects === 0)}
+					disabled={payingOut || payoutInfo?.pendingProjects === 0}
 					class="cursor-pointer rounded-full bg-green-600 px-6 py-2 font-bold text-white transition-all hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{payingOut ? 'paying out...' : 'pay out now'}
@@ -473,7 +534,10 @@
 			{#if payoutResult}
 				<div class="mt-4 rounded-lg bg-green-50 p-4">
 					<p class="font-bold text-green-700">
-						paid out {payoutResult.totalScraps} scraps across {payoutResult.paidCount} project{payoutResult.paidCount !== 1 ? 's' : ''}
+						paid out {payoutResult.totalScraps} scraps across {payoutResult.paidCount} project{payoutResult.paidCount !==
+						1
+							? 's'
+							: ''}
 					</p>
 				</div>
 			{/if}
@@ -580,10 +644,50 @@
 			{#if yswsResult}
 				<div class="mt-4 rounded-lg bg-green-50 p-4">
 					<p class="font-bold text-green-700">
-						synced {yswsResult.synced} of {yswsResult.total} project{yswsResult.total !== 1 ? 's' : ''}
+						synced {yswsResult.synced} of {yswsResult.total} project{yswsResult.total !== 1
+							? 's'
+							: ''}
 						{#if yswsResult.failed > 0}
 							<span class="text-red-600">({yswsResult.failed} failed)</span>
 						{/if}
+					</p>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Recalculate Shop Pricing -->
+		<div class="mb-6 rounded-2xl border-4 border-black p-6">
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<h3 class="flex items-center gap-2 text-lg font-bold">
+						<Calculator size={20} />
+						recalculate shop pricing
+					</h3>
+					<p class="text-sm text-gray-500">
+						recalculates probability, upgrade cost, multiplier & boost for all shop items based on
+						current price/stock. runs automatically on server startup.
+					</p>
+				</div>
+				<button
+					onclick={recalculateShopPricing}
+					disabled={pricingRecalcing}
+					class="cursor-pointer rounded-full bg-black px-6 py-2 font-bold text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{pricingRecalcing ? 'recalculating...' : 'recalculate'}
+				</button>
+			</div>
+
+			{#if pricingError}
+				<div class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">{pricingError}</div>
+			{/if}
+
+			{#if pricingResult}
+				<div class="mt-4 rounded-lg bg-green-50 p-4">
+					<p class="font-bold text-green-700">
+						updated pricing for {pricingResult.updatedCount} shop item{pricingResult.updatedCount !==
+						1
+							? 's'
+							: ''}
 					</p>
 				</div>
 			{/if}

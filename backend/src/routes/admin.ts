@@ -19,7 +19,7 @@ import { getUserFromSession } from "../lib/auth";
 import { calculateScrapsFromHours, getUserScrapsBalance } from "../lib/scraps";
 import { payoutPendingScraps, getNextPayoutDate } from "../lib/scraps-payout";
 import { syncSingleProject } from "../lib/hackatime-sync";
-import { computeItemPricing } from "../lib/shop-pricing";
+import { computeItemPricing, updateShopItemPricing } from "../lib/shop-pricing";
 import { submitProjectToYSWS } from "../lib/ysws";
 import { notifyProjectReview } from "../lib/slack";
 import { config } from "../config";
@@ -667,7 +667,7 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
         ? {
             id: projectUser[0].id,
             username: projectUser[0].username,
-            email: projectUser[0].email,
+            email: isAdmin ? projectUser[0].email : undefined,
             avatar: projectUser[0].avatar,
             internalNotes: projectUser[0].internalNotes,
           }
@@ -815,6 +815,7 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
 
     let scrapsAwarded = 0;
     if (action === "approved") {
+      const hours = hoursOverride ?? project[0].hours ?? 0;
       const tier = tierOverride ?? project[0].tier ?? 1;
 
       // Compute effective hours using activity-derived shipped dates
@@ -2658,6 +2659,22 @@ admin.post("/sync-ysws", async ({ headers, set }) => {
   } catch (err) {
     console.error("[ADMIN] YSWS sync error:", err);
     return { error: "Failed to sync projects to YSWS" };
+  }
+});
+
+// Recalculate shop item pricing from current price/stock values (admin only)
+admin.post("/recalculate-shop-pricing", async ({ headers, status }) => {
+  const user = await requireAdmin(headers as Record<string, string>);
+  if (!user) {
+    return status(401, { error: "Unauthorized" });
+  }
+
+  try {
+    const updatedCount = await updateShopItemPricing();
+    return { success: true, updatedCount };
+  } catch (err) {
+    console.error("[ADMIN] Shop pricing recalculation error:", err);
+    return status(500, { error: "Failed to recalculate shop pricing" });
   }
 });
 
