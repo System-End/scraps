@@ -15,6 +15,7 @@
 	import { formatHours } from '$lib/utils';
 	import { getUser } from '$lib/auth-client';
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
+	import Markdown from '$lib/components/Markdown.svelte';
 	import { t } from '$lib/i18n';
 
 	let { data } = $props();
@@ -134,7 +135,7 @@
 					</span>
 				{/if}
 			</div>
-			<p class="mb-4 text-gray-600">{project.description}</p>
+			<Markdown content={project.description} class="mb-4 text-gray-600" />
 			{#if project.updateDescription}
 				<div class="mb-4 rounded-lg border-2 border-dashed border-gray-400 bg-gray-50 p-4">
 					<p class="mb-1 flex items-center gap-1.5 text-sm font-bold text-gray-600">

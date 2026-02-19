@@ -24,6 +24,7 @@
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
+	import Markdown from '$lib/components/Markdown.svelte';
 	import { tutorialActiveStore } from '$lib/stores';
 	import { t } from '$lib/i18n';
 
@@ -305,7 +306,7 @@
 				</div>
 
 				{#if project.description}
-					<p class="mb-4 text-lg text-gray-700">{project.description}</p>
+					<Markdown content={project.description} class="mb-4 text-lg text-gray-700" />
 				{:else}
 					<p class="mb-4 text-lg text-gray-400 italic">{$t.project.noDescriptionYet}</p>
 				{/if}
