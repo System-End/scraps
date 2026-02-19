@@ -99,7 +99,7 @@ export function computeItemPricing(
   };
 }
 
-export async function updateShopItemPricing() {
+export async function updateShopItemPricing(): Promise<number> {
   try {
     const items = await db
       .select({
@@ -129,8 +129,10 @@ export async function updateShopItemPricing() {
       updated++;
     }
 
-    console.log(`[STARTUP] Updated pricing for ${updated} shop items`);
+    console.log(`[SHOP-PRICING] Updated pricing for ${updated} shop items`);
+    return updated;
   } catch (err) {
-    console.error("[STARTUP] Failed to update shop item pricing:", err);
+    console.error("[SHOP-PRICING] Failed to update shop item pricing:", err);
+    return 0;
   }
 }

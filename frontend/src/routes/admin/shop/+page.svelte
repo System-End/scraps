@@ -1,7 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Plus, Pencil, Trash2, X, Spool } from '@lucide/svelte';
+	import {
+		Plus,
+		Pencil,
+		Trash2,
+		X,
+		Spool,
+		TrendingUp,
+		AlertTriangle,
+		ShieldCheck,
+		RotateCcw
+	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { t } from '$lib/i18n';
@@ -27,6 +37,31 @@
 		role: string;
 	}
 
+	interface EVResult {
+		upgradeLevel: number;
+		boostPercent: number;
+		effectiveProbability: number;
+		rollCost: number;
+		upgradeCostCumulative: number;
+		expectedRolls: number;
+		expectedRollCost: number;
+		expectedTotalCost: number;
+		evRatio: number;
+	}
+
+	interface EVSummary {
+		results: EVResult[];
+		optimalLevel: number;
+		optimalCost: number;
+		optimalRatio: number;
+		baseExpectedCost: number;
+		baseRatio: number;
+		maxUpgradeExpectedCost: number;
+		maxUpgradeRatio: number;
+		isExploitable: boolean;
+		houseEdgePercent: number;
+	}
+
 	let user = $state<User | null>(null);
 	let items = $state<ShopItem[]>([]);
 	let loading = $state(true);
@@ -43,7 +78,7 @@
 	let formCount = $state(0);
 	let formBaseProbability = $state(50);
 	let formBaseUpgradeCost = $state(10);
-	let formCostMultiplier = $state(101);
+	let formCostMultiplier = $state(110);
 	let formBoostAmount = $state(1);
 	let formMonetaryValue = $state(0);
 	let formError = $state<string | null>(null);
@@ -54,21 +89,25 @@
 	const DOLLARS_PER_HOUR = 5;
 	const SCRAPS_PER_DOLLAR = SCRAPS_PER_HOUR / DOLLARS_PER_HOUR;
 
+	// Must match backend calculateRollCost exactly
+	// NOTE: backend always passes baseProbability here, NOT effectiveProbability
+	function calculateRollCost(basePrice: number, baseProbability: number): number {
+		return Math.max(1, Math.round(basePrice * (baseProbability / 100)));
+	}
+
+	// Must match backend calculateShopItemPricing exactly
 	function calculatePricing(monetaryValue: number, stockCount: number) {
 		const price = Math.round(monetaryValue * SCRAPS_PER_DOLLAR);
 
-		// Rarity based on price and stock
 		const priceRarityFactor = Math.max(0, 1 - monetaryValue / 100);
 		const stockRarityFactor = Math.min(1, stockCount / 20);
 		const baseProbability = Math.max(
-			5,
+			1,
 			Math.min(80, Math.round((priceRarityFactor * 0.4 + stockRarityFactor * 0.6) * 80))
 		);
 
-		// Roll cost = price * (baseProbability / 100) - fixed
 		const rollCost = Math.max(1, Math.round(price * (baseProbability / 100)));
-		// Total budget = 1.5x price, upgrade budget = 1.5x price - rollCost
-		const upgradeBudget = Math.max(0, price * 1.5 - rollCost);
+		const upgradeBudget = Math.max(0, price * 3.0 - rollCost);
 		const probabilityGap = 100 - baseProbability;
 
 		const targetUpgrades = Math.max(5, Math.min(20, Math.ceil(monetaryValue / 5)));
@@ -89,6 +128,120 @@
 		return { price, baseProbability, baseUpgradeCost, costMultiplier, boostAmount };
 	}
 
+	function simulateEV(
+		price: number,
+		baseProbability: number,
+		baseUpgradeCost: number,
+		costMultiplier: number,
+		boostAmount: number
+	): EVSummary {
+		const results: EVResult[] = [];
+		const probabilityGap = 100 - baseProbability;
+		const maxUpgrades = boostAmount > 0 ? Math.ceil(probabilityGap / boostAmount) : 0;
+		const multiplierDecimal = costMultiplier / 100;
+
+		// Roll cost is FIXED based on baseProbability, matching backend exactly
+		const rollCost = calculateRollCost(price, baseProbability);
+
+		let bestLevel = 0;
+		let bestCost = Infinity;
+
+		for (let k = 0; k <= maxUpgrades; k++) {
+			const boostPercent = k * boostAmount;
+			const effectiveProbability = Math.min(baseProbability + boostPercent, 100);
+
+			// Cumulative upgrade cost (geometric series)
+			let upgradeCostCumulative = 0;
+			for (let i = 0; i < k; i++) {
+				upgradeCostCumulative += Math.floor(baseUpgradeCost * Math.pow(multiplierDecimal, i));
+			}
+
+			// Backend: won = rolled <= effectiveProbability (no threshold scaling)
+			const winChance = effectiveProbability / 100;
+			const expectedRolls = winChance > 0 ? 1 / winChance : Infinity;
+			const expectedRollCost = rollCost * expectedRolls;
+			const expectedTotalCost = upgradeCostCumulative + expectedRollCost;
+			const evRatio = price > 0 ? expectedTotalCost / price : Infinity;
+
+			results.push({
+				upgradeLevel: k,
+				boostPercent,
+				effectiveProbability,
+				rollCost,
+				upgradeCostCumulative,
+				expectedRolls: Math.round(expectedRolls * 100) / 100,
+				expectedRollCost: Math.round(expectedRollCost),
+				expectedTotalCost: Math.round(expectedTotalCost),
+				evRatio: Math.round(evRatio * 1000) / 1000
+			});
+
+			if (expectedTotalCost < bestCost) {
+				bestCost = expectedTotalCost;
+				bestLevel = k;
+			}
+		}
+
+		const baseResult = results[0];
+		const maxResult = results[results.length - 1];
+		const optimalResult = results[bestLevel];
+
+		const isExploitable = bestCost < price;
+
+		// House edge: at base level, expected cost vs price
+		const houseEdgePercent =
+			baseResult && price > 0
+				? Math.round(((baseResult.expectedTotalCost - price) / price) * 1000) / 10
+				: 0;
+
+		return {
+			results,
+			optimalLevel: bestLevel,
+			optimalCost: Math.round(bestCost),
+			optimalRatio: optimalResult?.evRatio ?? 0,
+			baseExpectedCost: baseResult?.expectedTotalCost ?? 0,
+			baseRatio: baseResult?.evRatio ?? 0,
+			maxUpgradeExpectedCost: maxResult?.expectedTotalCost ?? 0,
+			maxUpgradeRatio: maxResult?.evRatio ?? 0,
+			isExploitable,
+			houseEdgePercent
+		};
+	}
+
+	function getItemEVSummary(item: ShopItem): EVSummary {
+		return simulateEV(
+			item.price,
+			item.baseProbability,
+			item.baseUpgradeCost,
+			item.costMultiplier,
+			item.boostAmount
+		);
+	}
+
+	let formEV = $derived(
+		formPrice > 0
+			? simulateEV(
+					formPrice,
+					formBaseProbability,
+					formBaseUpgradeCost,
+					formCostMultiplier,
+					formBoostAmount
+				)
+			: null
+	);
+
+	let showDetailedEV = $state(false);
+
+	// Optimal pricing derived from current monetary value + stock count
+	let optimalPricing = $derived(calculatePricing(formMonetaryValue, formCount));
+
+	let hasCustomPricing = $derived(
+		formPrice > 0 &&
+			(formBaseProbability !== optimalPricing.baseProbability ||
+				formBaseUpgradeCost !== optimalPricing.baseUpgradeCost ||
+				formCostMultiplier !== optimalPricing.costMultiplier ||
+				formBoostAmount !== optimalPricing.boostAmount)
+	);
+
 	function recalculatePricing() {
 		const pricing = calculatePricing(formMonetaryValue, formCount);
 		formPrice = pricing.price;
@@ -107,6 +260,7 @@
 		formCount = value;
 		recalculatePricing();
 	}
+
 	let deleteConfirmId = $state<number | null>(null);
 
 	onMount(async () => {
@@ -146,9 +300,10 @@
 		formCount = 0;
 		formBaseProbability = 50;
 		formBaseUpgradeCost = 10;
-		formCostMultiplier = 101;
+		formCostMultiplier = 110;
 		formBoostAmount = 1;
 		formError = null;
+		showDetailedEV = false;
 		showModal = true;
 	}
 
@@ -158,7 +313,7 @@
 		formImage = item.image;
 		formDescription = item.description;
 		formPrice = item.price;
-		formMonetaryValue = item.price / SCRAPS_PER_DOLLAR;
+		formMonetaryValue = Math.round((item.price / SCRAPS_PER_DOLLAR) * 100) / 100;
 		formCategory = item.category;
 		formCount = item.count;
 		formBaseProbability = item.baseProbability;
@@ -166,6 +321,7 @@
 		formCostMultiplier = item.costMultiplier;
 		formBoostAmount = item.boostAmount ?? 1;
 		formError = null;
+		showDetailedEV = false;
 		showModal = true;
 	}
 
@@ -282,6 +438,36 @@
 		</div>
 	</div>
 
+	<div class="mb-8 rounded-2xl border-4 border-black p-4">
+		<h3 class="mb-3 flex items-center gap-2 font-bold">
+			<TrendingUp size={18} />
+			pricing model reference
+		</h3>
+		<div class="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+			<div class="rounded-lg bg-gray-100 p-3">
+				<div class="mb-1 text-xs text-gray-500">roll cost</div>
+				<div class="font-bold">price × base% / 100</div>
+			</div>
+			<div class="rounded-lg bg-gray-100 p-3">
+				<div class="mb-1 text-xs text-gray-500">roll cost is</div>
+				<div class="font-bold">fixed (base prob)</div>
+			</div>
+			<div class="rounded-lg bg-gray-100 p-3">
+				<div class="mb-1 text-xs text-gray-500">upgrade budget</div>
+				<div class="font-bold">3× price − roll cost</div>
+			</div>
+			<div class="rounded-lg bg-gray-100 p-3">
+				<div class="mb-1 text-xs text-gray-500">win condition</div>
+				<div class="font-bold">roll ≤ effective%</div>
+			</div>
+		</div>
+		<p class="mt-2 text-xs text-gray-500">
+			roll cost is fixed at base probability regardless of upgrades. upgrades increase win chance
+			but not roll cost, so higher upgrades = cheaper expected cost per win. pricing formula targets
+			total upgrade spend ≈ 3× item price minus one roll.
+		</p>
+	</div>
+
 	{#if loading}
 		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>
 	{:else if items.length === 0}
@@ -289,47 +475,105 @@
 	{:else}
 		<div class="grid gap-4">
 			{#each items as item}
-				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-4">
-					<img
-						src={item.image}
-						alt={item.name}
-						class="h-20 w-20 shrink-0 rounded-lg border-2 border-black object-cover"
-					/>
-					<div class="min-w-0 flex-1">
-						<h3 class="text-xl font-bold">{item.name}</h3>
-						<p class="truncate text-sm text-gray-600">{item.description}</p>
-						<div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
-							<span class="font-bold">${(item.price / SCRAPS_PER_DOLLAR).toFixed(2)}</span>
-							<span class="text-gray-500">•</span>
-							<span class="flex items-center gap-1 font-bold"><Spool size={16} />{item.price}</span>
-							{#each item.category
-								.split(',')
-								.map((c) => c.trim())
-								.filter(Boolean) as cat}
-								<span class="rounded-full bg-gray-100 px-2 py-0.5">{cat}</span>
-							{/each}
-							<span class="text-gray-500">{item.count} in stock</span>
-							<span class="text-gray-500">•</span>
-							<span class="text-gray-500">{item.baseProbability}%</span>
-							<span class="text-gray-500">•</span>
-							<span class="text-gray-500">+{item.boostAmount ?? 1}%/upgrade</span>
-							<span class="text-gray-500">•</span>
-							<span class="text-gray-500">~{(item.price / SCRAPS_PER_HOUR).toFixed(1)} hrs</span>
+				{@const ev = getItemEVSummary(item)}
+				<div
+					class="rounded-2xl border-4 p-4 transition-all {ev.isExploitable
+						? 'border-red-600 bg-red-50'
+						: 'border-black'}"
+				>
+					<div class="flex items-center gap-4">
+						<img
+							src={item.image}
+							alt={item.name}
+							class="h-20 w-20 shrink-0 rounded-lg border-2 border-black object-cover"
+						/>
+						<div class="min-w-0 flex-1">
+							<h3 class="text-xl font-bold">{item.name}</h3>
+							<p class="truncate text-sm text-gray-600">{item.description}</p>
+							<div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
+								<span class="font-bold">${(item.price / SCRAPS_PER_DOLLAR).toFixed(2)}</span>
+								<span class="text-gray-500">·</span>
+								<span class="flex items-center gap-1 font-bold"
+									><Spool size={16} />{item.price}</span
+								>
+								{#each item.category
+									.split(',')
+									.map((c) => c.trim())
+									.filter(Boolean) as cat}
+									<span class="rounded-full bg-gray-100 px-2 py-0.5">{cat}</span>
+								{/each}
+								<span class="text-gray-500">{item.count} in stock</span>
+								<span class="text-gray-500">·</span>
+								<span class="text-gray-500">{item.baseProbability}% base</span>
+								<span class="text-gray-500">·</span>
+								<span class="text-gray-500">+{item.boostAmount ?? 1}%/upgrade</span>
+								<span class="text-gray-500">·</span>
+								<span class="text-gray-500"
+									>~{(item.price / SCRAPS_PER_HOUR).toFixed(1)} hrs to earn</span
+								>
+							</div>
+						</div>
+						<div class="flex shrink-0 gap-2">
+							<button
+								onclick={() => openEditModal(item)}
+								class="cursor-pointer rounded-lg border-4 border-black p-2 transition-all duration-200 hover:border-dashed"
+							>
+								<Pencil size={18} />
+							</button>
+							<button
+								onclick={() => requestDelete(item.id)}
+								class="cursor-pointer rounded-lg border-4 border-red-600 p-2 text-red-600 transition-all duration-200 hover:bg-red-50"
+							>
+								<Trash2 size={18} />
+							</button>
 						</div>
 					</div>
-					<div class="flex shrink-0 gap-2">
-						<button
-							onclick={() => openEditModal(item)}
-							class="cursor-pointer rounded-lg border-4 border-black p-2 transition-all duration-200 hover:border-dashed"
-						>
-							<Pencil size={18} />
-						</button>
-						<button
-							onclick={() => requestDelete(item.id)}
-							class="cursor-pointer rounded-lg border-4 border-red-600 p-2 text-red-600 transition-all duration-200 hover:bg-red-50"
-						>
-							<Trash2 size={18} />
-						</button>
+
+					<!-- EV Summary Bar -->
+					<div
+						class="mt-3 flex flex-wrap items-center gap-3 rounded-lg px-3 py-2 text-xs {ev.isExploitable
+							? 'bg-red-100'
+							: 'bg-gray-100'}"
+					>
+						{#if ev.isExploitable}
+							<span class="flex items-center gap-1 font-bold text-red-600">
+								<AlertTriangle size={14} />
+								EXPLOITABLE
+							</span>
+						{:else}
+							<span class="flex items-center gap-1 font-bold text-green-700">
+								<ShieldCheck size={14} />
+								safe
+							</span>
+						{/if}
+						<span class="text-gray-500">·</span>
+						<span>
+							<span class="text-gray-500">EV no upgrades:</span>
+							<span class="font-bold">{ev.baseExpectedCost}</span>
+							<span class="text-gray-500">({ev.baseRatio}×)</span>
+						</span>
+						<span class="text-gray-500">·</span>
+						<span>
+							<span class="text-gray-500">EV optimal (lv{ev.optimalLevel}):</span>
+							<span class="font-bold {ev.optimalRatio < 1 ? 'text-red-600' : ''}"
+								>{ev.optimalCost}</span
+							>
+							<span class="text-gray-500 {ev.optimalRatio < 1 ? 'text-red-600' : ''}"
+								>({ev.optimalRatio}×)</span
+							>
+						</span>
+						<span class="text-gray-500">·</span>
+						<span>
+							<span class="text-gray-500">edge:</span>
+							<span class="font-bold">+{ev.houseEdgePercent}%</span>
+						</span>
+						<span class="text-gray-500">·</span>
+						<span>
+							<span class="text-gray-500">roll cost:</span>
+							<span class="font-bold"
+								>{calculateRollCost(item.price, item.baseProbability)} scraps</span
+							>
+						</span>
 					</div>
 				</div>
 			{/each}
@@ -405,30 +649,6 @@
 							formPrice / SCRAPS_PER_HOUR
 						).toFixed(1)} hrs to earn
 					</p>
-					{#if formPrice > 0}
-						{@const rollCost = Math.max(1, Math.round(formPrice * (formBaseProbability / 100)))}
-						{@const probabilityGap = 100 - formBaseProbability}
-						{@const upgradesNeeded = Math.ceil(probabilityGap / formBoostAmount)}
-						{@const multiplierDecimal = formCostMultiplier / 100}
-						{@const totalUpgradeCost =
-							formBaseUpgradeCost *
-							((Math.pow(multiplierDecimal, upgradesNeeded) - 1) / (multiplierDecimal - 1))}
-						{@const totalCost = totalUpgradeCost + rollCost}
-						{@const maxBudget = formPrice * 1.5}
-						<p class="mt-1 text-xs text-gray-500">
-							roll cost: {rollCost} scraps · upgrades to 100%: {Math.round(totalUpgradeCost)} scraps
-						</p>
-						<p
-							class="mt-1 text-xs {totalCost > maxBudget
-								? 'font-bold text-red-600'
-								: 'text-gray-500'}"
-						>
-							total: {Math.round(totalCost)} scraps ({upgradesNeeded} upgrades + roll) · budget: {Math.round(
-								maxBudget
-							)} (1.5×)
-							{#if totalCost > maxBudget}· ⚠️ over budget!{/if}
-						</p>
-					{/if}
 				</div>
 
 				<div class="grid grid-cols-2 gap-4">
@@ -456,6 +676,39 @@
 					</div>
 				</div>
 
+				<!-- Optimal pricing hint -->
+				{#if formMonetaryValue > 0}
+					<div
+						class="rounded-xl border-2 p-3 {hasCustomPricing
+							? 'border-yellow-400 bg-yellow-50'
+							: 'border-green-400 bg-green-50'}"
+					>
+						<div class="flex items-center justify-between">
+							<div class="text-xs">
+								<span class="font-bold {hasCustomPricing ? 'text-yellow-700' : 'text-green-700'}">
+									{hasCustomPricing
+										? 'custom pricing (differs from optimal)'
+										: 'using optimal pricing'}
+								</span>
+								<span class="ml-2 text-gray-500">
+									optimal: {optimalPricing.baseProbability}% base · +{optimalPricing.boostAmount}%/upgrade
+									· {optimalPricing.baseUpgradeCost} base cost · {optimalPricing.costMultiplier}%
+									mult
+								</span>
+							</div>
+							{#if hasCustomPricing}
+								<button
+									onclick={recalculatePricing}
+									class="flex cursor-pointer items-center gap-1 rounded-full border-2 border-yellow-600 px-3 py-1 text-xs font-bold text-yellow-700 transition-all duration-200 hover:border-dashed"
+								>
+									<RotateCcw size={12} />
+									use optimal
+								</button>
+							{/if}
+						</div>
+					</div>
+				{/if}
+
 				<div class="grid grid-cols-2 gap-4">
 					<div>
 						<label for="baseProbability" class="mb-1 block text-sm font-bold"
@@ -465,11 +718,17 @@
 							id="baseProbability"
 							type="number"
 							bind:value={formBaseProbability}
-							min="0.1"
+							min="1"
 							max="100"
-							step="0.1"
-							class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
+							step="1"
+							class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none {formBaseProbability !==
+							optimalPricing.baseProbability
+								? 'border-yellow-500'
+								: ''}"
 						/>
+						{#if formBaseProbability !== optimalPricing.baseProbability}
+							<p class="mt-1 text-xs text-yellow-600">optimal: {optimalPricing.baseProbability}%</p>
+						{/if}
 					</div>
 					<div>
 						<label for="boostAmount" class="mb-1 block text-sm font-bold"
@@ -480,8 +739,14 @@
 							type="number"
 							bind:value={formBoostAmount}
 							min="1"
-							class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
+							class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none {formBoostAmount !==
+							optimalPricing.boostAmount
+								? 'border-yellow-500'
+								: ''}"
 						/>
+						{#if formBoostAmount !== optimalPricing.boostAmount}
+							<p class="mt-1 text-xs text-yellow-600">optimal: +{optimalPricing.boostAmount}%</p>
+						{/if}
 					</div>
 				</div>
 
@@ -494,10 +759,18 @@
 							id="baseUpgradeCost"
 							type="number"
 							bind:value={formBaseUpgradeCost}
-							min="0"
-							class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
+							min="1"
+							class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none {formBaseUpgradeCost !==
+							optimalPricing.baseUpgradeCost
+								? 'border-yellow-500'
+								: ''}"
 						/>
-						<p class="mt-1 text-xs text-gray-500">auto-set to 10% of price</p>
+						<p class="mt-1 text-xs text-gray-500">
+							cost of first upgrade in scraps
+							{#if formBaseUpgradeCost !== optimalPricing.baseUpgradeCost}
+								<span class="text-yellow-600">· optimal: {optimalPricing.baseUpgradeCost}</span>
+							{/if}
+						</p>
 					</div>
 					<div>
 						<label for="costMultiplier" class="mb-1 block text-sm font-bold"
@@ -508,25 +781,157 @@
 							type="number"
 							bind:value={formCostMultiplier}
 							min="100"
-							class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
+							class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none {formCostMultiplier !==
+							optimalPricing.costMultiplier
+								? 'border-yellow-500'
+								: ''}"
 						/>
-						<p class="mt-1 text-xs text-gray-500">115 = 1.15x per upgrade</p>
+						<p class="mt-1 text-xs text-gray-500">
+							110 = 1.10× per upgrade
+							{#if formCostMultiplier !== optimalPricing.costMultiplier}
+								<span class="text-yellow-600">· optimal: {optimalPricing.costMultiplier}%</span>
+							{/if}
+						</p>
 					</div>
 				</div>
+
+				<!-- EV Analysis Panel -->
+				{#if formEV}
+					<div
+						class="rounded-xl border-4 p-4 {formEV.isExploitable
+							? 'border-red-600 bg-red-50'
+							: 'border-green-600 bg-green-50'}"
+					>
+						<div class="mb-3 flex items-center justify-between">
+							<h3
+								class="flex items-center gap-2 text-sm font-bold {formEV.isExploitable
+									? 'text-red-700'
+									: 'text-green-700'}"
+							>
+								{#if formEV.isExploitable}
+									<AlertTriangle size={16} />
+									EV ANALYSIS — EXPLOITABLE
+								{:else}
+									<ShieldCheck size={16} />
+									EV ANALYSIS — SAFE
+								{/if}
+							</h3>
+							<button
+								onclick={() => (showDetailedEV = !showDetailedEV)}
+								class="cursor-pointer text-xs font-bold underline {formEV.isExploitable
+									? 'text-red-600'
+									: 'text-green-700'}"
+							>
+								{showDetailedEV ? 'hide details' : 'show details'}
+							</button>
+						</div>
+
+						<div class="grid grid-cols-2 gap-3 text-xs">
+							<div>
+								<span class="text-gray-500">no upgrades EV:</span>
+								<span class="ml-1 font-bold"
+									>{formEV.baseExpectedCost} scraps ({formEV.baseRatio}× price)</span
+								>
+							</div>
+							<div>
+								<span class="text-gray-500">roll cost (fixed):</span>
+								<span class="ml-1 font-bold"
+									>{calculateRollCost(formPrice, formBaseProbability)} scraps</span
+								>
+							</div>
+							<div>
+								<span class="text-gray-500">optimal strategy (lv{formEV.optimalLevel}):</span>
+								<span class="ml-1 font-bold {formEV.optimalRatio < 1 ? 'text-red-600' : ''}">
+									{formEV.optimalCost} scraps ({formEV.optimalRatio}× price)
+								</span>
+							</div>
+							<div>
+								<span class="text-gray-500">max upgrade EV:</span>
+								<span class="ml-1 font-bold"
+									>{formEV.maxUpgradeExpectedCost} scraps ({formEV.maxUpgradeRatio}× price)</span
+								>
+							</div>
+							<div>
+								<span class="text-gray-500">house edge:</span>
+								<span class="ml-1 font-bold">+{formEV.houseEdgePercent}%</span>
+							</div>
+							<div>
+								<span class="text-gray-500">upgrades to 100%:</span>
+								<span class="ml-1 font-bold"
+									>{formBoostAmount > 0
+										? Math.ceil((100 - formBaseProbability) / formBoostAmount)
+										: 0} upgrades</span
+								>
+							</div>
+						</div>
+
+						{#if formEV.isExploitable}
+							<div class="mt-3 rounded-lg bg-red-100 p-2 text-xs font-bold text-red-700">
+								⚠ Users can profit at upgrade level {formEV.optimalLevel} — expected cost ({formEV.optimalCost})
+								is below item price ({formPrice}). Increase upgrade costs or lower boost amount.
+							</div>
+						{/if}
+
+						{#if showDetailedEV}
+							<div class="mt-3 max-h-64 overflow-y-auto">
+								<table class="w-full text-left text-xs">
+									<thead class="sticky top-0 bg-white">
+										<tr class="border-b border-gray-300">
+											<th class="px-1 py-1">lv</th>
+											<th class="px-1 py-1">eff %</th>
+											<th class="px-1 py-1">roll cost</th>
+											<th class="px-1 py-1">upgrades Σ</th>
+											<th class="px-1 py-1">E[rolls]</th>
+											<th class="px-1 py-1">E[total]</th>
+											<th class="px-1 py-1">ratio</th>
+										</tr>
+									</thead>
+									<tbody>
+										{#each formEV.results as r}
+											<tr
+												class="border-b border-gray-200 {r.upgradeLevel === formEV.optimalLevel
+													? formEV.isExploitable
+														? 'bg-red-200 font-bold'
+														: 'bg-green-200 font-bold'
+													: ''}"
+											>
+												<td class="px-1 py-1">{r.upgradeLevel}</td>
+												<td class="px-1 py-1">{r.effectiveProbability}%</td>
+												<td class="px-1 py-1">{r.rollCost}</td>
+												<td class="px-1 py-1">{r.upgradeCostCumulative}</td>
+												<td class="px-1 py-1">{r.expectedRolls}</td>
+												<td class="px-1 py-1 {r.evRatio < 1 ? 'font-bold text-red-600' : ''}"
+													>{r.expectedTotalCost}</td
+												>
+												<td class="px-1 py-1 {r.evRatio < 1 ? 'font-bold text-red-600' : ''}"
+													>{r.evRatio}×</td
+												>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
+							<p class="mt-2 text-xs text-gray-500">
+								highlighted row = optimal user strategy (lowest expected cost). ratio {'<'} 1.0× means
+								user profits.
+							</p>
+						{/if}
+					</div>
+				{/if}
 			</div>
 
 			<div class="mt-6 flex gap-3">
 				<button
 					onclick={closeModal}
 					disabled={saving}
-					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50"
+					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{$t.common.cancel}
 				</button>
 				<button
 					onclick={handleSubmit}
 					disabled={saving}
-					class="flex-1 cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:opacity-50"
+					class="flex-1 cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{saving ? $t.common.saving : editingItem ? $t.common.save : $t.common.create}
 				</button>
@@ -553,13 +958,13 @@
 			<div class="flex gap-3">
 				<button
 					onclick={() => (deleteConfirmId = null)}
-					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
+					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{$t.common.cancel}
 				</button>
 				<button
 					onclick={confirmDelete}
-					class="flex-1 cursor-pointer rounded-full border-4 border-black bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed"
+					class="flex-1 cursor-pointer rounded-full border-4 border-black bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{$t.common.delete}
 				</button>
