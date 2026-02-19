@@ -542,7 +542,7 @@ admin.get('/reviews/:id', async ({ params, headers }) => {
             user: projectUser[0] ? {
                 id: projectUser[0].id,
                 username: projectUser[0].username,
-                email: projectUser[0].email,
+                email: isAdmin ? projectUser[0].email : undefined,
                 avatar: projectUser[0].avatar,
                 internalNotes: projectUser[0].internalNotes
             } : null,
