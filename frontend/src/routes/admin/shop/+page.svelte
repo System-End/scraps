@@ -83,13 +83,13 @@
 
 	const PHI = (1 + Math.sqrt(5)) / 2;
 	const SCRAPS_PER_HOUR = PHI * 10;
-	const DOLLARS_PER_HOUR = 4;
+	const DOLLARS_PER_HOUR = 5;
 	const SCRAPS_PER_DOLLAR = SCRAPS_PER_HOUR / DOLLARS_PER_HOUR;
 
 	// Must match backend calculateRollCost exactly
-	// Backend scales roll cost with effectiveProbability so expected spend ≈ price always
-	function calculateRollCost(basePrice: number, effectiveProbability: number): number {
-		return Math.max(1, Math.round(basePrice * (effectiveProbability / 100)));
+	// Roll cost is fixed based on base probability, doesn't change with upgrades
+	function calculateRollCost(basePrice: number, baseProbability: number): number {
+		return Math.max(1, Math.round(basePrice * (baseProbability / 100)));
 	}
 
 	// Must match backend computeRollThreshold exactly
@@ -150,8 +150,8 @@
 			const boostPercent = k * boostAmount;
 			const effectiveProbability = Math.min(baseProbability + boostPercent, 100);
 
-			// Backend: roll cost scales with effectiveProbability
-			const rollCost = calculateRollCost(price, effectiveProbability);
+			// Roll cost is fixed at base probability
+			const rollCost = calculateRollCost(price, baseProbability);
 
 			// Cumulative upgrade cost (geometric series)
 			let upgradeCostCumulative = 0;

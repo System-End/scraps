@@ -544,10 +544,10 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
         100,
       );
 
-      // Roll cost = price * p/100, so expected spend per win ≈ price always
+      // Roll cost is fixed based on base probability, doesn't change with upgrades
       const rollCost = calculateRollCost(
         currentItem.price,
-        effectiveProbability,
+        currentItem.baseProbability,
       );
 
       // Check if user can afford the roll cost

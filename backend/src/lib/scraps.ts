@@ -8,7 +8,7 @@ import { userBonusesTable } from "../schemas/users";
 export const PHI = (1 + Math.sqrt(5)) / 2;
 export const MULTIPLIER = 10;
 export const SCRAPS_PER_HOUR = PHI * MULTIPLIER;
-export const DOLLARS_PER_HOUR = 4;
+export const DOLLARS_PER_HOUR = 5;
 export const SCRAPS_PER_DOLLAR = SCRAPS_PER_HOUR / DOLLARS_PER_HOUR;
 
 export const TIER_MULTIPLIERS: Record<number, number> = {
@@ -93,10 +93,10 @@ export function calculateShopItemPricing(
 
 export function calculateRollCost(
   basePrice: number,
-  effectiveProbability: number,
+  baseProbability: number,
 ): number {
-  // Scales with effective probability so expected spend per win ≈ price always
-  return Math.max(1, Math.round(basePrice * (effectiveProbability / 100)));
+  // Roll cost is fixed based on base probability, doesn't change with upgrades
+  return Math.max(1, Math.round(basePrice * (baseProbability / 100)));
 }
 
 export function computeRollThreshold(probability: number): number {
