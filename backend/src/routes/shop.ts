@@ -1,5 +1,6 @@
 import { Elysia } from 'elysia'
 import { eq, sql, and, desc, isNull, ne, or, gt } from 'drizzle-orm'
+import { randomBytes } from 'crypto'
 import { db } from '../db'
 import { shopItemsTable, shopHeartsTable, shopOrdersTable, shopRollsTable, refineryOrdersTable, shopPenaltiesTable, refinerySpendingHistoryTable } from '../schemas/shop'
 import { usersTable } from '../schemas/users'
@@ -472,7 +473,7 @@ shop.post('/items/:id/try-luck', async ({ params, headers }) => {
 				throw { type: 'insufficient_funds', balance, cost: rollCost }
 			}
 
-			const rolled = Math.floor(Math.random() * 100) + 1
+			const rolled = (randomBytes(1)[0] % 100) + 1
 			const won = rolled <= effectiveProbability
 
 			// Record the roll inside the transaction
