@@ -56,7 +56,9 @@ export function getAuthorizationUrl(): string {
         client_id: CLIENT_ID,
         redirect_uri: REDIRECT_URI,
         response_type: "code",
-        scope: "openid email name profile birthdate address verification_status slack_id basic_info"
+        scope: config.isDev
+            ? "openid profile email name slack_id verification_status"
+            : "openid email name profile birthdate address verification_status slack_id basic_info"
     })
     return `${HACKCLUB_AUTH_URL}/oauth/authorize?${params.toString()}`
 }
