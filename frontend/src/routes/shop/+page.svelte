@@ -296,8 +296,8 @@
 						</span>
 					</div>
 					<div class={item.count === 0 ? 'opacity-50' : ''}>
-						<h3 class="mb-1 text-xl font-bold">{item.name}</h3>
-						<p class="mb-2 text-sm text-gray-600">{item.description}</p>
+						<h3 class="mb-1 truncate text-xl font-bold">{item.name}</h3>
+						<p class="mb-2 line-clamp-2 text-sm text-gray-600">{item.description}</p>
 						<div class="mb-3">
 							<span class="flex items-center gap-1 text-lg font-bold"
 								><Spool size={18} />{rollCost}</span
