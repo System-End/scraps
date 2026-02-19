@@ -50,7 +50,7 @@
 	let showConfirmation = $state(false);
 	let localHearted = $state(item.userHearted);
 	let localHeartCount = $state(item.heartCount);
-	let rollCost = $derived(Math.max(1, Math.round(item.price * (item.baseProbability / 100))));
+	let rollCost = $derived(Math.max(1, Math.round(item.price * (item.effectiveProbability / 100))));
 	let canAfford = $derived($userScrapsStore >= rollCost);
 	let alertMessage = $state<string | null>(null);
 	let alertType = $state<'error' | 'info'>('info');

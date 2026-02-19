@@ -150,7 +150,9 @@
 				{@const maxed = item.effectiveProbability >= 100 || nextCost === null}
 				{@const soldOut = item.count === 0}
 				<div
-					class="rounded-2xl border-4 border-black p-4 transition-all hover:border-dashed sm:p-6 {soldOut ? 'bg-gray-100' : ''}"
+					class="rounded-2xl border-4 border-black p-4 transition-all hover:border-dashed sm:p-6 {soldOut
+						? 'bg-gray-100'
+						: ''}"
 				>
 					<div class="flex flex-col gap-4 sm:flex-row sm:items-start">
 						<div class="flex flex-1 items-start gap-4">
@@ -158,11 +160,15 @@
 								<img
 									src={item.image}
 									alt={item.name}
-									class="h-12 w-12 shrink-0 rounded-lg border-2 border-black object-cover sm:h-16 sm:w-16 {soldOut ? 'opacity-50 grayscale' : ''}"
+									class="h-12 w-12 shrink-0 rounded-lg border-2 border-black object-cover sm:h-16 sm:w-16 {soldOut
+										? 'opacity-50 grayscale'
+										: ''}"
 								/>
 							{:else}
 								<div
-									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border-2 border-black bg-gray-100 sm:h-16 sm:w-16 {soldOut ? 'opacity-50 grayscale' : ''}"
+									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border-2 border-black bg-gray-100 sm:h-16 sm:w-16 {soldOut
+										? 'opacity-50 grayscale'
+										: ''}"
 								>
 									<span class="text-xl sm:text-2xl">?</span>
 								</div>
@@ -171,7 +177,9 @@
 								<div class="flex items-center gap-2">
 									<h3 class="truncate text-lg font-bold sm:text-xl">{item.name}</h3>
 									{#if soldOut}
-										<span class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600">{$t.shop.soldOut}</span>
+										<span class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600"
+											>{$t.shop.soldOut}</span
+										>
 									{/if}
 								</div>
 								<div class="mt-1 flex flex-wrap items-center gap-2">
@@ -194,16 +202,17 @@
 							</div>
 						</div>
 						<div class="flex items-center gap-2 sm:text-right">
-							{#if soldOut && item.userBoostPercent > 0}
-								<button
-									onclick={() => undoAllRefinery(item)}
-									disabled={undoing === item.id}
-									class="cursor-pointer rounded-full border-4 border-red-600 px-4 py-2 text-sm font-bold text-red-600 transition-all duration-200 hover:border-dashed disabled:opacity-50 sm:text-base"
-								>
-									{undoing === item.id ? '...' : 'undo all'}
-								</button>
-								<span
-									class="rounded-full bg-gray-200 px-4 py-2 font-bold text-gray-600"
+							{#if soldOut}
+								{#if item.userBoostPercent > 0}
+									<button
+										onclick={() => undoAllRefinery(item)}
+										disabled={undoing === item.id}
+										class="cursor-pointer rounded-full border-4 border-red-600 px-4 py-2 text-sm font-bold text-red-600 transition-all duration-200 hover:border-dashed disabled:opacity-50 sm:text-base"
+									>
+										{undoing === item.id ? '...' : 'undo all'}
+									</button>
+								{/if}
+								<span class="rounded-full bg-gray-200 px-4 py-2 font-bold text-gray-600"
 									>{$t.shop.soldOut}</span
 								>
 							{:else}
@@ -213,12 +222,11 @@
 										disabled={undoing === item.id}
 										class="cursor-pointer rounded-full border-4 border-black px-4 py-2 text-sm font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50 sm:text-base"
 									>
-										{$t.refinery.undo}
+										{undoing === item.id ? '...' : $t.refinery.undo}
 									</button>
 								{/if}
 								{#if maxed}
-									<span
-										class="rounded-full bg-gray-200 px-4 py-2 font-bold text-gray-600"
+									<span class="rounded-full bg-gray-200 px-4 py-2 font-bold text-gray-600"
 										>{$t.refinery.maxed}</span
 									>
 								{:else if nextCost !== null}
