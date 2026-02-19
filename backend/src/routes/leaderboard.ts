@@ -175,7 +175,7 @@ leaderboard.get('/probability-leaders', async () => {
 	const userMap = new Map(users.map(u => [u.id, u]))
 
 	const result = items.map(item => {
-		let topUser: { id: number; username: string; avatar: string | null } | null = null
+		let topUser: { id: number; username: string | null; avatar: string | null } | null = null
 		let topProbability = item.baseProbability
 
 		for (const userId of userIds) {
