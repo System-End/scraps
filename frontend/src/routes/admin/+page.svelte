@@ -34,6 +34,15 @@
 		costPerHour: number;
 	}
 
+	interface TierCost {
+		tier: number;
+		multiplier: number;
+		dollarsPerHour: number;
+		hours: number;
+		projects: number;
+		totalCost: number;
+	}
+
 	interface Stats {
 		totalUsers: number;
 		totalProjects: number;
@@ -44,6 +53,9 @@
 		inProgressHours: number;
 		inProgressWeightedGrants: number;
 		shopStats?: ShopStats;
+		tierCostBreakdown?: TierCost[];
+		totalTierCost?: number;
+		avgCostPerHour?: number;
 	}
 
 	interface PendingProject {
@@ -388,6 +400,48 @@
 			</div>
 		</div>
 
+		{#if stats.tierCostBreakdown && stats.tierCostBreakdown.length > 0}
+			<h2 class="mt-10 mb-6 text-2xl font-bold">cost per hour breakdown</h2>
+			<div class="rounded-2xl border-4 border-black p-6">
+				<table class="w-full text-left">
+					<thead>
+						<tr class="border-b-2 border-black">
+							<th class="pb-2 font-bold">tier</th>
+							<th class="pb-2 font-bold">multiplier</th>
+							<th class="pb-2 font-bold">$/hr</th>
+							<th class="pb-2 font-bold">hours</th>
+							<th class="pb-2 font-bold">projects</th>
+							<th class="pb-2 text-right font-bold">total cost</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each stats.tierCostBreakdown as tier}
+							<tr class="border-b border-gray-200">
+								<td class="py-2 font-bold">T{tier.tier}</td>
+								<td class="py-2">{tier.multiplier}x</td>
+								<td class="py-2">${tier.dollarsPerHour.toFixed(2)}</td>
+								<td class="py-2">{tier.hours.toLocaleString()}h</td>
+								<td class="py-2">{tier.projects.toLocaleString()}</td>
+								<td class="py-2 text-right font-bold">${tier.totalCost.toLocaleString()}</td>
+							</tr>
+						{/each}
+					</tbody>
+					<tfoot>
+						<tr class="border-t-2 border-black">
+							<td colspan="3" class="pt-3 text-lg font-bold">average cost per hour</td>
+							<td class="pt-3">{stats.totalHours.toLocaleString()}h</td>
+							<td></td>
+							<td class="pt-3 text-right text-lg font-bold">${stats.totalTierCost?.toLocaleString()}</td>
+						</tr>
+						<tr>
+							<td colspan="5" class="pb-2"></td>
+							<td class="text-right text-2xl font-bold text-green-700">${stats.avgCostPerHour?.toFixed(2)}/hr</td>
+						</tr>
+					</tfoot>
+				</table>
+			</div>
+		{/if}
+
 		{#if stats.shopStats}
 			<h2 class="mt-10 mb-6 text-2xl font-bold">shop spending</h2>
 			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -398,7 +452,7 @@
 						<DollarSign size={32} />
 					</div>
 					<div>
-						<p class="text-sm font-bold text-gray-500">cost per hour</p>
+						<p class="text-sm font-bold text-gray-500">shop cost per hour</p>
 						<p class="text-4xl font-bold text-green-700">
 							${(stats.shopStats.costPerHour / SCRAPS_PER_DOLLAR).toFixed(2)}
 						</p>

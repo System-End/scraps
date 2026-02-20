@@ -16,7 +16,7 @@ import {
 import { newsTable } from "../schemas/news";
 import { projectActivityTable } from "../schemas/activity";
 import { getUserFromSession } from "../lib/auth";
-import { calculateScrapsFromHours, getUserScrapsBalance } from "../lib/scraps";
+import { calculateScrapsFromHours, getUserScrapsBalance, TIER_MULTIPLIERS, DOLLARS_PER_HOUR } from "../lib/scraps";
 import { payoutPendingScraps, getNextPayoutDate } from "../lib/scraps-payout";
 import { syncSingleProject } from "../lib/hackatime-sync";
 import { computeItemPricing, updateShopItemPricing } from "../lib/shop-pricing";
@@ -69,6 +69,8 @@ admin.get("/stats", async ({ headers, status }) => {
         hoursOverride: projectsTable.hoursOverride,
         hackatimeProject: projectsTable.hackatimeProject,
         status: projectsTable.status,
+        tier: projectsTable.tier,
+        tierOverride: projectsTable.tierOverride,
       })
       .from(projectsTable)
       .where(or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))),
@@ -117,6 +119,36 @@ admin.get("/stats", async ({ headers, status }) => {
   const inProgressWeightedGrants =
     Math.round((inProgressHours / 10) * 100) / 100;
 
+  // Compute per-tier hour breakdown for shipped projects
+  const tierBreakdown: Record<number, { hours: number; projects: number }> = {};
+  for (const p of shippedWithDates) {
+    const effectiveTier = p.tierOverride ?? p.tier ?? 1;
+    const effHours = computeEffectiveHours(p, shippedWithDates);
+    if (!tierBreakdown[effectiveTier]) {
+      tierBreakdown[effectiveTier] = { hours: 0, projects: 0 };
+    }
+    tierBreakdown[effectiveTier].hours += effHours;
+    tierBreakdown[effectiveTier].projects += 1;
+  }
+
+  // Build tier cost breakdown: each tier has a different $/hr rate
+  const tierCostBreakdown = Object.entries(tierBreakdown)
+    .map(([tierStr, data]) => {
+      const tier = Number(tierStr);
+      const multiplier = TIER_MULTIPLIERS[tier] ?? 1.0;
+      const dollarsPerHour = DOLLARS_PER_HOUR * multiplier;
+      const totalCost = data.hours * dollarsPerHour;
+      return {
+        tier,
+        multiplier,
+        dollarsPerHour: Math.round(dollarsPerHour * 100) / 100,
+        hours: Math.round(data.hours * 10) / 10,
+        projects: data.projects,
+        totalCost: Math.round(totalCost * 100) / 100,
+      };
+    })
+    .sort((a, b) => a.tier - b.tier);
+
   // Shop spending stats
   const [shopSpending, refinerySpending] = await Promise.all([
     db
@@ -146,6 +178,11 @@ admin.get("/stats", async ({ headers, status }) => {
       ? Math.round((totalScrapsSpent / roundedTotalHours) * 100) / 100
       : 0;
 
+  const totalTierCost = tierCostBreakdown.reduce((sum, t) => sum + t.totalCost, 0);
+  const avgCostPerHour = roundedTotalHours > 0
+    ? Math.round((totalTierCost / roundedTotalHours) * 100) / 100
+    : 0;
+
   return {
     totalUsers,
     totalProjects,
@@ -163,6 +200,9 @@ admin.get("/stats", async ({ headers, status }) => {
       refineryUpgrades: refineryTotal,
       costPerHour,
     },
+    tierCostBreakdown,
+    totalTierCost: Math.round(totalTierCost * 100) / 100,
+    avgCostPerHour,
   };
 });
 
