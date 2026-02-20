@@ -110,8 +110,6 @@
 			Math.min(80, Math.round((priceRarityFactor * 0.4 + stockRarityFactor * 0.6) * 80))
 		);
 
-		// Must match backend: upgradeBudget = price * 1.5
-		const upgradeBudget = Math.max(0, price * 1.5);
 		const probabilityGap = 100 - baseProbability;
 
 		const targetUpgrades = Math.max(5, Math.min(20, Math.ceil(monetaryValue / 5)));
@@ -121,12 +119,42 @@
 		const costMultiplier = 110;
 		const multiplierDecimal = costMultiplier / 100;
 
+		const rollCost = Math.max(1, Math.round(price * (baseProbability / 100)));
+
 		let baseUpgradeCost: number;
-		if (actualUpgrades <= 0 || upgradeBudget <= 0) {
+		if (actualUpgrades <= 0 || price <= 0) {
 			baseUpgradeCost = Math.round(price * 0.05) || 1;
 		} else {
+			// Initial estimate from 1.5× price budget
+			const upgradeBudget = Math.max(0, price * 1.5);
 			const seriesSum = (Math.pow(multiplierDecimal, actualUpgrades) - 1) / (multiplierDecimal - 1);
 			baseUpgradeCost = Math.max(1, Math.round(upgradeBudget / seriesSum));
+
+			// Iteratively increase until no upgrade level is exploitable
+			// (expectedTotalCost >= price for every level k)
+			for (let attempt = 0; attempt < 200; attempt++) {
+				let safe = true;
+				for (let k = 0; k <= actualUpgrades; k++) {
+					const effProb = Math.min(baseProbability + k * boostAmount, 100);
+					const threshold = computeRollThreshold(effProb);
+					const winChance = threshold / 100;
+					const expectedRolls = winChance > 0 ? 1 / winChance : Infinity;
+					const expectedRollCost = rollCost * expectedRolls;
+
+					let cumulativeUpgradeCost = 0;
+					for (let i = 0; i < k; i++) {
+						cumulativeUpgradeCost += Math.floor(baseUpgradeCost * Math.pow(multiplierDecimal, i));
+					}
+
+					const expectedTotalCost = cumulativeUpgradeCost + expectedRollCost;
+					if (expectedTotalCost < price) {
+						safe = false;
+						break;
+					}
+				}
+				if (safe) break;
+				baseUpgradeCost = Math.max(baseUpgradeCost + 1, Math.ceil(baseUpgradeCost * 1.05));
+			}
 		}
 
 		return { price, baseProbability, baseUpgradeCost, costMultiplier, boostAmount };

@@ -143,12 +143,12 @@
 			const data = await response.json();
 
 			if (!response.ok || data.error || !data.success) {
+				console.error('[SHOP] try-luck error response:', JSON.stringify(data));
 				alertType = 'error';
-				if (data.required && data.available !== undefined) {
-					alertMessage = `${data.error}. You need ${data.required} scraps but only have ${data.available}.`;
-				} else {
-					alertMessage = data.error || $t.shop.failedToTryLuck;
-				}
+				const parts = [data.error || $t.shop.failedToTryLuck];
+				if (data.required !== undefined) parts.push(`need: ${data.required} scraps`);
+				if (data.available !== undefined) parts.push(`have: ${data.available} scraps`);
+				alertMessage = parts.join(' — ');
 				return;
 			}
 
