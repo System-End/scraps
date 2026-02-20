@@ -1,5 +1,5 @@
 import { Elysia } from "elysia";
-import { eq, and, inArray, sql, desc, asc, or, isNull } from "drizzle-orm";
+import { eq, ne, and, inArray, sql, desc, asc, or, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { usersTable, userBonusesTable } from "../schemas/users";
 import { projectsTable } from "../schemas/projects";
@@ -788,16 +788,8 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
       return { error: "Project is not marked for review" };
     }
 
-    // Create review record
-    await db.insert(reviewsTable).values({
-      projectId,
-      reviewerId: user.id,
-      action,
-      feedbackForAuthor,
-      internalJustification,
-    });
-
-    // Check for duplicate Code URL if approving
+    // Check for duplicate Code URL before creating review record (only block
+    // cross-user duplicates; same-user duplicates are project updates)
     if (action === "approved" && project[0].githubUrl) {
       const duplicates = await db
         .select({ id: projectsTable.id })
@@ -807,6 +799,7 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
             eq(projectsTable.githubUrl, project[0].githubUrl),
             eq(projectsTable.status, "shipped"),
             or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
+            ne(projectsTable.userId, project[0].userId),
           ),
         )
         .limit(1);
@@ -814,11 +807,20 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
       if (duplicates.length > 0) {
         return {
           error:
-            "A shipped project with this Code URL already exists. This project has been kept in review.",
+            "A shipped project with this Code URL already exists (from another user). This project has been kept in review.",
           duplicateCodeUrl: true,
         };
       }
     }
+
+    // Create review record
+    await db.insert(reviewsTable).values({
+      projectId,
+      reviewerId: user.id,
+      action,
+      feedbackForAuthor,
+      internalJustification,
+    });
 
     // Update project status
     let newStatus = "in_progress";
@@ -1386,6 +1388,7 @@ admin.get("/scraps-payout", async ({ headers }) => {
         name: projectsTable.name,
         image: projectsTable.image,
         scrapsAwarded: projectsTable.scrapsAwarded,
+        scrapsPaidAmount: projectsTable.scrapsPaidAmount,
         hours: projectsTable.hours,
         hoursOverride: projectsTable.hoursOverride,
         userId: projectsTable.userId,
@@ -1396,8 +1399,7 @@ admin.get("/scraps-payout", async ({ headers }) => {
       .where(
         and(
           eq(projectsTable.status, "shipped"),
-          sql`${projectsTable.scrapsAwarded} > 0`,
-          isNull(projectsTable.scrapsPaidAt),
+          sql`${projectsTable.scrapsAwarded} > ${projectsTable.scrapsPaidAmount}`,
           or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
         ),
       );
@@ -1433,7 +1435,7 @@ admin.get("/scraps-payout", async ({ headers }) => {
     return {
       pendingProjects: pendingProjects.length,
       pendingScraps: pendingProjects.reduce(
-        (sum, p) => sum + p.scrapsAwarded,
+        (sum, p) => sum + (p.scrapsAwarded - p.scrapsPaidAmount),
         0,
       ),
       projects: projectsWithUsers,
@@ -1481,7 +1483,7 @@ admin.post("/scraps-payout/reject", async ({ headers, body, status }) => {
         id: projectsTable.id,
         userId: projectsTable.userId,
         scrapsAwarded: projectsTable.scrapsAwarded,
-        scrapsPaidAt: projectsTable.scrapsPaidAt,
+        scrapsPaidAmount: projectsTable.scrapsPaidAmount,
         status: projectsTable.status,
         name: projectsTable.name,
       })
@@ -1493,7 +1495,7 @@ admin.post("/scraps-payout/reject", async ({ headers, body, status }) => {
       return status(404, { error: "Project not found" });
     }
 
-    if (project[0].scrapsPaidAt) {
+    if (project[0].scrapsPaidAmount > 0) {
       return status(400, {
         error: "Scraps have already been paid out for this project",
       });
@@ -2346,6 +2348,7 @@ admin.post(
         .set({
           status: "in_progress",
           scrapsAwarded: 0,
+          scrapsPaidAmount: 0,
           scrapsPaidAt: null,
           updatedAt: new Date(),
         })
@@ -2385,6 +2388,7 @@ admin.get("/users/:id/timeline", async ({ params, headers, status }) => {
             id: projectsTable.id,
             name: projectsTable.name,
             scrapsAwarded: projectsTable.scrapsAwarded,
+            scrapsPaidAmount: projectsTable.scrapsPaidAmount,
             scrapsPaidAt: projectsTable.scrapsPaidAt,
             status: projectsTable.status,
             createdAt: projectsTable.createdAt,
@@ -2482,10 +2486,10 @@ admin.get("/users/:id/timeline", async ({ params, headers, status }) => {
     for (const p of paidProjects) {
       timeline.push({
         type: "earned",
-        amount: p.scrapsAwarded,
+        amount: p.scrapsPaidAmount,
         description: `project "${p.name}"`,
         date: (p.scrapsPaidAt ?? p.createdAt ?? new Date()).toISOString(),
-        paid: !!p.scrapsPaidAt,
+        paid: p.scrapsPaidAmount >= p.scrapsAwarded,
       });
     }
 

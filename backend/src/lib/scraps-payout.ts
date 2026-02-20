@@ -82,24 +82,24 @@ async function sendChannelMessage(text: string, blocks?: unknown[]): Promise<boo
 }
 
 /**
- * Pay out all pending scraps by setting scrapsPaidAt on shipped projects
- * that have scrapsAwarded > 0 but haven't been paid out yet.
+ * Pay out all pending scraps for shipped projects where scrapsAwarded > scrapsPaidAmount.
+ * Handles both new projects and updates with additional scraps (pays the delta).
  */
 export async function payoutPendingScraps(): Promise<{ paidCount: number; totalScraps: number }> {
 	const now = new Date()
 
-	// Get pending projects with user info before updating
+	// Get projects with unpaid scraps (includes both new projects and updates with additional scraps)
 	const pendingProjects = await db
 		.select({
 			id: projectsTable.id,
 			scrapsAwarded: projectsTable.scrapsAwarded,
+			scrapsPaidAmount: projectsTable.scrapsPaidAmount,
 			userId: projectsTable.userId
 		})
 		.from(projectsTable)
 		.where(and(
 			eq(projectsTable.status, 'shipped'),
-			sql`${projectsTable.scrapsAwarded} > 0`,
-			isNull(projectsTable.scrapsPaidAt),
+			sql`${projectsTable.scrapsAwarded} > ${projectsTable.scrapsPaidAmount}`,
 			or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
 		))
 
@@ -108,14 +108,17 @@ export async function payoutPendingScraps(): Promise<{ paidCount: number; totalS
 	}
 
 	const projectIds = pendingProjects.map(p => p.id)
-	const totalScraps = pendingProjects.reduce((sum, p) => sum + p.scrapsAwarded, 0)
+	const totalScraps = pendingProjects.reduce((sum, p) => sum + (p.scrapsAwarded - p.scrapsPaidAmount), 0)
 	const uniqueUserIds = [...new Set(pendingProjects.map(p => p.userId))]
 
-	// Update all pending projects
+	// Mark all pending projects as fully paid (scrapsPaidAmount = scrapsAwarded)
 	await db
 		.update(projectsTable)
-		.set({ scrapsPaidAt: now })
-		.where(sql`${projectsTable.id} IN ${projectIds}`)
+		.set({
+			scrapsPaidAt: now,
+			scrapsPaidAmount: sql`${projectsTable.scrapsAwarded}`
+		})
+		.where(inArray(projectsTable.id, projectIds))
 
 	const paidCount = pendingProjects.length
 	console.log(`[SCRAPS-PAYOUT] Paid out ${totalScraps} scraps across ${paidCount} projects for ${uniqueUserIds.length} users`)

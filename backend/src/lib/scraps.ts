@@ -8,7 +8,7 @@ import { userBonusesTable } from "../schemas/users";
 export const PHI = (1 + Math.sqrt(5)) / 2;
 export const MULTIPLIER = 10;
 export const SCRAPS_PER_HOUR = PHI * MULTIPLIER;
-export const DOLLARS_PER_HOUR = 4;
+export const DOLLARS_PER_HOUR = 5;
 export const SCRAPS_PER_DOLLAR = SCRAPS_PER_HOUR / DOLLARS_PER_HOUR;
 
 export const TIER_MULTIPLIERS: Record<number, number> = {
@@ -91,6 +91,8 @@ export function calculateShopItemPricing(
   };
 }
 
+const MIN_ROLL_COST_PERCENT = 0.15;
+
 export function calculateRollCost(
   basePrice: number,
   effectiveProbability: number,
@@ -101,9 +103,11 @@ export function calculateRollCost(
     return rollCostOverride;
   }
   // Roll cost scales with effective probability (including upgrades).
-  // This naturally prevents exploitation: as probability increases,
-  // roll cost increases proportionally, keeping expected spend ≈ constant.
-  return Math.max(1, Math.round(basePrice * (effectiveProbability / 100)));
+  // Floor at 15% of item price prevents exploitation on rare items where
+  // base probability is very low (e.g., 2% base → flat cost of 6 scraps).
+  const scaledCost = Math.round(basePrice * (effectiveProbability / 100));
+  const floorCost = Math.round(basePrice * MIN_ROLL_COST_PERCENT);
+  return Math.max(1, scaledCost, floorCost);
 }
 
 export function computeRollThreshold(probability: number): number {
@@ -131,24 +135,24 @@ export async function getUserScrapsBalance(
   spent: number;
   balance: number;
 }> {
-  // Only count scraps that have been paid out (scrapsPaidAt IS NOT NULL)
+  // Earned scraps: only count what has actually been paid out (scrapsPaidAmount)
   const earnedResult = await txOrDb
     .select({
-      total: sql<number>`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`,
+      total: sql<number>`COALESCE(SUM(${projectsTable.scrapsPaidAmount}), 0)`,
     })
     .from(projectsTable)
     .where(
-      sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsPaidAt} IS NOT NULL`,
+      sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsPaidAmount} > 0`,
     );
 
-  // Pending scraps: awarded but not yet paid out (must be shipped & not deleted, matching payout criteria)
+  // Pending scraps: the unpaid delta (scrapsAwarded - scrapsPaidAmount) for shipped projects
   const pendingResult = await txOrDb
     .select({
-      total: sql<number>`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`,
+      total: sql<number>`COALESCE(SUM(${projectsTable.scrapsAwarded} - ${projectsTable.scrapsPaidAmount}), 0)`,
     })
     .from(projectsTable)
     .where(
-      sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsAwarded} > 0 AND ${projectsTable.scrapsPaidAt} IS NULL AND ${projectsTable.status} = 'shipped' AND (${projectsTable.deleted} = 0 OR ${projectsTable.deleted} IS NULL)`,
+      sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsAwarded} > ${projectsTable.scrapsPaidAmount} AND ${projectsTable.status} = 'shipped' AND (${projectsTable.deleted} = 0 OR ${projectsTable.deleted} IS NULL)`,
     );
 
   const bonusResult = await txOrDb
