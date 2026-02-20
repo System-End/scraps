@@ -100,9 +100,6 @@
 			return rollCostOverride;
 		}
 		const baseProb = baseProbability ?? effectiveProbability;
-		if (baseProb < 15) {
-			return Math.max(1, Math.round(basePrice * 0.20));
-		}
 		return Math.max(1, Math.round(basePrice * (baseProb / 100)));
 	}
 
@@ -123,28 +120,15 @@
 			Math.min(80, Math.round((priceRarityFactor * 0.4 + stockRarityFactor * 0.6) * 80))
 		);
 
-		// Roll cost scales with effective probability (see calculateRollCost)
 		const rollCost = Math.max(1, Math.round(price * (baseProbability / 100)));
 
-		// Total budget = 3.0x price, upgrade budget = budget - rollCost
-		const upgradeBudget = Math.max(0, price * 3.0 - rollCost);
-
 		const probabilityGap = 100 - baseProbability;
-
 		const targetUpgrades = Math.max(5, Math.min(20, Math.ceil(monetaryValue / 5)));
 		const boostAmount = Math.max(1, Math.round(probabilityGap / targetUpgrades));
-		const actualUpgrades = Math.ceil(probabilityGap / boostAmount);
 
-		const costMultiplier = 110;
-		const multiplierDecimal = costMultiplier / 100;
-
-		let baseUpgradeCost: number;
-		if (actualUpgrades <= 0 || upgradeBudget <= 0) {
-			baseUpgradeCost = Math.round(price * 0.05) || 1;
-		} else {
-			const seriesSum = (Math.pow(multiplierDecimal, actualUpgrades) - 1) / (multiplierDecimal - 1);
-			baseUpgradeCost = Math.max(1, Math.round(upgradeBudget / seriesSum));
-		}
+		// Upgrades start at 25% of item price and decay by 1.05x per level
+		const baseUpgradeCost = Math.max(1, Math.floor(price * 0.25));
+		const costMultiplier = 105;
 
 		return { price, baseProbability, baseUpgradeCost, costMultiplier, boostAmount };
 	}
@@ -160,7 +144,6 @@
 		const results: EVResult[] = [];
 		const probabilityGap = 100 - baseProbability;
 		const maxUpgrades = boostAmount > 0 ? Math.ceil(probabilityGap / boostAmount) : 0;
-		const multiplierDecimal = costMultiplier / 100;
 
 		let bestLevel = 0;
 		let bestCost = Infinity;
@@ -171,11 +154,21 @@
 
 			const rollCost = calculateRollCost(price, effectiveProbability, rollCostOverride, baseProbability);
 
-			// Cumulative upgrade cost (geometric series)
+			// Cumulative upgrade cost (decaying: price * 0.25 / 1.05^i, capped at 2x price)
+			const maxBudget = price * 2;
 			let upgradeCostCumulative = 0;
+			let budgetExhausted = false;
 			for (let i = 0; i < k; i++) {
-				upgradeCostCumulative += Math.floor(baseUpgradeCost * Math.pow(multiplierDecimal, i));
+				const ucost = Math.max(1, Math.floor(price * 0.25 / Math.pow(1.05, i)));
+				if (upgradeCostCumulative + ucost > maxBudget) {
+					upgradeCostCumulative = maxBudget;
+					budgetExhausted = true;
+					break;
+				}
+				upgradeCostCumulative += ucost;
 			}
+
+			if (budgetExhausted) break;
 
 			// Backend applies 17/20 house edge via computeRollThreshold
 			const actualThreshold = computeRollThreshold(effectiveProbability);

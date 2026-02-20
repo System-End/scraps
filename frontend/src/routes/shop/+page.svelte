@@ -23,13 +23,13 @@
 	}
 
 	function getItemRollCost(item: ShopItem): number {
+		let baseCost: number;
 		if (item.rollCostOverride != null && item.rollCostOverride > 0) {
-			return item.rollCostOverride;
+			baseCost = item.rollCostOverride;
+		} else {
+			baseCost = Math.max(1, Math.round(item.price * (item.baseProbability / 100)));
 		}
-		if (item.baseProbability < 15) {
-			return Math.max(1, Math.round(item.price * 0.20));
-		}
-		return Math.max(1, Math.round(item.price * (item.baseProbability / 100)));
+		return Math.round(baseCost * (1 + 0.05 * (item.rollCount || 0)));
 	}
 
 	let selectedCategories = $state<Set<string>>(new Set());

@@ -73,24 +73,10 @@ export function computeItemPricing(
   const probabilityGap = 100 - prob;
   const targetUpgrades = Math.max(5, Math.min(20, Math.ceil(dollarCost / 5)));
   const boostAmount = Math.max(1, Math.round(probabilityGap / targetUpgrades));
-  const actualUpgrades = Math.ceil(probabilityGap / boostAmount);
 
-  const costMultiplier = 110;
-  const multiplierDecimal = costMultiplier / 100;
-
-  // Total budget = 3.0x price, upgrade budget = budget - rollCost
-  // Roll cost scales with probability, so exploitation is naturally prevented.
-  const upgradeBudget = Math.max(0, price * 3.0 - rollCost);
-
-  let baseUpgradeCost: number;
-  if (actualUpgrades <= 0 || upgradeBudget <= 0) {
-    baseUpgradeCost = Math.max(1, Math.round(price * 0.05));
-  } else {
-    const seriesSum =
-      (Math.pow(multiplierDecimal, actualUpgrades) - 1) /
-      (multiplierDecimal - 1);
-    baseUpgradeCost = Math.max(1, Math.round(upgradeBudget / seriesSum));
-  }
+  // Upgrades start at 25% of item price and decay by 1.05x per level
+  const baseUpgradeCost = Math.max(1, Math.floor(price * 0.25));
+  const costMultiplier = 105; // stored as percentage, used as decay divisor
 
   return {
     price,

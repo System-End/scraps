@@ -37,6 +37,7 @@ export interface ShopItem {
 	upgradeCount: number;
 	effectiveProbability: number;
 	nextUpgradeCost: number | null;
+	rollCount: number;
 }
 
 export interface LeaderboardEntry {

@@ -18,6 +18,7 @@ import {
   canAfford,
   calculateRollCost,
   computeRollThreshold,
+  getUpgradeCost,
 } from "../lib/scraps";
 import { notifyShopWin } from "../lib/scraps-payout";
 
@@ -73,6 +74,15 @@ shop.get("/items", async ({ headers }) => {
       .from(shopPenaltiesTable)
       .where(eq(shopPenaltiesTable.userId, user.id));
 
+    const userRollCounts = await db
+      .select({
+        shopItemId: shopRollsTable.shopItemId,
+        rollCount: sql<number>`COUNT(*)`,
+      })
+      .from(shopRollsTable)
+      .where(eq(shopRollsTable.userId, user.id))
+      .groupBy(shopRollsTable.shopItemId);
+
     const heartedIds = new Set(userHearts.map((h) => h.shopItemId));
     const boostMap = new Map(
       userBoosts.map((b) => [
@@ -85,6 +95,9 @@ shop.get("/items", async ({ headers }) => {
     );
     const penaltyMap = new Map(
       userPenalties.map((p) => [p.shopItemId, p.probabilityMultiplier]),
+    );
+    const rollCountMap = new Map(
+      userRollCounts.map((r) => [r.shopItemId, Number(r.rollCount)]),
     );
 
     return items.map((item) => {
@@ -100,10 +113,7 @@ shop.get("/items", async ({ headers }) => {
       const nextUpgradeCost =
         boostData.boostPercent >= maxBoost
           ? null
-          : Math.floor(
-              item.baseUpgradeCost *
-                Math.pow(item.costMultiplier / 100, boostData.upgradeCount),
-            );
+          : getUpgradeCost(item.price, boostData.upgradeCount);
       return {
         ...item,
         heartCount: Number(item.heartCount) || 0,
@@ -117,6 +127,7 @@ shop.get("/items", async ({ headers }) => {
         rollCostOverride: item.rollCostOverride,
         userHearted: heartedIds.has(item.id),
         nextUpgradeCost,
+        rollCount: rollCountMap.get(item.id) ?? 0,
       };
     });
   }
@@ -130,7 +141,8 @@ shop.get("/items", async ({ headers }) => {
     effectiveProbability: Math.min(item.baseProbability, 100),
     rollCostOverride: item.rollCostOverride,
     userHearted: false,
-    nextUpgradeCost: item.baseUpgradeCost,
+    nextUpgradeCost: getUpgradeCost(item.price, 0),
+    rollCount: 0,
   }));
 });
 
@@ -574,12 +586,25 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
         100,
       );
 
-      const rollCost = calculateRollCost(
+      const baseRollCost = calculateRollCost(
         currentItem.price,
         effectiveProbability,
         currentItem.rollCostOverride,
         currentItem.baseProbability,
       );
+
+      // Roll cost escalates by 5% per previous roll on this item
+      const rollCountResult = await tx
+        .select({ count: sql<number>`count(*)` })
+        .from(shopRollsTable)
+        .where(
+          and(
+            eq(shopRollsTable.userId, user.id),
+            eq(shopRollsTable.shopItemId, itemId),
+          ),
+        );
+      const previousRolls = Number(rollCountResult[0]?.count ?? 0);
+      const rollCost = Math.round(baseRollCost * (1 + 0.05 * previousRolls));
 
       // Check if user can afford the roll cost
       const {
@@ -874,10 +899,11 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
         );
       const upgradeCount = Number(upgradeCountResult[0]?.count) || 0;
 
-      const cost = Math.floor(
-        item.baseUpgradeCost *
-          Math.pow(item.costMultiplier / 100, upgradeCount),
-      );
+      const upgradeCost = getUpgradeCost(item.price, upgradeCount);
+      if (upgradeCost === null) {
+        throw { type: "max_upgrades" };
+      }
+      const cost = upgradeCost;
 
       const affordable = await canAfford(user.id, cost, tx);
       if (!affordable) {
@@ -907,10 +933,7 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
       const nextCost =
         newBoost >= maxBoost
           ? null
-          : Math.floor(
-              item.baseUpgradeCost *
-                Math.pow(item.costMultiplier / 100, newUpgradeCount),
-            );
+          : getUpgradeCost(item.price, newUpgradeCount);
 
       return {
         boostPercent: newBoost,
@@ -925,6 +948,9 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
     const err = e as { type?: string; balance?: number; cost?: number };
     if (err.type === "max_probability") {
       return { error: "Already at maximum probability" };
+    }
+    if (err.type === "max_upgrades") {
+      return { error: "Upgrade budget exhausted" };
     }
     if (err.type === "insufficient_funds") {
       return {

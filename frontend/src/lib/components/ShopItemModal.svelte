@@ -50,11 +50,15 @@
 	let showConfirmation = $state(false);
 	let localHearted = $state(item.userHearted);
 	let localHeartCount = $state(item.heartCount);
-	let rollCost = $derived(
-		item.rollCostOverride != null && item.rollCostOverride > 0
-			? item.rollCostOverride
-			: Math.max(1, Math.round(item.price * (item.effectiveProbability / 100)))
-	);
+	let rollCost = $derived((() => {
+		let baseCost: number;
+		if (item.rollCostOverride != null && item.rollCostOverride > 0) {
+			baseCost = item.rollCostOverride;
+		} else {
+			baseCost = Math.max(1, Math.round(item.price * (item.baseProbability / 100)));
+		}
+		return Math.round(baseCost * (1 + 0.05 * (item.rollCount || 0)));
+	})());
 	let canAfford = $derived($userScrapsStore >= rollCost);
 	let alertMessage = $state<string | null>(null);
 	let alertType = $state<'error' | 'info'>('info');

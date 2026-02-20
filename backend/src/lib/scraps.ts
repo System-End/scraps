@@ -100,13 +100,29 @@ export function calculateRollCost(
   if (rollCostOverride != null && rollCostOverride > 0) {
     return rollCostOverride;
   }
-  // Roll cost is fixed based on base probability, does not scale with upgrades.
-  // Rare items (baseProbability < 15%) get a 20% floor.
+  // Roll cost = baseProbability% of item price. Does not scale with upgrades.
+  // Escalation (applied at call site) makes repeated rolls more expensive.
   const baseProb = baseProbability ?? effectiveProbability;
-  if (baseProb < 15) {
-    return Math.max(1, Math.round(basePrice * 0.20));
-  }
   return Math.max(1, Math.round(basePrice * (baseProb / 100)));
+}
+
+const UPGRADE_START_PERCENT = 0.25;
+const UPGRADE_DECAY = 1.05;
+const UPGRADE_MAX_BUDGET_MULTIPLIER = 2;
+
+export function getUpgradeCost(price: number, upgradeCount: number): number | null {
+  const maxBudget = price * UPGRADE_MAX_BUDGET_MULTIPLIER;
+  let cumulative = 0;
+  for (let i = 0; i < upgradeCount; i++) {
+    cumulative += Math.max(1, Math.floor(price * UPGRADE_START_PERCENT / Math.pow(UPGRADE_DECAY, i)));
+  }
+  if (cumulative >= maxBudget) return null;
+  const nextCost = Math.max(1, Math.floor(price * UPGRADE_START_PERCENT / Math.pow(UPGRADE_DECAY, upgradeCount)));
+  if (cumulative + nextCost > maxBudget) {
+    const remaining = Math.floor(maxBudget - cumulative);
+    return remaining > 0 ? remaining : null;
+  }
+  return nextCost;
 }
 
 export function computeRollThreshold(probability: number): number {
