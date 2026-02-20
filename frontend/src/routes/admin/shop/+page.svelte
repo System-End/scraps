@@ -138,8 +138,7 @@
 		if (actualUpgrades <= 0 || upgradeBudget <= 0) {
 			baseUpgradeCost = Math.round(price * 0.05) || 1;
 		} else {
-			const seriesSum =
-				(Math.pow(multiplierDecimal, actualUpgrades) - 1) / (multiplierDecimal - 1);
+			const seriesSum = (Math.pow(multiplierDecimal, actualUpgrades) - 1) / (multiplierDecimal - 1);
 			baseUpgradeCost = Math.max(1, Math.round(upgradeBudget / seriesSum));
 		}
 
@@ -491,15 +490,15 @@
 		<div class="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
 			<div class="rounded-lg bg-gray-100 p-3">
 				<div class="mb-1 text-xs text-gray-500">roll cost</div>
-				<div class="font-bold">price × base% / 100</div>
+				<div class="font-bold">price × effective% / 100</div>
 			</div>
 			<div class="rounded-lg bg-gray-100 p-3">
 				<div class="mb-1 text-xs text-gray-500">roll cost is</div>
-				<div class="font-bold">fixed (base prob)</div>
+				<div class="font-bold">scales with effective probability (includes upgrades)</div>
 			</div>
 			<div class="rounded-lg bg-gray-100 p-3">
 				<div class="mb-1 text-xs text-gray-500">upgrade budget</div>
-				<div class="font-bold">1.5× price</div>
+				<div class="font-bold">3.0× price</div>
 			</div>
 			<div class="rounded-lg bg-gray-100 p-3">
 				<div class="mb-1 text-xs text-gray-500">win threshold</div>
@@ -507,9 +506,9 @@
 			</div>
 		</div>
 		<p class="mt-2 text-xs text-gray-500">
-			roll cost is fixed at base probability regardless of upgrades. upgrades increase win chance
-			but not roll cost. actual win threshold = floor(effective% × 17/20), giving ~15% house edge.
-			upgrade budget = 1.5× item price spread across a geometric cost series.
+			roll cost scales with effective probability (including upgrades). upgrades increase win chance
+			and roll cost together. actual win threshold = floor(effective% × 17/20), giving ~15% house
+			edge. upgrade budget = 3.0× item price spread across a geometric cost series.
 		</p>
 	</div>
 
@@ -860,7 +859,7 @@
 						{/if}
 					</div>
 					<p class="mt-1 text-xs text-gray-500">
-						leave empty for auto = price × base% / 100 = {Math.max(
+						leave empty for auto = price × effective% / 100 (scales with upgrades) = {Math.max(
 							1,
 							Math.round(formPrice * (formBaseProbability / 100))
 						)} scraps
