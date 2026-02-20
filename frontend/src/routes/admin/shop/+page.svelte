@@ -100,8 +100,8 @@
 	}
 
 	// Must match backend calculateShopItemPricing exactly
-	function calculatePricing(monetaryValue: number, stockCount: number) {
-		const price = Math.round(monetaryValue * SCRAPS_PER_DOLLAR);
+	function calculatePricing(monetaryValue: number, stockCount: number, priceOverride?: number) {
+		const price = priceOverride ?? Math.round(monetaryValue * SCRAPS_PER_DOLLAR);
 
 		const priceRarityFactor = Math.max(0, 1 - monetaryValue / 100);
 		const stockRarityFactor = Math.min(1, stockCount / 20);
@@ -259,18 +259,26 @@
 	let showDetailedEV = $state(false);
 
 	// Optimal pricing derived from current monetary value + stock count
-	let optimalPricing = $derived(calculatePricing(formMonetaryValue, formCount));
+	// When price is overridden, compute EV-safe upgrade costs against the actual price
+	let optimalPricing = $derived(
+		calculatePricing(formMonetaryValue, formCount, formPriceOverride ? formPrice : undefined)
+	);
 
 	let hasCustomPricing = $derived(
 		formPrice > 0 &&
-			(formBaseProbability !== optimalPricing.baseProbability ||
+			(formPrice !== optimalPricing.price ||
+				formBaseProbability !== optimalPricing.baseProbability ||
 				formBaseUpgradeCost !== optimalPricing.baseUpgradeCost ||
 				formCostMultiplier !== optimalPricing.costMultiplier ||
 				formBoostAmount !== optimalPricing.boostAmount)
 	);
 
 	function recalculatePricing() {
-		const pricing = calculatePricing(formMonetaryValue, formCount);
+		const pricing = calculatePricing(
+			formMonetaryValue,
+			formCount,
+			formPriceOverride ? formPrice : undefined
+		);
 		if (!formPriceOverride) {
 			formPrice = pricing.price;
 		}
