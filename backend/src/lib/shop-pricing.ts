@@ -64,8 +64,7 @@ export function computeItemPricing(
     );
   }
 
-  // Roll cost at base probability (includes 15% floor to prevent exploitation on rare items)
-  const rollCost = calculateRollCost(price, prob);
+  const rollCost = calculateRollCost(price, prob, undefined, prob);
 
   const threshold = computeRollThreshold(prob);
   const expectedRollsAtBase = threshold > 0 ? Math.round((100 / threshold) * 10) / 10 : Infinity;

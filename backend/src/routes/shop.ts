@@ -574,11 +574,11 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
         100,
       );
 
-      // Roll cost scales with effective probability (including upgrades)
       const rollCost = calculateRollCost(
         currentItem.price,
         effectiveProbability,
         currentItem.rollCostOverride,
+        currentItem.baseProbability,
       );
 
       // Check if user can afford the roll cost

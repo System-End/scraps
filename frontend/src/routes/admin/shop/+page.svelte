@@ -90,16 +90,20 @@
 	const SCRAPS_PER_DOLLAR = SCRAPS_PER_HOUR / DOLLARS_PER_HOUR;
 
 	// Must match backend calculateRollCost exactly
-	// Roll cost scales with effective probability (including upgrades)
 	function calculateRollCost(
 		basePrice: number,
 		effectiveProbability: number,
-		rollCostOverride?: number | null
+		rollCostOverride?: number | null,
+		baseProbability?: number
 	): number {
 		if (rollCostOverride != null && rollCostOverride > 0) {
 			return rollCostOverride;
 		}
-		return Math.max(1, Math.round(basePrice * (effectiveProbability / 100)));
+		const baseProb = baseProbability ?? effectiveProbability;
+		if (baseProb < 15) {
+			return Math.max(1, Math.round(basePrice * 0.20));
+		}
+		return Math.max(1, Math.round(basePrice * (baseProb / 100)));
 	}
 
 	// Must match backend computeRollThreshold exactly
@@ -165,8 +169,7 @@
 			const boostPercent = k * boostAmount;
 			const effectiveProbability = Math.min(baseProbability + boostPercent, 100);
 
-			// Roll cost scales with effective probability (including upgrades)
-			const rollCost = calculateRollCost(price, effectiveProbability, rollCostOverride);
+			const rollCost = calculateRollCost(price, effectiveProbability, rollCostOverride, baseProbability);
 
 			// Cumulative upgrade cost (geometric series)
 			let upgradeCostCumulative = 0;

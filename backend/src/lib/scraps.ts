@@ -91,23 +91,22 @@ export function calculateShopItemPricing(
   };
 }
 
-const MIN_ROLL_COST_PERCENT = 0.15;
-
 export function calculateRollCost(
   basePrice: number,
   effectiveProbability: number,
   rollCostOverride?: number | null,
+  baseProbability?: number,
 ): number {
-  // If admin set a manual roll cost, use it
   if (rollCostOverride != null && rollCostOverride > 0) {
     return rollCostOverride;
   }
-  // Roll cost scales with effective probability (including upgrades).
-  // Floor at 15% of item price prevents exploitation on rare items where
-  // base probability is very low (e.g., 2% base → flat cost of 6 scraps).
-  const scaledCost = Math.round(basePrice * (effectiveProbability / 100));
-  const floorCost = Math.round(basePrice * MIN_ROLL_COST_PERCENT);
-  return Math.max(1, scaledCost, floorCost);
+  // Roll cost is fixed based on base probability, does not scale with upgrades.
+  // Rare items (baseProbability < 15%) get a 20% floor.
+  const baseProb = baseProbability ?? effectiveProbability;
+  if (baseProb < 15) {
+    return Math.max(1, Math.round(basePrice * 0.20));
+  }
+  return Math.max(1, Math.round(basePrice * (baseProb / 100)));
 }
 
 export function computeRollThreshold(probability: number): number {

@@ -26,8 +26,10 @@
 		if (item.rollCostOverride != null && item.rollCostOverride > 0) {
 			return item.rollCostOverride;
 		}
-		// Roll cost scales with effective probability (including upgrades)
-		return Math.max(1, Math.round(item.price * (item.effectiveProbability / 100)));
+		if (item.baseProbability < 15) {
+			return Math.max(1, Math.round(item.price * 0.20));
+		}
+		return Math.max(1, Math.round(item.price * (item.baseProbability / 100)));
 	}
 
 	let selectedCategories = $state<Set<string>>(new Set());
