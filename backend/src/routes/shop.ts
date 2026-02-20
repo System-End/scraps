@@ -574,10 +574,10 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
         100,
       );
 
-      // Roll cost: use admin override if set, otherwise fixed at base probability
+      // Roll cost scales with effective probability (including upgrades)
       const rollCost = calculateRollCost(
         currentItem.price,
-        currentItem.baseProbability,
+        effectiveProbability,
         currentItem.rollCostOverride,
       );
 

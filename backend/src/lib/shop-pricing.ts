@@ -30,7 +30,7 @@ export function computeItemPricing(
   costMultiplier: number;
   /** probability boost per upgrade */
   boostAmount: number;
-  /** cost per roll attempt */
+  /** cost per roll attempt at base probability */
   rollCost: number;
   /** estimated rolls to win at base probability */
   expectedRollsAtBase: number;
@@ -63,9 +63,11 @@ export function computeItemPricing(
     );
   }
 
+  // Roll cost at base probability (scales with effective probability at roll time)
   const rollCost = Math.max(1, Math.round(price * (prob / 100)));
 
-  const expectedRollsAtBase = Math.round((100 / prob) * 10) / 10;
+  const threshold = computeRollThreshold(prob);
+  const expectedRollsAtBase = threshold > 0 ? Math.round((100 / threshold) * 10) / 10 : Infinity;
   const expectedSpendAtBase = Math.round(rollCost * expectedRollsAtBase);
 
   const probabilityGap = 100 - prob;
@@ -76,48 +78,18 @@ export function computeItemPricing(
   const costMultiplier = 110;
   const multiplierDecimal = costMultiplier / 100;
 
-  // Calculate base upgrade cost: start from budget estimate, then iterate
-  // upward until no upgrade level is exploitable (expectedTotalCost >= price).
+  // Total budget = 3.0x price, upgrade budget = budget - rollCost
+  // Roll cost scales with probability, so exploitation is naturally prevented.
+  const upgradeBudget = Math.max(0, price * 3.0 - rollCost);
+
   let baseUpgradeCost: number;
-  if (actualUpgrades <= 0 || price <= 0) {
+  if (actualUpgrades <= 0 || upgradeBudget <= 0) {
     baseUpgradeCost = Math.max(1, Math.round(price * 0.05));
   } else {
-    // Initial estimate from 1.5× price budget
-    const upgradeBudget = Math.max(0, price * 1.5);
     const seriesSum =
       (Math.pow(multiplierDecimal, actualUpgrades) - 1) /
       (multiplierDecimal - 1);
     baseUpgradeCost = Math.max(1, Math.round(upgradeBudget / seriesSum));
-
-    // Iteratively increase until no upgrade level is exploitable
-    for (let attempt = 0; attempt < 200; attempt++) {
-      let safe = true;
-      for (let k = 0; k <= actualUpgrades; k++) {
-        const effProb = Math.min(prob + k * boostAmount, 100);
-        const threshold = computeRollThreshold(effProb);
-        const winChance = threshold / 100;
-        const expectedRolls = winChance > 0 ? 1 / winChance : Infinity;
-        const expectedRollCost = rollCost * expectedRolls;
-
-        let cumulativeUpgradeCost = 0;
-        for (let i = 0; i < k; i++) {
-          cumulativeUpgradeCost += Math.floor(
-            baseUpgradeCost * Math.pow(multiplierDecimal, i),
-          );
-        }
-
-        const expectedTotalCost = cumulativeUpgradeCost + expectedRollCost;
-        if (expectedTotalCost < price) {
-          safe = false;
-          break;
-        }
-      }
-      if (safe) break;
-      baseUpgradeCost = Math.max(
-        baseUpgradeCost + 1,
-        Math.ceil(baseUpgradeCost * 1.05),
-      );
-    }
   }
 
   return {

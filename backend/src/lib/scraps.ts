@@ -45,6 +45,14 @@ export function calculateShopItemPricing(
     ),
   );
 
+  // Roll cost scales with effective probability (see calculateRollCost),
+  // so exploitation is naturally prevented at every upgrade level.
+  const rollCost = Math.max(1, Math.round(price * (baseProbability / 100)));
+
+  // Total budget = 3.0x price
+  // Upgrade budget = 3.0x price - rollCost
+  const upgradeBudget = Math.max(0, price * 3.0 - rollCost);
+
   // Number of upgrades needed to go from baseProbability to 100%
   const probabilityGap = 100 - baseProbability;
 
@@ -62,52 +70,16 @@ export function calculateShopItemPricing(
   const costMultiplier = 110; // 1.10x per upgrade (stored as percentage)
   const multiplierDecimal = costMultiplier / 100;
 
-  // Calculate base upgrade cost by finding the minimum that keeps every
-  // upgrade level non-exploitable (expectedTotalCost >= price at all levels).
-  // Start from a budget-based estimate, then bump up until safe.
-  const rollCost = Math.max(1, Math.round(price * (baseProbability / 100)));
-
+  // Calculate base cost from budget using geometric series
   let baseUpgradeCost: number;
-  if (actualUpgrades <= 0 || price <= 0) {
+  if (actualUpgrades <= 0 || upgradeBudget <= 0) {
     baseUpgradeCost = Math.round(price * 0.05) || 1;
   } else {
-    // Initial estimate from 1.5× price budget
-    const upgradeBudget = Math.max(0, price * 1.5);
+    // Sum of geometric series: base * (r^n - 1) / (r - 1)
     const seriesSum =
       (Math.pow(multiplierDecimal, actualUpgrades) - 1) /
       (multiplierDecimal - 1);
     baseUpgradeCost = Math.max(1, Math.round(upgradeBudget / seriesSum));
-
-    // Iteratively increase until no upgrade level is exploitable
-    // (i.e., expectedTotalCost >= price for every level k)
-    for (let attempt = 0; attempt < 200; attempt++) {
-      let safe = true;
-      for (let k = 0; k <= actualUpgrades; k++) {
-        const effProb = Math.min(baseProbability + k * boostAmount, 100);
-        const threshold = computeRollThreshold(effProb);
-        const winChance = threshold / 100;
-        const expectedRolls = winChance > 0 ? 1 / winChance : Infinity;
-        const expectedRollCost = rollCost * expectedRolls;
-
-        let cumulativeUpgradeCost = 0;
-        for (let i = 0; i < k; i++) {
-          cumulativeUpgradeCost += Math.floor(
-            baseUpgradeCost * Math.pow(multiplierDecimal, i),
-          );
-        }
-
-        const expectedTotalCost = cumulativeUpgradeCost + expectedRollCost;
-        if (expectedTotalCost < price) {
-          safe = false;
-          break;
-        }
-      }
-      if (safe) break;
-      baseUpgradeCost = Math.max(
-        baseUpgradeCost + 1,
-        Math.ceil(baseUpgradeCost * 1.05),
-      );
-    }
   }
 
   return {
@@ -121,15 +93,17 @@ export function calculateShopItemPricing(
 
 export function calculateRollCost(
   basePrice: number,
-  baseProbability: number,
+  effectiveProbability: number,
   rollCostOverride?: number | null,
 ): number {
   // If admin set a manual roll cost, use it
   if (rollCostOverride != null && rollCostOverride > 0) {
     return rollCostOverride;
   }
-  // Roll cost is fixed based on base probability, doesn't change with upgrades
-  return Math.max(1, Math.round(basePrice * (baseProbability / 100)));
+  // Roll cost scales with effective probability (including upgrades).
+  // This naturally prevents exploitation: as probability increases,
+  // roll cost increases proportionally, keeping expected spend ≈ constant.
+  return Math.max(1, Math.round(basePrice * (effectiveProbability / 100)));
 }
 
 export function computeRollThreshold(probability: number): number {

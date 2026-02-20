@@ -53,7 +53,7 @@
 	let rollCost = $derived(
 		item.rollCostOverride != null && item.rollCostOverride > 0
 			? item.rollCostOverride
-			: Math.max(1, Math.round(item.price * (item.baseProbability / 100)))
+			: Math.max(1, Math.round(item.price * (item.effectiveProbability / 100)))
 	);
 	let canAfford = $derived($userScrapsStore >= rollCost);
 	let alertMessage = $state<string | null>(null);
