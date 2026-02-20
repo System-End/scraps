@@ -363,11 +363,22 @@ shop.post("/items/:id/purchase", async ({ params, body, headers }) => {
       const lockedItem = await tx.execute(
         sql`SELECT * FROM shop_items WHERE id = ${itemId} FOR UPDATE`,
       );
-      const currentItem = lockedItem.rows[0] as (typeof items)[0] | undefined;
+      const rawRow = lockedItem.rows[0] as Record<string, unknown> | undefined;
 
-      if (!currentItem || currentItem.count < quantity) {
+      if (!rawRow || (rawRow.count as number) < quantity) {
         throw { type: "out_of_stock" };
       }
+
+      const currentItem = {
+        id: rawRow.id as number,
+        name: rawRow.name as string,
+        price: rawRow.price as number,
+        count: rawRow.count as number,
+        baseProbability: rawRow.base_probability as number,
+        baseUpgradeCost: rawRow.base_upgrade_cost as number,
+        costMultiplier: rawRow.cost_multiplier as number,
+        boostAmount: rawRow.boost_amount as number,
+      };
 
       // Atomic SQL decrement — always uses the live DB value
       await tx
@@ -500,11 +511,23 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
       const lockedItem = await tx.execute(
         sql`SELECT * FROM shop_items WHERE id = ${itemId} FOR UPDATE`,
       );
-      const currentItem = lockedItem.rows[0] as (typeof items)[0] | undefined;
+      const rawRow = lockedItem.rows[0] as Record<string, unknown> | undefined;
 
-      if (!currentItem || currentItem.count < 1) {
+      if (!rawRow || (rawRow.count as number) < 1) {
         throw { type: "out_of_stock" };
       }
+
+      // Raw SQL returns snake_case columns — map to camelCase
+      const currentItem = {
+        id: rawRow.id as number,
+        name: rawRow.name as string,
+        price: rawRow.price as number,
+        count: rawRow.count as number,
+        baseProbability: rawRow.base_probability as number,
+        baseUpgradeCost: rawRow.base_upgrade_cost as number,
+        costMultiplier: rawRow.cost_multiplier as number,
+        boostAmount: rawRow.boost_amount as number,
+      };
 
       // Compute boost and penalty inside transaction
       const boostResult = await tx
