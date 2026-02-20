@@ -64,10 +64,10 @@
 				)
 	);
 
-	let sortedItems = $derived.by(() => {
-		let items = [...filteredItems];
+	function sortItems(items: ShopItem[]): ShopItem[] {
+		let sorted = [...items];
 		if (sortBy === 'favorites') {
-			return items.sort((a, b) => {
+			return sorted.sort((a, b) => {
 				if (a.userHearted !== b.userHearted) {
 					return a.userHearted ? -1 : 1;
 				}
@@ -77,14 +77,17 @@
 				return a.id - b.id;
 			});
 		} else if (sortBy === 'probability') {
-			return items.sort((a, b) => b.effectiveProbability - a.effectiveProbability);
+			return sorted.sort((a, b) => b.effectiveProbability - a.effectiveProbability);
 		} else if (sortBy === 'cost') {
-			return items.sort((a, b) => {
+			return sorted.sort((a, b) => {
 				return getItemRollCost(a) - getItemRollCost(b);
 			});
 		}
-		return items;
-	});
+		return sorted;
+	}
+
+	let inStockItems = $derived(sortItems(filteredItems.filter((item) => item.count > 0)));
+	let soldOutItems = $derived(sortItems(filteredItems.filter((item) => item.count === 0)));
 
 	function toggleCategory(category: string) {
 		const newSet = new Set(selectedCategories);
@@ -271,27 +274,15 @@
 			<p class="text-gray-600">{$t.shop.noItemsAvailable}</p>
 		</div>
 	{:else}
-		<!-- Items Grid -->
+		<!-- In Stock Items Grid -->
 		<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-			{#each sortedItems as item (item.id)}
+			{#each inStockItems as item (item.id)}
 				{@const rollCost = getItemRollCost(item)}
 				<button
 					onclick={() => (selectedItem = item)}
-					class="relative cursor-pointer overflow-hidden rounded-2xl border-4 border-black p-4 text-left transition-all hover:border-dashed {item.count ===
-					0
-						? 'bg-gray-100'
-						: ''}"
+					class="relative cursor-pointer overflow-hidden rounded-2xl border-4 border-black p-4 text-left transition-all hover:border-dashed"
 				>
-					{#if item.count === 0}
-						<div class="absolute top-0 right-0 z-20">
-							<div
-								class="translate-x-6 translate-y-3 rotate-45 transform bg-red-600 px-8 py-1 text-xs font-bold text-white shadow-md"
-							>
-								{$t.shop.soldOut}
-							</div>
-						</div>
-					{/if}
-					<div class="relative {item.count === 0 ? 'opacity-50 grayscale' : ''}">
+					<div class="relative">
 						<img src={item.image} alt={item.name} class="mb-4 h-32 w-full object-contain" />
 						<span
 							class="absolute top-0 right-0 rounded-full px-2 py-1 text-xs font-bold {getProbabilityBgColor(
@@ -301,7 +292,7 @@
 							{item.effectiveProbability.toFixed(0)}% {$t.shop.chance}
 						</span>
 					</div>
-					<div class={item.count === 0 ? 'opacity-50' : ''}>
+					<div>
 						<h3 class="mb-1 truncate text-xl font-bold">{item.name}</h3>
 						<p class="mb-2 line-clamp-2 text-sm text-gray-600">{item.description}</p>
 						<div class="mb-3">
@@ -321,9 +312,7 @@
 							</div>
 						</div>
 						<div class="flex items-center justify-between">
-							<span class="text-xs {item.count === 0 ? 'font-bold text-red-500' : 'text-gray-500'}"
-								>{item.count === 0 ? $t.shop.soldOut : `${item.count} ${$t.shop.left}`}</span
-							>
+							<span class="text-xs text-gray-500">{item.count} {$t.shop.left}</span>
 							<HeartButton
 								count={item.heartCount}
 								hearted={item.userHearted}
@@ -337,6 +326,69 @@
 				</button>
 			{/each}
 		</div>
+
+		<!-- Sold Out Section -->
+		{#if soldOutItems.length > 0}
+			<h2 class="mt-12 mb-6 text-2xl font-bold text-gray-400">{$t.shop.soldOut}</h2>
+			<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+				{#each soldOutItems as item (item.id)}
+					{@const rollCost = getItemRollCost(item)}
+					<button
+						onclick={() => (selectedItem = item)}
+						class="relative cursor-pointer overflow-hidden rounded-2xl border-4 border-black bg-gray-100 p-4 text-left transition-all hover:border-dashed"
+					>
+						<div class="absolute top-0 right-0 z-20">
+							<div
+								class="translate-x-6 translate-y-3 rotate-45 transform bg-red-600 px-8 py-1 text-xs font-bold text-white shadow-md"
+							>
+								{$t.shop.soldOut}
+							</div>
+						</div>
+						<div class="relative opacity-50 grayscale">
+							<img src={item.image} alt={item.name} class="mb-4 h-32 w-full object-contain" />
+							<span
+								class="absolute top-0 right-0 rounded-full px-2 py-1 text-xs font-bold {getProbabilityBgColor(
+									item.effectiveProbability
+								)} {getProbabilityColor(item.effectiveProbability)}"
+							>
+								{item.effectiveProbability.toFixed(0)}% {$t.shop.chance}
+							</span>
+						</div>
+						<div class="opacity-50">
+							<h3 class="mb-1 truncate text-xl font-bold">{item.name}</h3>
+							<p class="mb-2 line-clamp-2 text-sm text-gray-600">{item.description}</p>
+							<div class="mb-3">
+								<span class="flex items-center gap-1 text-lg font-bold"
+									><Spool size={18} />{rollCost}</span
+								>
+								<span class="mt-1 flex items-center gap-1 text-xs text-gray-500"
+									><Clock size={14} />~{estimateHours(rollCost)}h</span
+								>
+								<div class="mt-2 flex flex-wrap gap-1">
+									{#each item.category
+										.split(',')
+										.map((c) => c.trim())
+										.filter(Boolean) as cat}
+										<span class="rounded-full bg-gray-100 px-2 py-1 text-xs">{cat}</span>
+									{/each}
+								</div>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-xs font-bold text-red-500">{$t.shop.soldOut}</span>
+								<HeartButton
+									count={item.heartCount}
+									hearted={item.userHearted}
+									onclick={(e) => {
+										e.stopPropagation();
+										toggleHeart(item.id);
+									}}
+								/>
+							</div>
+						</div>
+					</button>
+				{/each}
+			</div>
+		{/if}
 	{/if}
 </div>
 
