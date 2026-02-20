@@ -3,6 +3,7 @@ import { shopItemsTable } from "../schemas/shop";
 import { eq } from "drizzle-orm";
 import {
   calculateShopItemPricing,
+  calculateRollCost,
   computeRollThreshold,
   SCRAPS_PER_DOLLAR,
 } from "./scraps";
@@ -63,8 +64,8 @@ export function computeItemPricing(
     );
   }
 
-  // Roll cost at base probability (scales with effective probability at roll time)
-  const rollCost = Math.max(1, Math.round(price * (prob / 100)));
+  // Roll cost at base probability (includes 15% floor to prevent exploitation on rare items)
+  const rollCost = calculateRollCost(price, prob);
 
   const threshold = computeRollThreshold(prob);
   const expectedRollsAtBase = threshold > 0 ? Math.round((100 / threshold) * 10) / 10 : Infinity;

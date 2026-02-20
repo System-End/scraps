@@ -219,8 +219,9 @@ async function syncProjectsToAirtable(): Promise<void> {
 		// Batch-fetch first shipped dates from project_activity for all projects
 		const shippedDates = await getProjectShippedDates(projects.map(p => p.id))
 
-		// Track which Code URLs we've already seen to detect duplicates
-		const seenCodeUrls = new Set<string>()
+		// Track which Code URLs we've already seen to detect cross-user duplicates
+		// Same-user duplicates are project updates and should be allowed
+		const seenCodeUrls = new Map<string, number>() // url -> userId
 
 		for (const project of projects) {
 			if (!project.githubUrl) continue // skip projects without a GitHub URL
@@ -229,13 +230,14 @@ async function syncProjectsToAirtable(): Promise<void> {
 			// Skip projects already approved in Airtable — don't overwrite them
 			if (approvedRecords.has(project.githubUrl)) continue
 
-			// Check for duplicate Code URL among shipped projects
-			if (seenCodeUrls.has(project.githubUrl)) {
+			// Check for cross-user duplicate Code URL among shipped projects
+			const previousOwner = seenCodeUrls.get(project.githubUrl)
+			if (previousOwner !== undefined && previousOwner !== project.userId) {
 				console.log(`[AIRTABLE-SYNC] Duplicate Code URL detected for project ${project.id}: ${project.githubUrl}, reverting to waiting_for_review`)
 				duplicateProjectIds.push(project.id)
 				continue
 			}
-			seenCodeUrls.add(project.githubUrl)
+			seenCodeUrls.set(project.githubUrl, project.userId)
 
 			// Fetch user identity if not cached
 			if (!userInfoCache.has(project.userId) && project.accessToken) {

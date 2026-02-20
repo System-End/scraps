@@ -1,5 +1,5 @@
 import { Elysia } from "elysia";
-import { eq, and, inArray, sql, desc, asc, or, isNull } from "drizzle-orm";
+import { eq, ne, and, inArray, sql, desc, asc, or, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { usersTable, userBonusesTable } from "../schemas/users";
 import { projectsTable } from "../schemas/projects";
@@ -16,7 +16,7 @@ import {
 import { newsTable } from "../schemas/news";
 import { projectActivityTable } from "../schemas/activity";
 import { getUserFromSession } from "../lib/auth";
-import { calculateScrapsFromHours, getUserScrapsBalance, TIER_MULTIPLIERS, DOLLARS_PER_HOUR } from "../lib/scraps";
+import { calculateScrapsFromHours, getUserScrapsBalance, TIER_MULTIPLIERS, DOLLARS_PER_HOUR, SCRAPS_PER_DOLLAR } from "../lib/scraps";
 import { payoutPendingScraps, getNextPayoutDate } from "../lib/scraps-payout";
 import { syncSingleProject } from "../lib/hackatime-sync";
 import { computeItemPricing, updateShopItemPricing } from "../lib/shop-pricing";
@@ -183,6 +183,31 @@ admin.get("/stats", async ({ headers, status }) => {
     ? Math.round((totalTierCost / roundedTotalHours) * 100) / 100
     : 0;
 
+  // Real dollar cost from shop fulfillment
+  const [luckWinOrders, consolationCount] = await Promise.all([
+    db
+      .select({
+        itemPrice: shopItemsTable.price,
+      })
+      .from(shopOrdersTable)
+      .innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id))
+      .where(eq(shopOrdersTable.orderType, "luck_win")),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(shopOrdersTable)
+      .where(eq(shopOrdersTable.orderType, "consolation")),
+  ]);
+
+  const luckWinDollarCost = luckWinOrders.reduce(
+    (sum, o) => sum + o.itemPrice / SCRAPS_PER_DOLLAR,
+    0,
+  );
+  const consolationDollarCost = Number(consolationCount[0]?.count || 0) * 2;
+  const totalRealCost = luckWinDollarCost + consolationDollarCost;
+  const realCostPerHour = roundedTotalHours > 0
+    ? Math.round((totalRealCost / roundedTotalHours) * 100) / 100
+    : 0;
+
   return {
     totalUsers,
     totalProjects,
@@ -203,6 +228,14 @@ admin.get("/stats", async ({ headers, status }) => {
     tierCostBreakdown,
     totalTierCost: Math.round(totalTierCost * 100) / 100,
     avgCostPerHour,
+    shopRealCost: {
+      luckWinItemsCost: Math.round(luckWinDollarCost * 100) / 100,
+      luckWinCount: luckWinOrders.length,
+      consolationShippingCost: Math.round(consolationDollarCost * 100) / 100,
+      consolationCount: Number(consolationCount[0]?.count || 0),
+      totalRealCost: Math.round(totalRealCost * 100) / 100,
+      realCostPerHour,
+    },
   };
 });
 
@@ -788,16 +821,8 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
       return { error: "Project is not marked for review" };
     }
 
-    // Create review record
-    await db.insert(reviewsTable).values({
-      projectId,
-      reviewerId: user.id,
-      action,
-      feedbackForAuthor,
-      internalJustification,
-    });
-
-    // Check for duplicate Code URL if approving
+    // Check for duplicate Code URL before creating review record (only block
+    // cross-user duplicates; same-user duplicates are project updates)
     if (action === "approved" && project[0].githubUrl) {
       const duplicates = await db
         .select({ id: projectsTable.id })
@@ -807,6 +832,7 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
             eq(projectsTable.githubUrl, project[0].githubUrl),
             eq(projectsTable.status, "shipped"),
             or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
+            ne(projectsTable.userId, project[0].userId),
           ),
         )
         .limit(1);
@@ -814,11 +840,20 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
       if (duplicates.length > 0) {
         return {
           error:
-            "A shipped project with this Code URL already exists. This project has been kept in review.",
+            "A shipped project with this Code URL already exists (from another user). This project has been kept in review.",
           duplicateCodeUrl: true,
         };
       }
     }
+
+    // Create review record
+    await db.insert(reviewsTable).values({
+      projectId,
+      reviewerId: user.id,
+      action,
+      feedbackForAuthor,
+      internalJustification,
+    });
 
     // Update project status
     let newStatus = "in_progress";
@@ -1396,8 +1431,8 @@ admin.get("/scraps-payout", async ({ headers }) => {
       .where(
         and(
           eq(projectsTable.status, "shipped"),
-          sql`${projectsTable.scrapsAwarded} > 0`,
           isNull(projectsTable.scrapsPaidAt),
+          sql`${projectsTable.scrapsAwarded} > 0`,
           or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
         ),
       );
@@ -2486,7 +2521,7 @@ admin.get("/users/:id/timeline", async ({ params, headers, status }) => {
         amount: p.scrapsAwarded,
         description: `project "${p.name}"`,
         date: (p.scrapsPaidAt ?? p.createdAt ?? new Date()).toISOString(),
-        paid: !!p.scrapsPaidAt,
+        paid: p.scrapsPaidAt !== null,
       });
     }
 
