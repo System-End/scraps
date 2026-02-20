@@ -82,24 +82,23 @@ async function sendChannelMessage(text: string, blocks?: unknown[]): Promise<boo
 }
 
 /**
- * Pay out all pending scraps for shipped projects where scrapsAwarded > scrapsPaidAmount.
- * Handles both new projects and updates with additional scraps (pays the delta).
+ * Pay out all pending scraps for shipped projects where scrapsPaidAt is not set.
  */
 export async function payoutPendingScraps(): Promise<{ paidCount: number; totalScraps: number }> {
 	const now = new Date()
 
-	// Get projects with unpaid scraps (includes both new projects and updates with additional scraps)
+	// Get shipped projects that haven't been paid yet
 	const pendingProjects = await db
 		.select({
 			id: projectsTable.id,
 			scrapsAwarded: projectsTable.scrapsAwarded,
-			scrapsPaidAmount: projectsTable.scrapsPaidAmount,
 			userId: projectsTable.userId
 		})
 		.from(projectsTable)
 		.where(and(
 			eq(projectsTable.status, 'shipped'),
-			sql`${projectsTable.scrapsAwarded} > ${projectsTable.scrapsPaidAmount}`,
+			isNull(projectsTable.scrapsPaidAt),
+			sql`${projectsTable.scrapsAwarded} > 0`,
 			or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
 		))
 
@@ -108,15 +107,14 @@ export async function payoutPendingScraps(): Promise<{ paidCount: number; totalS
 	}
 
 	const projectIds = pendingProjects.map(p => p.id)
-	const totalScraps = pendingProjects.reduce((sum, p) => sum + (p.scrapsAwarded - p.scrapsPaidAmount), 0)
+	const totalScraps = pendingProjects.reduce((sum, p) => sum + p.scrapsAwarded, 0)
 	const uniqueUserIds = [...new Set(pendingProjects.map(p => p.userId))]
 
-	// Mark all pending projects as fully paid (scrapsPaidAmount = scrapsAwarded)
+	// Mark all pending projects as paid
 	await db
 		.update(projectsTable)
 		.set({
-			scrapsPaidAt: now,
-			scrapsPaidAmount: sql`${projectsTable.scrapsAwarded}`
+			scrapsPaidAt: now
 		})
 		.where(inArray(projectsTable.id, projectIds))
 
