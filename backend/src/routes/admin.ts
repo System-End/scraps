@@ -2158,68 +2158,7 @@ admin.get("/export/review-json", async ({ headers, status }) => {
   }
 });
 
-// Soft-delete a shop order (admin only) - marks the order as deleted
-admin.post("/orders/:id/soft-delete", async ({ params, headers, status }) => {
-  try {
-    const user = await requireAdmin(headers as Record<string, string>);
-    if (!user) return status(401, { error: "Unauthorized" });
-
-    const orderId = parseInt(params.id);
-
-    const order = await db
-      .select({ id: shopOrdersTable.id, status: shopOrdersTable.status })
-      .from(shopOrdersTable)
-      .where(eq(shopOrdersTable.id, orderId))
-      .limit(1);
-
-    if (!order[0]) return status(404, { error: "Order not found" });
-    if (order[0].status === "deleted")
-      return status(400, { error: "Order is already deleted" });
-
-    await db
-      .update(shopOrdersTable)
-      .set({ status: "deleted", updatedAt: new Date() })
-      .where(eq(shopOrdersTable.id, orderId));
-
-    return { success: true };
-  } catch (err) {
-    console.error(err);
-    return status(500, { error: "Failed to soft-delete order" });
-  }
-});
-
-// Restore a soft-deleted shop order (admin only)
-admin.post("/orders/:id/restore", async ({ params, headers, status }) => {
-  try {
-    const user = await requireAdmin(headers as Record<string, string>);
-    if (!user) return status(401, { error: "Unauthorized" });
-
-    const orderId = parseInt(params.id);
-
-    const order = await db
-      .select({ id: shopOrdersTable.id, status: shopOrdersTable.status })
-      .from(shopOrdersTable)
-      .where(eq(shopOrdersTable.id, orderId))
-      .limit(1);
-
-    if (!order[0]) return status(404, { error: "Order not found" });
-    if (order[0].status !== "deleted")
-      return status(400, { error: "Order is not deleted" });
-
-    await db
-      .update(shopOrdersTable)
-      .set({ status: "pending", updatedAt: new Date() })
-      .where(eq(shopOrdersTable.id, orderId));
-
-    return { success: true };
-  } catch (err) {
-    console.error(err);
-    return status(500, { error: "Failed to restore order" });
-  }
-});
-
-// Undo/refund a shop order (admin only) - must be soft-deleted first
-// Adds a bonus to refund scraps, restores inventory, keeps order row for timeline
+// Revert a shop order (admin only) - refunds scraps, restores inventory, reverses penalties, deletes order
 admin.delete("/orders/:id", async ({ params, headers, status }) => {
   try {
     const user = await requireAdmin(headers as Record<string, string>);
@@ -2247,10 +2186,6 @@ admin.delete("/orders/:id", async ({ params, headers, status }) => {
       .limit(1);
 
     if (!order[0]) return status(404, { error: "Order not found" });
-    if (order[0].status !== "deleted")
-      return status(400, {
-        error: "Order must be marked as deleted before it can be refunded",
-      });
 
     await db.transaction(async (tx) => {
       await tx.insert(userBonusesTable).values({
@@ -2315,12 +2250,19 @@ admin.delete("/orders/:id", async ({ params, headers, status }) => {
           }
         }
       }
+
+      // Delete the order row
+      await tx.delete(shopOrdersTable).where(eq(shopOrdersTable.id, orderId));
     });
+
+    console.log(
+      `[ADMIN] Order #${orderId} reverted by admin #${user.id}: refunded ${order[0].totalPrice} scraps to user #${order[0].userId}, item "${order[0].itemName}" (itemId=${order[0].shopItemId}), type=${order[0].orderType}, qty=${order[0].quantity}`,
+    );
 
     return { success: true, refundedScraps: order[0].totalPrice };
   } catch (err) {
     console.error(err);
-    return status(500, { error: "Failed to refund order" });
+    return status(500, { error: "Failed to revert order" });
   }
 });
 

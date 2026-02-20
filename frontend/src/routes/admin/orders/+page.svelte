@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Check, X, Package, Clock, Truck, CheckCircle, XCircle, Trash2, RotateCcw } from '@lucide/svelte';
+	import { Check, X, Package, Clock, Truck, CheckCircle, XCircle, Trash2 } from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { t } from '$lib/i18n';
@@ -59,18 +59,15 @@
 	let orders = $state<Order[]>([]);
 	let loading = $state(true);
 	let filter = $state<'all' | 'pending' | 'fulfilled'>('all');
-	let confirmModal = $state<{ type: 'soft-delete' | 'permanent-delete'; order: Order } | null>(null);
+	let confirmRevert = $state<Order | null>(null);
 	let actionLoading = $state(false);
-
-	let activeOrders = $derived(orders.filter((o) => o.status !== 'deleted'));
-	let deletedOrders = $derived(orders.filter((o) => o.status === 'deleted'));
 
 	let filteredOrders = $derived(
 		filter === 'all'
-			? activeOrders
+			? orders
 			: filter === 'pending'
-				? activeOrders.filter((o) => !o.isFulfilled)
-				: activeOrders.filter((o) => o.isFulfilled)
+				? orders.filter((o) => !o.isFulfilled)
+				: orders.filter((o) => o.isFulfilled)
 	);
 
 	onMount(async () => {
@@ -115,39 +112,7 @@
 		}
 	}
 
-	async function softDeleteOrder(order: Order) {
-		actionLoading = true;
-		try {
-			const response = await fetch(`${API_URL}/admin/orders/${order.id}/soft-delete`, {
-				method: 'POST',
-				credentials: 'include'
-			});
-			if (response.ok) {
-				orders = orders.map((o) => (o.id === order.id ? { ...o, status: 'deleted' } : o));
-			}
-		} catch (e) {
-			console.error('Failed to soft-delete order:', e);
-		} finally {
-			actionLoading = false;
-			confirmModal = null;
-		}
-	}
-
-	async function restoreOrder(order: Order) {
-		try {
-			const response = await fetch(`${API_URL}/admin/orders/${order.id}/restore`, {
-				method: 'POST',
-				credentials: 'include'
-			});
-			if (response.ok) {
-				orders = orders.map((o) => (o.id === order.id ? { ...o, status: 'pending' } : o));
-			}
-		} catch (e) {
-			console.error('Failed to restore order:', e);
-		}
-	}
-
-	async function permanentDeleteOrder(order: Order) {
+	async function revertOrder(order: Order) {
 		actionLoading = true;
 		try {
 			const response = await fetch(`${API_URL}/admin/orders/${order.id}`, {
@@ -158,10 +123,10 @@
 				orders = orders.filter((o) => o.id !== order.id);
 			}
 		} catch (e) {
-			console.error('Failed to permanently delete order:', e);
+			console.error('Failed to revert order:', e);
 		} finally {
 			actionLoading = false;
-			confirmModal = null;
+			confirmRevert = null;
 		}
 	}
 
@@ -187,8 +152,6 @@
 				return CheckCircle;
 			case 'cancelled':
 				return XCircle;
-			case 'deleted':
-				return Trash2;
 			default:
 				return Clock;
 		}
@@ -206,8 +169,6 @@
 				return 'bg-green-100 text-green-700 border-green-600';
 			case 'cancelled':
 				return 'bg-red-100 text-red-700 border-red-600';
-			case 'deleted':
-				return 'bg-gray-100 text-gray-700 border-gray-600';
 			default:
 				return 'bg-gray-100 text-gray-700 border-gray-600';
 		}
@@ -235,7 +196,7 @@
 				? 'bg-black text-white'
 				: 'hover:border-dashed'}"
 		>
-			{$t.admin.all} ({activeOrders.length})
+			{$t.admin.all} ({orders.length})
 		</button>
 		<button
 			onclick={() => (filter = 'pending')}
@@ -244,7 +205,7 @@
 				? 'bg-black text-white'
 				: 'hover:border-dashed'}"
 		>
-			{$t.admin.pending} ({activeOrders.filter((o) => !o.isFulfilled).length})
+			{$t.admin.pending} ({orders.filter((o) => !o.isFulfilled).length})
 		</button>
 		<button
 			onclick={() => (filter = 'fulfilled')}
@@ -253,7 +214,7 @@
 				? 'bg-black text-white'
 				: 'hover:border-dashed'}"
 		>
-			{$t.admin.fulfilled} ({activeOrders.filter((o) => o.isFulfilled).length})
+			{$t.admin.fulfilled} ({orders.filter((o) => o.isFulfilled).length})
 		</button>
 	</div>
 
@@ -383,9 +344,9 @@
 								{/if}
 							</button>
 							<button
-								onclick={() => (confirmModal = { type: 'soft-delete', order })}
-								class="flex cursor-pointer items-center gap-1 rounded-full border-4 border-black px-3 py-2 font-bold transition-all duration-200 hover:border-dashed"
-								title={$t.admin.softDelete}
+								onclick={() => (confirmRevert = order)}
+								class="flex cursor-pointer items-center gap-1 rounded-full border-4 border-red-600 px-3 py-2 font-bold text-red-600 transition-all duration-200 hover:border-dashed"
+								title="revert & refund"
 							>
 								<Trash2 size={16} />
 							</button>
@@ -395,106 +356,40 @@
 			{/each}
 		</div>
 	{/if}
-
-	<!-- Removed Orders Section -->
-	{#if deletedOrders.length > 0}
-		<div class="mt-12">
-			<h2 class="mb-4 flex items-center gap-2 text-2xl font-bold text-gray-400">
-				<Trash2 size={24} />
-				{$t.admin.removed} ({deletedOrders.length})
-			</h2>
-			<div class="grid gap-4">
-				{#each deletedOrders as order}
-					<div class="rounded-2xl border-4 border-gray-300 bg-gray-50 p-4 opacity-60">
-						<div class="flex items-start gap-4">
-							<img
-								src={order.itemImage}
-								alt={order.itemName}
-								class="h-16 w-16 shrink-0 rounded-lg border-2 border-gray-300 object-cover grayscale"
-							/>
-
-							<div class="min-w-0 flex-1">
-								<div class="mb-1 flex items-center gap-2">
-									<h3 class="text-lg font-bold text-gray-500">{order.itemName}</h3>
-									<span class="text-gray-400">×{order.quantity}</span>
-								</div>
-
-								<div class="mb-2 flex flex-wrap items-center gap-2">
-									<a href="/admin/users/{order.userId}" class="text-sm font-bold text-gray-500 hover:underline">
-										@{order.username}
-									</a>
-									<span class="text-gray-300">•</span>
-									<span class="text-sm text-gray-400">{formatDate(order.createdAt)}</span>
-									<span class="text-gray-300">•</span>
-									<span class="text-sm font-bold text-gray-500">{order.totalPrice} scraps</span>
-								</div>
-							</div>
-
-							<div class="flex shrink-0 gap-2">
-								<button
-									onclick={() => restoreOrder(order)}
-									class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
-								>
-									<RotateCcw size={16} />
-									{$t.admin.restore}
-								</button>
-								<button
-									onclick={() => (confirmModal = { type: 'permanent-delete', order })}
-									class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-red-600 bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed"
-								>
-									<Trash2 size={16} />
-									{$t.admin.permanentDelete}
-								</button>
-							</div>
-						</div>
-					</div>
-				{/each}
-			</div>
-		</div>
-	{/if}
 </div>
 
-<!-- Confirmation Modal -->
-{#if confirmModal}
+<!-- Revert Confirmation Modal -->
+{#if confirmRevert}
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-		onclick={(e) => e.target === e.currentTarget && (confirmModal = null)}
-		onkeydown={(e) => e.key === 'Escape' && (confirmModal = null)}
+		onclick={(e) => e.target === e.currentTarget && (confirmRevert = null)}
+		onkeydown={(e) => e.key === 'Escape' && (confirmRevert = null)}
 		role="dialog"
 		tabindex="-1"
 	>
 		<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
-			<h2 class="mb-4 text-2xl font-bold">
-				{confirmModal.type === 'soft-delete' ? $t.admin.softDelete : $t.admin.permanentDelete}
-			</h2>
-			<p class="mb-6 text-gray-600">
-				{confirmModal.type === 'soft-delete' ? $t.admin.confirmSoftDelete : $t.admin.confirmPermanentDelete}
+			<h2 class="mb-4 text-2xl font-bold">revert order</h2>
+			<p class="mb-2 text-gray-600">
+				this will refund <span class="font-bold">{confirmRevert.totalPrice} scraps</span> to
+				<span class="font-bold">@{confirmRevert.username}</span>, restore inventory, and permanently
+				delete this order.
 			</p>
+			<p class="mb-6 text-sm font-bold text-red-600">this action cannot be undone.</p>
 			<div class="flex gap-3">
 				<button
-					onclick={() => (confirmModal = null)}
+					onclick={() => (confirmRevert = null)}
 					disabled={actionLoading}
 					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{$t.common.cancel}
 				</button>
-				{#if confirmModal.type === 'soft-delete'}
-					<button
-						onclick={() => confirmModal && softDeleteOrder(confirmModal.order)}
-						disabled={actionLoading}
-						class="flex-1 cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						{actionLoading ? '...' : $t.admin.softDelete}
-					</button>
-				{:else}
-					<button
-						onclick={() => confirmModal && permanentDeleteOrder(confirmModal.order)}
-						disabled={actionLoading}
-						class="flex-1 cursor-pointer rounded-full border-4 border-red-600 bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						{actionLoading ? '...' : $t.admin.permanentDelete}
-					</button>
-				{/if}
+				<button
+					onclick={() => confirmRevert && revertOrder(confirmRevert)}
+					disabled={actionLoading}
+					class="flex-1 cursor-pointer rounded-full border-4 border-red-600 bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{actionLoading ? '...' : 'revert & refund'}
+				</button>
 			</div>
 		</div>
 	</div>

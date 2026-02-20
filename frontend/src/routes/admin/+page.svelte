@@ -22,7 +22,7 @@
 
 	const PHI = (1 + Math.sqrt(5)) / 2;
 	const SCRAPS_PER_HOUR = PHI * 10;
-	const DOLLARS_PER_HOUR = 5;
+	const DOLLARS_PER_HOUR = 4;
 	const SCRAPS_PER_DOLLAR = SCRAPS_PER_HOUR / DOLLARS_PER_HOUR;
 
 	interface ShopStats {
@@ -551,18 +551,31 @@
 			{#if payoutInfo && payoutInfo.projects && payoutInfo.projects.length > 0}
 				<div class="mt-6">
 					<h4 class="mb-3 text-sm font-bold text-gray-500 uppercase">pending payout projects</h4>
-					<div class="space-y-3 max-h-96 overflow-y-auto overflow-x-hidden">
+					<div class="max-h-96 space-y-3 overflow-x-hidden overflow-y-auto">
 						{#each payoutInfo.projects as project}
-							<div class="rounded-xl border-2 border-gray-200 bg-gray-50 p-3 transition-all hover:border-gray-300 sm:p-4">
+							<div
+								class="rounded-xl border-2 border-gray-200 bg-gray-50 p-3 transition-all hover:border-gray-300 sm:p-4"
+							>
 								<div class="flex items-center gap-3 sm:gap-4">
 									{#if project.image}
-										<img src={project.image} alt={project.name} class="h-10 w-10 shrink-0 rounded-lg border-2 border-black object-cover sm:h-12 sm:w-12" />
+										<img
+											src={project.image}
+											alt={project.name}
+											class="h-10 w-10 shrink-0 rounded-lg border-2 border-black object-cover sm:h-12 sm:w-12"
+										/>
 									{:else}
-										<div class="h-10 w-10 shrink-0 rounded-lg border-2 border-gray-300 bg-gray-200 sm:h-12 sm:w-12"></div>
+										<div
+											class="h-10 w-10 shrink-0 rounded-lg border-2 border-gray-300 bg-gray-200 sm:h-12 sm:w-12"
+										></div>
 									{/if}
 									<div class="min-w-0 flex-1">
-										<a href="/projects/{project.id}" class="block truncate font-bold hover:underline">{project.name}</a>
-										<div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-gray-500">
+										<a
+											href="/projects/{project.id}"
+											class="block truncate font-bold hover:underline">{project.name}</a
+										>
+										<div
+											class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-gray-500"
+										>
 											{#if project.owner}
 												<a href="/users/{project.owner.id}" class="truncate hover:underline">
 													{project.owner.username ?? `User #${project.owner.id}`}
@@ -576,7 +589,11 @@
 									</div>
 									{#if rejectingProjectId !== project.id}
 										<button
-											onclick={() => { rejectingProjectId = project.id; rejectReason = ''; rejectError = null; }}
+											onclick={() => {
+												rejectingProjectId = project.id;
+												rejectReason = '';
+												rejectError = null;
+											}}
 											class="flex shrink-0 cursor-pointer items-center gap-1 rounded-full border-2 border-red-300 px-3 py-1.5 text-sm font-bold text-red-600 transition-all hover:border-red-400 hover:bg-red-50"
 											title="Reject payout for this project"
 										>
@@ -603,7 +620,11 @@
 												{rejectLoading ? '...' : 'reject'}
 											</button>
 											<button
-												onclick={() => { rejectingProjectId = null; rejectReason = ''; rejectError = null; }}
+												onclick={() => {
+													rejectingProjectId = null;
+													rejectReason = '';
+													rejectError = null;
+												}}
 												class="flex-1 cursor-pointer rounded-full border-2 border-gray-300 px-3 py-1.5 text-sm font-bold text-gray-600 hover:border-gray-400 sm:flex-none"
 											>
 												cancel
@@ -611,7 +632,9 @@
 										</div>
 									</div>
 									{#if rejectError}
-										<div class="mt-2 rounded-lg bg-red-50 p-2 text-xs text-red-600">{rejectError}</div>
+										<div class="mt-2 rounded-lg bg-red-50 p-2 text-xs text-red-600">
+											{rejectError}
+										</div>
 									{/if}
 								{/if}
 							</div>
