@@ -1806,6 +1806,84 @@ admin.delete("/shop/items/:id", async ({ params, headers, status }) => {
   }
 });
 
+// Reset refinery orders for users who haven't won/purchased any item
+admin.post("/shop/reset-non-buyer-refinery", async ({ headers, status }) => {
+  try {
+    const user = await requireAdmin(headers as Record<string, string>);
+    if (!user) {
+      return status(401, { error: "Unauthorized" });
+    }
+
+    // Find user+item combos that have refinery orders but no luck_win/purchase shop orders
+    const refineryUsers = await db
+      .select({
+        userId: refineryOrdersTable.userId,
+        shopItemId: refineryOrdersTable.shopItemId,
+      })
+      .from(refineryOrdersTable)
+      .groupBy(refineryOrdersTable.userId, refineryOrdersTable.shopItemId);
+
+    const buyers = await db
+      .select({
+        userId: shopOrdersTable.userId,
+        shopItemId: shopOrdersTable.shopItemId,
+      })
+      .from(shopOrdersTable)
+      .where(
+        or(
+          eq(shopOrdersTable.orderType, "purchase"),
+          eq(shopOrdersTable.orderType, "luck_win"),
+        ),
+      )
+      .groupBy(shopOrdersTable.userId, shopOrdersTable.shopItemId);
+
+    const buyerSet = new Set(buyers.map((b) => `${b.userId}-${b.shopItemId}`));
+    const toReset = refineryUsers.filter(
+      (r) => !buyerSet.has(`${r.userId}-${r.shopItemId}`),
+    );
+
+    let deletedOrders = 0;
+    let deletedHistory = 0;
+    for (const { userId, shopItemId } of toReset) {
+      const deleted = await db
+        .delete(refineryOrdersTable)
+        .where(
+          and(
+            eq(refineryOrdersTable.userId, userId),
+            eq(refineryOrdersTable.shopItemId, shopItemId),
+          ),
+        )
+        .returning({ id: refineryOrdersTable.id });
+      deletedOrders += deleted.length;
+
+      const historyDeleted = await db
+        .delete(refinerySpendingHistoryTable)
+        .where(
+          and(
+            eq(refinerySpendingHistoryTable.userId, userId),
+            eq(refinerySpendingHistoryTable.shopItemId, shopItemId),
+          ),
+        )
+        .returning({ id: refinerySpendingHistoryTable.id });
+      deletedHistory += historyDeleted.length;
+    }
+
+    console.log(
+      `[ADMIN] Reset non-buyer refinery: ${toReset.length} user-item combos, ${deletedOrders} orders, ${deletedHistory} history entries deleted`,
+    );
+
+    return {
+      success: true,
+      resetCount: toReset.length,
+      deletedOrders,
+      deletedHistory,
+    };
+  } catch (err) {
+    console.error("[ADMIN] Failed to reset non-buyer refinery:", err);
+    return status(500, { error: "Failed to reset refinery orders" });
+  }
+});
+
 // News admin endpoints (admin only)
 admin.get("/news", async ({ headers, status }) => {
   try {

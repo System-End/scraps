@@ -83,6 +83,8 @@
 	let formMonetaryValue = $state(0);
 	let formError = $state<string | null>(null);
 	let errorModal = $state<string | null>(null);
+	let resettingRefinery = $state(false);
+	let showResetConfirm = $state(false);
 
 	const PHI = (1 + Math.sqrt(5)) / 2;
 	const SCRAPS_PER_HOUR = PHI * 10;
@@ -441,6 +443,29 @@
 			deleteConfirmId = null;
 		}
 	}
+
+	async function resetNonBuyerRefinery() {
+		resettingRefinery = true;
+		try {
+			const response = await fetch(`${API_URL}/admin/shop/reset-non-buyer-refinery`, {
+				method: 'POST',
+				credentials: 'include'
+			});
+			const data = await response.json();
+			if (response.ok && data.success) {
+				errorModal = `Reset ${data.resetCount} user-item combos: ${data.deletedOrders} refinery orders and ${data.deletedHistory} history entries deleted`;
+				await fetchItems();
+			} else {
+				errorModal = data.error || 'Failed to reset refinery orders';
+			}
+		} catch (e) {
+			console.error('Failed to reset refinery:', e);
+			errorModal = 'Failed to reset refinery orders';
+		} finally {
+			resettingRefinery = false;
+			showResetConfirm = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -453,13 +478,22 @@
 			<h1 class="mb-2 text-4xl font-bold md:text-5xl">{$t.nav.shop}</h1>
 			<p class="text-lg text-gray-600">{$t.admin.manageShopItemsAndInventory}</p>
 		</div>
-		<button
-			onclick={openCreateModal}
-			class="flex cursor-pointer items-center gap-2 rounded-full bg-black px-6 py-3 font-bold text-white transition-all duration-200 hover:bg-gray-800"
-		>
-			<Plus size={20} />
-			{$t.admin.addItem}
-		</button>
+		<div class="flex gap-3">
+			<button
+				onclick={() => (showResetConfirm = true)}
+				disabled={resettingRefinery}
+				class="cursor-pointer rounded-full border-4 border-red-600 px-4 py-2 font-bold text-red-600 transition-all duration-200 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+			>
+				{resettingRefinery ? 'resetting...' : 'reset non-buyer refinery'}
+			</button>
+			<button
+				onclick={openCreateModal}
+				class="flex cursor-pointer items-center gap-2 rounded-full bg-black px-6 py-3 font-bold text-white transition-all duration-200 hover:bg-gray-800"
+			>
+				<Plus size={20} />
+				{$t.admin.addItem}
+			</button>
+		</div>
 	</div>
 
 	<div class="mb-8 rounded-2xl border-4 border-black p-4">
@@ -1085,6 +1119,40 @@
 					class="flex-1 cursor-pointer rounded-full border-4 border-black bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{$t.common.delete}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if showResetConfirm}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+		onclick={(e) => e.target === e.currentTarget && (showResetConfirm = false)}
+		onkeydown={(e) => e.key === 'Escape' && (showResetConfirm = false)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
+			<h2 class="mb-4 text-2xl font-bold">reset non-buyer refinery</h2>
+			<p class="mb-6 text-gray-600">
+				this will delete all refinery orders and spending history for users who have never won or
+				purchased an item, refunding their scraps. this cannot be undone.
+			</p>
+			<div class="flex gap-3">
+				<button
+					onclick={() => (showResetConfirm = false)}
+					disabled={resettingRefinery}
+					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					cancel
+				</button>
+				<button
+					onclick={resetNonBuyerRefinery}
+					disabled={resettingRefinery}
+					class="flex-1 cursor-pointer rounded-full border-4 border-black bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{resettingRefinery ? 'resetting...' : 'reset'}
 				</button>
 			</div>
 		</div>
