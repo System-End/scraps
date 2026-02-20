@@ -16,7 +16,7 @@ import {
 import { newsTable } from "../schemas/news";
 import { projectActivityTable } from "../schemas/activity";
 import { getUserFromSession } from "../lib/auth";
-import { calculateScrapsFromHours, getUserScrapsBalance, TIER_MULTIPLIERS, DOLLARS_PER_HOUR } from "../lib/scraps";
+import { calculateScrapsFromHours, getUserScrapsBalance, TIER_MULTIPLIERS, DOLLARS_PER_HOUR, SCRAPS_PER_DOLLAR } from "../lib/scraps";
 import { payoutPendingScraps, getNextPayoutDate } from "../lib/scraps-payout";
 import { syncSingleProject } from "../lib/hackatime-sync";
 import { computeItemPricing, updateShopItemPricing } from "../lib/shop-pricing";
@@ -183,6 +183,31 @@ admin.get("/stats", async ({ headers, status }) => {
     ? Math.round((totalTierCost / roundedTotalHours) * 100) / 100
     : 0;
 
+  // Real dollar cost from shop fulfillment
+  const [luckWinOrders, consolationCount] = await Promise.all([
+    db
+      .select({
+        itemPrice: shopItemsTable.price,
+      })
+      .from(shopOrdersTable)
+      .innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id))
+      .where(eq(shopOrdersTable.orderType, "luck_win")),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(shopOrdersTable)
+      .where(eq(shopOrdersTable.orderType, "consolation")),
+  ]);
+
+  const luckWinDollarCost = luckWinOrders.reduce(
+    (sum, o) => sum + o.itemPrice / SCRAPS_PER_DOLLAR,
+    0,
+  );
+  const consolationDollarCost = Number(consolationCount[0]?.count || 0) * 2;
+  const totalRealCost = luckWinDollarCost + consolationDollarCost;
+  const realCostPerHour = roundedTotalHours > 0
+    ? Math.round((totalRealCost / roundedTotalHours) * 100) / 100
+    : 0;
+
   return {
     totalUsers,
     totalProjects,
@@ -203,6 +228,14 @@ admin.get("/stats", async ({ headers, status }) => {
     tierCostBreakdown,
     totalTierCost: Math.round(totalTierCost * 100) / 100,
     avgCostPerHour,
+    shopRealCost: {
+      luckWinItemsCost: Math.round(luckWinDollarCost * 100) / 100,
+      luckWinCount: luckWinOrders.length,
+      consolationShippingCost: Math.round(consolationDollarCost * 100) / 100,
+      consolationCount: Number(consolationCount[0]?.count || 0),
+      totalRealCost: Math.round(totalRealCost * 100) / 100,
+      realCostPerHour,
+    },
   };
 });
 

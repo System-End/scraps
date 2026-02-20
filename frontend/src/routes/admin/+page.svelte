@@ -43,6 +43,15 @@
 		totalCost: number;
 	}
 
+	interface ShopRealCost {
+		luckWinItemsCost: number;
+		luckWinCount: number;
+		consolationShippingCost: number;
+		consolationCount: number;
+		totalRealCost: number;
+		realCostPerHour: number;
+	}
+
 	interface Stats {
 		totalUsers: number;
 		totalProjects: number;
@@ -56,6 +65,7 @@
 		tierCostBreakdown?: TierCost[];
 		totalTierCost?: number;
 		avgCostPerHour?: number;
+		shopRealCost?: ShopRealCost;
 	}
 
 	interface PendingProject {
@@ -512,6 +522,63 @@
 					<div>
 						<p class="text-sm font-bold text-gray-500">refinery upgrades</p>
 						<p class="text-4xl font-bold">{stats.shopStats.refineryUpgrades.toLocaleString()}</p>
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		{#if stats.shopRealCost}
+			<h2 class="mt-10 mb-6 text-2xl font-bold">real fulfillment cost</h2>
+			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-red-500 bg-red-50 p-6">
+					<div
+						class="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white"
+					>
+						<DollarSign size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">real cost per hour</p>
+						<p class="text-4xl font-bold text-red-700">
+							${stats.shopRealCost.realCostPerHour.toFixed(2)}
+						</p>
+						<p class="text-xs text-gray-400">fulfillment cost ÷ shipped hours</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-red-500 bg-red-50 p-6">
+					<div
+						class="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white"
+					>
+						<DollarSign size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">total real cost</p>
+						<p class="text-4xl font-bold text-red-700">
+							${stats.shopRealCost.totalRealCost.toFixed(2)}
+						</p>
+						<p class="text-xs text-gray-400">items won + consolation shipping</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
+						<Coins size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">luck win items</p>
+						<p class="text-4xl font-bold">${stats.shopRealCost.luckWinItemsCost.toFixed(2)}</p>
+						<p class="text-xs text-gray-400">{stats.shopRealCost.luckWinCount} items won</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
+						<Coins size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">consolation shipping</p>
+						<p class="text-4xl font-bold">${stats.shopRealCost.consolationShippingCost.toFixed(2)}</p>
+						<p class="text-xs text-gray-400">{stats.shopRealCost.consolationCount} consolations × $2</p>
 					</div>
 				</div>
 			</div>
