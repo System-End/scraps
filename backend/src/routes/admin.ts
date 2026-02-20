@@ -1554,6 +1554,7 @@ admin.post("/shop/items", async ({ headers, body, status }) => {
     baseUpgradeCost,
     costMultiplier,
     boostAmount,
+    rollCostOverride,
   } = body as {
     name: string;
     image: string;
@@ -1565,6 +1566,7 @@ admin.post("/shop/items", async ({ headers, body, status }) => {
     baseUpgradeCost?: number;
     costMultiplier?: number;
     boostAmount?: number;
+    rollCostOverride?: number | null;
   };
 
   if (
@@ -1604,6 +1606,7 @@ admin.post("/shop/items", async ({ headers, body, status }) => {
       baseUpgradeCost: baseUpgradeCost ?? 10,
       costMultiplier: costMultiplier ?? 115,
       boostAmount: boostAmount ?? 1,
+      rollCostOverride: rollCostOverride ?? null,
     });
 
     return { success: true };
@@ -1631,6 +1634,7 @@ admin.put("/shop/items/:id", async ({ params, headers, body, status }) => {
       baseUpgradeCost,
       costMultiplier,
       boostAmount,
+      rollCostOverride,
     } = body as {
       name?: string;
       image?: string;
@@ -1642,6 +1646,7 @@ admin.put("/shop/items/:id", async ({ params, headers, body, status }) => {
       baseUpgradeCost?: number;
       costMultiplier?: number;
       boostAmount?: number;
+      rollCostOverride?: number | null;
     };
 
     if (
@@ -1671,6 +1676,8 @@ admin.put("/shop/items/:id", async ({ params, headers, body, status }) => {
     if (costMultiplier !== undefined)
       updateData.costMultiplier = costMultiplier;
     if (boostAmount !== undefined) updateData.boostAmount = boostAmount;
+    if (rollCostOverride !== undefined)
+      updateData.rollCostOverride = rollCostOverride;
 
     const updated = await db
       .update(shopItemsTable)

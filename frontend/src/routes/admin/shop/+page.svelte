@@ -28,6 +28,7 @@
 		baseUpgradeCost: number;
 		costMultiplier: number;
 		boostAmount: number;
+		rollCostOverride: number | null;
 		createdAt: string;
 		updatedAt: string;
 	}
@@ -78,6 +79,7 @@
 	let formBaseUpgradeCost = $state(10);
 	let formCostMultiplier = $state(110);
 	let formBoostAmount = $state(1);
+	let formRollCostOverride = $state<number | null>(null);
 	let formMonetaryValue = $state(0);
 	let formError = $state<string | null>(null);
 	let errorModal = $state<string | null>(null);
@@ -89,7 +91,14 @@
 
 	// Must match backend calculateRollCost exactly
 	// Roll cost is fixed based on base probability, doesn't change with upgrades
-	function calculateRollCost(basePrice: number, baseProbability: number): number {
+	function calculateRollCost(
+		basePrice: number,
+		baseProbability: number,
+		rollCostOverride?: number | null
+	): number {
+		if (rollCostOverride != null && rollCostOverride > 0) {
+			return rollCostOverride;
+		}
 		return Math.max(1, Math.round(basePrice * (baseProbability / 100)));
 	}
 
@@ -165,7 +174,8 @@
 		baseProbability: number,
 		baseUpgradeCost: number,
 		costMultiplier: number,
-		boostAmount: number
+		boostAmount: number,
+		rollCostOverride?: number | null
 	): EVSummary {
 		const results: EVResult[] = [];
 		const probabilityGap = 100 - baseProbability;
@@ -179,8 +189,8 @@
 			const boostPercent = k * boostAmount;
 			const effectiveProbability = Math.min(baseProbability + boostPercent, 100);
 
-			// Roll cost is fixed at base probability
-			const rollCost = calculateRollCost(price, baseProbability);
+			// Roll cost: use override if set, otherwise fixed at base probability
+			const rollCost = calculateRollCost(price, baseProbability, rollCostOverride);
 
 			// Cumulative upgrade cost (geometric series)
 			let upgradeCostCumulative = 0;
@@ -240,7 +250,8 @@
 			item.baseProbability,
 			item.baseUpgradeCost,
 			item.costMultiplier,
-			item.boostAmount
+			item.boostAmount,
+			item.rollCostOverride
 		);
 	}
 
@@ -251,7 +262,8 @@
 					formBaseProbability,
 					formBaseUpgradeCost,
 					formCostMultiplier,
-					formBoostAmount
+					formBoostAmount,
+					formRollCostOverride
 				)
 			: null
 	);
@@ -353,6 +365,7 @@
 		formBaseUpgradeCost = 10;
 		formCostMultiplier = 110;
 		formBoostAmount = 1;
+		formRollCostOverride = null;
 		formError = null;
 		showDetailedEV = false;
 		showModal = true;
@@ -373,6 +386,7 @@
 		formBaseUpgradeCost = item.baseUpgradeCost;
 		formCostMultiplier = item.costMultiplier;
 		formBoostAmount = item.boostAmount ?? 1;
+		formRollCostOverride = item.rollCostOverride ?? null;
 		formError = null;
 		showDetailedEV = false;
 		showModal = true;
@@ -411,7 +425,8 @@
 					baseProbability: formBaseProbability,
 					baseUpgradeCost: formBaseUpgradeCost,
 					costMultiplier: formCostMultiplier,
-					boostAmount: formBoostAmount
+					boostAmount: formBoostAmount,
+					rollCostOverride: formRollCostOverride
 				})
 			});
 
@@ -618,7 +633,7 @@
 						<span>
 							<span class="text-gray-500">base roll:</span>
 							<span class="font-bold"
-								>{calculateRollCost(item.price, item.baseProbability)} scraps</span
+								>{calculateRollCost(item.price, item.baseProbability, item.rollCostOverride)} scraps</span
 							>
 						</span>
 					</div>
@@ -832,6 +847,49 @@
 					</div>
 				</div>
 
+				<div>
+					<label for="rollCostOverride" class="mb-1 block text-sm font-bold">
+						roll cost override
+						{#if formRollCostOverride != null}
+							<span class="ml-1 text-xs font-normal text-yellow-600">overridden</span>
+						{/if}
+					</label>
+					<div class="flex gap-2">
+						<input
+							id="rollCostOverride"
+							type="number"
+							value={formRollCostOverride ?? ''}
+							oninput={(e) => {
+								const val = e.currentTarget.value;
+								formRollCostOverride = val === '' ? null : parseInt(val) || null;
+							}}
+							min="1"
+							placeholder="auto ({Math.max(
+								1,
+								Math.round(formPrice * (formBaseProbability / 100))
+							)})"
+							class="w-full rounded-lg border-2 px-4 py-2 focus:border-dashed focus:outline-none {formRollCostOverride !=
+							null
+								? 'border-yellow-500'
+								: 'border-black'}"
+						/>
+						{#if formRollCostOverride != null}
+							<button
+								onclick={() => (formRollCostOverride = null)}
+								class="shrink-0 cursor-pointer rounded-lg border-2 border-yellow-500 px-3 py-2 text-xs font-bold text-yellow-600 transition-all duration-200 hover:border-dashed"
+							>
+								auto
+							</button>
+						{/if}
+					</div>
+					<p class="mt-1 text-xs text-gray-500">
+						leave empty for auto = price × base% / 100 = {Math.max(
+							1,
+							Math.round(formPrice * (formBaseProbability / 100))
+						)} scraps
+					</p>
+				</div>
+
 				<div class="grid grid-cols-2 gap-4">
 					<div>
 						<label for="baseUpgradeCost" class="mb-1 block text-sm font-bold"
@@ -916,8 +974,11 @@
 							<div>
 								<span class="text-gray-500">base roll cost:</span>
 								<span class="ml-1 font-bold"
-									>{calculateRollCost(formPrice, formBaseProbability)} scraps</span
+									>{calculateRollCost(formPrice, formBaseProbability, formRollCostOverride)} scraps</span
 								>
+								{#if formRollCostOverride != null}
+									<span class="ml-1 text-xs text-yellow-600">(overridden)</span>
+								{/if}
 							</div>
 							<div>
 								<span class="text-gray-500">player best (lv{formEV.bestPlayerLevel}):</span>

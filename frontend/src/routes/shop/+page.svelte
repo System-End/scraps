@@ -22,6 +22,13 @@
 		return Math.round((scraps / (PHI * MULTIPLIER)) * 10) / 10;
 	}
 
+	function getItemRollCost(item: ShopItem): number {
+		if (item.rollCostOverride != null && item.rollCostOverride > 0) {
+			return item.rollCostOverride;
+		}
+		return Math.max(1, Math.round(item.price * (item.baseProbability / 100)));
+	}
+
 	let selectedCategories = $state<Set<string>>(new Set());
 	let sortBy = $state<'default' | 'favorites' | 'probability' | 'cost'>('probability');
 
@@ -72,9 +79,7 @@
 			return items.sort((a, b) => b.effectiveProbability - a.effectiveProbability);
 		} else if (sortBy === 'cost') {
 			return items.sort((a, b) => {
-				const costA = Math.max(1, Math.round(a.price * (a.baseProbability / 100)));
-				const costB = Math.max(1, Math.round(b.price * (b.baseProbability / 100)));
-				return costA - costB;
+				return getItemRollCost(a) - getItemRollCost(b);
 			});
 		}
 		return items;
@@ -268,7 +273,7 @@
 		<!-- Items Grid -->
 		<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
 			{#each sortedItems as item (item.id)}
-				{@const rollCost = Math.max(1, Math.round(item.price * (item.baseProbability / 100)))}
+				{@const rollCost = getItemRollCost(item)}
 				<button
 					onclick={() => (selectedItem = item)}
 					class="relative cursor-pointer overflow-hidden rounded-2xl border-4 border-black p-4 text-left transition-all hover:border-dashed {item.count ===

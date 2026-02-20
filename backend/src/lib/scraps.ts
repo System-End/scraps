@@ -122,7 +122,12 @@ export function calculateShopItemPricing(
 export function calculateRollCost(
   basePrice: number,
   baseProbability: number,
+  rollCostOverride?: number | null,
 ): number {
+  // If admin set a manual roll cost, use it
+  if (rollCostOverride != null && rollCostOverride > 0) {
+    return rollCostOverride;
+  }
   // Roll cost is fixed based on base probability, doesn't change with upgrades
   return Math.max(1, Math.round(basePrice * (baseProbability / 100)));
 }

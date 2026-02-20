@@ -32,6 +32,7 @@ export interface ShopItem {
 	baseUpgradeCost: number;
 	costMultiplier: number;
 	boostAmount: number;
+	rollCostOverride: number | null;
 	userBoostPercent: number;
 	upgradeCount: number;
 	effectiveProbability: number;

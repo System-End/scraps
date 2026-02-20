@@ -39,6 +39,7 @@ shop.get("/items", async ({ headers }) => {
       baseUpgradeCost: shopItemsTable.baseUpgradeCost,
       costMultiplier: shopItemsTable.costMultiplier,
       boostAmount: shopItemsTable.boostAmount,
+      rollCostOverride: shopItemsTable.rollCostOverride,
       createdAt: shopItemsTable.createdAt,
       updatedAt: shopItemsTable.updatedAt,
       heartCount:
@@ -113,6 +114,7 @@ shop.get("/items", async ({ headers }) => {
           adjustedBaseProbability + boostData.boostPercent,
           100,
         ),
+        rollCostOverride: item.rollCostOverride,
         userHearted: heartedIds.has(item.id),
         nextUpgradeCost,
       };
@@ -126,6 +128,7 @@ shop.get("/items", async ({ headers }) => {
     upgradeCount: 0,
     adjustedBaseProbability: item.baseProbability,
     effectiveProbability: Math.min(item.baseProbability, 100),
+    rollCostOverride: item.rollCostOverride,
     userHearted: false,
     nextUpgradeCost: item.baseUpgradeCost,
   }));
@@ -148,6 +151,7 @@ shop.get("/items/:id", async ({ params, headers }) => {
       baseUpgradeCost: shopItemsTable.baseUpgradeCost,
       costMultiplier: shopItemsTable.costMultiplier,
       boostAmount: shopItemsTable.boostAmount,
+      rollCostOverride: shopItemsTable.rollCostOverride,
       createdAt: shopItemsTable.createdAt,
       updatedAt: shopItemsTable.updatedAt,
       heartCount:
@@ -378,6 +382,7 @@ shop.post("/items/:id/purchase", async ({ params, body, headers }) => {
         baseUpgradeCost: rawRow.base_upgrade_cost as number,
         costMultiplier: rawRow.cost_multiplier as number,
         boostAmount: rawRow.boost_amount as number,
+        rollCostOverride: (rawRow.roll_cost_override as number | null) ?? null,
       };
 
       // Atomic SQL decrement — always uses the live DB value
@@ -486,6 +491,7 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
   }
 
   const item = items[0];
+  const itemRollCostOverride = item.rollCostOverride;
 
   if (item.count < 1) {
     return { error: "Out of stock" };
@@ -527,6 +533,7 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
         baseUpgradeCost: rawRow.base_upgrade_cost as number,
         costMultiplier: rawRow.cost_multiplier as number,
         boostAmount: rawRow.boost_amount as number,
+        rollCostOverride: (rawRow.roll_cost_override as number | null) ?? null,
       };
 
       // Compute boost and penalty inside transaction
@@ -567,10 +574,11 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
         100,
       );
 
-      // Roll cost is fixed based on base probability, doesn't change with upgrades
+      // Roll cost: use admin override if set, otherwise fixed at base probability
       const rollCost = calculateRollCost(
         currentItem.price,
         currentItem.baseProbability,
+        currentItem.rollCostOverride,
       );
 
       // Check if user can afford the roll cost
