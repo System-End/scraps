@@ -71,6 +71,7 @@
 	let formImage = $state('');
 	let formDescription = $state('');
 	let formPrice = $state(0);
+	let formPriceOverride = $state(false);
 	let formCategory = $state('');
 	let formCount = $state(0);
 	let formBaseProbability = $state(50);
@@ -109,8 +110,8 @@
 			Math.min(80, Math.round((priceRarityFactor * 0.4 + stockRarityFactor * 0.6) * 80))
 		);
 
-		const rollCost = Math.max(1, Math.round(price * (baseProbability / 100)));
-		const upgradeBudget = Math.max(0, price * 3.0 - rollCost);
+		// Must match backend: upgradeBudget = price * 1.5
+		const upgradeBudget = Math.max(0, price * 1.5);
 		const probabilityGap = 100 - baseProbability;
 
 		const targetUpgrades = Math.max(5, Math.min(20, Math.ceil(monetaryValue / 5)));
@@ -242,7 +243,9 @@
 
 	function recalculatePricing() {
 		const pricing = calculatePricing(formMonetaryValue, formCount);
-		formPrice = pricing.price;
+		if (!formPriceOverride) {
+			formPrice = pricing.price;
+		}
 		formBaseProbability = pricing.baseProbability;
 		formBaseUpgradeCost = pricing.baseUpgradeCost;
 		formCostMultiplier = pricing.costMultiplier;
@@ -251,12 +254,25 @@
 
 	function updateFromMonetary(value: number) {
 		formMonetaryValue = value;
+		if (!formPriceOverride) {
+			formPrice = Math.round(value * SCRAPS_PER_DOLLAR);
+		}
 		recalculatePricing();
 	}
 
 	function updateFromStock(value: number) {
 		formCount = value;
 		recalculatePricing();
+	}
+
+	function updatePriceOverride(value: number) {
+		formPrice = value;
+		formPriceOverride = true;
+	}
+
+	function clearPriceOverride() {
+		formPriceOverride = false;
+		formPrice = Math.round(formMonetaryValue * SCRAPS_PER_DOLLAR);
 	}
 
 	let deleteConfirmId = $state<number | null>(null);
@@ -293,6 +309,7 @@
 		formImage = '';
 		formDescription = '';
 		formPrice = 0;
+		formPriceOverride = false;
 		formMonetaryValue = 0;
 		formCategory = '';
 		formCount = 0;
@@ -310,8 +327,10 @@
 		formName = item.name;
 		formImage = item.image;
 		formDescription = item.description;
-		formPrice = item.price;
 		formMonetaryValue = Math.round((item.price / SCRAPS_PER_DOLLAR) * 100) / 100;
+		const autoPrice = Math.round(formMonetaryValue * SCRAPS_PER_DOLLAR);
+		formPrice = item.price;
+		formPriceOverride = item.price !== autoPrice;
 		formCategory = item.category;
 		formCount = item.count;
 		formBaseProbability = item.baseProbability;
@@ -452,17 +471,17 @@
 			</div>
 			<div class="rounded-lg bg-gray-100 p-3">
 				<div class="mb-1 text-xs text-gray-500">upgrade budget</div>
-				<div class="font-bold">3× price − roll cost</div>
+				<div class="font-bold">1.5× price</div>
 			</div>
 			<div class="rounded-lg bg-gray-100 p-3">
-				<div class="mb-1 text-xs text-gray-500">win condition</div>
-				<div class="font-bold">roll ≤ effective%</div>
+				<div class="mb-1 text-xs text-gray-500">win threshold</div>
+				<div class="font-bold">eff% × 17/20</div>
 			</div>
 		</div>
 		<p class="mt-2 text-xs text-gray-500">
 			roll cost is fixed at base probability regardless of upgrades. upgrades increase win chance
-			but not roll cost, so higher upgrades = cheaper expected cost per win. pricing formula targets
-			total upgrade spend ≈ 3× item price minus one roll.
+			but not roll cost. actual win threshold = floor(effective% × 17/20), giving ~15% house edge.
+			upgrade budget = 1.5× item price spread across a geometric cost series.
 		</p>
 	</div>
 
@@ -487,7 +506,7 @@
 						/>
 						<div class="min-w-0 flex-1">
 							<h3 class="text-xl font-bold">{item.name}</h3>
-							<p class="text-sm text-gray-600 wrap-break-word">{item.description}</p>
+							<p class="text-sm wrap-break-word text-gray-600">{item.description}</p>
 							<div class="mt-1 flex flex-wrap items-center gap-2 text-sm">
 								<span class="font-bold">${(item.price / SCRAPS_PER_DOLLAR).toFixed(2)}</span>
 								<span class="text-gray-500">·</span>
@@ -625,23 +644,58 @@
 					></textarea>
 				</div>
 
-				<div>
-					<label for="monetaryValue" class="mb-1 block text-sm font-bold">value ($)</label>
-					<input
-						id="monetaryValue"
-						type="number"
-						value={formMonetaryValue}
-						oninput={(e) => updateFromMonetary(parseFloat(e.currentTarget.value) || 0)}
-						min="0"
-						step="0.01"
-						class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
-					/>
-					<p class="mt-1 text-xs text-gray-500">
-						= {formPrice} scraps · {formBaseProbability}% base · +{formBoostAmount}%/upgrade · ~{(
-							formPrice / SCRAPS_PER_HOUR
-						).toFixed(1)} hrs to earn
-					</p>
+				<div class="grid grid-cols-2 gap-4">
+					<div>
+						<label for="monetaryValue" class="mb-1 block text-sm font-bold">value ($)</label>
+						<input
+							id="monetaryValue"
+							type="number"
+							value={formMonetaryValue}
+							oninput={(e) => updateFromMonetary(parseFloat(e.currentTarget.value) || 0)}
+							min="0"
+							step="0.01"
+							class="w-full rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
+						/>
+						<p class="mt-1 text-xs text-gray-500">
+							auto = {Math.round(formMonetaryValue * SCRAPS_PER_DOLLAR)} scraps
+						</p>
+					</div>
+					<div>
+						<label for="scrapsPrice" class="mb-1 block text-sm font-bold">
+							price (scraps)
+							{#if formPriceOverride}
+								<span class="ml-1 text-xs font-normal text-yellow-600">overridden</span>
+							{/if}
+						</label>
+						<input
+							id="scrapsPrice"
+							type="number"
+							value={formPrice}
+							oninput={(e) => updatePriceOverride(parseInt(e.currentTarget.value) || 0)}
+							min="1"
+							class="w-full rounded-lg border-2 px-4 py-2 focus:border-dashed focus:outline-none {formPriceOverride
+								? 'border-yellow-500'
+								: 'border-black'}"
+						/>
+						{#if formPriceOverride}
+							<button
+								onclick={clearPriceOverride}
+								class="mt-1 cursor-pointer text-xs font-bold text-yellow-600 underline"
+							>
+								reset to auto ({Math.round(formMonetaryValue * SCRAPS_PER_DOLLAR)})
+							</button>
+						{:else}
+							<p class="mt-1 text-xs text-gray-500">
+								~{(formPrice / SCRAPS_PER_HOUR).toFixed(1)} hrs to earn
+							</p>
+						{/if}
+					</div>
 				</div>
+				<p class="text-xs text-gray-500">
+					{formBaseProbability}% base · +{formBoostAmount}%/upgrade · ~{(
+						formPrice / SCRAPS_PER_HOUR
+					).toFixed(1)} hrs to earn
+				</p>
 
 				<div class="grid grid-cols-2 gap-4">
 					<div>
