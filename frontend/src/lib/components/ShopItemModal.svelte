@@ -144,7 +144,11 @@
 
 			if (!response.ok || data.error || !data.success) {
 				alertType = 'error';
-				alertMessage = data.error || $t.shop.failedToTryLuck;
+				if (data.required && data.available !== undefined) {
+					alertMessage = `${data.error}. You need ${data.required} scraps but only have ${data.available}.`;
+				} else {
+					alertMessage = data.error || $t.shop.failedToTryLuck;
+				}
 				return;
 			}
 

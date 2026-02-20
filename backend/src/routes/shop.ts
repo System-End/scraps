@@ -551,10 +551,21 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
       );
 
       // Check if user can afford the roll cost
-      const canAffordRoll = await canAfford(user.id, rollCost, tx);
+      const {
+        balance: currentBalance,
+        earned,
+        spent,
+      } = await getUserScrapsBalance(user.id, tx);
+      console.log(
+        `[SHOP] try-luck user=${user.id} item=${itemId} price=${currentItem.price} baseProbability=${currentItem.baseProbability} effectiveProbability=${effectiveProbability} rollCost=${rollCost} balance=${currentBalance} (earned=${earned} spent=${spent})`,
+      );
+      const canAffordRoll = currentBalance >= rollCost;
       if (!canAffordRoll) {
-        const { balance } = await getUserScrapsBalance(user.id, tx);
-        throw { type: "insufficient_funds", balance, cost: rollCost };
+        throw {
+          type: "insufficient_funds",
+          balance: currentBalance,
+          cost: rollCost,
+        };
       }
 
       // Cryptographically secure random: 1-100 inclusive
