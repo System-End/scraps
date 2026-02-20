@@ -50,7 +50,7 @@
 	let showConfirmation = $state(false);
 	let localHearted = $state(item.userHearted);
 	let localHeartCount = $state(item.heartCount);
-	let rollCost = $derived(Math.max(1, Math.round(item.price * (item.effectiveProbability / 100))));
+	let rollCost = $derived(Math.max(1, Math.round(item.price * (item.baseProbability / 100))));
 	let canAfford = $derived($userScrapsStore >= rollCost);
 	let alertMessage = $state<string | null>(null);
 	let alertType = $state<'error' | 'info'>('info');
@@ -142,7 +142,7 @@
 			});
 			const data = await response.json();
 
-			if (!response.ok) {
+			if (!response.ok || data.error || !data.success) {
 				alertType = 'error';
 				alertMessage = data.error || $t.shop.failedToTryLuck;
 				return;
@@ -151,8 +151,11 @@
 			await refreshUserScraps();
 			if (data.won) {
 				onTryLuck(data.orderId);
-			} else {
+			} else if (data.consolationOrderId) {
 				onConsolation(data.consolationOrderId, data.rolled, Math.floor(data.effectiveProbability));
+			} else {
+				alertType = 'error';
+				alertMessage = $t.shop.somethingWentWrong;
 			}
 		} catch (e) {
 			console.error('Failed to try luck:', e);
