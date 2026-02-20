@@ -1,7 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Check, X, Package, Clock, Truck, CheckCircle, XCircle, Trash2 } from '@lucide/svelte';
+	import {
+		Check,
+		X,
+		Package,
+		Clock,
+		Truck,
+		CheckCircle,
+		XCircle,
+		Trash2,
+		ChevronDown,
+		ChevronUp,
+		Search
+	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { t } from '$lib/i18n';
@@ -35,6 +47,7 @@
 		itemImage: string;
 		userId: number;
 		username: string;
+		slackId: string | null;
 	}
 
 	function parseShippingAddress(addr: string | null): ShippingAddress | null {
@@ -59,15 +72,78 @@
 	let orders = $state<Order[]>([]);
 	let loading = $state(true);
 	let filter = $state<'all' | 'pending' | 'fulfilled'>('all');
+	let searchQuery = $state('');
+	let dateFrom = $state('');
+	let dateTo = $state('');
 	let confirmRevert = $state<Order | null>(null);
 	let actionLoading = $state(false);
+	let expandedOrders = $state<Record<number, boolean>>({});
+	let collapsedGroups = $state<Record<string, boolean>>({});
 
-	let filteredOrders = $derived(
-		filter === 'all'
-			? orders
-			: filter === 'pending'
-				? orders.filter((o) => !o.isFulfilled)
-				: orders.filter((o) => o.isFulfilled)
+	let filteredOrders = $derived.by(() => {
+		let result =
+			filter === 'all'
+				? orders
+				: filter === 'pending'
+					? orders.filter((o) => !o.isFulfilled)
+					: orders.filter((o) => o.isFulfilled);
+
+		if (searchQuery.trim()) {
+			const q = searchQuery.trim().toLowerCase();
+			result = result.filter((o) => {
+				if (o.username.toLowerCase().includes(q)) return true;
+				if (o.slackId && o.slackId.toLowerCase().includes(q)) return true;
+				const addr = parseShippingAddress(o.shippingAddress);
+				if (addr) {
+					const fullName = formatName(addr).toLowerCase();
+					if (fullName.includes(q)) return true;
+				}
+				return false;
+			});
+		}
+
+		if (dateFrom) {
+			const from = new Date(dateFrom);
+			from.setHours(0, 0, 0, 0);
+			result = result.filter((o) => new Date(o.createdAt) >= from);
+		}
+
+		if (dateTo) {
+			const to = new Date(dateTo);
+			to.setHours(23, 59, 59, 999);
+			result = result.filter((o) => new Date(o.createdAt) <= to);
+		}
+
+		return result;
+	});
+
+	let groupedOrders = $derived(
+		Object.values(
+			filteredOrders.reduce(
+				(acc, order) => {
+					const groupKey = order.orderType === 'consolation' ? 'Consolations' : order.itemName;
+					if (!acc[groupKey]) {
+						acc[groupKey] = { itemName: groupKey, itemImage: order.itemImage, orders: [] };
+					}
+					acc[groupKey].orders.push(order);
+					return acc;
+				},
+				{} as Record<string, { itemName: string; itemImage: string; orders: Order[] }>
+			)
+		)
+			.map((group) => {
+				group.orders.sort(
+					(a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+				);
+				return group;
+			})
+			.sort((a, b) => {
+				if (a.orders.length === 0) return 1;
+				if (b.orders.length === 0) return -1;
+				return (
+					new Date(a.orders[0].createdAt).getTime() - new Date(b.orders[0].createdAt).getTime()
+				);
+			})
 	);
 
 	onMount(async () => {
@@ -188,34 +264,81 @@
 	</div>
 
 	<!-- Filter tabs -->
-	<div class="mb-6 flex gap-2">
-		<button
-			onclick={() => (filter = 'all')}
-			class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {filter ===
-			'all'
-				? 'bg-black text-white'
-				: 'hover:border-dashed'}"
-		>
-			{$t.admin.all} ({orders.length})
-		</button>
-		<button
-			onclick={() => (filter = 'pending')}
-			class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {filter ===
-			'pending'
-				? 'bg-black text-white'
-				: 'hover:border-dashed'}"
-		>
-			{$t.admin.pending} ({orders.filter((o) => !o.isFulfilled).length})
-		</button>
-		<button
-			onclick={() => (filter = 'fulfilled')}
-			class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {filter ===
-			'fulfilled'
-				? 'bg-black text-white'
-				: 'hover:border-dashed'}"
-		>
-			{$t.admin.fulfilled} ({orders.filter((o) => o.isFulfilled).length})
-		</button>
+	<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+		<div class="flex gap-2">
+			<button
+				onclick={() => (filter = 'all')}
+				class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {filter ===
+				'all'
+					? 'bg-black text-white'
+					: 'hover:border-dashed'}"
+			>
+				{$t.admin.all} ({orders.length})
+			</button>
+			<button
+				onclick={() => (filter = 'pending')}
+				class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {filter ===
+				'pending'
+					? 'bg-black text-white'
+					: 'hover:border-dashed'}"
+			>
+				{$t.admin.pending} ({orders.filter((o) => !o.isFulfilled).length})
+			</button>
+			<button
+				onclick={() => (filter = 'fulfilled')}
+				class="cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {filter ===
+				'fulfilled'
+					? 'bg-black text-white'
+					: 'hover:border-dashed'}"
+			>
+				{$t.admin.fulfilled} ({orders.filter((o) => o.isFulfilled).length})
+			</button>
+		</div>
+
+		<!-- Search and Date Filters -->
+		<div class="flex flex-wrap items-end gap-3">
+			<div class="relative flex-1" style="min-width: 200px;">
+				<Search size={18} class="absolute top-1/2 left-4 -translate-y-1/2 text-gray-400" />
+				<input
+					type="text"
+					placeholder="search by name or slack id..."
+					bind:value={searchQuery}
+					class="w-full rounded-full border-4 border-black py-2 pr-4 pl-10 font-bold transition-all duration-200 placeholder:text-gray-400 focus:border-dashed focus:ring-0 focus:outline-none"
+				/>
+			</div>
+			<div class="flex items-end gap-2">
+				<div class="flex flex-col">
+					<label for="date-from" class="mb-1 text-xs font-bold text-gray-500 uppercase">from</label>
+					<input
+						id="date-from"
+						type="date"
+						bind:value={dateFrom}
+						class="rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none"
+					/>
+				</div>
+				<div class="flex flex-col">
+					<label for="date-to" class="mb-1 text-xs font-bold text-gray-500 uppercase">to</label>
+					<input
+						id="date-to"
+						type="date"
+						bind:value={dateTo}
+						class="rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none"
+					/>
+				</div>
+				{#if dateFrom || dateTo}
+					<button
+						onclick={() => {
+							dateFrom = '';
+							dateTo = '';
+						}}
+						class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 hover:border-dashed"
+						title="clear dates"
+					>
+						<X size={18} />
+					</button>
+				{/if}
+			</div>
+		</div>
 	</div>
 
 	{#if loading}
@@ -223,135 +346,215 @@
 	{:else if filteredOrders.length === 0}
 		<div class="py-12 text-center text-gray-500">no orders found</div>
 	{:else}
-		<div class="grid gap-4">
-			{#each filteredOrders as order}
-				{@const StatusIcon = getStatusIcon(order.status)}
-				<div class="rounded-2xl border-4 border-black p-4 {order.isFulfilled ? 'bg-green-50' : ''}">
-					<div class="flex items-start gap-4">
-						<!-- Item image -->
-						<img
-							src={order.itemImage}
-							alt={order.itemName}
-							class="h-16 w-16 shrink-0 rounded-lg border-2 border-black object-cover"
-						/>
-
-						<!-- Order details -->
-						<div class="min-w-0 flex-1">
-							<div class="mb-1 flex items-center gap-2">
-								<h3 class="text-lg font-bold">{order.itemName}</h3>
-								<span class="text-gray-500">×{order.quantity}</span>
+		<div class="flex flex-col gap-8">
+			{#each groupedOrders as group}
+				{@const isConsolations = group.itemName === 'Consolations'}
+				{@const isCollapsed = collapsedGroups[group.itemName] ?? isConsolations}
+				<div
+					class="rounded-3xl border-4 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+				>
+					<button
+						onclick={() => {
+							collapsedGroups[group.itemName] = !isCollapsed;
+						}}
+						class="flex w-full cursor-pointer items-center justify-between gap-4 p-6 hover:bg-black/5 {isCollapsed
+							? 'rounded-3xl'
+							: 'rounded-t-3xl'} transition-colors"
+					>
+						<div class="flex items-center gap-4">
+							<img
+								src={group.itemImage}
+								alt={group.itemName}
+								class="h-16 w-16 shrink-0 rounded-lg border-2 border-black object-cover"
+							/>
+							<div class="text-left">
+								<h2 class="text-2xl font-bold md:text-3xl">{group.itemName}</h2>
+								<p class="font-bold text-gray-500">
+									{group.orders.length}
+									{group.orders.length === 1 ? 'order' : 'orders'}
+								</p>
 							</div>
+						</div>
+						<div class="text-gray-400">
+							{#if isCollapsed}
+								<ChevronDown size={24} />
+							{:else}
+								<ChevronUp size={24} />
+							{/if}
+						</div>
+					</button>
 
-							<div class="mb-2 flex flex-wrap items-center gap-2">
-								<a href="/admin/users/{order.userId}" class="text-sm font-bold hover:underline">
-									@{order.username}
-								</a>
-								<span class="text-gray-400">•</span>
-								<span class="text-sm text-gray-500">{formatDate(order.createdAt)}</span>
-								<span class="text-gray-400">•</span>
-								<span class="text-sm font-bold">{order.totalPrice} scraps</span>
-							</div>
-
-							<div class="flex flex-wrap items-center gap-2">
-								<span
-									class="inline-flex items-center gap-1 rounded-full border-2 px-2 py-0.5 text-xs font-bold {getStatusColor(
-										order.status
-									)}"
+					{#if !isCollapsed}
+						<div class="grid gap-4 px-6 pt-4 pb-6">
+							{#each group.orders as order}
+								{@const StatusIcon = getStatusIcon(order.status)}
+								<div
+									class="overflow-hidden rounded-2xl border-4 border-black transition-colors {order.isFulfilled
+										? 'bg-green-50'
+										: 'bg-white'}"
 								>
-									<StatusIcon size={12} />
-									{order.status}
-								</span>
-
-								<span
-									class="rounded-full border-2 px-2 py-0.5 text-xs font-bold {order.orderType ===
-									'win'
-										? 'border-purple-600 bg-purple-100 text-purple-700'
-										: 'border-gray-600 bg-gray-100 text-gray-700'}"
-								>
-									{order.orderType}
-								</span>
-
-								{#if order.isFulfilled}
-									<span
-										class="inline-flex items-center gap-1 rounded-full border-2 border-green-600 bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700"
+									<!-- Clickable Summary Header -->
+									<button
+										onclick={() => (expandedOrders[order.id] = !expandedOrders[order.id])}
+										class="flex w-full cursor-pointer items-center justify-between gap-4 p-4 text-left hover:bg-black/5"
 									>
-										<Check size={12} />
-										fulfilled
-									</span>
-								{/if}
-							</div>
+										<div class="flex flex-wrap items-center gap-3">
+											<a
+												href="/admin/users/{order.userId}"
+												onclick={(e) => e.stopPropagation()}
+												class="text-lg font-bold hover:underline"
+											>
+												@{order.username}
+											</a>
+											<span class="text-gray-400">•</span>
+											<span class="text-gray-600">{formatDate(order.createdAt)}</span>
+											<span class="text-gray-400">•</span>
+											<span class="font-bold">{order.totalPrice} scraps</span>
+											{#if order.quantity > 1}
+												<span class="text-gray-400">•</span>
+												<span class="font-bold text-gray-500">×{order.quantity}</span>
+											{/if}
+										</div>
 
-							{#if order.notes}
-								<p class="mt-2 text-sm text-gray-600">{order.notes}</p>
-							{/if}
+										<div class="flex shrink-0 items-center gap-2">
+											<span
+												class="hidden items-center gap-1 rounded-full border-2 px-2 py-0.5 text-xs font-bold md:inline-flex {getStatusColor(
+													order.status
+												)}"
+											>
+												<StatusIcon size={12} />
+												{order.status}
+											</span>
+											{#if order.isFulfilled}
+												<span
+													class="hidden items-center gap-1 rounded-full border-2 border-green-600 bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700 md:inline-flex"
+												>
+													<Check size={12} />
+													fulfilled
+												</span>
+											{/if}
+											<div class="ml-2 text-gray-400">
+												{#if expandedOrders[order.id]}
+													<ChevronUp size={20} />
+												{:else}
+													<ChevronDown size={20} />
+												{/if}
+											</div>
+										</div>
+									</button>
 
-							{#if parseShippingAddress(order.shippingAddress)}
-								{@const addr = parseShippingAddress(order.shippingAddress)!}
-								<div class="mt-2 rounded-lg border border-gray-300 bg-gray-100 p-3">
-									<p class="mb-2 text-xs font-bold text-gray-500 uppercase">shipping address</p>
-									<div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-										<span class="font-bold text-gray-500">name</span>
-										<span>{formatName(addr)}</span>
-										<span class="font-bold text-gray-500">address 1</span>
-										<span>{addr.address1}</span>
-										{#if addr.address2}
-											<span class="font-bold text-gray-500">address 2</span>
-											<span>{addr.address2}</span>
-										{/if}
-										<span class="font-bold text-gray-500">city</span>
-										<span>{addr.city}</span>
-										<span class="font-bold text-gray-500">state</span>
-										<span>{addr.state}</span>
-										<span class="font-bold text-gray-500">zip</span>
-										<span>{addr.postalCode}</span>
-										<span class="font-bold text-gray-500">country</span>
-										<span>{addr.country}</span>
-										{#if order.phone || addr.phone}
-											<span class="font-bold text-gray-500">phone</span>
-											<span>{order.phone || addr.phone}</span>
-										{/if}
-									</div>
+									<!-- Expanded Info Panel -->
+									{#if expandedOrders[order.id]}
+										<div class="border-t-4 border-dashed border-gray-200 p-4">
+											<!-- Status Tags for Mobile -->
+											<div class="mb-4 flex flex-wrap gap-2 md:hidden">
+												<span
+													class="inline-flex items-center gap-1 rounded-full border-2 px-2 py-0.5 text-xs font-bold {getStatusColor(
+														order.status
+													)}"
+												>
+													<StatusIcon size={12} />
+													{order.status}
+												</span>
+												{#if order.isFulfilled}
+													<span
+														class="inline-flex items-center gap-1 rounded-full border-2 border-green-600 bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700"
+													>
+														<Check size={12} />
+														fulfilled
+													</span>
+												{/if}
+											</div>
+
+											<div
+												class="flex flex-col gap-6 md:flex-row md:items-start md:justify-between"
+											>
+												<div class="min-w-0 flex-1 text-sm">
+													{#if order.notes}
+														<p class="mb-3 text-gray-600"><strong>Notes:</strong> {order.notes}</p>
+													{/if}
+
+													{#if parseShippingAddress(order.shippingAddress)}
+														{@const addr = parseShippingAddress(order.shippingAddress)!}
+														<!-- svelte-ignore a11y_no_static_element_interactions -->
+														<div
+															class="group/addr rounded-xl border-2 border-gray-300 bg-white p-4"
+														>
+															<p class="mb-2 text-xs font-bold text-gray-500 uppercase">
+																shipping address
+															</p>
+															<div
+																class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 blur-sm transition-all duration-300 select-none group-hover/addr:blur-none group-hover/addr:select-auto"
+															>
+																<span class="font-bold text-gray-500">name</span>
+																<span>{formatName(addr)}</span>
+																<span class="font-bold text-gray-500">address 1</span>
+																<span>{addr.address1}</span>
+																{#if addr.address2}
+																	<span class="font-bold text-gray-500">address 2</span>
+																	<span>{addr.address2}</span>
+																{/if}
+																<span class="font-bold text-gray-500">city</span>
+																<span>{addr.city}</span>
+																<span class="font-bold text-gray-500">state</span>
+																<span>{addr.state}</span>
+																<span class="font-bold text-gray-500">zip</span>
+																<span>{addr.postalCode}</span>
+																<span class="font-bold text-gray-500">country</span>
+																<span>{addr.country}</span>
+																{#if order.phone || addr.phone}
+																	<span class="font-bold text-gray-500">phone</span>
+																	<span>{order.phone || addr.phone}</span>
+																{/if}
+															</div>
+														</div>
+													{:else if order.orderType === 'win'}
+														<div class="rounded-xl border-2 border-yellow-300 bg-yellow-100 p-4">
+															<p class="font-bold text-yellow-700">no shipping address provided</p>
+														</div>
+													{/if}
+													{#if order.phone && !parseShippingAddress(order.shippingAddress)}
+														<div class="mt-2 rounded-xl border-2 border-gray-300 bg-white p-4">
+															<div class="grid grid-cols-[auto_1fr] gap-x-4">
+																<span class="font-bold text-gray-500">phone</span>
+																<span>{order.phone}</span>
+															</div>
+														</div>
+													{/if}
+												</div>
+
+												<!-- Actions -->
+												<div class="flex shrink-0 flex-col gap-3 md:w-48">
+													<button
+														onclick={() => toggleFulfilled(order)}
+														class="flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {order.isFulfilled
+															? 'bg-gray-200 hover:border-dashed hover:bg-gray-300'
+															: 'bg-green-500 text-white hover:border-dashed hover:bg-green-600'}"
+													>
+														{#if order.isFulfilled}
+															<X size={16} />
+															{$t.admin.unfulfill}
+														{:else}
+															<Check size={16} />
+															{$t.admin.fulfill}
+														{/if}
+													</button>
+													<button
+														onclick={() => (confirmRevert = order)}
+														class="flex w-full cursor-pointer items-center justify-center gap-1 rounded-full border-4 border-red-600 px-3 py-2 font-bold text-red-600 transition-all duration-200 hover:border-dashed"
+														title="revert & refund"
+													>
+														<Trash2 size={16} />
+														revert order
+													</button>
+												</div>
+											</div>
+										</div>
+									{/if}
 								</div>
-							{:else if order.orderType === 'win'}
-								<div class="mt-2 rounded-lg border border-yellow-300 bg-yellow-100 p-2">
-									<p class="text-xs font-bold text-yellow-700">no shipping address provided</p>
-								</div>
-							{/if}
-							{#if order.phone && !parseShippingAddress(order.shippingAddress)}
-								<div class="mt-2 rounded-lg border border-gray-300 bg-gray-100 p-3">
-									<div class="grid grid-cols-[auto_1fr] gap-x-3 text-sm">
-										<span class="font-bold text-gray-500">phone</span>
-										<span>{order.phone}</span>
-									</div>
-								</div>
-							{/if}
+							{/each}
 						</div>
-
-						<!-- Actions -->
-						<div class="flex shrink-0 gap-2">
-							<button
-								onclick={() => toggleFulfilled(order)}
-								class="flex cursor-pointer items-center gap-2 rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {order.isFulfilled
-									? 'bg-gray-200 hover:bg-gray-300'
-									: 'bg-green-500 text-white hover:bg-green-600'}"
-							>
-								{#if order.isFulfilled}
-									<X size={16} />
-									{$t.admin.unfulfill}
-								{:else}
-									<Check size={16} />
-									{$t.admin.fulfill}
-								{/if}
-							</button>
-							<button
-								onclick={() => (confirmRevert = order)}
-								class="flex cursor-pointer items-center gap-1 rounded-full border-4 border-red-600 px-3 py-2 font-bold text-red-600 transition-all duration-200 hover:border-dashed"
-								title="revert & refund"
-							>
-								<Trash2 size={16} />
-							</button>
-						</div>
-					</div>
+					{/if}
 				</div>
 			{/each}
 		</div>

@@ -222,19 +222,19 @@ admin.get("/users", async ({ headers, query, status }) => {
     const searchIsNumeric = search && /^\d+$/.test(search);
     const searchCondition = search
       ? or(
-          ...(searchIsNumeric ? [eq(usersTable.id, parseInt(search))] : []),
-          sql`${usersTable.username} ILIKE ${"%" + search + "%"}`,
-          sql`${usersTable.email} ILIKE ${"%" + search + "%"}`,
-          sql`${usersTable.slackId} ILIKE ${"%" + search + "%"}`,
-        )
+        ...(searchIsNumeric ? [eq(usersTable.id, parseInt(search))] : []),
+        sql`${usersTable.username} ILIKE ${"%" + search + "%"}`,
+        sql`${usersTable.email} ILIKE ${"%" + search + "%"}`,
+        sql`${usersTable.slackId} ILIKE ${"%" + search + "%"}`,
+      )
       : undefined;
 
     // Sort ID exact matches first, then by created date
     const orderClause = searchIsNumeric
       ? [
-          sql`CASE WHEN ${usersTable.id} = ${parseInt(search)} THEN 0 ELSE 1 END`,
-          desc(usersTable.createdAt),
-        ]
+        sql`CASE WHEN ${usersTable.id} = ${parseInt(search)} THEN 0 ELSE 1 END`,
+        desc(usersTable.createdAt),
+      ]
       : [desc(usersTable.createdAt)];
 
     const [userIds, countResult] = await Promise.all([
@@ -705,12 +705,12 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
       hackatimeUserId,
       user: projectUser[0]
         ? {
-            id: projectUser[0].id,
-            username: projectUser[0].username,
-            email: isAdmin ? projectUser[0].email : undefined,
-            avatar: projectUser[0].avatar,
-            internalNotes: projectUser[0].internalNotes,
-          }
+          id: projectUser[0].id,
+          username: projectUser[0].username,
+          email: isAdmin ? projectUser[0].email : undefined,
+          avatar: projectUser[0].avatar,
+          internalNotes: projectUser[0].internalNotes,
+        }
         : null,
       reviews: visibleReviews.map((r) => {
         const reviewer = reviewers.find((rv) => rv.id === r.reviewerId);
@@ -1161,12 +1161,12 @@ admin.get("/second-pass/:id", async ({ params, headers }) => {
       hackatimeUserId,
       user: projectUser[0]
         ? {
-            id: projectUser[0].id,
-            username: projectUser[0].username,
-            email: projectUser[0].email,
-            avatar: projectUser[0].avatar,
-            internalNotes: projectUser[0].internalNotes,
-          }
+          id: projectUser[0].id,
+          username: projectUser[0].username,
+          email: projectUser[0].email,
+          avatar: projectUser[0].avatar,
+          internalNotes: projectUser[0].internalNotes,
+        }
         : null,
       reviews: reviews.map((r) => {
         const reviewer = reviewers.find((rv) => rv.id === r.reviewerId);
@@ -1916,6 +1916,7 @@ admin.get("/orders", async ({ headers, query, status }) => {
         itemImage: shopItemsTable.image,
         userId: usersTable.id,
         username: usersTable.username,
+        slackId: usersTable.slackId,
       })
       .from(shopOrdersTable)
       .innerJoin(
@@ -2179,9 +2180,9 @@ admin.get("/export/review-json", async ({ headers, status }) => {
     return projects.map((p) => {
       const hackatimeProjects = p.hackatimeProject
         ? p.hackatimeProject
-            .split(",")
-            .map((n: string) => n.trim())
-            .filter((n: string) => n.length > 0)
+          .split(",")
+          .map((n: string) => n.trim())
+          .filter((n: string) => n.length > 0)
         : [];
 
       return {
@@ -2611,9 +2612,9 @@ admin.post("/sync-ysws", async ({ headers, set }) => {
     const users =
       userIds.length > 0
         ? await db
-            .select({ id: usersTable.id, email: usersTable.email })
-            .from(usersTable)
-            .where(inArray(usersTable.id, userIds))
+          .select({ id: usersTable.id, email: usersTable.email })
+          .from(usersTable)
+          .where(inArray(usersTable.id, userIds))
         : [];
     const emailMap = new Map(users.map((u) => [u.id, u.email]));
 
