@@ -59,7 +59,6 @@ export async function getHackatimeUser(email: string): Promise<HackatimeUser | n
 		if (!emailResponse.ok) return null
 
 		const emailData = await emailResponse.json() as { user_id: number }
-		console.log(`[HACKATIME] Email lookup response for ${email}:`, JSON.stringify(emailData))
 		const user_id = parseInt(String(emailData.user_id), 10)
 		if (isNaN(user_id)) return null
 
@@ -73,7 +72,6 @@ export async function getHackatimeUser(email: string): Promise<HackatimeUser | n
 		if (!infoResponse.ok) return null
 
 		const infoData = await infoResponse.json()
-		console.log(`[HACKATIME] User info response for user_id=${user_id}:`, JSON.stringify(infoData))
 		const userObj = infoData.user ?? infoData
 		const user: HackatimeUser = {
 			user_id: parseInt(String(userObj.user_id), 10) || user_id,
@@ -103,7 +101,6 @@ export async function getHackatimeUserById(userId: number): Promise<HackatimeUse
 		if (!infoResponse.ok) return null
 
 		const infoData = await infoResponse.json()
-		console.log(`[HACKATIME] User info response for user_id=${userId}:`, JSON.stringify(infoData))
 		const userObj = infoData.user ?? infoData
 		const user: HackatimeUser = {
 			user_id: parseInt(String(userObj.user_id), 10) || userId,
@@ -242,37 +239,27 @@ async function syncAllProjects(): Promise<void> {
 
 		let updated = 0
 
-		for (const [email, userProjects] of projectsByEmail) {
-			// Look up hackatime user by email
-			const hackatimeUser = await getHackatimeUser(email)
-			console.log(`[HACKATIME-SYNC] User ${email}: hackatimeUser=${hackatimeUser ? `id=${hackatimeUser.user_id}, username=${hackatimeUser.username}` : 'NOT FOUND'}`)
+		let migrated = 0
 
-			// Match each scraps project to its hackatime project(s)
+		for (const [email, userProjects] of projectsByEmail) {
+			const hackatimeUser = await getHackatimeUser(email)
+
 			for (const project of userProjects) {
 				const entries = parseHackatimeProjects(project.hackatimeProject)
-				console.log(`[HACKATIME-SYNC] Project ${project.id}: raw="${project.hackatimeProject}", parsed ${entries.length} entries`)
-
-				if (entries.length === 0) {
-					console.log(`[HACKATIME-SYNC] Project ${project.id}: SKIP - no valid entries parsed`)
-					continue
-				}
+				if (entries.length === 0) continue
 
 				let totalSeconds = 0
 				let needsMigration = false
 				const migratedEntries: string[] = []
 
-				// Group entries by resolved hackatime user_id to batch admin API lookups
 				const entriesByUserId = new Map<number, string[]>()
 				for (const entry of entries) {
 					let resolvedUserId: number | null = null
-					let entryFormat: string
 
 					if (entry.hackatimeUserId) {
-						entryFormat = `NEW (userId=${entry.hackatimeUserId})`
 						resolvedUserId = entry.hackatimeUserId
 						migratedEntries.push(`${entry.hackatimeUserId}:${entry.projectName}`)
 					} else if (entry.slackId) {
-						entryFormat = `OLD_SLACK (slackId=${entry.slackId})`
 						needsMigration = true
 						if (hackatimeUser && typeof hackatimeUser.user_id === 'number') {
 							resolvedUserId = hackatimeUser.user_id
@@ -281,7 +268,6 @@ async function syncAllProjects(): Promise<void> {
 							migratedEntries.push(`${entry.slackId}/${entry.projectName}`)
 						}
 					} else {
-						entryFormat = 'PLAIN/BROKEN (no prefix)'
 						needsMigration = true
 						if (hackatimeUser && typeof hackatimeUser.user_id === 'number') {
 							resolvedUserId = hackatimeUser.user_id
@@ -291,12 +277,7 @@ async function syncAllProjects(): Promise<void> {
 						}
 					}
 
-					console.log(`[HACKATIME-SYNC]   Entry "${entry.projectName}": format=${entryFormat}, resolvedUserId=${resolvedUserId}, migrated="${migratedEntries[migratedEntries.length - 1]}"`)
-
-					if (resolvedUserId === null) {
-						console.log(`[HACKATIME-SYNC]   Entry "${entry.projectName}": SKIP - could not resolve user ID`)
-						continue
-					}
+					if (resolvedUserId === null) continue
 
 					const existing = entriesByUserId.get(resolvedUserId) || []
 					existing.push(entry.projectName)
@@ -305,16 +286,11 @@ async function syncAllProjects(): Promise<void> {
 
 				for (const [userId, projectNames] of entriesByUserId) {
 					const adminProjects = await fetchUserProjectsByUserId(userId)
-					console.log(`[HACKATIME-SYNC]   Fetched ${adminProjects?.length ?? 0} admin projects for userId=${userId}`)
-
 					if (adminProjects) {
 						for (const name of projectNames) {
 							const found = adminProjects.find(p => p.name === name)
 							if (found) {
 								totalSeconds += found.total_duration
-								console.log(`[HACKATIME-SYNC]   MATCH "${name}": ${found.total_duration}s (${Math.round(found.total_duration / 3600 * 10) / 10}h)`)
-							} else {
-								console.log(`[HACKATIME-SYNC]   NO MATCH "${name}": not found in admin projects`)
 							}
 						}
 					}
@@ -322,33 +298,28 @@ async function syncAllProjects(): Promise<void> {
 
 				const hours = Math.round(totalSeconds / 3600 * 10) / 10
 				const newHackatimeProject = migratedEntries.join(',')
-				const formatOk = !needsMigration
-				console.log(`[HACKATIME-SYNC] Project ${project.id} summary: hours=${hours} (was ${project.hours}), needsMigration=${needsMigration}, formatOk=${formatOk}, newFormat="${newHackatimeProject}"`)
 
-				// Update if hours changed or hackatimeProject format needs migration
 				if (hours !== project.hours || (needsMigration && newHackatimeProject !== project.hackatimeProject)) {
 					const updates: { hours: number; updatedAt: Date; hackatimeProject?: string } = { hours, updatedAt: new Date() }
 					if (needsMigration && newHackatimeProject !== project.hackatimeProject) {
 						updates.hackatimeProject = newHackatimeProject
-						console.log(`[HACKATIME-SYNC] MIGRATING project ${project.id}: "${project.hackatimeProject}" -> "${newHackatimeProject}"`)
+						migrated++
+						console.log(`[HACKATIME-SYNC] Migrated project ${project.id}: "${project.hackatimeProject}" -> "${newHackatimeProject}"`)
 					}
 					await db
 						.update(projectsTable)
 						.set(updates)
 						.where(eq(projectsTable.id, project.id))
 					updated++
-					console.log(`[HACKATIME-SYNC] UPDATED project ${project.id}: ${project.hours}h -> ${hours}h`)
-				} else {
-					console.log(`[HACKATIME-SYNC] Project ${project.id}: no changes needed`)
 				}
 			}
 		}
 
 		const elapsed = Date.now() - startTime
-		console.log(`[HACKATIME-SYNC] Completed: ${projects.length} projects, ${updated} updated, ${elapsed}ms`)
+		console.log(`[HACKATIME-SYNC] Completed: ${projects.length} projects, ${updated} updated, ${migrated} migrated, ${elapsed}ms`)
 
 		// Check hour milestones for all users
-		// await checkHourMilestones()
+		await checkHourMilestones()
 	} catch (error) {
 		console.error('[HACKATIME-SYNC] Error:', error)
 	}
@@ -372,10 +343,6 @@ async function checkHourMilestones(): Promise<void> {
 			.from(projectsTable)
 			.where(or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))
 			.groupBy(projectsTable.userId)
-
-		for (const { userId, totalHours } of userHours) {
-			console.log(`[HACKATIME-SYNC] User ${userId}: ${totalHours} total hours (type: ${typeof totalHours})`)
-		}
 
 		// Get existing milestone activities for all users
 		const existingMilestones = await db
