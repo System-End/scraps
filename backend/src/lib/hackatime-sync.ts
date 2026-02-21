@@ -25,6 +25,8 @@ interface HackatimeUser {
 	user_id: number
 	username: string
 	slack_uid?: string
+	banned?: boolean
+	suspected?: boolean
 }
 
 interface HackatimeStatsProject {
@@ -69,11 +71,13 @@ export async function getHackatimeUser(email: string): Promise<HackatimeUser | n
 		})
 		if (!infoResponse.ok) return null
 
-		const info = await infoResponse.json() as { user: { user_id: number; username: string; slack_uid: string | null } }
+		const info = await infoResponse.json() as { user: { user_id: number; username: string; slack_uid: string | null; banned: boolean; suspected: boolean } }
 		const user: HackatimeUser = {
 			user_id: info.user.user_id,
 			username: info.user.username,
-			slack_uid: info.user.slack_uid || undefined
+			slack_uid: info.user.slack_uid || undefined,
+			banned: info.user.banned || false,
+			suspected: info.user.suspected || false
 		}
 		hackatimeUserCache.set(email, user)
 		return user

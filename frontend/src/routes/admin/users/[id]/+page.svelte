@@ -19,7 +19,8 @@
 		Undo2,
 		ShoppingCart,
 		Dices,
-		FileText
+		FileText,
+		ShieldAlert
 	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
@@ -79,6 +80,8 @@
 	let projects = $state<Project[]>([]);
 	let stats = $state<UserStats | null>(null);
 	let bonuses = $state<Bonus[]>([]);
+	let hackatimeSuspected = $state(false);
+	let hackatimeBanned = $state(false);
 	let loading = $state(true);
 	let saving = $state(false);
 	let editingNotes = $state('');
@@ -136,6 +139,8 @@
 				targetUser = result.user;
 				projects = result.projects || [];
 				stats = result.stats;
+				hackatimeSuspected = result.hackatimeSuspected || false;
+				hackatimeBanned = result.hackatimeBanned || false;
 				editingNotes = result.user?.internalNotes || '';
 				editingRole = result.user?.role || 'member';
 			}
@@ -487,6 +492,30 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- Hackatime Status Banners (admin-only) -->
+		{#if hackatimeBanned}
+			<div class="mb-6 rounded-2xl border-4 border-red-600 bg-red-50 p-4">
+				<div class="flex items-center gap-3">
+					<ShieldAlert size={20} class="text-red-600" />
+					<div>
+						<p class="font-bold text-red-800">hackatime banned</p>
+						<p class="text-sm text-red-700">this user is banned on hackatime. they will be redirected to fraud.land on login.</p>
+					</div>
+				</div>
+			</div>
+		{/if}
+		{#if hackatimeSuspected}
+			<div class="mb-6 rounded-2xl border-4 border-orange-500 bg-orange-50 p-4">
+				<div class="flex items-center gap-3">
+					<ShieldAlert size={20} class="text-orange-600" />
+					<div>
+						<p class="font-bold text-orange-800">hackatime suspected</p>
+						<p class="text-sm text-orange-700">this user is flagged as suspected on hackatime. please review their activity carefully.</p>
+					</div>
+				</div>
+			</div>
+		{/if}
 
 		<!-- Stats -->
 		{#if stats}

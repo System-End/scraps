@@ -18,7 +18,7 @@ import { projectActivityTable } from "../schemas/activity";
 import { getUserFromSession } from "../lib/auth";
 import { calculateScrapsFromHours, getUserScrapsBalance, TIER_MULTIPLIERS, DOLLARS_PER_HOUR, SCRAPS_PER_DOLLAR } from "../lib/scraps";
 import { payoutPendingScraps, getNextPayoutDate } from "../lib/scraps-payout";
-import { syncSingleProject } from "../lib/hackatime-sync";
+import { syncSingleProject, getHackatimeUser } from "../lib/hackatime-sync";
 import { computeItemPricing, updateShopItemPricing } from "../lib/shop-pricing";
 import { submitProjectToYSWS } from "../lib/ysws";
 import { notifyProjectReview } from "../lib/slack";
@@ -382,6 +382,21 @@ admin.get("/users/:id", async ({ params, headers, status }) => {
 
     const scrapsBalance = (await getUserScrapsBalance(targetUserId)) || 0;
 
+    // Look up Hackatime status for admin visibility
+    let hackatimeSuspected = false;
+    let hackatimeBanned = false;
+    if (targetUser[0].email) {
+      try {
+        const htUser = await getHackatimeUser(targetUser[0].email);
+        if (htUser) {
+          hackatimeSuspected = htUser.suspected || false;
+          hackatimeBanned = htUser.banned || false;
+        }
+      } catch (e) {
+        console.error("[ADMIN] Failed to look up hackatime user status:", e);
+      }
+    }
+
     return {
       user: {
         id: targetUser[0].id,
@@ -394,6 +409,8 @@ admin.get("/users/:id", async ({ params, headers, status }) => {
         internalNotes: targetUser[0].internalNotes,
         createdAt: targetUser[0].createdAt,
       },
+      hackatimeSuspected,
+      hackatimeBanned,
       projects,
       stats: {
         ...projectStats,
@@ -695,25 +712,17 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
         .where(inArray(usersTable.id, reviewerIds));
     }
 
-    // Look up Hackatime user ID by email
+    // Look up Hackatime user info by email
     let hackatimeUserId: number | null = null;
+    let hackatimeSuspected = false;
+    let hackatimeBanned = false;
     if (projectUser[0]?.email) {
       try {
-        const htResponse = await fetch(
-          "https://hackatime.hackclub.com/api/admin/v1/user/get_user_by_email",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${config.hackatimeAdminKey}`,
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify({ email: projectUser[0].email }),
-          },
-        );
-        if (htResponse.ok) {
-          const htData = (await htResponse.json()) as { user_id: number };
-          hackatimeUserId = htData.user_id;
+        const htUser = await getHackatimeUser(projectUser[0].email);
+        if (htUser) {
+          hackatimeUserId = htUser.user_id;
+          hackatimeSuspected = htUser.suspected || false;
+          hackatimeBanned = htUser.banned || false;
         }
       } catch (e) {
         console.error("[ADMIN] Failed to look up hackatime user:", e);
@@ -736,6 +745,8 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
     return {
       project: maskedProject,
       hackatimeUserId,
+      hackatimeSuspected,
+      hackatimeBanned,
       user: projectUser[0]
         ? {
           id: projectUser[0].id,
@@ -1161,25 +1172,17 @@ admin.get("/second-pass/:id", async ({ params, headers }) => {
         .where(inArray(usersTable.id, reviewerIds));
     }
 
-    // Look up Hackatime user ID by email
+    // Look up Hackatime user info by email
     let hackatimeUserId: number | null = null;
+    let hackatimeSuspected = false;
+    let hackatimeBanned = false;
     if (projectUser[0]?.email) {
       try {
-        const htResponse = await fetch(
-          "https://hackatime.hackclub.com/api/admin/v1/user/get_user_by_email",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${config.hackatimeAdminKey}`,
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify({ email: projectUser[0].email }),
-          },
-        );
-        if (htResponse.ok) {
-          const htData = (await htResponse.json()) as { user_id: number };
-          hackatimeUserId = htData.user_id;
+        const htUser = await getHackatimeUser(projectUser[0].email);
+        if (htUser) {
+          hackatimeUserId = htUser.user_id;
+          hackatimeSuspected = htUser.suspected || false;
+          hackatimeBanned = htUser.banned || false;
         }
       } catch (e) {
         console.error("[ADMIN] Failed to look up hackatime user:", e);
@@ -1194,6 +1197,8 @@ admin.get("/second-pass/:id", async ({ params, headers }) => {
     return {
       project: project[0],
       hackatimeUserId,
+      hackatimeSuspected,
+      hackatimeBanned,
       user: projectUser[0]
         ? {
           id: projectUser[0].id,

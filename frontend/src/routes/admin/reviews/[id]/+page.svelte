@@ -92,6 +92,8 @@
 	let reviews = $state<Review[]>([]);
 	let overlappingProjects = $state<OverlappingProject[]>([]);
 	let hackatimeUserId = $state<number | null>(null);
+	let hackatimeSuspected = $state(false);
+	let hackatimeBanned = $state(false);
 	let loading = $state(true);
 	let submitting = $state(false);
 	let savingNotes = $state(false);
@@ -146,6 +148,8 @@
 				reviews = data.reviews || [];
 				overlappingProjects = data.overlappingProjects || [];
 				hackatimeUserId = data.hackatimeUserId ?? null;
+				hackatimeSuspected = data.hackatimeSuspected || false;
+				hackatimeBanned = data.hackatimeBanned || false;
 				userInternalNotes = data.user?.internalNotes || '';
 
 				// Check if project is deleted
@@ -375,6 +379,30 @@
 		</a>
 
 		{@const isReviewable = project.status === 'waiting_for_review'}
+
+		<!-- Hackatime Status Banners (admin-only) -->
+		{#if hackatimeBanned}
+			<div class="mb-6 rounded-2xl border-4 border-red-600 bg-red-50 p-4">
+				<div class="flex items-center gap-3">
+					<ShieldAlert size={20} class="text-red-600" />
+					<div>
+						<p class="font-bold text-red-800">hackatime banned</p>
+						<p class="text-sm text-red-700">this user is banned on hackatime. they will be redirected to fraud.land on login.</p>
+					</div>
+				</div>
+			</div>
+		{/if}
+		{#if hackatimeSuspected}
+			<div class="mb-6 rounded-2xl border-4 border-orange-500 bg-orange-50 p-4">
+				<div class="flex items-center gap-3">
+					<ShieldAlert size={20} class="text-orange-600" />
+					<div>
+						<p class="font-bold text-orange-800">hackatime suspected</p>
+						<p class="text-sm text-orange-700">this user is flagged as suspected on hackatime. please review their activity carefully.</p>
+					</div>
+				</div>
+			</div>
+		{/if}
 
 		<!-- Status Banner (shown when project is not waiting for review) -->
 		{#if !isReviewable}

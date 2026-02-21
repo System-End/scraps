@@ -11,6 +11,7 @@ import {
 import { config } from "../config"
 import { getUserScrapsBalance } from "../lib/scraps"
 import { getNextPayoutDate } from "../lib/scraps-payout"
+import { getHackatimeUser } from "../lib/hackatime-sync"
 import { db } from "../db"
 import { userActivityTable } from "../schemas/user-emails"
 import { userBonusesTable } from "../schemas/users"
@@ -96,6 +97,17 @@ authRoutes.get("/callback", async ({ query, redirect }) => {
         if (user.role === 'banned') {
             console.log("[AUTH] Banned user attempted login:", { userId: user.id, username: user.username })
             return redirect('https://fraud.land')
+        }
+
+        // Check if user is banned on Hackatime
+        try {
+            const hackatimeUser = await getHackatimeUser(identity.primary_email)
+            if (hackatimeUser?.banned) {
+                console.log("[AUTH] Hackatime-banned user attempted login:", { userId: user.id, username: user.username, hackatimeUserId: hackatimeUser.user_id })
+                return redirect('https://fraud.land')
+            }
+        } catch (e) {
+            console.error("[AUTH] Failed to check Hackatime ban status:", e)
         }
 
         const sessionToken = await createSession(user.id)
