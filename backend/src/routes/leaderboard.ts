@@ -3,9 +3,24 @@ import { db } from '../db'
 import { usersTable } from '../schemas/users'
 import { projectsTable } from '../schemas/projects'
 import { shopItemsTable, refineryOrdersTable, shopPenaltiesTable } from '../schemas/shop'
-import { sql, desc, eq, and, or, isNull } from 'drizzle-orm'
+import { sql, desc, eq, and, or, isNull, ne } from 'drizzle-orm'
+import { getHackatimeUser } from '../lib/hackatime-sync'
 
 const leaderboard = new Elysia({ prefix: '/leaderboard' })
+
+async function filterHackatimeBanned<T extends { email: string }>(users: T[]): Promise<T[]> {
+	const filtered: T[] = []
+	for (const user of users) {
+		try {
+			const htUser = await getHackatimeUser(user.email)
+			if (htUser?.banned) continue
+		} catch {
+			// If lookup fails, don't exclude the user
+		}
+		filtered.push(user)
+	}
+	return filtered
+}
 
 leaderboard.get('/', async ({ query }) => {
 	const sortBy = query.sortBy || 'scraps'
@@ -16,6 +31,7 @@ leaderboard.get('/', async ({ query }) => {
 				id: usersTable.id,
 				username: usersTable.username,
 				avatar: usersTable.avatar,
+				email: usersTable.email,
 				scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND scraps_paid_at IS NOT NULL AND status != 'permanently_rejected'), 0)`.as('scraps_earned'),
 				scrapsBonus: sql<number>`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as('scraps_bonus'),
 				scrapsShopSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_shop_spent'),
@@ -29,11 +45,14 @@ leaderboard.get('/', async ({ query }) => {
 				or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
 				sql`${projectsTable.status} != 'permanently_rejected'`
 			))
+			.where(ne(usersTable.role, 'banned'))
 			.groupBy(usersTable.id)
 			.orderBy(desc(sql`total_hours`))
-			.limit(10)
+			.limit(20)
 
-		return results.map((user, index) => ({
+		const filtered = await filterHackatimeBanned(results)
+
+		return filtered.slice(0, 10).map((user, index) => ({
 			rank: index + 1,
 			id: user.id,
 			username: user.username,
@@ -50,6 +69,7 @@ leaderboard.get('/', async ({ query }) => {
 			id: usersTable.id,
 			username: usersTable.username,
 			avatar: usersTable.avatar,
+			email: usersTable.email,
 			scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND scraps_paid_at IS NOT NULL AND status != 'permanently_rejected'), 0)`.as('scraps_earned'),
 			scrapsBonus: sql<number>`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as('scraps_bonus'),
 			scrapsShopSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_shop_spent'),
@@ -63,11 +83,14 @@ leaderboard.get('/', async ({ query }) => {
 			or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
 			sql`${projectsTable.status} != 'permanently_rejected'`
 		))
+		.where(ne(usersTable.role, 'banned'))
 		.groupBy(usersTable.id)
 		.orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND scraps_paid_at IS NOT NULL AND status != 'permanently_rejected'), 0) + COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(cost) FROM refinery_spending_history WHERE user_id = ${usersTable.id}), 0)`))
-		.limit(10)
+		.limit(20)
 
-	return results.map((user, index) => ({
+	const filtered = await filterHackatimeBanned(results)
+
+	return filtered.slice(0, 10).map((user, index) => ({
 		rank: index + 1,
 		id: user.id,
 		username: user.username,
@@ -90,17 +113,33 @@ leaderboard.get('/views', async () => {
 			name: projectsTable.name,
 			image: projectsTable.image,
 			views: projectsTable.views,
-			userId: projectsTable.userId
+			userId: projectsTable.userId,
+			userEmail: usersTable.email,
+			userRole: usersTable.role
 		})
 		.from(projectsTable)
+		.innerJoin(usersTable, eq(projectsTable.userId, usersTable.id))
 		.where(and(
 			eq(projectsTable.status, 'shipped'),
-			or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))
+			or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
+			ne(usersTable.role, 'banned')
 		))
 		.orderBy(desc(projectsTable.views))
-		.limit(10)
+		.limit(20)
 
-	const userIds = [...new Set(results.map(p => p.userId))]
+	// Filter out Hackatime-banned users
+	const filtered: typeof results = []
+	for (const project of results) {
+		try {
+			const htUser = await getHackatimeUser(project.userEmail)
+			if (htUser?.banned) continue
+		} catch {
+			// If lookup fails, don't exclude
+		}
+		filtered.push(project)
+	}
+
+	const userIds = [...new Set(filtered.slice(0, 10).map(p => p.userId))]
 	let users: { id: number; username: string | null; avatar: string | null }[] = []
 	if (userIds.length > 0) {
 		users = await db
@@ -111,7 +150,7 @@ leaderboard.get('/views', async () => {
 
 	const userMap = new Map(users.map(u => [u.id, u]))
 
-	return results.map((project, index) => ({
+	return filtered.slice(0, 10).map((project, index) => ({
 		rank: index + 1,
 		id: project.id,
 		name: project.name,
