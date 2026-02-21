@@ -870,10 +870,10 @@
 								formRollCostOverride = val === '' ? null : parseInt(val) || null;
 							}}
 							min="1"
-							placeholder="auto (base: {Math.max(
+							placeholder="auto (base {Math.max(
 								1,
 								Math.round(formPrice * (formBaseProbability / 100))
-							)} / +1: {Math.max(
+							)} / +1 {Math.max(
 								1,
 								Math.round(formPrice * (Math.min(100, formBaseProbability + formBoostAmount) / 100))
 							)})"
@@ -892,20 +892,13 @@
 						{/if}
 					</div>
 					<p class="mt-1 text-xs text-gray-500">
-						leave empty for auto — displays both base and next-upgrade roll costs:
-						<span class="font-bold"
-							>base = {Math.max(1, Math.round(formPrice * (formBaseProbability / 100)))} scraps</span
-						>
-						<span class="text-gray-500"> · </span>
-						<span class="font-bold"
-							>+1 upgrade = {Math.max(
-								1,
-								Math.round(formPrice * (Math.min(100, formBaseProbability + formBoostAmount) / 100))
-							)} scraps</span
-						>
-						<span class="ml-2 text-xs text-gray-500"
-							>(shop roll at runtime uses effective% including upgrades)</span
-						>
+						auto shows base / +1 roll — e.g. base {Math.max(
+							1,
+							Math.round(formPrice * (formBaseProbability / 100))
+						)} / +1 {Math.max(
+							1,
+							Math.round(formPrice * (Math.min(100, formBaseProbability + formBoostAmount) / 100))
+						)}. (shop uses effective% at roll time)
 					</p>
 				</div>
 
