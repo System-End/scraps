@@ -108,7 +108,7 @@ export function calculateRollCost(
 
 const UPGRADE_START_PERCENT = 0.25;
 const UPGRADE_DECAY = 1.05;
-const UPGRADE_MAX_BUDGET_MULTIPLIER = 2;
+const UPGRADE_MAX_BUDGET_MULTIPLIER = 3;
 
 export function getUpgradeCost(price: number, upgradeCount: number, actualSpent?: number): number | null {
   const maxBudget = price * UPGRADE_MAX_BUDGET_MULTIPLIER;
