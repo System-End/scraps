@@ -83,6 +83,15 @@ shop.get("/items", async ({ headers }) => {
       .where(eq(shopRollsTable.userId, user.id))
       .groupBy(shopRollsTable.shopItemId);
 
+    const userRefinerySpending = await db
+      .select({
+        shopItemId: refinerySpendingHistoryTable.shopItemId,
+        totalSpent: sql<number>`COALESCE(SUM(${refinerySpendingHistoryTable.cost}), 0)`,
+      })
+      .from(refinerySpendingHistoryTable)
+      .where(eq(refinerySpendingHistoryTable.userId, user.id))
+      .groupBy(refinerySpendingHistoryTable.shopItemId);
+
     const heartedIds = new Set(userHearts.map((h) => h.shopItemId));
     const boostMap = new Map(
       userBoosts.map((b) => [
@@ -99,6 +108,9 @@ shop.get("/items", async ({ headers }) => {
     const rollCountMap = new Map(
       userRollCounts.map((r) => [r.shopItemId, Number(r.rollCount)]),
     );
+    const refinerySpentMap = new Map(
+      userRefinerySpending.map((s) => [s.shopItemId, Number(s.totalSpent)]),
+    );
 
     return items.map((item) => {
       const boostData = boostMap.get(item.id) ?? {
@@ -110,10 +122,11 @@ shop.get("/items", async ({ headers }) => {
         (item.baseProbability * penaltyMultiplier) / 100,
       );
       const maxBoost = 100 - adjustedBaseProbability;
+      const actualSpent = refinerySpentMap.get(item.id) ?? 0;
       const nextUpgradeCost =
         boostData.boostPercent >= maxBoost
           ? null
-          : getUpgradeCost(item.price, boostData.upgradeCount);
+          : getUpgradeCost(item.price, boostData.upgradeCount, actualSpent);
       return {
         ...item,
         heartCount: Number(item.heartCount) || 0,
@@ -899,7 +912,20 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
         );
       const upgradeCount = Number(upgradeCountResult[0]?.count) || 0;
 
-      const upgradeCost = getUpgradeCost(item.price, upgradeCount);
+      const actualSpentResult = await tx
+        .select({
+          total: sql<number>`COALESCE(SUM(${refinerySpendingHistoryTable.cost}), 0)`,
+        })
+        .from(refinerySpendingHistoryTable)
+        .where(
+          and(
+            eq(refinerySpendingHistoryTable.userId, user.id),
+            eq(refinerySpendingHistoryTable.shopItemId, itemId),
+          ),
+        );
+      const actualSpent = Number(actualSpentResult[0]?.total) || 0;
+
+      const upgradeCost = getUpgradeCost(item.price, upgradeCount, actualSpent);
       if (upgradeCost === null) {
         throw { type: "max_upgrades" };
       }
@@ -933,7 +959,7 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
       const nextCost =
         newBoost >= maxBoost
           ? null
-          : getUpgradeCost(item.price, newUpgradeCount);
+          : getUpgradeCost(item.price, newUpgradeCount, actualSpent + cost);
 
       return {
         boostPercent: newBoost,
@@ -1331,13 +1357,24 @@ shop.post("/items/:id/refinery/undo", async ({ params, headers }) => {
         (item[0].baseProbability * penaltyMultiplier) / 100,
       );
       const maxBoost = 100 - adjustedBaseProbability;
+
+      const spentAfterUndo = await tx
+        .select({
+          total: sql<number>`COALESCE(SUM(${refinerySpendingHistoryTable.cost}), 0)`,
+        })
+        .from(refinerySpendingHistoryTable)
+        .where(
+          and(
+            eq(refinerySpendingHistoryTable.userId, user.id),
+            eq(refinerySpendingHistoryTable.shopItemId, itemId),
+          ),
+        );
+      const actualSpent = Number(spentAfterUndo[0]?.total) || 0;
+
       const nextCost =
         newBoostPercent >= maxBoost
           ? null
-          : Math.floor(
-              item[0].baseUpgradeCost *
-                Math.pow(item[0].costMultiplier / 100, newUpgradeCount),
-            );
+          : getUpgradeCost(item[0].price, newUpgradeCount, actualSpent);
 
       return {
         boostPercent: newBoostPercent,
@@ -1495,13 +1532,24 @@ shop.post("/items/:id/refinery/undo-all", async ({ params, headers }) => {
         (item[0].baseProbability * penaltyMultiplier) / 100,
       );
       const maxBoost = 100 - adjustedBaseProbability;
+
+      const spentAfterUndo = await tx
+        .select({
+          total: sql<number>`COALESCE(SUM(${refinerySpendingHistoryTable.cost}), 0)`,
+        })
+        .from(refinerySpendingHistoryTable)
+        .where(
+          and(
+            eq(refinerySpendingHistoryTable.userId, user.id),
+            eq(refinerySpendingHistoryTable.shopItemId, itemId),
+          ),
+        );
+      const actualSpent = Number(spentAfterUndo[0]?.total) || 0;
+
       const nextCost =
         newBoostPercent >= maxBoost
           ? null
-          : Math.floor(
-              item[0].baseUpgradeCost *
-                Math.pow(item[0].costMultiplier / 100, newUpgradeCount),
-            );
+          : getUpgradeCost(item[0].price, newUpgradeCount, actualSpent);
 
       return {
         boostPercent: newBoostPercent,

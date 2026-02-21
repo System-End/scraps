@@ -110,12 +110,9 @@ const UPGRADE_START_PERCENT = 0.25;
 const UPGRADE_DECAY = 1.05;
 const UPGRADE_MAX_BUDGET_MULTIPLIER = 2;
 
-export function getUpgradeCost(price: number, upgradeCount: number): number | null {
+export function getUpgradeCost(price: number, upgradeCount: number, actualSpent?: number): number | null {
   const maxBudget = price * UPGRADE_MAX_BUDGET_MULTIPLIER;
-  let cumulative = 0;
-  for (let i = 0; i < upgradeCount; i++) {
-    cumulative += Math.max(1, Math.floor(price * UPGRADE_START_PERCENT / Math.pow(UPGRADE_DECAY, i)));
-  }
+  const cumulative = actualSpent ?? 0;
   if (cumulative >= maxBudget) return null;
   const nextCost = Math.max(1, Math.floor(price * UPGRADE_START_PERCENT / Math.pow(UPGRADE_DECAY, upgradeCount)));
   if (cumulative + nextCost > maxBudget) {
