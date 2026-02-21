@@ -52,12 +52,12 @@ hackatime.get('/projects', async ({ headers }) => {
 			return { projects: [] }
 		}
 
-		const { user_id } = await emailResponse.json() as { user_id: number }
-		console.log('[HACKATIME] Found hackatime user_id:', user_id, 'for email:', user.email)
+		const { user_id: hackatimeUserId } = await emailResponse.json() as { user_id: number }
+		console.log('[HACKATIME] Found hackatime user_id:', hackatimeUserId, 'for email:', user.email)
 
 		// Step 2: Get projects via admin endpoint with start_date
 		const projectsParams = new URLSearchParams({
-			user_id: String(user_id),
+			user_id: String(hackatimeUserId),
 			start_date: SCRAPS_START_DATE
 		})
 		const projectsUrl = `${HACKATIME_ADMIN_API}/user/projects?${projectsParams}`
@@ -82,6 +82,7 @@ hackatime.get('/projects', async ({ headers }) => {
 
 		return {
 			slackId: user.slackId,
+			hackatimeUserId,
 			projects: projects.map((p) => ({
 				name: p.name,
 				hours: Math.round(p.total_duration / 3600 * 10) / 10,

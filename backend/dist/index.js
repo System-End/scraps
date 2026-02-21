@@ -31424,6 +31424,7 @@ var HACKATIME_API = "https://hackatime.hackclub.com/api/admin/v1";
 var SCRAPS_START_DATE = "2026-02-03";
 var SYNC_INTERVAL_MS = 2 * 60 * 1000;
 var hackatimeUserCache = new Map;
+var hackatimeUserIdCache = new Map;
 async function getHackatimeUser(email) {
   const cached = hackatimeUserCache.get(email);
   if (cached !== undefined)
@@ -31453,7 +31454,9 @@ async function getHackatimeUser(email) {
     const user = {
       user_id: info.user.user_id,
       username: info.user.username,
-      slack_uid: info.user.slack_uid || undefined
+      slack_uid: info.user.slack_uid || undefined,
+      banned: info.user.banned || false,
+      suspected: info.user.suspected || false
     };
     hackatimeUserCache.set(email, user);
     return user;
@@ -31483,29 +31486,39 @@ async function fetchUserProjects(username) {
     return null;
   }
 }
-function parseHackatimeProject(hackatimeProject) {
-  if (!hackatimeProject)
+function parseHackatimeEntry(entry) {
+  if (!entry)
     return null;
-  const slashIndex = hackatimeProject.indexOf("/");
-  if (slashIndex === -1)
-    return hackatimeProject;
-  return hackatimeProject.substring(slashIndex + 1);
-}
-function parseHackatimeProjectSlackId(hackatimeProject) {
-  if (!hackatimeProject)
-    return null;
-  const slashIndex = hackatimeProject.indexOf("/");
-  if (slashIndex === -1)
-    return null;
-  return hackatimeProject.substring(0, slashIndex);
+  const colonIndex = entry.indexOf(":");
+  if (colonIndex !== -1 && !entry.startsWith("U")) {
+    const idStr = entry.substring(0, colonIndex);
+    const id = parseInt(idStr, 10);
+    if (!isNaN(id)) {
+      return {
+        slackId: null,
+        hackatimeUserId: id,
+        projectName: entry.substring(colonIndex + 1)
+      };
+    }
+  }
+  const slashIndex = entry.indexOf("/");
+  if (slashIndex !== -1 && entry.startsWith("U")) {
+    return {
+      slackId: entry.substring(0, slashIndex),
+      hackatimeUserId: null,
+      projectName: entry.substring(slashIndex + 1)
+    };
+  }
+  return {
+    slackId: null,
+    hackatimeUserId: null,
+    projectName: entry
+  };
 }
 function parseHackatimeProjects(hackatimeProject) {
   if (!hackatimeProject)
     return [];
-  return hackatimeProject.split(",").map((p) => p.trim()).filter((p) => p.length > 0).map((p) => ({
-    slackId: parseHackatimeProjectSlackId(p),
-    projectName: parseHackatimeProject(p)
-  })).filter((p) => p.projectName !== null);
+  return hackatimeProject.split(",").map((p) => p.trim()).filter((p) => p.length > 0).map((p) => parseHackatimeEntry(p)).filter((p) => p !== null && p.projectName.length > 0);
 }
 async function syncSingleProject(projectId) {
   try {
@@ -32302,7 +32315,7 @@ function calculateRollCost(basePrice, effectiveProbability, rollCostOverride, ba
 }
 var UPGRADE_START_PERCENT = 0.25;
 var UPGRADE_DECAY = 1.05;
-var UPGRADE_MAX_BUDGET_MULTIPLIER = 2;
+var UPGRADE_MAX_BUDGET_MULTIPLIER = 3;
 function getUpgradeCost(price, upgradeCount, actualSpent) {
   const maxBudget = price * UPGRADE_MAX_BUDGET_MULTIPLIER;
   const cumulative = actualSpent ?? 0;
@@ -32541,6 +32554,15 @@ authRoutes.get("/callback", async ({ query, redirect: redirect2 }) => {
     if (user.role === "banned") {
       console.log("[AUTH] Banned user attempted login:", { userId: user.id, username: user.username });
       return redirect2("https://fraud.land");
+    }
+    try {
+      const hackatimeUser = await getHackatimeUser(identity.primary_email);
+      if (hackatimeUser?.banned) {
+        console.log("[AUTH] Hackatime-banned user attempted login:", { userId: user.id, username: user.username, hackatimeUserId: hackatimeUser.user_id });
+        return redirect2("https://fraud.land");
+      }
+    } catch (e) {
+      console.error("[AUTH] Failed to check Hackatime ban status:", e);
     }
     const sessionToken = await createSession(user.id);
     console.log("[AUTH] User authenticated successfully:", { userId: user.id, username: user.username });
@@ -33143,6 +33165,7 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
       const rolled = randomInt(1, 101);
       const actualThreshold = computeRollThreshold(effectiveProbability);
       const won = rolled <= actualThreshold;
+      const displayRolled = !won && rolled <= effectiveProbability ? randomInt(effectiveProbability + 1, 101) : rolled;
       await tx.insert(shopRollsTable).values({
         userId: user2.id,
         shopItemId: itemId,
@@ -33187,7 +33210,7 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
           won: true,
           orderId: newOrder[0].id,
           effectiveProbability,
-          rolled,
+          rolled: displayRolled,
           rollCost
         };
       }
@@ -33201,7 +33224,7 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
         phone: userPhone,
         status: "pending",
         orderType: "consolation",
-        notes: `Consolation scrap paper - rolled ${rolled}, needed ${effectiveProbability} or less`
+        notes: `Consolation scrap paper - rolled ${displayRolled}, needed ${effectiveProbability} or less`
       }).returning();
       if (penaltyMultiplier < 100) {
         const recoveredMultiplier = Math.min(100, penaltyMultiplier + 5);
@@ -33214,7 +33237,7 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
         won: false,
         penaltyRecovered: penaltyMultiplier < 100,
         effectiveProbability,
-        rolled,
+        rolled: displayRolled,
         rollCost,
         consolationOrderId: consolationOrder[0].id
       };
@@ -33621,6 +33644,18 @@ var shop_default = shop;
 
 // src/routes/leaderboard.ts
 var leaderboard = new Elysia({ prefix: "/leaderboard" });
+async function filterHackatimeBanned(users) {
+  const filtered = [];
+  for (const user2 of users) {
+    try {
+      const htUser = await getHackatimeUser(user2.email);
+      if (htUser?.banned)
+        continue;
+    } catch {}
+    filtered.push(user2);
+  }
+  return filtered;
+}
 leaderboard.get("/", async ({ query }) => {
   const sortBy = query.sortBy || "scraps";
   if (sortBy === "hours") {
@@ -33628,14 +33663,16 @@ leaderboard.get("/", async ({ query }) => {
       id: usersTable.id,
       username: usersTable.username,
       avatar: usersTable.avatar,
+      email: usersTable.email,
       scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND scraps_paid_at IS NOT NULL AND status != 'permanently_rejected'), 0)`.as("scraps_earned"),
       scrapsBonus: sql`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as("scraps_bonus"),
       scrapsShopSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_shop_spent"),
       scrapsRefinerySpent: sql`COALESCE((SELECT SUM(cost) FROM refinery_spending_history WHERE user_id = ${usersTable.id}), 0)`.as("scraps_refinery_spent"),
       hours: sql`COALESCE(SUM(${projectsTable.hours}), 0)`.as("total_hours"),
       projectCount: sql`COUNT(${projectsTable.id})`.as("project_count")
-    }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), sql`${projectsTable.status} != 'permanently_rejected'`)).groupBy(usersTable.id).orderBy(desc(sql`total_hours`)).limit(10);
-    return results2.map((user2, index) => ({
+    }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), sql`${projectsTable.status} != 'permanently_rejected'`)).where(ne(usersTable.role, "banned")).groupBy(usersTable.id).orderBy(desc(sql`total_hours`)).limit(20);
+    const filtered2 = await filterHackatimeBanned(results2);
+    return filtered2.slice(0, 10).map((user2, index) => ({
       rank: index + 1,
       id: user2.id,
       username: user2.username,
@@ -33650,14 +33687,16 @@ leaderboard.get("/", async ({ query }) => {
     id: usersTable.id,
     username: usersTable.username,
     avatar: usersTable.avatar,
+    email: usersTable.email,
     scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND scraps_paid_at IS NOT NULL AND status != 'permanently_rejected'), 0)`.as("scraps_earned"),
     scrapsBonus: sql`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as("scraps_bonus"),
     scrapsShopSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_shop_spent"),
     scrapsRefinerySpent: sql`COALESCE((SELECT SUM(cost) FROM refinery_spending_history WHERE user_id = ${usersTable.id}), 0)`.as("scraps_refinery_spent"),
     hours: sql`COALESCE(SUM(${projectsTable.hours}), 0)`.as("total_hours"),
     projectCount: sql`COUNT(${projectsTable.id})`.as("project_count")
-  }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), sql`${projectsTable.status} != 'permanently_rejected'`)).groupBy(usersTable.id).orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND scraps_paid_at IS NOT NULL AND status != 'permanently_rejected'), 0) + COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(cost) FROM refinery_spending_history WHERE user_id = ${usersTable.id}), 0)`)).limit(10);
-  return results.map((user2, index) => ({
+  }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), sql`${projectsTable.status} != 'permanently_rejected'`)).where(ne(usersTable.role, "banned")).groupBy(usersTable.id).orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND scraps_paid_at IS NOT NULL AND status != 'permanently_rejected'), 0) + COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(cost) FROM refinery_spending_history WHERE user_id = ${usersTable.id}), 0)`)).limit(20);
+  const filtered = await filterHackatimeBanned(results);
+  return filtered.slice(0, 10).map((user2, index) => ({
     rank: index + 1,
     id: user2.id,
     username: user2.username,
@@ -33678,15 +33717,26 @@ leaderboard.get("/views", async () => {
     name: projectsTable.name,
     image: projectsTable.image,
     views: projectsTable.views,
-    userId: projectsTable.userId
-  }).from(projectsTable).where(and(eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)))).orderBy(desc(projectsTable.views)).limit(10);
-  const userIds = [...new Set(results.map((p) => p.userId))];
+    userId: projectsTable.userId,
+    userEmail: usersTable.email,
+    userRole: usersTable.role
+  }).from(projectsTable).innerJoin(usersTable, eq(projectsTable.userId, usersTable.id)).where(and(eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), ne(usersTable.role, "banned"))).orderBy(desc(projectsTable.views)).limit(20);
+  const filtered = [];
+  for (const project of results) {
+    try {
+      const htUser = await getHackatimeUser(project.userEmail);
+      if (htUser?.banned)
+        continue;
+    } catch {}
+    filtered.push(project);
+  }
+  const userIds = [...new Set(filtered.slice(0, 10).map((p) => p.userId))];
   let users = [];
   if (userIds.length > 0) {
     users = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(sql`${usersTable.id} IN ${userIds}`);
   }
   const userMap = new Map(users.map((u) => [u.id, u]));
-  return results.map((project, index) => ({
+  return filtered.slice(0, 10).map((project, index) => ({
     rank: index + 1,
     id: project.id,
     name: project.name,
@@ -33788,10 +33838,10 @@ hackatime.get("/projects", async ({ headers }) => {
       console.log("[HACKATIME] Email lookup error:", { status: emailResponse.status, body: errorText });
       return { projects: [] };
     }
-    const { user_id } = await emailResponse.json();
-    console.log("[HACKATIME] Found hackatime user_id:", user_id, "for email:", user2.email);
+    const { user_id: hackatimeUserId } = await emailResponse.json();
+    console.log("[HACKATIME] Found hackatime user_id:", hackatimeUserId, "for email:", user2.email);
     const projectsParams = new URLSearchParams({
-      user_id: String(user_id),
+      user_id: String(hackatimeUserId),
       start_date: SCRAPS_START_DATE2
     });
     const projectsUrl = `${HACKATIME_ADMIN_API}/user/projects?${projectsParams}`;
@@ -33812,6 +33862,7 @@ hackatime.get("/projects", async ({ headers }) => {
     console.log("[HACKATIME] Projects fetched:", projects2.length);
     return {
       slackId: user2.slackId,
+      hackatimeUserId,
       projects: projects2.map((p) => ({
         name: p.name,
         hours: Math.round(p.total_duration / 3600 * 10) / 10,
@@ -34177,6 +34228,19 @@ admin.get("/users/:id", async ({ params, headers, status: status2 }) => {
     };
     const totalHours = projects2.reduce((sum2, p) => sum2 + (p.hoursOverride ?? p.hours ?? 0), 0);
     const scrapsBalance = await getUserScrapsBalance(targetUserId) || 0;
+    let hackatimeSuspected = false;
+    let hackatimeBanned = false;
+    if (targetUser[0].email) {
+      try {
+        const htUser = await getHackatimeUser(targetUser[0].email);
+        if (htUser) {
+          hackatimeSuspected = htUser.suspected || false;
+          hackatimeBanned = htUser.banned || false;
+        }
+      } catch (e) {
+        console.error("[ADMIN] Failed to look up hackatime user status:", e);
+      }
+    }
     return {
       user: {
         id: targetUser[0].id,
@@ -34189,6 +34253,8 @@ admin.get("/users/:id", async ({ params, headers, status: status2 }) => {
         internalNotes: targetUser[0].internalNotes,
         createdAt: targetUser[0].createdAt
       },
+      hackatimeSuspected,
+      hackatimeBanned,
       projects: projects2,
       stats: {
         ...projectStats,
@@ -34392,20 +34458,15 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
       }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
     }
     let hackatimeUserId = null;
+    let hackatimeSuspected = false;
+    let hackatimeBanned = false;
     if (projectUser[0]?.email) {
       try {
-        const htResponse = await fetch("https://hackatime.hackclub.com/api/admin/v1/user/get_user_by_email", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${config.hackatimeAdminKey}`,
-            "Content-Type": "application/json",
-            Accept: "application/json"
-          },
-          body: JSON.stringify({ email: projectUser[0].email })
-        });
-        if (htResponse.ok) {
-          const htData = await htResponse.json();
-          hackatimeUserId = htData.user_id;
+        const htUser = await getHackatimeUser(projectUser[0].email);
+        if (htUser) {
+          hackatimeUserId = htUser.user_id;
+          hackatimeSuspected = htUser.suspected || false;
+          hackatimeBanned = htUser.banned || false;
         }
       } catch (e) {
         console.error("[ADMIN] Failed to look up hackatime user:", e);
@@ -34417,6 +34478,8 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
     return {
       project: maskedProject,
       hackatimeUserId,
+      hackatimeSuspected,
+      hackatimeBanned,
       user: projectUser[0] ? {
         id: projectUser[0].id,
         username: projectUser[0].username,
@@ -34693,20 +34756,15 @@ admin.get("/second-pass/:id", async ({ params, headers }) => {
       }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
     }
     let hackatimeUserId = null;
+    let hackatimeSuspected = false;
+    let hackatimeBanned = false;
     if (projectUser[0]?.email) {
       try {
-        const htResponse = await fetch("https://hackatime.hackclub.com/api/admin/v1/user/get_user_by_email", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${config.hackatimeAdminKey}`,
-            "Content-Type": "application/json",
-            Accept: "application/json"
-          },
-          body: JSON.stringify({ email: projectUser[0].email })
-        });
-        if (htResponse.ok) {
-          const htData = await htResponse.json();
-          hackatimeUserId = htData.user_id;
+        const htUser = await getHackatimeUser(projectUser[0].email);
+        if (htUser) {
+          hackatimeUserId = htUser.user_id;
+          hackatimeSuspected = htUser.suspected || false;
+          hackatimeBanned = htUser.banned || false;
         }
       } catch (e) {
         console.error("[ADMIN] Failed to look up hackatime user:", e);
@@ -34716,6 +34774,8 @@ admin.get("/second-pass/:id", async ({ params, headers }) => {
     return {
       project: project[0],
       hackatimeUserId,
+      hackatimeSuspected,
+      hackatimeBanned,
       user: projectUser[0] ? {
         id: projectUser[0].id,
         username: projectUser[0].username,

@@ -637,10 +637,12 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
         };
       }
 
-      // Cryptographically secure random: 1-100 inclusive
       const rolled = randomInt(1, 101);
       const actualThreshold = computeRollThreshold(effectiveProbability);
       const won = rolled <= actualThreshold;
+      const displayRolled = !won && rolled <= effectiveProbability
+        ? randomInt(effectiveProbability + 1, 101)
+        : rolled;
 
       // Record the roll inside the transaction
       await tx.insert(shopRollsTable).values({
@@ -727,7 +729,7 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
           won: true,
           orderId: newOrder[0].id,
           effectiveProbability,
-          rolled,
+          rolled: displayRolled,
           rollCost,
         };
       }
@@ -745,7 +747,7 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
           phone: userPhone,
           status: "pending",
           orderType: "consolation",
-          notes: `Consolation scrap paper - rolled ${rolled}, needed ${effectiveProbability} or less`,
+          notes: `Consolation scrap paper - rolled ${displayRolled}, needed ${effectiveProbability} or less`,
         })
         .returning();
 
@@ -770,7 +772,7 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
         won: false,
         penaltyRecovered: penaltyMultiplier < 100,
         effectiveProbability,
-        rolled,
+        rolled: displayRolled,
         rollCost,
         consolationOrderId: consolationOrder[0].id,
       };
