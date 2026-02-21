@@ -55,7 +55,6 @@
 	let selectedHackatimeProjects = $state<HackatimeProject[]>([]);
 	let hackatimeProjects = $state<HackatimeProject[]>([]);
 	let userSlackId = $state<string | null>(null);
-	let hackatimeUserId = $state<number | null>(null);
 	let loadingProjects = $state(false);
 	let showDropdown = $state(false);
 	let loading = $state(false);
@@ -97,7 +96,6 @@
 				const data = await response.json();
 				hackatimeProjects = data.projects || [];
 				userSlackId = data.slackId || null;
-				hackatimeUserId = data.hackatimeUserId ?? null;
 			}
 		} catch (e) {
 			console.error('Failed to fetch hackatime projects:', e);
@@ -198,7 +196,7 @@
 		error = null;
 
 		const hackatimeValue = selectedHackatimeProjects.length > 0
-			? selectedHackatimeProjects.map(p => hackatimeUserId != null ? `${hackatimeUserId}:${p.name}` : p.name).join(',')
+			? selectedHackatimeProjects.map(p => p.name).join(',')
 			: null;
 		const finalGithubUrl = githubUrl.trim() || selectedHackatimeProjects[0]?.repoUrl || null;
 

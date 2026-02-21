@@ -6,7 +6,7 @@ import { reviewsTable } from '../schemas/reviews'
 import { usersTable } from '../schemas/users'
 import { projectActivityTable } from '../schemas/activity'
 import { getUserFromSession, fetchUserIdentity } from '../lib/auth'
-import { syncSingleProject } from '../lib/hackatime-sync'
+import { syncSingleProject, getHackatimeUser } from '../lib/hackatime-sync'
 import { notifyProjectSubmitted } from '../lib/slack'
 import { submitProjectToYSWS } from '../lib/ysws'
 import { config } from '../config'
@@ -17,6 +17,53 @@ const ALLOWED_IMAGE_DOMAIN = 'cdn.hackclub.com'
 function parseHackatimeProject(hackatimeProject: string | null): string | null {
 	if (!hackatimeProject) return null
 	return hackatimeProject.trim()
+}
+
+async function prefixHackatimeIds(hackatimeProject: string | null, email: string): Promise<string | null> {
+	if (!hackatimeProject) return null
+	const names = hackatimeProject.split(',').map(p => p.trim()).filter(p => p.length > 0)
+	if (names.length === 0) return null
+
+	// Check if already prefixed (has numeric id: prefix)
+	const alreadyPrefixed = names.every(n => {
+		const colonIdx = n.indexOf(':')
+		return colonIdx !== -1 && !n.startsWith('U') && !isNaN(parseInt(n.substring(0, colonIdx), 10))
+	})
+	if (alreadyPrefixed) return hackatimeProject
+
+	const hackatimeUser = await getHackatimeUser(email)
+	if (!hackatimeUser || typeof hackatimeUser.user_id !== 'number') return hackatimeProject
+
+	return names.map(name => {
+		const colonIdx = name.indexOf(':')
+		if (colonIdx !== -1 && !name.startsWith('U') && !isNaN(parseInt(name.substring(0, colonIdx), 10))) {
+			return name
+		}
+		const slashIdx = name.indexOf('/')
+		if (slashIdx !== -1 && name.startsWith('U')) {
+			name = name.substring(slashIdx + 1)
+		}
+		return `${hackatimeUser.user_id}:${name}`
+	}).join(',')
+}
+
+function stripHackatimeIds(hackatimeProject: string | null): string | null {
+	if (!hackatimeProject) return null
+	return hackatimeProject
+		.split(',')
+		.map(entry => {
+			const trimmed = entry.trim()
+			const colonIdx = trimmed.indexOf(':')
+			if (colonIdx !== -1 && !trimmed.startsWith('U')) {
+				return trimmed.substring(colonIdx + 1)
+			}
+			const slashIdx = trimmed.indexOf('/')
+			if (slashIdx !== -1 && trimmed.startsWith('U')) {
+				return trimmed.substring(slashIdx + 1)
+			}
+			return trimmed
+		})
+		.join(',') || null
 }
 
 function parseHackatimeProjects(hackatimeProject: string | null): string | null {
@@ -196,6 +243,7 @@ projects.get('/', async ({ headers, query }) => {
     return {
         data: projectsList.map(p => ({
             ...p,
+            hackatimeProject: stripHackatimeIds(p.hackatimeProject),
             status: p.status === 'pending_admin_approval' ? 'waiting_for_review' : p.status
         })),
         pagination: {
@@ -367,7 +415,7 @@ projects.get('/:id', async ({ params, headers }) => {
             image: project[0].image,
             githubUrl: project[0].githubUrl,
             playableUrl: project[0].playableUrl,
-            hackatimeProject: isOwner ? project[0].hackatimeProject : undefined,
+            hackatimeProject: isOwner ? stripHackatimeIds(project[0].hackatimeProject) : undefined,
             hours: projectHours,
             hoursOverride: isOwner ? project[0].hoursOverride : undefined,
             tier: project[0].tier,
@@ -410,7 +458,7 @@ projects.post('/', async ({ body, headers }) => {
         return { error: 'Image must be from cdn.hackclub.com' }
     }
 
-    const projectName = parseHackatimeProjects(data.hackatimeProject || null)
+    const projectName = await prefixHackatimeIds(parseHackatimeProjects(data.hackatimeProject || null), user.email)
     const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : 1
 
     const newProject = await db
@@ -441,7 +489,7 @@ projects.post('/', async ({ body, headers }) => {
         action: 'project_created'
     })
 
-    return newProject[0]
+    return { ...newProject[0], hackatimeProject: stripHackatimeIds(newProject[0].hackatimeProject) }
 })
 
 projects.put('/:id', async ({ params, body, headers }) => {
@@ -484,7 +532,7 @@ projects.put('/:id', async ({ params, body, headers }) => {
         return { error: playableCheck.error }
     }
 
-    const projectName = parseHackatimeProjects(data.hackatimeProject || null)
+    const projectName = await prefixHackatimeIds(parseHackatimeProjects(data.hackatimeProject || null), user.email)
     const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : undefined
 
     const updated = await db
@@ -513,7 +561,7 @@ projects.put('/:id', async ({ params, body, headers }) => {
     	updated[0].hours = syncResult.hours
     }
 
-    return updated[0]
+    return { ...updated[0], hackatimeProject: stripHackatimeIds(updated[0].hackatimeProject) }
 })
 
 projects.delete("/:id", async ({ params, headers }) => {
@@ -579,7 +627,7 @@ projects.post("/:id/unsubmit", async ({ params, headers }) => {
         action: 'project_unsubmitted'
     })
 
-    return updated[0]
+    return { ...updated[0], hackatimeProject: stripHackatimeIds(updated[0].hackatimeProject) }
 })
 
 // Submit project for review
@@ -668,7 +716,7 @@ projects.post("/:id/submit", async ({ params, headers, body }) => {
         }
     }
 
-    return updated[0]
+    return { ...updated[0], hackatimeProject: stripHackatimeIds(updated[0].hackatimeProject) }
 })
 
 // Get project reviews (public feedback)

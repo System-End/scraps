@@ -37,7 +37,6 @@
 	let uploadingImage = $state(false);
 	let hackatimeProjects = $state<HackatimeProject[]>([]);
 	let userSlackId = $state<string | null>(null);
-	let hackatimeUserId = $state<number | null>(null);
 	let selectedHackatimeName = $state<string | null>(null);
 	let loadingProjects = $state(false);
 	let showDropdown = $state(false);
@@ -73,7 +72,6 @@
 				const data = await response.json();
 				hackatimeProjects = data.projects || [];
 				userSlackId = data.slackId || null;
-				hackatimeUserId = data.hackatimeUserId ?? null;
 			}
 		} catch (e) {
 			console.error('Failed to fetch hackatime projects:', e);
@@ -87,16 +85,7 @@
 			editedProject = { ...project };
 			imagePreview = project.image;
 			error = null;
-			const raw = project.hackatimeProject || null;
-			if (raw) {
-				const colonIdx = raw.indexOf(':');
-				const slashIdx = raw.indexOf('/');
-				if (colonIdx !== -1 && !raw.startsWith('U')) selectedHackatimeName = raw.substring(colonIdx + 1);
-				else if (slashIdx !== -1 && raw.startsWith('U')) selectedHackatimeName = raw.substring(slashIdx + 1);
-				else selectedHackatimeName = raw;
-			} else {
-				selectedHackatimeName = null;
-			}
+			selectedHackatimeName = project.hackatimeProject || null;
 			fetchHackatimeProjects();
 		}
 	});
@@ -165,9 +154,7 @@
 		loading = true;
 		error = null;
 
-		const hackatimeValue = selectedHackatimeName
-			? (hackatimeUserId != null ? `${hackatimeUserId}:${selectedHackatimeName}` : selectedHackatimeName)
-			: null;
+		const hackatimeValue = selectedHackatimeName || null;
 
 		try {
 			const response = await fetch(`${API_URL}/projects/${editedProject.id}`, {

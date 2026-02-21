@@ -82,7 +82,6 @@ hackatime.get('/projects', async ({ headers }) => {
 
 		return {
 			slackId: user.slackId,
-			hackatimeUserId,
 			projects: projects.map((p) => ({
 				name: p.name,
 				hours: Math.round(p.total_duration / 3600 * 10) / 10,

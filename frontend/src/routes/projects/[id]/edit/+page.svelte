@@ -51,7 +51,6 @@
 	let uploadingImage = $state(false);
 	let hackatimeProjects = $state<HackatimeProject[]>([]);
 	let userSlackId = $state<string | null>(null);
-	let hackatimeUserId = $state<number | null>(null);
 	let selectedHackatimeNames = $state<string[]>([]);
 	let loadingProjects = $state(false);
 	let showDropdown = $state(false);
@@ -106,14 +105,7 @@
 			aiDescription = project?.aiDescription || '';
 			reviewerNotes = project?.reviewerNotes || '';
 			if (project?.hackatimeProject) {
-				selectedHackatimeNames = project.hackatimeProject.split(',').map((p: string) => {
-					p = p.trim();
-					const colonIdx = p.indexOf(':');
-					if (colonIdx !== -1 && !p.startsWith('U')) return p.substring(colonIdx + 1);
-					const slashIdx = p.indexOf('/');
-					if (slashIdx !== -1 && p.startsWith('U')) return p.substring(slashIdx + 1);
-					return p;
-				}).filter((p: string) => p.length > 0);
+				selectedHackatimeNames = project.hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0);
 			}
 			fetchHackatimeProjects();
 		} catch (e) {
@@ -133,7 +125,6 @@
 				const apiData = await response.json();
 				hackatimeProjects = apiData.projects || [];
 				userSlackId = apiData.slackId || null;
-				hackatimeUserId = apiData.hackatimeUserId ?? null;
 			}
 		} catch (e) {
 			console.error('Failed to fetch hackatime projects:', e);
@@ -225,7 +216,7 @@
 		error = null;
 
 		const hackatimeValue = selectedHackatimeNames.length > 0
-			? selectedHackatimeNames.map(n => hackatimeUserId != null ? `${hackatimeUserId}:${n}` : n).join(',')
+			? selectedHackatimeNames.join(',')
 			: null;
 
 		try {
