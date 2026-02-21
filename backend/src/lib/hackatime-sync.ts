@@ -2,7 +2,7 @@ import { db } from '../db'
 import { projectsTable } from '../schemas/projects'
 import { usersTable } from '../schemas/users'
 import { userActivityTable } from '../schemas/user-emails'
-import { isNotNull, and, or, eq, isNull, sql, sum } from 'drizzle-orm'
+import { isNotNull, and, or, eq, isNull, sql } from 'drizzle-orm'
 import { config } from '../config'
 
 const HACKATIME_API = 'https://hackatime.hackclub.com/api/admin/v1'
@@ -29,15 +29,11 @@ interface HackatimeUser {
 	suspected?: boolean
 }
 
-interface HackatimeStatsProject {
-	name: string
-	total_seconds: number
-}
-
-interface HackatimeStatsResponse {
-	data: {
-		projects: HackatimeStatsProject[]
-	}
+interface HackatimeAdminProjectsResponse {
+	user_id: number
+	username: string
+	total_projects: number
+	projects: HackatimeAdminProject[]
 }
 
 // Cache of email -> hackatime user to avoid repeated lookups
@@ -62,7 +58,10 @@ export async function getHackatimeUser(email: string): Promise<HackatimeUser | n
 		})
 		if (!emailResponse.ok) return null
 
-		const { user_id } = await emailResponse.json() as { user_id: number }
+		const emailData = await emailResponse.json() as { user_id: number }
+		console.log(`[HACKATIME] Email lookup response for ${email}:`, JSON.stringify(emailData))
+		const user_id = parseInt(String(emailData.user_id), 10)
+		if (isNaN(user_id)) return null
 
 		// Then get username and slack_uid by user_id
 		const infoResponse = await fetch(`${HACKATIME_API}/user/info?user_id=${user_id}`, {
@@ -73,13 +72,15 @@ export async function getHackatimeUser(email: string): Promise<HackatimeUser | n
 		})
 		if (!infoResponse.ok) return null
 
-		const info = await infoResponse.json() as { user: { user_id: number; username: string; slack_uid: string | null; banned: boolean; suspected: boolean } }
+		const infoData = await infoResponse.json()
+		console.log(`[HACKATIME] User info response for user_id=${user_id}:`, JSON.stringify(infoData))
+		const userObj = infoData.user ?? infoData
 		const user: HackatimeUser = {
-			user_id: info.user.user_id,
-			username: info.user.username,
-			slack_uid: info.user.slack_uid || undefined,
-			banned: info.user.banned || false,
-			suspected: info.user.suspected || false
+			user_id: parseInt(String(userObj.user_id), 10) || user_id,
+			username: userObj.username ?? null,
+			slack_uid: userObj.slack_uid || undefined,
+			banned: userObj.banned || false,
+			suspected: userObj.suspected || false
 		}
 		hackatimeUserCache.set(email, user)
 		return user
@@ -101,13 +102,15 @@ export async function getHackatimeUserById(userId: number): Promise<HackatimeUse
 		})
 		if (!infoResponse.ok) return null
 
-		const info = await infoResponse.json() as { user: { user_id: number; username: string; slack_uid: string | null; banned: boolean; suspected: boolean } }
+		const infoData = await infoResponse.json()
+		console.log(`[HACKATIME] User info response for user_id=${userId}:`, JSON.stringify(infoData))
+		const userObj = infoData.user ?? infoData
 		const user: HackatimeUser = {
-			user_id: info.user.user_id,
-			username: info.user.username,
-			slack_uid: info.user.slack_uid || undefined,
-			banned: info.user.banned || false,
-			suspected: info.user.suspected || false
+			user_id: parseInt(String(userObj.user_id), 10) || userId,
+			username: userObj.username ?? null,
+			slack_uid: userObj.slack_uid || undefined,
+			banned: userObj.banned || false,
+			suspected: userObj.suspected || false
 		}
 		hackatimeUserIdCache.set(userId, user)
 		return user
@@ -116,25 +119,29 @@ export async function getHackatimeUserById(userId: number): Promise<HackatimeUse
 	}
 }
 
-async function fetchUserProjects(username: string): Promise<{ name: string; total_duration: number }[] | null> {
+// Cache of user_id -> admin projects
+const adminProjectsCache = new Map<number, HackatimeAdminProject[]>()
+
+async function fetchUserProjectsByUserId(userId: number): Promise<HackatimeAdminProject[] | null> {
+	if (adminProjectsCache.has(userId)) return adminProjectsCache.get(userId)!
+
 	try {
-		const params = new URLSearchParams({ 
-			features: 'projects',
-			start_date: SCRAPS_START_DATE 
+		const params = new URLSearchParams({
+			user_id: String(userId),
+			start_date: SCRAPS_START_DATE
 		})
-		const response = await fetch(`https://hackatime.hackclub.com/api/v1/users/${encodeURIComponent(username)}/stats?${params}`, {
+		const response = await fetch(`${HACKATIME_API}/user/projects?${params}`, {
 			headers: {
+				'Authorization': `Bearer ${config.hackatimeAdminKey}`,
 				'Accept': 'application/json'
 			}
 		})
 		if (!response.ok) return null
 
-		const data: HackatimeStatsResponse = await response.json()
-		// Convert total_seconds to total_duration for compatibility with existing code
-		return (data.data?.projects || []).map(p => ({
-			name: p.name,
-			total_duration: p.total_seconds
-		}))
+		const data: HackatimeAdminProjectsResponse = await response.json()
+		const projects = data.projects || []
+		adminProjectsCache.set(userId, projects)
+		return projects
 	} catch {
 		return null
 	}
@@ -150,6 +157,7 @@ function parseHackatimeEntry(entry: string): ParsedHackatimeEntry | null {
 	if (!entry) return null
 
 	// New format: "123:projectName" (numeric hackatime user ID with colon)
+	// Also handles broken "undefined:projectName" or "null:projectName" from previous bugs
 	const colonIndex = entry.indexOf(':')
 	if (colonIndex !== -1 && !entry.startsWith('U')) {
 		const idStr = entry.substring(0, colonIndex)
@@ -160,6 +168,12 @@ function parseHackatimeEntry(entry: string): ParsedHackatimeEntry | null {
 				hackatimeUserId: id,
 				projectName: entry.substring(colonIndex + 1)
 			}
+		}
+		// Broken prefix (e.g. "undefined:projectName") — treat as plain name needing migration
+		return {
+			slackId: null,
+			hackatimeUserId: null,
+			projectName: entry.substring(colonIndex + 1)
 		}
 	}
 
@@ -195,6 +209,11 @@ async function syncAllProjects(): Promise<void> {
 	console.log('[HACKATIME-SYNC] Starting sync...')
 	const startTime = Date.now()
 
+	// Clear caches at start of each sync run
+	hackatimeUserCache.clear()
+	hackatimeUserIdCache.clear()
+	adminProjectsCache.clear()
+
 	try {
 		// Get all projects with hackatime projects that are not deleted and not shipped, joined with user email
 		const projects = await db
@@ -223,79 +242,79 @@ async function syncAllProjects(): Promise<void> {
 
 		let updated = 0
 
-		// Cache of identifier -> projects data to avoid refetching
-		const projectsCache = new Map<string, { name: string; total_duration: number }[]>()
-
-		async function getProjectsForIdentifier(ident: string): Promise<{ name: string; total_duration: number }[] | null> {
-			if (projectsCache.has(ident)) return projectsCache.get(ident)!
-			const data = await fetchUserProjects(ident)
-			if (data) projectsCache.set(ident, data)
-			return data
-		}
-
 		for (const [email, userProjects] of projectsByEmail) {
-			// Look up hackatime user by email (may fail for some users)
+			// Look up hackatime user by email
 			const hackatimeUser = await getHackatimeUser(email)
-			const emailIdentifier = hackatimeUser ? (hackatimeUser.slack_uid || hackatimeUser.username) : null
+			console.log(`[HACKATIME-SYNC] User ${email}: hackatimeUser=${hackatimeUser ? `id=${hackatimeUser.user_id}, username=${hackatimeUser.username}` : 'NOT FOUND'}`)
 
 			// Match each scraps project to its hackatime project(s)
 			for (const project of userProjects) {
 				const entries = parseHackatimeProjects(project.hackatimeProject)
-				if (entries.length === 0) continue
+				console.log(`[HACKATIME-SYNC] Project ${project.id}: raw="${project.hackatimeProject}", parsed ${entries.length} entries`)
+
+				if (entries.length === 0) {
+					console.log(`[HACKATIME-SYNC] Project ${project.id}: SKIP - no valid entries parsed`)
+					continue
+				}
 
 				let totalSeconds = 0
 				let needsMigration = false
 				const migratedEntries: string[] = []
 
-				// Group entries by resolved identifier to batch lookups
-				const entriesByIdentifier = new Map<string, string[]>()
+				// Group entries by resolved hackatime user_id to batch admin API lookups
+				const entriesByUserId = new Map<number, string[]>()
 				for (const entry of entries) {
-					let key: string | null = null
-					let resolvedHackatimeUserId: number | null = entry.hackatimeUserId
+					let resolvedUserId: number | null = null
+					let entryFormat: string
 
 					if (entry.hackatimeUserId) {
-						// Already new format
-						const htUser = await getHackatimeUserById(entry.hackatimeUserId)
-						key = htUser ? (htUser.slack_uid || htUser.username) : emailIdentifier
+						entryFormat = `NEW (userId=${entry.hackatimeUserId})`
+						resolvedUserId = entry.hackatimeUserId
 						migratedEntries.push(`${entry.hackatimeUserId}:${entry.projectName}`)
-					} else {
-						// Old format (slackId/ or plain name) - needs migration
+					} else if (entry.slackId) {
+						entryFormat = `OLD_SLACK (slackId=${entry.slackId})`
 						needsMigration = true
-
-						if (entry.slackId) {
-							key = entry.slackId
+						if (hackatimeUser && typeof hackatimeUser.user_id === 'number') {
+							resolvedUserId = hackatimeUser.user_id
+							migratedEntries.push(`${hackatimeUser.user_id}:${entry.projectName}`)
 						} else {
-							key = emailIdentifier
+							migratedEntries.push(`${entry.slackId}/${entry.projectName}`)
 						}
-
-						// Try to resolve hackatime user ID for migration
-						if (hackatimeUser) {
-							resolvedHackatimeUserId = hackatimeUser.user_id
-						}
-
-						if (resolvedHackatimeUserId) {
-							migratedEntries.push(`${resolvedHackatimeUserId}:${entry.projectName}`)
+					} else {
+						entryFormat = 'PLAIN/BROKEN (no prefix)'
+						needsMigration = true
+						if (hackatimeUser && typeof hackatimeUser.user_id === 'number') {
+							resolvedUserId = hackatimeUser.user_id
+							migratedEntries.push(`${hackatimeUser.user_id}:${entry.projectName}`)
 						} else {
-							// Can't resolve, keep as-is
 							migratedEntries.push(entry.projectName)
 						}
 					}
 
-					if (!key) continue
+					console.log(`[HACKATIME-SYNC]   Entry "${entry.projectName}": format=${entryFormat}, resolvedUserId=${resolvedUserId}, migrated="${migratedEntries[migratedEntries.length - 1]}"`)
 
-					const existing = entriesByIdentifier.get(key) || []
+					if (resolvedUserId === null) {
+						console.log(`[HACKATIME-SYNC]   Entry "${entry.projectName}": SKIP - could not resolve user ID`)
+						continue
+					}
+
+					const existing = entriesByUserId.get(resolvedUserId) || []
 					existing.push(entry.projectName)
-					entriesByIdentifier.set(key, existing)
+					entriesByUserId.set(resolvedUserId, existing)
 				}
 
-				for (const [entryIdentifier, projectNames] of entriesByIdentifier) {
-					const projectsData = await getProjectsForIdentifier(entryIdentifier)
+				for (const [userId, projectNames] of entriesByUserId) {
+					const adminProjects = await fetchUserProjectsByUserId(userId)
+					console.log(`[HACKATIME-SYNC]   Fetched ${adminProjects?.length ?? 0} admin projects for userId=${userId}`)
 
-					if (projectsData) {
+					if (adminProjects) {
 						for (const name of projectNames) {
-							const found = projectsData.find(p => p.name === name)
+							const found = adminProjects.find(p => p.name === name)
 							if (found) {
 								totalSeconds += found.total_duration
+								console.log(`[HACKATIME-SYNC]   MATCH "${name}": ${found.total_duration}s (${Math.round(found.total_duration / 3600 * 10) / 10}h)`)
+							} else {
+								console.log(`[HACKATIME-SYNC]   NO MATCH "${name}": not found in admin projects`)
 							}
 						}
 					}
@@ -303,19 +322,24 @@ async function syncAllProjects(): Promise<void> {
 
 				const hours = Math.round(totalSeconds / 3600 * 10) / 10
 				const newHackatimeProject = migratedEntries.join(',')
+				const formatOk = !needsMigration
+				console.log(`[HACKATIME-SYNC] Project ${project.id} summary: hours=${hours} (was ${project.hours}), needsMigration=${needsMigration}, formatOk=${formatOk}, newFormat="${newHackatimeProject}"`)
 
 				// Update if hours changed or hackatimeProject format needs migration
 				if (hours !== project.hours || (needsMigration && newHackatimeProject !== project.hackatimeProject)) {
 					const updates: { hours: number; updatedAt: Date; hackatimeProject?: string } = { hours, updatedAt: new Date() }
 					if (needsMigration && newHackatimeProject !== project.hackatimeProject) {
 						updates.hackatimeProject = newHackatimeProject
-						console.log(`[HACKATIME-SYNC] Migrated project ${project.id}: "${project.hackatimeProject}" -> "${newHackatimeProject}"`)
+						console.log(`[HACKATIME-SYNC] MIGRATING project ${project.id}: "${project.hackatimeProject}" -> "${newHackatimeProject}"`)
 					}
 					await db
 						.update(projectsTable)
 						.set(updates)
 						.where(eq(projectsTable.id, project.id))
 					updated++
+					console.log(`[HACKATIME-SYNC] UPDATED project ${project.id}: ${project.hours}h -> ${hours}h`)
+				} else {
+					console.log(`[HACKATIME-SYNC] Project ${project.id}: no changes needed`)
 				}
 			}
 		}
@@ -324,7 +348,7 @@ async function syncAllProjects(): Promise<void> {
 		console.log(`[HACKATIME-SYNC] Completed: ${projects.length} projects, ${updated} updated, ${elapsed}ms`)
 
 		// Check hour milestones for all users
-		await checkHourMilestones()
+		// await checkHourMilestones()
 	} catch (error) {
 		console.error('[HACKATIME-SYNC] Error:', error)
 	}
@@ -426,39 +450,68 @@ export async function syncSingleProject(projectId: number): Promise<{ hours: num
 		if (entries.length === 0) return { hours: project.hours ?? 0, updated: false, error: 'Invalid Hackatime project format' }
 
 		const hackatimeUser = await getHackatimeUser(project.userEmail)
-		if (hackatimeUser === null) return { hours: project.hours ?? 0, updated: false, error: 'Could not find Hackatime user' }
-
-		const identifier = hackatimeUser.slack_uid || hackatimeUser.username
 
 		let totalSeconds = 0
+		const migratedEntries: string[] = []
+		let needsMigration = false
 
-		// Group entries by slackId to batch lookups for different users
-		const entriesBySlackId = new Map<string, string[]>()
+		// Group entries by resolved hackatime user_id
+		const entriesByUserId = new Map<number, string[]>()
 		for (const entry of entries) {
-			const key = entry.slackId || identifier
-			const existing = entriesBySlackId.get(key) || []
+			let resolvedUserId: number | null = null
+
+			if (entry.hackatimeUserId) {
+				resolvedUserId = entry.hackatimeUserId
+				migratedEntries.push(`${entry.hackatimeUserId}:${entry.projectName}`)
+			} else {
+				needsMigration = true
+				if (hackatimeUser && typeof hackatimeUser.user_id === 'number') {
+					resolvedUserId = hackatimeUser.user_id
+					migratedEntries.push(`${hackatimeUser.user_id}:${entry.projectName}`)
+				} else {
+					if (entry.slackId) {
+						migratedEntries.push(`${entry.slackId}/${entry.projectName}`)
+					} else {
+						migratedEntries.push(entry.projectName)
+					}
+				}
+			}
+
+			if (resolvedUserId === null) continue
+
+			const existing = entriesByUserId.get(resolvedUserId) || []
 			existing.push(entry.projectName)
-			entriesBySlackId.set(key, existing)
+			entriesByUserId.set(resolvedUserId, existing)
 		}
 
-		for (const [entryIdentifier, projectNames] of entriesBySlackId) {
-			const projectsData = await fetchUserProjects(entryIdentifier)
-			if (projectsData === null) continue
+		if (entriesByUserId.size === 0) {
+			return { hours: project.hours ?? 0, updated: false, error: 'Could not find Hackatime user' }
+		}
+
+		for (const [userId, projectNames] of entriesByUserId) {
+			const adminProjects = await fetchUserProjectsByUserId(userId)
+			if (adminProjects === null) continue
 
 			for (const name of projectNames) {
-				const hackatimeProject = projectsData.find(p => p.name === name)
-				if (hackatimeProject) {
-					totalSeconds += hackatimeProject.total_duration
+				const found = adminProjects.find(p => p.name === name)
+				if (found) {
+					totalSeconds += found.total_duration
 				}
 			}
 		}
 
 		const hours = Math.round(totalSeconds / 3600 * 10) / 10
+		const newHackatimeProject = migratedEntries.join(',')
 
-		if (hours !== project.hours) {
+		if (hours !== project.hours || (needsMigration && newHackatimeProject !== project.hackatimeProject)) {
+			const updates: { hours: number; updatedAt: Date; hackatimeProject?: string } = { hours, updatedAt: new Date() }
+			if (needsMigration && newHackatimeProject !== project.hackatimeProject) {
+				updates.hackatimeProject = newHackatimeProject
+				console.log(`[HACKATIME-SYNC] Migrated project ${projectId}: "${project.hackatimeProject}" -> "${newHackatimeProject}"`)
+			}
 			await db
 				.update(projectsTable)
-				.set({ hours, updatedAt: new Date() })
+				.set(updates)
 				.where(eq(projectsTable.id, projectId))
 			console.log(`[HACKATIME-SYNC] Manual sync project ${projectId}: ${project.hours}h -> ${hours}h`)
 			return { hours, updated: true }

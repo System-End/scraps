@@ -97,7 +97,7 @@
 				const data = await response.json();
 				hackatimeProjects = data.projects || [];
 				userSlackId = data.slackId || null;
-				hackatimeUserId = data.hackatimeUserId || null;
+				hackatimeUserId = data.hackatimeUserId ?? null;
 			}
 		} catch (e) {
 			console.error('Failed to fetch hackatime projects:', e);
@@ -198,7 +198,7 @@
 		error = null;
 
 		const hackatimeValue = selectedHackatimeProjects.length > 0
-			? selectedHackatimeProjects.map(p => hackatimeUserId ? `${hackatimeUserId}:${p.name}` : p.name).join(',')
+			? selectedHackatimeProjects.map(p => hackatimeUserId != null ? `${hackatimeUserId}:${p.name}` : p.name).join(',')
 			: null;
 		const finalGithubUrl = githubUrl.trim() || selectedHackatimeProjects[0]?.repoUrl || null;
 

@@ -31441,7 +31441,10 @@ async function getHackatimeUser(email) {
     });
     if (!emailResponse.ok)
       return null;
-    const { user_id } = await emailResponse.json();
+    const emailData = await emailResponse.json();
+    const user_id = emailData.user_id;
+    if (typeof user_id !== "number")
+      return null;
     const infoResponse = await fetch(`${HACKATIME_API}/user/info?user_id=${user_id}`, {
       headers: {
         Authorization: `Bearer ${config.hackatimeAdminKey}`,
@@ -31464,24 +31467,27 @@ async function getHackatimeUser(email) {
     return null;
   }
 }
-async function fetchUserProjects(username) {
+var adminProjectsCache = new Map;
+async function fetchUserProjectsByUserId(userId) {
+  if (adminProjectsCache.has(userId))
+    return adminProjectsCache.get(userId);
   try {
     const params = new URLSearchParams({
-      features: "projects",
+      user_id: String(userId),
       start_date: SCRAPS_START_DATE
     });
-    const response = await fetch(`https://hackatime.hackclub.com/api/v1/users/${encodeURIComponent(username)}/stats?${params}`, {
+    const response = await fetch(`${HACKATIME_API}/user/projects?${params}`, {
       headers: {
+        Authorization: `Bearer ${config.hackatimeAdminKey}`,
         Accept: "application/json"
       }
     });
     if (!response.ok)
       return null;
     const data = await response.json();
-    return (data.data?.projects || []).map((p) => ({
-      name: p.name,
-      total_duration: p.total_seconds
-    }));
+    const projects = data.projects || [];
+    adminProjectsCache.set(userId, projects);
+    return projects;
   } catch {
     return null;
   }
@@ -31500,6 +31506,11 @@ function parseHackatimeEntry(entry) {
         projectName: entry.substring(colonIndex + 1)
       };
     }
+    return {
+      slackId: null,
+      hackatimeUserId: null,
+      projectName: entry.substring(colonIndex + 1)
+    };
   }
   const slashIndex = entry.indexOf("/");
   if (slashIndex !== -1 && entry.startsWith("U")) {
@@ -31536,31 +31547,57 @@ async function syncSingleProject(projectId) {
     if (entries.length === 0)
       return { hours: project.hours ?? 0, updated: false, error: "Invalid Hackatime project format" };
     const hackatimeUser = await getHackatimeUser(project.userEmail);
-    if (hackatimeUser === null)
-      return { hours: project.hours ?? 0, updated: false, error: "Could not find Hackatime user" };
-    const identifier = hackatimeUser.slack_uid || hackatimeUser.username;
     let totalSeconds = 0;
-    const entriesBySlackId = new Map;
+    const migratedEntries = [];
+    let needsMigration = false;
+    const entriesByUserId = new Map;
     for (const entry of entries) {
-      const key = entry.slackId || identifier;
-      const existing = entriesBySlackId.get(key) || [];
+      let resolvedUserId = null;
+      if (entry.hackatimeUserId) {
+        resolvedUserId = entry.hackatimeUserId;
+        migratedEntries.push(`${entry.hackatimeUserId}:${entry.projectName}`);
+      } else {
+        needsMigration = true;
+        if (hackatimeUser && typeof hackatimeUser.user_id === "number") {
+          resolvedUserId = hackatimeUser.user_id;
+          migratedEntries.push(`${hackatimeUser.user_id}:${entry.projectName}`);
+        } else {
+          if (entry.slackId) {
+            migratedEntries.push(`${entry.slackId}/${entry.projectName}`);
+          } else {
+            migratedEntries.push(entry.projectName);
+          }
+        }
+      }
+      if (resolvedUserId === null)
+        continue;
+      const existing = entriesByUserId.get(resolvedUserId) || [];
       existing.push(entry.projectName);
-      entriesBySlackId.set(key, existing);
+      entriesByUserId.set(resolvedUserId, existing);
     }
-    for (const [entryIdentifier, projectNames] of entriesBySlackId) {
-      const projectsData = await fetchUserProjects(entryIdentifier);
-      if (projectsData === null)
+    if (entriesByUserId.size === 0) {
+      return { hours: project.hours ?? 0, updated: false, error: "Could not find Hackatime user" };
+    }
+    for (const [userId, projectNames] of entriesByUserId) {
+      const adminProjects = await fetchUserProjectsByUserId(userId);
+      if (adminProjects === null)
         continue;
       for (const name of projectNames) {
-        const hackatimeProject = projectsData.find((p) => p.name === name);
-        if (hackatimeProject) {
-          totalSeconds += hackatimeProject.total_duration;
+        const found = adminProjects.find((p) => p.name === name);
+        if (found) {
+          totalSeconds += found.total_duration;
         }
       }
     }
     const hours = Math.round(totalSeconds / 3600 * 10) / 10;
-    if (hours !== project.hours) {
-      await db.update(projectsTable).set({ hours, updatedAt: new Date }).where(eq(projectsTable.id, projectId));
+    const newHackatimeProject = migratedEntries.join(",");
+    if (hours !== project.hours || needsMigration && newHackatimeProject !== project.hackatimeProject) {
+      const updates = { hours, updatedAt: new Date };
+      if (needsMigration && newHackatimeProject !== project.hackatimeProject) {
+        updates.hackatimeProject = newHackatimeProject;
+        console.log(`[HACKATIME-SYNC] Migrated project ${projectId}: "${project.hackatimeProject}" -> "${newHackatimeProject}"`);
+      }
+      await db.update(projectsTable).set(updates).where(eq(projectsTable.id, projectId));
       console.log(`[HACKATIME-SYNC] Manual sync project ${projectId}: ${project.hours}h -> ${hours}h`);
       return { hours, updated: true };
     }
@@ -31715,7 +31752,7 @@ async function computeEffectiveHoursForProject(project) {
     name: op.name,
     hours: op.hoursOverride ?? op.hours ?? 0
   }));
-  const deductedHours = overlapping.reduce((sum2, op) => sum2 + op.hours, 0);
+  const deductedHours = overlapping.reduce((sum, op) => sum + op.hours, 0);
   return {
     overlappingProjects: overlapping,
     deductedHours,
@@ -32431,7 +32468,7 @@ async function payoutPendingScraps() {
     return { paidCount: 0, totalScraps: 0 };
   }
   const projectIds = pendingProjects.map((p) => p.id);
-  const totalScraps = pendingProjects.reduce((sum2, p) => sum2 + p.scrapsAwarded, 0);
+  const totalScraps = pendingProjects.reduce((sum, p) => sum + p.scrapsAwarded, 0);
   const uniqueUserIds = [...new Set(pendingProjects.map((p) => p.userId))];
   await db.update(projectsTable).set({
     scrapsPaidAt: now
@@ -32742,8 +32779,8 @@ user.get("/profile/:id", async ({ params, headers }) => {
   const visibleProjects = allProjects.filter((p) => !p.deleted && (p.status === "shipped" || p.status === "in_progress" || p.status === "waiting_for_review"));
   const shippedCount = allProjects.filter((p) => !p.deleted && p.status === "shipped").length;
   const inProgressCount = allProjects.filter((p) => !p.deleted && (p.status === "in_progress" || p.status === "waiting_for_review")).length;
-  const shippedHours = allProjects.filter((p) => !p.deleted && p.status === "shipped").reduce((sum2, p) => sum2 + (p.hoursOverride ?? p.hours ?? 0), 0);
-  const inProgressHours = allProjects.filter((p) => !p.deleted && (p.status === "in_progress" || p.status === "waiting_for_review")).reduce((sum2, p) => sum2 + (p.hoursOverride ?? p.hours ?? 0), 0);
+  const shippedHours = allProjects.filter((p) => !p.deleted && p.status === "shipped").reduce((sum, p) => sum + (p.hoursOverride ?? p.hours ?? 0), 0);
+  const inProgressHours = allProjects.filter((p) => !p.deleted && (p.status === "in_progress" || p.status === "waiting_for_review")).reduce((sum, p) => sum + (p.hoursOverride ?? p.hours ?? 0), 0);
   const totalHours = Math.round((shippedHours + inProgressHours) * 10) / 10;
   const userHearts = await db.select({ shopItemId: shopHeartsTable.shopItemId }).from(shopHeartsTable).where(eq(shopHeartsTable.userId, parseInt(params.id)));
   const heartedItemIds = userHearts.map((h) => h.shopItemId);
@@ -34045,9 +34082,9 @@ admin.get("/stats", async ({ headers, status: status2 }) => {
     ...p,
     shippedDate: shippedDates.get(p.id) ?? null
   }));
-  const totalHours = shippedWithDates.reduce((sum2, p) => sum2 + computeEffectiveHours(p, shippedWithDates), 0);
-  const pendingHours = pendingWithDates.reduce((sum2, p) => sum2 + computeEffectiveHours(p, shippedWithDates), 0);
-  const inProgressHours = inProgressWithDates.reduce((sum2, p) => sum2 + computeEffectiveHours(p, shippedWithDates), 0);
+  const totalHours = shippedWithDates.reduce((sum, p) => sum + computeEffectiveHours(p, shippedWithDates), 0);
+  const pendingHours = pendingWithDates.reduce((sum, p) => sum + computeEffectiveHours(p, shippedWithDates), 0);
+  const inProgressHours = inProgressWithDates.reduce((sum, p) => sum + computeEffectiveHours(p, shippedWithDates), 0);
   const totalUsers = Number(usersCount[0]?.count || 0);
   const totalProjects = Number(projectsCount[0]?.count || 0);
   const weightedGrants = Math.round(totalHours / 10 * 100) / 100;
@@ -34096,7 +34133,7 @@ admin.get("/stats", async ({ headers, status: status2 }) => {
   const totalScrapsSpent = shopTotal + refineryTotal;
   const roundedTotalHours = Math.round(totalHours * 10) / 10;
   const costPerHour = roundedTotalHours > 0 ? Math.round(totalScrapsSpent / roundedTotalHours * 100) / 100 : 0;
-  const totalTierCost = tierCostBreakdown.reduce((sum2, t2) => sum2 + t2.totalCost, 0);
+  const totalTierCost = tierCostBreakdown.reduce((sum, t2) => sum + t2.totalCost, 0);
   const avgCostPerHour = roundedTotalHours > 0 ? Math.round(totalTierCost / roundedTotalHours * 100) / 100 : 0;
   const [luckWinOrders, consolationCount] = await Promise.all([
     db.select({
@@ -34104,7 +34141,7 @@ admin.get("/stats", async ({ headers, status: status2 }) => {
     }).from(shopOrdersTable).innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id)).where(eq(shopOrdersTable.orderType, "luck_win")),
     db.select({ count: sql`count(*)` }).from(shopOrdersTable).where(eq(shopOrdersTable.orderType, "consolation"))
   ]);
-  const luckWinDollarCost = luckWinOrders.reduce((sum2, o) => sum2 + o.itemPrice / SCRAPS_PER_DOLLAR, 0);
+  const luckWinDollarCost = luckWinOrders.reduce((sum, o) => sum + o.itemPrice / SCRAPS_PER_DOLLAR, 0);
   const consolationDollarCost = Number(consolationCount[0]?.count || 0) * 2;
   const totalRealCost = luckWinDollarCost + consolationDollarCost;
   const realCostPerHour = roundedTotalHours > 0 ? Math.round(totalRealCost / roundedTotalHours * 100) / 100 : 0;
@@ -34226,7 +34263,7 @@ admin.get("/users/:id", async ({ params, headers, status: status2 }) => {
       waitingForReview: projects2.filter((p) => p.status === "waiting_for_review").length,
       rejected: projects2.filter((p) => p.status === "permanently_rejected").length
     };
-    const totalHours = projects2.reduce((sum2, p) => sum2 + (p.hoursOverride ?? p.hours ?? 0), 0);
+    const totalHours = projects2.reduce((sum, p) => sum + (p.hoursOverride ?? p.hours ?? 0), 0);
     const scrapsBalance = await getUserScrapsBalance(targetUserId) || 0;
     let hackatimeSuspected = false;
     let hackatimeBanned = false;
@@ -34942,7 +34979,7 @@ admin.get("/scraps-payout", async ({ headers }) => {
     });
     return {
       pendingProjects: pendingProjects.length,
-      pendingScraps: pendingProjects.reduce((sum2, p) => sum2 + p.scrapsAwarded, 0),
+      pendingScraps: pendingProjects.reduce((sum, p) => sum + p.scrapsAwarded, 0),
       projects: projectsWithUsers,
       nextPayoutDate: getNextPayoutDate().toISOString()
     };

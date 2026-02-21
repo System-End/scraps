@@ -73,7 +73,7 @@
 				const data = await response.json();
 				hackatimeProjects = data.projects || [];
 				userSlackId = data.slackId || null;
-				hackatimeUserId = data.hackatimeUserId || null;
+				hackatimeUserId = data.hackatimeUserId ?? null;
 			}
 		} catch (e) {
 			console.error('Failed to fetch hackatime projects:', e);
@@ -166,7 +166,7 @@
 		error = null;
 
 		const hackatimeValue = selectedHackatimeName
-			? (hackatimeUserId ? `${hackatimeUserId}:${selectedHackatimeName}` : selectedHackatimeName)
+			? (hackatimeUserId != null ? `${hackatimeUserId}:${selectedHackatimeName}` : selectedHackatimeName)
 			: null;
 
 		try {
