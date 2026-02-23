@@ -92,20 +92,17 @@
 	const DOLLARS_PER_HOUR = 4;
 	const SCRAPS_PER_DOLLAR = SCRAPS_PER_HOUR / DOLLARS_PER_HOUR;
 
-	// Must match backend calculateRollCost exactly (adds optional per-roll multiplier)
 	function calculateRollCost(
 		basePrice: number,
 		effectiveProbability: number,
 		rollCostOverride?: number | null,
-		baseProbability?: number,
-		perRollMultiplier?: number
+		baseProbability?: number
 	): number {
 		if (rollCostOverride != null && rollCostOverride > 0) {
 			return rollCostOverride;
 		}
 		const baseProb = baseProbability ?? effectiveProbability;
-		const multiplier = perRollMultiplier ?? 1;
-		return Math.max(1, Math.round(basePrice * (baseProb / 100) * multiplier));
+		return Math.max(1, Math.round(basePrice * (baseProb / 100)));
 	}
 
 	// Must match backend computeRollThreshold exactly
@@ -138,15 +135,13 @@
 		return { price, baseProbability, baseUpgradeCost, costMultiplier, boostAmount };
 	}
 
-	// Synchronous EV simulation that mirrors backend math.
 	function simulateEV(
 		price: number,
 		baseProbability: number,
 		baseUpgradeCost: number,
 		costMultiplier: number,
 		boostAmount: number,
-		rollCostOverride?: number | null,
-		perRollMultiplier?: number | null
+		rollCostOverride?: number | null
 	): EVSummary {
 		const results: EVResult[] = [];
 		const probabilityGap = 100 - baseProbability;
@@ -186,13 +181,11 @@
 				break;
 			}
 
-			// Determine rollCost using local (synchronous) computation
 			const rollCost = calculateRollCost(
 				price,
 				effectiveProbability,
 				rollCostOverride,
-				baseProbability,
-				perRollMultiplier ?? undefined
+				baseProbability
 			);
 
 			// Backend applies 17/20 house edge via computeRollThreshold
@@ -250,8 +243,7 @@
 			item.baseUpgradeCost,
 			item.costMultiplier,
 			item.boostAmount,
-			item.rollCostOverride,
-			item.perRollMultiplier ?? undefined
+			item.rollCostOverride
 		);
 	}
 
@@ -1045,8 +1037,7 @@
 														formPrice,
 														formBaseProbability,
 														formRollCostOverride,
-														formBaseProbability,
-														formRollCostOverride ? undefined : undefined
+														formBaseProbability
 													)} scraps</span
 												>
 												{#if formRollCostOverride != null}
