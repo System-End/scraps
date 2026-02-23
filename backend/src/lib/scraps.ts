@@ -30,7 +30,6 @@ export function calculateShopItemPricing(
   monetaryValue: number,
   stockCount: number,
   upgradeBudgetMultiplier?: number,
-  perRollMultiplier?: number,
 ): ShopItemPricing {
   const price = Math.round(monetaryValue * SCRAPS_PER_DOLLAR);
 
@@ -47,22 +46,10 @@ export function calculateShopItemPricing(
     ),
   );
 
-  // Per-roll multiplier applied to base roll cost (admin-configurable per item)
-  const perRollMult = perRollMultiplier ?? 1;
-
-  // Roll cost at base probability (apply per-roll multiplier)
-  const rollCost = Math.max(
-    1,
-    Math.round(price * (baseProbability / 100) * perRollMult),
-  );
-
-  // Use a start+decay upgrade cost model:
-  // Use provided upgradeBudgetMultiplier if present; otherwise fall back to UPGRADE_MAX_BUDGET_MULTIPLIER
   const maxBudgetMultiplier =
     upgradeBudgetMultiplier ?? UPGRADE_MAX_BUDGET_MULTIPLIER;
   const maxBudget = Math.max(0, Math.floor(price * maxBudgetMultiplier));
 
-  // Number of upgrades needed to go from baseProbability to 100%
   const probabilityGap = 100 - baseProbability;
   const targetUpgrades = Math.max(
     5,
@@ -71,12 +58,9 @@ export function calculateShopItemPricing(
   const boostAmount = Math.max(1, Math.round(probabilityGap / targetUpgrades));
   const actualUpgrades = Math.ceil(probabilityGap / boostAmount);
 
-  // Base upgrade cost is a fixed fraction of price (start percent)
   let baseUpgradeCost = Math.max(1, Math.floor(price * UPGRADE_START_PERCENT));
-  const costMultiplier = Math.round(UPGRADE_DECAY * 100); // store decay as percentage (e.g. 1.05 -> 105)
+  const costMultiplier = Math.round(UPGRADE_DECAY * 100);
 
-  // If cumulative upgrades would exceed maxBudget, scale down baseUpgradeCost until it fits
-  // Compute cumulative with decay series until actualUpgrades levels or budget exceeded
   function computeCumulative(base: number): number {
     let cum = 0;
     let next = base;
@@ -89,7 +73,6 @@ export function calculateShopItemPricing(
   }
 
   if (maxBudget > 0) {
-    // If current cumulative exceeds budget, reduce baseUpgradeCost iteratively (small loop)
     let cum = computeCumulative(baseUpgradeCost);
     let attempts = 0;
     while (cum > maxBudget && baseUpgradeCost > 1 && attempts < 200) {
@@ -113,16 +96,12 @@ export function calculateRollCost(
   effectiveProbability: number,
   rollCostOverride?: number | null,
   baseProbability?: number,
-  perRollMultiplier?: number,
 ): number {
   if (rollCostOverride != null && rollCostOverride > 0) {
     return rollCostOverride;
   }
-  // Use provided baseProbability if caller wants the roll cost fixed to base;
-  // otherwise use effectiveProbability. Also apply an optional per-roll multiplier.
   const probToUse = baseProbability ?? effectiveProbability;
-  const multiplier = perRollMultiplier ?? 1;
-  return Math.max(1, Math.round(basePrice * (probToUse / 100) * multiplier));
+  return Math.max(1, Math.round(basePrice * (probToUse / 100)));
 }
 
 const UPGRADE_START_PERCENT = 0.25;

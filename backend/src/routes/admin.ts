@@ -1663,7 +1663,6 @@ admin.post("/shop/compute-roll-costs", async ({ headers, body, status }) => {
     }> = [];
 
     for (const r of rows) {
-      // Effective probability includes any provided userBoostPercent
       const effectiveProbability = Math.min(
         (r.baseProbability ?? 50) + (r.userBoostPercent ?? 0),
         100,
@@ -1674,7 +1673,6 @@ admin.post("/shop/compute-roll-costs", async ({ headers, body, status }) => {
         effectiveProbability,
         r.rollCostOverride,
         r.baseProbability,
-        perRoll,
       );
       const prev = r.rollCount ?? 0;
       const displayRollCost = Math.round(baseRollCost * (1 + perRoll * prev));

@@ -32378,13 +32378,11 @@ var TIER_MULTIPLIERS = {
   3: 1.25,
   4: 1.5
 };
-function calculateShopItemPricing(monetaryValue, stockCount, upgradeBudgetMultiplier, perRollMultiplier) {
+function calculateShopItemPricing(monetaryValue, stockCount, upgradeBudgetMultiplier) {
   const price = Math.round(monetaryValue * SCRAPS_PER_DOLLAR);
   const priceRarityFactor = Math.max(0, 1 - monetaryValue / 100);
   const stockRarityFactor = Math.min(1, stockCount / 20);
   const baseProbability = Math.max(1, Math.min(80, Math.round((priceRarityFactor * 0.4 + stockRarityFactor * 0.6) * 80)));
-  const perRollMult = perRollMultiplier ?? 1;
-  const rollCost = Math.max(1, Math.round(price * (baseProbability / 100) * perRollMult));
   const maxBudgetMultiplier = upgradeBudgetMultiplier ?? UPGRADE_MAX_BUDGET_MULTIPLIER;
   const maxBudget = Math.max(0, Math.floor(price * maxBudgetMultiplier));
   const probabilityGap = 100 - baseProbability;
@@ -32421,13 +32419,12 @@ function calculateShopItemPricing(monetaryValue, stockCount, upgradeBudgetMultip
     boostAmount
   };
 }
-function calculateRollCost(basePrice, effectiveProbability, rollCostOverride, baseProbability, perRollMultiplier) {
+function calculateRollCost(basePrice, effectiveProbability, rollCostOverride, baseProbability) {
   if (rollCostOverride != null && rollCostOverride > 0) {
     return rollCostOverride;
   }
   const probToUse = baseProbability ?? effectiveProbability;
-  const multiplier = perRollMultiplier ?? 1;
-  return Math.max(1, Math.round(basePrice * (probToUse / 100) * multiplier));
+  return Math.max(1, Math.round(basePrice * (probToUse / 100)));
 }
 var UPGRADE_START_PERCENT = 0.25;
 var UPGRADE_DECAY = 1.05;
@@ -32983,7 +32980,7 @@ shop.get("/items", async ({ headers }) => {
       const actualSpent = refinerySpentMap.get(item.id) ?? 0;
       const nextUpgradeCost = boostData.boostPercent >= maxBoost ? null : getUpgradeCost(item.price, boostData.upgradeCount, actualSpent);
       const effectiveProbability = Math.min(adjustedBaseProbability + boostData.boostPercent, 100);
-      const baseRollCost = calculateRollCost(item.price, effectiveProbability, item.rollCostOverride, item.baseProbability, item.perRollMultiplier);
+      const baseRollCost = calculateRollCost(item.price, effectiveProbability, item.rollCostOverride, item.baseProbability);
       const previousRolls = rollCountMap.get(item.id) ?? 0;
       const displayRollCost = Math.round(baseRollCost * (1 + (item.perRollMultiplier ?? 0.05) * previousRolls));
       return {
@@ -33004,7 +33001,7 @@ shop.get("/items", async ({ headers }) => {
   }
   return items.map((item) => {
     const effectiveProbability = Math.min(item.baseProbability, 100);
-    const baseRollCost = calculateRollCost(item.price, effectiveProbability, item.rollCostOverride, item.baseProbability, item.perRollMultiplier);
+    const baseRollCost = calculateRollCost(item.price, effectiveProbability, item.rollCostOverride, item.baseProbability);
     const displayRollCost = Math.round(baseRollCost * (1 + (item.perRollMultiplier ?? 0.05) * 0));
     return {
       ...item,
@@ -33263,7 +33260,7 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
       const penaltyMultiplier = penaltyResult.length > 0 ? penaltyResult[0].probabilityMultiplier : 100;
       const adjustedBaseProbability = Math.floor(currentItem.baseProbability * penaltyMultiplier / 100);
       const effectiveProbability = Math.min(adjustedBaseProbability + boostPercent, 100);
-      const baseRollCost = calculateRollCost(currentItem.price, effectiveProbability, currentItem.rollCostOverride, currentItem.baseProbability, currentItem.perRollMultiplier ?? undefined);
+      const baseRollCost = calculateRollCost(currentItem.price, effectiveProbability, currentItem.rollCostOverride, currentItem.baseProbability);
       const rollCountResult = await tx.select({ count: sql`count(*)` }).from(shopRollsTable).where(and(eq(shopRollsTable.userId, user2.id), eq(shopRollsTable.shopItemId, itemId)));
       const previousRolls = Number(rollCountResult[0]?.count ?? 0);
       const perRollMult = currentItem.perRollMultiplier ?? 0.05;
@@ -35202,7 +35199,7 @@ admin.post("/shop/compute-roll-costs", async ({ headers, body, status: status2 }
     for (const r of rows) {
       const effectiveProbability = Math.min((r.baseProbability ?? 50) + (r.userBoostPercent ?? 0), 100);
       const perRoll = r.perRollMultiplier ?? 0.05;
-      const baseRollCost = calculateRollCost(r.price, effectiveProbability, r.rollCostOverride, r.baseProbability, perRoll);
+      const baseRollCost = calculateRollCost(r.price, effectiveProbability, r.rollCostOverride, r.baseProbability);
       const prev = r.rollCount ?? 0;
       const displayRollCost = Math.round(baseRollCost * (1 + perRoll * prev));
       results.push({ id: r.id, baseRollCost, displayRollCost });

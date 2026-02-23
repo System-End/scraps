@@ -130,7 +130,6 @@ shop.get("/items", async ({ headers }) => {
           ? null
           : getUpgradeCost(item.price, boostData.upgradeCount, actualSpent);
 
-      // Compute server-authoritative display roll cost for UI
       const effectiveProbability = Math.min(
         adjustedBaseProbability + boostData.boostPercent,
         100,
@@ -140,7 +139,6 @@ shop.get("/items", async ({ headers }) => {
         effectiveProbability,
         item.rollCostOverride,
         item.baseProbability,
-        item.perRollMultiplier,
       );
       const previousRolls = rollCountMap.get(item.id) ?? 0;
       const displayRollCost = Math.round(
@@ -159,7 +157,6 @@ shop.get("/items", async ({ headers }) => {
         rollCount: previousRolls,
         userHearted: heartedIds.has(item.id),
         nextUpgradeCost,
-        // Server-calculated display value (scraps) that matches DB & gameplay
         displayRollCost,
       };
     });
@@ -172,7 +169,6 @@ shop.get("/items", async ({ headers }) => {
       effectiveProbability,
       item.rollCostOverride,
       item.baseProbability,
-      item.perRollMultiplier,
     );
     const displayRollCost = Math.round(
       baseRollCost * (1 + (item.perRollMultiplier ?? 0.05) * 0),
@@ -631,10 +627,8 @@ shop.post("/items/:id/try-luck", async ({ params, headers }) => {
         effectiveProbability,
         currentItem.rollCostOverride,
         currentItem.baseProbability,
-        currentItem.perRollMultiplier ?? undefined,
       );
 
-      // Roll cost escalates by the per-roll multiplier (default 0.05) per previous roll on this item
       const rollCountResult = await tx
         .select({ count: sql<number>`count(*)` })
         .from(shopRollsTable)
