@@ -32329,6 +32329,7 @@ var shopOrdersTable = pgTable("shop_orders", {
   shippingAddress: text("shipping_address"),
   phone: varchar(),
   notes: text(),
+  trackingNumber: varchar("tracking_number"),
   isFulfilled: boolean("is_fulfilled").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
@@ -33203,6 +33204,7 @@ shop.get("/orders", async ({ headers }) => {
     status: shopOrdersTable.status,
     orderType: shopOrdersTable.orderType,
     shippingAddress: shopOrdersTable.shippingAddress,
+    trackingNumber: shopOrdersTable.trackingNumber,
     isFulfilled: shopOrdersTable.isFulfilled,
     createdAt: shopOrdersTable.createdAt,
     itemId: shopItemsTable.id,
@@ -35497,6 +35499,7 @@ admin.get("/orders", async ({ headers, query, status: status2 }) => {
       status: shopOrdersTable.status,
       orderType: shopOrdersTable.orderType,
       notes: shopOrdersTable.notes,
+      trackingNumber: shopOrdersTable.trackingNumber,
       isFulfilled: shopOrdersTable.isFulfilled,
       shippingAddress: shopOrdersTable.shippingAddress,
       phone: shopOrdersTable.phone,
@@ -35526,7 +35529,8 @@ admin.patch("/orders/:id", async ({ params, body, headers, status: status2 }) =>
     const {
       status: orderStatus,
       notes,
-      isFulfilled
+      isFulfilled,
+      trackingNumber
     } = body;
     const validStatuses = [
       "pending",
@@ -35544,6 +35548,8 @@ admin.patch("/orders/:id", async ({ params, body, headers, status: status2 }) =>
       updateData.status = orderStatus;
     if (notes !== undefined)
       updateData.notes = notes;
+    if (trackingNumber !== undefined)
+      updateData.trackingNumber = trackingNumber;
     if (isFulfilled !== undefined)
       updateData.isFulfilled = isFulfilled;
     const updated = await db.update(shopOrdersTable).set(updateData).where(eq(shopOrdersTable.id, parseInt(params.id))).returning({
@@ -35554,6 +35560,7 @@ admin.patch("/orders/:id", async ({ params, body, headers, status: status2 }) =>
       status: shopOrdersTable.status,
       orderType: shopOrdersTable.orderType,
       notes: shopOrdersTable.notes,
+      trackingNumber: shopOrdersTable.trackingNumber,
       isFulfilled: shopOrdersTable.isFulfilled,
       shippingAddress: shopOrdersTable.shippingAddress,
       createdAt: shopOrdersTable.createdAt

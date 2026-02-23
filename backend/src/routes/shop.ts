@@ -499,6 +499,7 @@ shop.get("/orders", async ({ headers }) => {
       status: shopOrdersTable.status,
       orderType: shopOrdersTable.orderType,
       shippingAddress: shopOrdersTable.shippingAddress,
+      trackingNumber: shopOrdersTable.trackingNumber,
       isFulfilled: shopOrdersTable.isFulfilled,
       createdAt: shopOrdersTable.createdAt,
       itemId: shopItemsTable.id,

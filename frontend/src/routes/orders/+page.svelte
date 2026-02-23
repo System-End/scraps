@@ -23,6 +23,7 @@
 		status: string;
 		orderType: string;
 		shippingAddress: string | null;
+		trackingNumber: string | null;
 		isFulfilled: boolean;
 		createdAt: string;
 		itemId: number;
@@ -256,12 +257,19 @@
 							{#if order.shippingAddress}
 								<div class="mt-3 flex items-start gap-2 text-sm text-gray-600">
 									<MapPin size={16} class="mt-0.5 shrink-0" />
-									<span class="break-words">{formatAddress(order.shippingAddress)}</span>
+									<span class="wrap-break-word">{formatAddress(order.shippingAddress)}</span>
 								</div>
 							{:else if !order.isFulfilled}
 								<p class="mt-3 text-sm font-bold text-yellow-600">
 									{$t.orders.noShippingAddress}
 								</p>
+							{/if}
+
+							{#if order.trackingNumber}
+								<div class="mt-3 flex items-start gap-2 text-sm text-gray-600">
+									<Truck size={16} class="mt-0.5 shrink-0" />
+									<span class="font-bold">tracking: {order.trackingNumber}</span>
+								</div>
 							{/if}
 						</div>
 					</div>

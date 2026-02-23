@@ -38,6 +38,7 @@
 		status: string;
 		orderType: string;
 		notes: string | null;
+		trackingNumber: string | null;
 		isFulfilled: boolean;
 		shippingAddress: string | null;
 		phone: string | null;
@@ -82,9 +83,19 @@
 	let actionLoading = $state(false);
 	let expandedOrders = $state<Record<number, boolean>>({});
 	let collapsedGroups = $state<Record<string, boolean>>({});
+	let trackingInputs = $state<Record<number, string>>({});
 	let lastDeleted = $state<Order | null>(null);
 	let lastDeletedTimer = $state<number | null>(null);
 	let lastDeletedError = $state<string | null>(null);
+	let filterItem = $state('');
+	let filterUser = $state('');
+
+	let uniqueItems = $derived(
+		[...new Map(orders.map((o) => [o.itemName, o.itemName])).values()].sort()
+	);
+	let uniqueUsers = $derived(
+		[...new Map(orders.map((o) => [o.userId, o.username])).values()].sort()
+	);
 
 	let filteredOrders = $derived.by(() => {
 		let result =
@@ -93,6 +104,14 @@
 				: filter === 'pending'
 					? orders.filter((o) => !o.isFulfilled)
 					: orders.filter((o) => o.isFulfilled);
+
+		if (filterItem) {
+			result = result.filter((o) => o.itemName === filterItem);
+		}
+
+		if (filterUser) {
+			result = result.filter((o) => o.username === filterUser);
+		}
 
 		if (searchQuery.trim()) {
 			const q = searchQuery.trim().toLowerCase();
@@ -181,14 +200,23 @@
 	async function toggleFulfilled(order: Order) {
 		actionLoading = true;
 		try {
+			const patchBody: Record<string, unknown> = { isFulfilled: !order.isFulfilled };
+			// Include tracking number when fulfilling (not when unfulfilling)
+			if (!order.isFulfilled) {
+				const tracking = trackingInputs[order.id]?.trim() || null;
+				patchBody.trackingNumber = tracking;
+			}
 			const response = await fetch(`${API_URL}/admin/orders/${order.id}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ isFulfilled: !order.isFulfilled })
+				body: JSON.stringify(patchBody)
 			});
 			if (response.ok) {
-				orders = orders.map((o) => (o.id === order.id ? { ...o, isFulfilled: !o.isFulfilled } : o));
+				const trackingValue = !order.isFulfilled ? (trackingInputs[order.id]?.trim() || null) : order.trackingNumber;
+				orders = orders.map((o) =>
+					o.id === order.id ? { ...o, isFulfilled: !o.isFulfilled, trackingNumber: trackingValue } : o
+				);
 			}
 		} catch (e) {
 			console.error('Failed to update order:', e);
@@ -381,6 +409,32 @@
 					class="w-full rounded-full border-4 border-black py-2 pr-4 pl-10 font-bold transition-all duration-200 placeholder:text-gray-400 focus:border-dashed focus:ring-0 focus:outline-none"
 				/>
 			</div>
+			<div class="flex flex-col">
+				<label for="filter-item" class="mb-1 text-xs font-bold text-gray-500 uppercase">item</label>
+				<select
+					id="filter-item"
+					bind:value={filterItem}
+					class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none {filterItem ? 'bg-black text-white' : ''}"
+				>
+					<option value="">all items</option>
+					{#each uniqueItems as item}
+						<option value={item}>{item}</option>
+					{/each}
+				</select>
+			</div>
+			<div class="flex flex-col">
+				<label for="filter-user" class="mb-1 text-xs font-bold text-gray-500 uppercase">user</label>
+				<select
+					id="filter-user"
+					bind:value={filterUser}
+					class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none {filterUser ? 'bg-black text-white' : ''}"
+				>
+					<option value="">all users</option>
+					{#each uniqueUsers as username}
+						<option value={username}>@{username}</option>
+					{/each}
+				</select>
+			</div>
 			<div class="flex items-end gap-2">
 				<div class="flex flex-col">
 					<label for="date-from" class="mb-1 text-xs font-bold text-gray-500 uppercase">from</label>
@@ -400,14 +454,16 @@
 						class="rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none"
 					/>
 				</div>
-				{#if dateFrom || dateTo}
+				{#if dateFrom || dateTo || filterItem || filterUser}
 					<button
 						onclick={() => {
 							dateFrom = '';
 							dateTo = '';
+							filterItem = '';
+							filterUser = '';
 						}}
 						class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 hover:border-dashed"
-						title="clear dates"
+						title="clear filters"
 					>
 						<X size={18} />
 					</button>
@@ -600,6 +656,19 @@
 
 												<!-- Actions -->
 												<div class="flex shrink-0 flex-col gap-3 md:w-48">
+													{#if !order.isFulfilled}
+														<input
+															type="text"
+															placeholder="tracking # (optional)"
+															bind:value={trackingInputs[order.id]}
+															class="w-full rounded-lg border-2 border-black px-3 py-2 text-sm font-bold transition-all duration-200 placeholder:text-gray-400 focus:border-dashed focus:outline-none"
+														/>
+													{:else if order.trackingNumber}
+														<div class="rounded-lg border-2 border-gray-300 bg-gray-50 px-3 py-2 text-sm">
+															<p class="text-xs font-bold text-gray-500 uppercase">tracking</p>
+															<p class="font-bold break-all">{order.trackingNumber}</p>
+														</div>
+													{/if}
 													<button
 														onclick={() => toggleFulfilled(order)}
 														class="flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 {order.isFulfilled

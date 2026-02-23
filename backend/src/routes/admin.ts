@@ -2140,6 +2140,7 @@ admin.get("/orders", async ({ headers, query, status }) => {
         status: shopOrdersTable.status,
         orderType: shopOrdersTable.orderType,
         notes: shopOrdersTable.notes,
+        trackingNumber: shopOrdersTable.trackingNumber,
         isFulfilled: shopOrdersTable.isFulfilled,
         shippingAddress: shopOrdersTable.shippingAddress,
         phone: shopOrdersTable.phone,
@@ -2183,7 +2184,8 @@ admin.patch("/orders/:id", async ({ params, body, headers, status }) => {
       status: orderStatus,
       notes,
       isFulfilled,
-    } = body as { status?: string; notes?: string; isFulfilled?: boolean };
+      trackingNumber,
+    } = body as { status?: string; notes?: string; isFulfilled?: boolean; trackingNumber?: string };
 
     const validStatuses = [
       "pending",
@@ -2200,6 +2202,7 @@ admin.patch("/orders/:id", async ({ params, body, headers, status }) => {
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (orderStatus) updateData.status = orderStatus;
     if (notes !== undefined) updateData.notes = notes;
+    if (trackingNumber !== undefined) updateData.trackingNumber = trackingNumber;
     if (isFulfilled !== undefined) updateData.isFulfilled = isFulfilled;
 
     const updated = await db
@@ -2214,6 +2217,7 @@ admin.patch("/orders/:id", async ({ params, body, headers, status }) => {
         status: shopOrdersTable.status,
         orderType: shopOrdersTable.orderType,
         notes: shopOrdersTable.notes,
+        trackingNumber: shopOrdersTable.trackingNumber,
         isFulfilled: shopOrdersTable.isFulfilled,
         shippingAddress: shopOrdersTable.shippingAddress,
         createdAt: shopOrdersTable.createdAt,
