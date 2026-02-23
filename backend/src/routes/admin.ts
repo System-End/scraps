@@ -595,6 +595,38 @@ admin.get("/users/:id/bonuses", async ({ params, headers }) => {
   }
 });
 
+// Delete a bonus (admin only)
+admin.delete("/bonuses/:id", async ({ params, headers, status }) => {
+  try {
+    const user = await requireAdmin(headers as Record<string, string>);
+    if (!user) return status(401, { error: "Unauthorized" });
+
+    const bonusId = parseInt(params.id);
+    if (!Number.isInteger(bonusId) || bonusId <= 0) {
+      return status(400, { error: "Invalid bonus id" });
+    }
+
+    const bonus = await db
+      .select({ id: userBonusesTable.id })
+      .from(userBonusesTable)
+      .where(eq(userBonusesTable.id, bonusId))
+      .limit(1);
+
+    if (!bonus[0]) {
+      return status(404, { error: "Bonus not found" });
+    }
+
+    await db
+      .delete(userBonusesTable)
+      .where(eq(userBonusesTable.id, bonusId));
+
+    return { success: true };
+  } catch (err) {
+    console.error(err);
+    return status(500, { error: "Failed to delete bonus" });
+  }
+});
+
 // Get projects waiting for review
 admin.get("/reviews", async ({ headers, query }) => {
   try {
@@ -3000,6 +3032,7 @@ admin.get("/users/:id/timeline", async ({ params, headers, status }) => {
       itemName?: string;
       paid?: boolean;
       orderId?: number;
+      bonusId?: number;
     };
 
     const timeline: TimelineEvent[] = [];
@@ -3022,6 +3055,7 @@ admin.get("/users/:id/timeline", async ({ params, headers, status }) => {
         amount: b.amount,
         description: b.reason,
         date: b.createdAt.toISOString(),
+        bonusId: b.id,
       });
     }
 

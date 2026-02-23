@@ -89,6 +89,7 @@
 	let lastDeletedError = $state<string | null>(null);
 	let filterItem = $state('');
 	let filterUser = $state('');
+	let filterRegion = $state<'' | 'us' | 'intl'>('');
 
 	let uniqueItems = $derived(
 		[...new Map(orders.map((o) => [o.itemName, o.itemName])).values()].sort()
@@ -111,6 +112,15 @@
 
 		if (filterUser) {
 			result = result.filter((o) => o.username === filterUser);
+		}
+
+		if (filterRegion) {
+			result = result.filter((o) => {
+				const addr = parseShippingAddress(o.shippingAddress);
+				const country = addr?.country?.toLowerCase().trim() ?? '';
+				const isUS = country === 'us' || country === 'usa' || country === 'united states' || country === 'united states of america';
+				return filterRegion === 'us' ? isUS : !isUS;
+			});
 		}
 
 		if (searchQuery.trim()) {
@@ -435,6 +445,18 @@
 					{/each}
 				</select>
 			</div>
+			<div class="flex flex-col">
+				<label for="filter-region" class="mb-1 text-xs font-bold text-gray-500 uppercase">region</label>
+				<select
+					id="filter-region"
+					bind:value={filterRegion}
+					class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none {filterRegion ? 'bg-black text-white' : ''}"
+				>
+					<option value="">all regions</option>
+					<option value="us">US only</option>
+					<option value="intl">non-US</option>
+				</select>
+			</div>
 			<div class="flex items-end gap-2">
 				<div class="flex flex-col">
 					<label for="date-from" class="mb-1 text-xs font-bold text-gray-500 uppercase">from</label>
@@ -454,13 +476,14 @@
 						class="rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none"
 					/>
 				</div>
-				{#if dateFrom || dateTo || filterItem || filterUser}
+				{#if dateFrom || dateTo || filterItem || filterUser || filterRegion}
 					<button
 						onclick={() => {
 							dateFrom = '';
 							dateTo = '';
 							filterItem = '';
 							filterUser = '';
+							filterRegion = '';
 						}}
 						class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 hover:border-dashed"
 						title="clear filters"

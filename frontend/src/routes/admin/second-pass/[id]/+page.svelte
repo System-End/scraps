@@ -68,6 +68,7 @@
 		updateDescription: string | null;
 		aiDescription: string | null;
 		reviewerNotes: string | null;
+		scrapsAwarded: number;
 	}
 
 	interface User {
@@ -102,6 +103,19 @@
 	let effectiveHours = $derived(
 		project ? Math.max(0, (hoursOverride ?? project.hoursOverride ?? project.hours) - deductedHours) : 0
 	);
+	const PHI = (1 + Math.sqrt(5)) / 2;
+	const MULTIPLIER = 10;
+	const TIER_MULTIPLIERS: Record<number, number> = { 1: 0.8, 2: 1.0, 3: 1.25, 4: 1.5 };
+
+	let isUpdate = $derived(project ? project.scrapsAwarded > 0 : false);
+	let previewTier = $derived(project ? (project.tierOverride ?? project.tier ?? 1) : 1);
+	let previewScraps = $derived(
+		Math.floor(effectiveHours * PHI * MULTIPLIER * (TIER_MULTIPLIERS[previewTier] ?? 1.0))
+	);
+	let additionalScraps = $derived(
+		project ? Math.max(0, previewScraps - project.scrapsAwarded) : previewScraps
+	);
+
 	let hoursOverrideError = $derived(
 		hoursOverride !== undefined && project && hoursOverride > project.hours
 			? `hours override cannot exceed project hours (${formatHours(project.hours)}h)`
@@ -403,6 +417,29 @@
 						</span>
 						<span class="rounded-full border-2 border-black bg-yellow-200 px-3 py-1 text-black">
 							effective: {formatHours(effectiveHours)}h
+						</span>
+					</div>
+				</div>
+			{/if}
+
+			{#if isUpdate}
+				<div class="mt-4 rounded-lg border-2 border-dashed border-blue-500 bg-blue-50 p-4">
+					<p class="mb-2 flex items-center gap-1.5 text-sm font-bold text-blue-700">
+						<RefreshCw size={14} />
+						update — scraps preview
+					</p>
+					<p class="mb-2 text-sm text-blue-700">
+						this is an updated project. previously awarded scraps will be subtracted from the new total.
+					</p>
+					<div class="flex flex-wrap gap-3 text-sm font-bold">
+						<span class="rounded-full border-2 border-blue-600 bg-blue-100 px-3 py-1 text-blue-800">
+							previously awarded: {project.scrapsAwarded} scraps
+						</span>
+						<span class="rounded-full border-2 border-blue-600 bg-blue-100 px-3 py-1 text-blue-800">
+							new total: {previewScraps} scraps ({formatHours(effectiveHours)}h × tier {previewTier})
+						</span>
+						<span class="rounded-full border-2 border-black bg-blue-200 px-3 py-1 text-black">
+							additional: +{additionalScraps} scraps
 						</span>
 					</div>
 				</div>

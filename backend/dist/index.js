@@ -34517,6 +34517,26 @@ admin.get("/users/:id/bonuses", async ({ params, headers }) => {
     return { error: "Failed to fetch user bonuses" };
   }
 });
+admin.delete("/bonuses/:id", async ({ params, headers, status: status2 }) => {
+  try {
+    const user2 = await requireAdmin(headers);
+    if (!user2)
+      return status2(401, { error: "Unauthorized" });
+    const bonusId = parseInt(params.id);
+    if (!Number.isInteger(bonusId) || bonusId <= 0) {
+      return status2(400, { error: "Invalid bonus id" });
+    }
+    const bonus = await db.select({ id: userBonusesTable.id }).from(userBonusesTable).where(eq(userBonusesTable.id, bonusId)).limit(1);
+    if (!bonus[0]) {
+      return status2(404, { error: "Bonus not found" });
+    }
+    await db.delete(userBonusesTable).where(eq(userBonusesTable.id, bonusId));
+    return { success: true };
+  } catch (err) {
+    console.error(err);
+    return status2(500, { error: "Failed to delete bonus" });
+  }
+});
 admin.get("/reviews", async ({ headers, query }) => {
   try {
     const user2 = await requireReviewer(headers);
@@ -34727,7 +34747,6 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
     }
     let scrapsAwarded = 0;
     if (action === "approved") {
-      const hours = hoursOverride ?? project[0].hours ?? 0;
       const tier = tierOverride ?? project[0].tier ?? 1;
       const { effectiveHours } = await computeEffectiveHoursForProject({
         ...project[0],
@@ -35243,10 +35262,9 @@ admin.post("/shop/items", async ({ headers, body, status: status2 }) => {
     category,
     count,
     baseProbability,
-    baseUpgradeCost,
-    costMultiplier,
-    boostAmount,
-    rollCostOverride
+    rollCostOverride,
+    perRollMultiplier: bodyPerRollMultiplier,
+    upgradeBudgetMultiplier: bodyUpgradeBudgetMultiplier
   } = body;
   if (!name?.trim() || !image?.trim() || !description?.trim() || !category?.trim()) {
     return status2(400, { error: "All fields are required" });
@@ -35262,8 +35280,8 @@ admin.post("/shop/items", async ({ headers, body, status: status2 }) => {
   try {
     const dollarCost = typeof price === "number" ? price / SCRAPS_PER_DOLLAR : 0;
     const pricing = computeItemPricing(dollarCost, baseProbability, count ?? 1);
-    const perRollMultiplierVal = body?.perRollMultiplier ?? 0.05;
-    const upgradeBudgetMultiplierVal = body?.upgradeBudgetMultiplier ?? 3;
+    const perRollMultiplierVal = bodyPerRollMultiplier ?? 0.05;
+    const upgradeBudgetMultiplierVal = bodyUpgradeBudgetMultiplier ?? 3;
     await db.insert(shopItemsTable).values({
       name: name.trim(),
       image: image.trim(),
@@ -35744,10 +35762,12 @@ admin.delete("/orders/:id", async ({ params, headers, body, status: status2 }) =
     let alreadyRow = null;
     try {
       const already = await db.execute(sql`SELECT 1 FROM admin_deleted_orders WHERE original_order_id = ${orderId} AND restored = false LIMIT 1`);
-      alreadyRow = already.rows?.[0] ?? (Array.isArray(already) ? already[0] : null);
+      const alreadyResult = already;
+      alreadyRow = alreadyResult.rows?.[0] ?? (Array.isArray(already) ? already[0] : null);
     } catch (err) {
-      const msg = err?.message ?? "";
-      const code = err?.code ?? null;
+      const dbErr = err;
+      const msg = dbErr?.message ?? "";
+      const code = dbErr?.code ?? null;
       if (msg.includes("does not exist") || code === "42P01") {
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS admin_deleted_orders (
@@ -35777,7 +35797,8 @@ admin.delete("/orders/:id", async ({ params, headers, body, status: status2 }) =
           CREATE INDEX IF NOT EXISTS idx_admin_deleted_orders_original_order_id ON admin_deleted_orders (original_order_id);
         `);
         const already2 = await db.execute(sql`SELECT 1 FROM admin_deleted_orders WHERE original_order_id = ${orderId} AND restored = false LIMIT 1`);
-        alreadyRow = already2.rows?.[0] ?? (Array.isArray(already2) ? already2[0] : null);
+        const already2Result = already2;
+        alreadyRow = already2Result.rows?.[0] ?? (Array.isArray(already2) ? already2[0] : null);
       } else {
         throw err;
       }
@@ -35824,12 +35845,13 @@ admin.delete("/orders/:id", async ({ params, headers, body, status: status2 }) =
     return { success: true };
   } catch (err) {
     try {
-      console.error("Admin delete order error (stack):", err?.stack ?? err);
-      console.error("Admin delete order error (name):", err?.name ?? null);
-      console.error("Admin delete order error (message):", err?.message ?? String(err));
-      console.error("Admin delete order error (cause):", err?.cause ?? null);
-      console.error("Admin delete order error (query):", err?.query ?? null);
-      console.error("Admin delete order error (params):", err?.params ?? null);
+      const e = err;
+      console.error("Admin delete order error (stack):", e?.stack ?? err);
+      console.error("Admin delete order error (name):", e?.name ?? null);
+      console.error("Admin delete order error (message):", e?.message ?? String(err));
+      console.error("Admin delete order error (cause):", e?.cause ?? null);
+      console.error("Admin delete order error (query):", e?.query ?? null);
+      console.error("Admin delete order error (params):", e?.params ?? null);
       try {
         console.error("Admin delete order error (full):", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
       } catch {
@@ -35840,7 +35862,7 @@ admin.delete("/orders/:id", async ({ params, headers, body, status: status2 }) =
       console.error("Original error:", err);
     }
     return status2(500, {
-      error: "Failed to delete order: " + (err?.message || String(err))
+      error: "Failed to delete order: " + (err instanceof Error ? err.message : String(err))
     });
   }
 });
@@ -35853,7 +35875,8 @@ admin.post("/orders/:id/restore", async ({ params, headers, status: status2 }) =
     if (!Number.isInteger(originalOrderId) || originalOrderId <= 0)
       return status2(400, { error: "Invalid order id" });
     const archivedRes = await db.execute(sql`SELECT * FROM admin_deleted_orders WHERE original_order_id = ${originalOrderId} AND restored = false LIMIT 1`);
-    const archived = archivedRes.rows?.[0] ?? (Array.isArray(archivedRes) ? archivedRes[0] : null);
+    const archivedResult = archivedRes;
+    const archived = archivedResult.rows?.[0] ?? (Array.isArray(archivedRes) ? archivedRes[0] : null);
     if (!archived)
       return status2(404, {
         error: "Archived order not found or already restored"
@@ -36045,7 +36068,8 @@ admin.get("/users/:id/timeline", async ({ params, headers, status: status2 }) =>
         type: "bonus",
         amount: b.amount,
         description: b.reason,
-        date: b.createdAt.toISOString()
+        date: b.createdAt.toISOString(),
+        bonusId: b.id
       });
     }
     for (const o of shopOrders) {
@@ -36103,7 +36127,7 @@ admin.get("/users/:id/timeline", async ({ params, headers, status: status2 }) =>
     return status2(500, { error: "Failed to fetch user timeline" });
   }
 });
-admin.post("/sync-ysws", async ({ headers, set }) => {
+admin.post("/sync-ysws", async ({ headers }) => {
   const user2 = await requireAdmin(headers);
   if (!user2)
     return { error: "Unauthorized" };

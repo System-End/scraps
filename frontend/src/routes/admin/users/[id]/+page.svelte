@@ -17,6 +17,7 @@
 		TrendingUp,
 		TrendingDown,
 		Undo2,
+		Trash2,
 		ShoppingCart,
 		Dices,
 		FileText,
@@ -102,6 +103,7 @@
 		itemName?: string;
 		paid?: boolean;
 		orderId?: number;
+		bonusId?: number;
 	}
 
 	let timeline = $state<TimelineEvent[]>([]);
@@ -114,7 +116,8 @@
 	let timelineLoading = $state(false);
 	let showTimeline = $state(false);
 	let undoingOrder = $state<number | null>(null);
-	let showUndoConfirm = $state<number | null>(null);
+	let deletingBonus = $state<number | null>(null);
+	let showDeleteConfirm = $state<{ type: 'order'; id: number } | { type: 'bonus'; id: number } | null>(null);
 	let showUnshipConfirm = $state<number | null>(null);
 	let unshipReason = $state('');
 	let unshipping = $state(false);
@@ -284,15 +287,13 @@
 
 	async function undoOrder(orderId: number) {
 		undoingOrder = orderId;
-		showUndoConfirm = null;
+		showDeleteConfirm = null;
 		try {
-			// Directly call DELETE with a required reason payload.
-			// The server expects a short reason when deleting/reverting an order.
 			const refundRes = await fetch(`${API_URL}/admin/orders/${orderId}`, {
 				method: 'DELETE',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ reason: 'reverted via admin UI' })
+				body: JSON.stringify({ reason: 'reverted via admin timeline' })
 			});
 			const refundResult = await refundRes.json();
 			if (refundResult.error) {
@@ -304,6 +305,44 @@
 			console.error('Failed to undo order:', e);
 		} finally {
 			undoingOrder = null;
+		}
+	}
+
+	async function deleteBonus(bonusId: number) {
+		deletingBonus = bonusId;
+		showDeleteConfirm = null;
+		try {
+			const res = await fetch(`${API_URL}/admin/bonuses/${bonusId}`, {
+				method: 'DELETE',
+				credentials: 'include'
+			});
+			const result = await res.json();
+			if (result.error) {
+				console.error(result.error);
+				return;
+			}
+			await fetchTimeline();
+		} catch (e) {
+			console.error('Failed to delete bonus:', e);
+		} finally {
+			deletingBonus = null;
+		}
+	}
+
+	function confirmTimelineDelete(event: TimelineEvent) {
+		if (event.type === 'bonus' && event.bonusId) {
+			showDeleteConfirm = { type: 'bonus', id: event.bonusId };
+		} else if (event.type.startsWith('shop_') && event.orderId) {
+			showDeleteConfirm = { type: 'order', id: event.orderId };
+		}
+	}
+
+	function executeTimelineDelete() {
+		if (!showDeleteConfirm) return;
+		if (showDeleteConfirm.type === 'bonus') {
+			deleteBonus(showDeleteConfirm.id);
+		} else {
+			undoOrder(showDeleteConfirm.id);
 		}
 	}
 
@@ -835,31 +874,19 @@
 										<p class="truncate text-sm text-gray-700">{event.description}</p>
 									</div>
 									<div class="flex shrink-0 items-center gap-2">
-										{#if event.type.startsWith('shop_') && event.orderId}
-											{#if showUndoConfirm === event.orderId}
-												<div class="flex items-center gap-1">
-													<button
-														onclick={() => undoOrder(event.orderId ?? 0)}
-														disabled={undoingOrder === event.orderId}
-														class="cursor-pointer rounded-full bg-red-600 px-2 py-1 text-xs font-bold text-white transition-all duration-200 hover:bg-red-700 disabled:opacity-50"
-													>
-														{undoingOrder === event.orderId ? '...' : 'confirm'}
-													</button>
-													<button
-														onclick={() => (showUndoConfirm = null)}
-														class="cursor-pointer rounded-full border-2 border-black px-2 py-1 text-xs font-bold transition-all duration-200 hover:border-dashed"
-													>
-														cancel
-													</button>
-												</div>
-											{:else}
-												<button
-													onclick={() => (showUndoConfirm = event.orderId ?? null)}
-													class="cursor-pointer rounded-full border-2 border-red-600 px-2 py-1 text-xs font-bold text-red-600 transition-all duration-200 hover:border-dashed disabled:opacity-50"
-												>
-													<Undo2 size={12} />
-												</button>
-											{/if}
+										{#if (event.type.startsWith('shop_') && event.orderId) || (event.type === 'bonus' && event.bonusId)}
+											<button
+												onclick={() => confirmTimelineDelete(event)}
+												disabled={undoingOrder === event.orderId || deletingBonus === event.bonusId}
+												class="cursor-pointer rounded-full border-2 border-red-600 px-2 py-1 text-xs font-bold text-red-600 transition-all duration-200 hover:border-dashed disabled:opacity-50"
+												title="delete"
+											>
+												{#if undoingOrder === event.orderId || deletingBonus === event.bonusId}
+													...
+												{:else}
+													<Trash2 size={12} />
+												{/if}
+											</button>
 										{/if}
 										<div class="text-right">
 											<p class="font-bold {getTimelineColor(event.type, event.amount)}">
@@ -994,6 +1021,44 @@
 					class="flex-1 cursor-pointer rounded-full bg-green-500 px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{savingBonus ? $t.common.saving : 'give bonus'}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Timeline Delete Confirmation Modal -->
+{#if showDeleteConfirm}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+		onclick={(e) => e.target === e.currentTarget && (showDeleteConfirm = null)}
+		onkeydown={(e) => e.key === 'Escape' && (showDeleteConfirm = null)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
+			<h2 class="mb-4 text-2xl font-bold">
+				delete {showDeleteConfirm.type === 'bonus' ? 'bonus' : 'order'}
+			</h2>
+			<p class="mb-6 text-gray-600">
+				{#if showDeleteConfirm.type === 'bonus'}
+					this will permanently delete this bonus entry from the database. the user's balance will be recalculated.
+				{:else}
+					this will permanently delete this order and all associated records (refinery upgrades, rolls, penalties). item stock will be restored.
+				{/if}
+			</p>
+			<div class="flex gap-3">
+				<button
+					onclick={() => (showDeleteConfirm = null)}
+					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
+				>
+					cancel
+				</button>
+				<button
+					onclick={executeTimelineDelete}
+					class="flex-1 cursor-pointer rounded-full border-4 border-red-600 bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					delete
 				</button>
 			</div>
 		</div>
