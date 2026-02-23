@@ -87,6 +87,7 @@ async function syncProjectsToAirtable(): Promise<void> {
 				hours: projectsTable.hours,
 				hoursOverride: projectsTable.hoursOverride,
 				hackatimeProject: projectsTable.hackatimeProject,
+				scrapsPaidAt: projectsTable.scrapsPaidAt,
 				tier: projectsTable.tier,
 				status: projectsTable.status,
 				updateDescription: projectsTable.updateDescription,
@@ -228,7 +229,10 @@ async function syncProjectsToAirtable(): Promise<void> {
 			if (!project.image) continue // screenshot must exist
 
 			// Skip projects already approved in Airtable — don't overwrite them
-			if (approvedRecords.has(project.githubUrl)) continue
+			// Unless scrapsPaidAt is null, which means the project was recently updated
+			// and needs to be re-synced with new hours and reset review status
+			const isUpdate = approvedRecords.has(project.githubUrl) && !project.scrapsPaidAt
+			if (approvedRecords.has(project.githubUrl) && !isUpdate) continue
 
 			// Check for cross-user duplicate Code URL among shipped projects
 			const previousOwner = seenCodeUrls.get(project.githubUrl)
@@ -299,6 +303,11 @@ async function syncProjectsToAirtable(): Promise<void> {
 				),
 				'Playable URL': project.playableUrl || '',
 				'Screenshot': [{ url: project.image }] as any,
+			}
+
+			// Reset Review Status to pending for updated projects so they get re-reviewed in Airtable
+			if (isUpdate) {
+				fields['Review Status'] = ''
 			}
 
 			// Add address fields from userinfo

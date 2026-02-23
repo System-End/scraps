@@ -942,6 +942,12 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
         }
 
         updateData.scrapsAwarded = newScrapsAwarded;
+
+        // Reset scrapsPaidAt so the updated project re-enters the payout pipeline
+        // and gets re-synced to Airtable with updated hours/review status
+        if (previouslyShipped) {
+          updateData.scrapsPaidAt = null;
+        }
       }
     }
 
@@ -1308,6 +1314,12 @@ admin.post("/second-pass/:id", async ({ params, body, headers }) => {
       }
 
       updateData.scrapsAwarded = newScrapsAwarded;
+
+      // Reset scrapsPaidAt so the updated project re-enters the payout pipeline
+      // and gets re-synced to Airtable with updated hours/review status
+      if (previouslyShipped) {
+        updateData.scrapsPaidAt = null;
+      }
 
       // Update project
       await db

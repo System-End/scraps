@@ -31626,7 +31626,7 @@ async function syncSingleProject(projectId) {
 }
 
 // src/lib/ysws.ts
-var YSWS_API_URL = "https://joe.fraud.hackclub.com/api/v1/ysws/events/ysws-scraps";
+var YSWS_API_URL = "https://joe.fraud.hackclub.com/api/v1/ysws/events/scraps2";
 async function lookupHackatimeId(email) {
   if (!config.hackatimeAdminKey)
     return null;
@@ -34740,6 +34740,9 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
           scrapsAwarded = newScrapsAwarded;
         }
         updateData.scrapsAwarded = newScrapsAwarded;
+        if (previouslyShipped) {
+          updateData.scrapsPaidAt = null;
+        }
       }
     }
     await db.update(projectsTable).set(updateData).where(eq(projectsTable.id, projectId));
@@ -34980,6 +34983,9 @@ admin.post("/second-pass/:id", async ({ params, body, headers }) => {
         scrapsAwarded = newScrapsAwarded;
       }
       updateData.scrapsAwarded = newScrapsAwarded;
+      if (previouslyShipped) {
+        updateData.scrapsPaidAt = null;
+      }
       await db.update(projectsTable).set(updateData).where(eq(projectsTable.id, projectId));
       if (scrapsAwarded > 0) {
         await db.insert(projectActivityTable).values({
