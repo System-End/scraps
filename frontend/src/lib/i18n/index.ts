@@ -4,7 +4,8 @@ import es from './es';
 import { API_URL } from '$lib/config';
 
 export type Locale = 'en' | 'es';
-export type Translations = typeof en;
+type DeepStringify<T> = { [K in keyof T]: T[K] extends string ? string : DeepStringify<T[K]> };
+export type Translations = DeepStringify<typeof en>;
 
 const translations: Record<Locale, Translations> = { en, es };
 

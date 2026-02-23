@@ -99,18 +99,20 @@
 	let row2Items = $derived(duplicateItems([...scrapItems].reverse(), 8));
 	let totalSetWidth = $derived(scrapItems.length * (ITEM_WIDTH + GAP));
 
-	onMount(async () => {
-		const user = await getUser();
-		isLoggedIn = !!user;
+	onMount(() => {
+		(async () => {
+			const user = await getUser();
+			isLoggedIn = !!user;
 
-		try {
-			const response = await fetch(`${API_URL}/shop/items`);
-			if (response.ok) {
-				shopItems = await response.json();
+			try {
+				const response = await fetch(`${API_URL}/shop/items`);
+				if (response.ok) {
+					shopItems = await response.json();
+				}
+			} catch (e) {
+				console.error('Failed to fetch shop items:', e);
 			}
-		} catch (e) {
-			console.error('Failed to fetch shop items:', e);
-		}
+		})();
 
 		let animationId: number;
 

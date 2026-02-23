@@ -2,21 +2,9 @@
 	import { X, ChevronDown, Upload, Check } from '@lucide/svelte';
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
-	import { tutorialProjectIdStore } from '$lib/stores';
+	import { tutorialProjectIdStore, type Project } from '$lib/stores';
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
-
-	interface Project {
-		id: number;
-		userId: string;
-		name: string;
-		description: string;
-		image: string | null;
-		githubUrl: string | null;
-		hackatimeProject: string | null;
-		hours: number;
-		status: string;
-	}
 
 	interface HackatimeProject {
 		name: string;
@@ -154,7 +142,7 @@
 	}
 
 	function selectProject(project: HackatimeProject) {
-		const idx = selectedHackatimeProjects.findIndex(p => p.name === project.name);
+		const idx = selectedHackatimeProjects.findIndex((p) => p.name === project.name);
 		if (idx >= 0) {
 			selectedHackatimeProjects = selectedHackatimeProjects.filter((_, i) => i !== idx);
 		} else {
@@ -167,7 +155,7 @@
 	}
 
 	function removeSelectedProject(name: string) {
-		selectedHackatimeProjects = selectedHackatimeProjects.filter(p => p.name !== name);
+		selectedHackatimeProjects = selectedHackatimeProjects.filter((p) => p.name !== name);
 	}
 
 	function resetForm() {
@@ -195,9 +183,10 @@
 		loading = true;
 		error = null;
 
-		const hackatimeValue = selectedHackatimeProjects.length > 0
-			? selectedHackatimeProjects.map(p => p.name).join(',')
-			: null;
+		const hackatimeValue =
+			selectedHackatimeProjects.length > 0
+				? selectedHackatimeProjects.map((p) => p.name).join(',')
+				: null;
 		const finalGithubUrl = githubUrl.trim() || selectedHackatimeProjects[0]?.repoUrl || null;
 
 		try {
@@ -374,7 +363,9 @@
 					{#if selectedHackatimeProjects.length > 0}
 						<div class="mb-2 flex flex-wrap gap-2">
 							{#each selectedHackatimeProjects as hp}
-								<span class="flex items-center gap-1 rounded-full border-2 border-black bg-gray-100 px-3 py-1 text-sm font-medium">
+								<span
+									class="flex items-center gap-1 rounded-full border-2 border-black bg-gray-100 px-3 py-1 text-sm font-medium"
+								>
 									{hp.name}
 									<span class="text-gray-500">({formatHours(hp.hours)}h)</span>
 									<button
@@ -417,11 +408,15 @@
 									</div>
 								{:else}
 									{#each hackatimeProjects as project}
-										{@const isSelected = selectedHackatimeProjects.some(p => p.name === project.name)}
+										{@const isSelected = selectedHackatimeProjects.some(
+											(p) => p.name === project.name
+										)}
 										<button
 											type="button"
 											onclick={() => selectProject(project)}
-											class="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-left hover:bg-gray-100 {isSelected ? 'bg-gray-50' : ''}"
+											class="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-left hover:bg-gray-100 {isSelected
+												? 'bg-gray-50'
+												: ''}"
 										>
 											<span class="flex items-center gap-2">
 												{#if isSelected}

@@ -351,10 +351,10 @@
 												onclick={(e) => {
 													e.preventDefault();
 													e.stopPropagation();
-													window.open(project.githubUrl, '_blank');
+													window.open(project.githubUrl!, '_blank');
 												}}
 												onkeydown={(e) =>
-													e.key === 'Enter' && window.open(project.githubUrl, '_blank')}
+													e.key === 'Enter' && window.open(project.githubUrl!, '_blank')}
 												role="link"
 												tabindex="0"
 												class="flex cursor-pointer items-center gap-1 transition-colors hover:text-black"
@@ -396,32 +396,32 @@
 
 		<!-- Refinements -->
 		{#if refinements.length > 0}
-		<div class="mt-6 rounded-2xl border-4 border-black p-6">
-			<div class="mb-4 flex items-center gap-2">
-				<Flame size={20} class="text-orange-500" />
-				<h2 class="text-xl font-bold">{$t.profile.refinements}</h2>
-			</div>
-			{#if refinements.length === 0}
-				<p class="py-4 text-center text-gray-500">{$t.profile.noRefinements}</p>
-			{:else}
-				<div class="space-y-3">
-					{#each refinements.sort((a, b) => b.totalBoost - a.totalBoost) as refinement}
-						{@const maxBoost = Math.max(...refinements.map((r) => r.totalBoost))}
-						{@const barWidth = maxBoost > 0 ? (refinement.totalBoost / maxBoost) * 100 : 0}
-						<div class="relative">
-							<div
-								class="flex h-10 items-center justify-between rounded-lg border-2 border-black bg-black px-3 text-sm font-bold text-white"
-								style="width: {Math.max(barWidth, 20)}%;"
-							>
-								<span class="truncate">{refinement.itemName}</span>
-								<span class="ml-2 shrink-0">+{refinement.totalBoost}%</span>
-							</div>
-						</div>
-					{/each}
+			<div class="mt-6 rounded-2xl border-4 border-black p-6">
+				<div class="mb-4 flex items-center gap-2">
+					<Flame size={20} class="text-orange-500" />
+					<h2 class="text-xl font-bold">{$t.profile.refinements}</h2>
 				</div>
-			{/if}
-		</div>
-	{/if}
+				{#if refinements.length === 0}
+					<p class="py-4 text-center text-gray-500">{$t.profile.noRefinements}</p>
+				{:else}
+					<div class="space-y-3">
+						{#each refinements.sort((a, b) => b.totalBoost - a.totalBoost) as refinement}
+							{@const maxBoost = Math.max(...refinements.map((r) => r.totalBoost))}
+							{@const barWidth = maxBoost > 0 ? (refinement.totalBoost / maxBoost) * 100 : 0}
+							<div class="relative">
+								<div
+									class="flex h-10 items-center justify-between rounded-lg border-2 border-black bg-black px-3 text-sm font-bold text-white"
+									style="width: {Math.max(barWidth, 20)}%;"
+								>
+									<span class="truncate">{refinement.itemName}</span>
+									<span class="ml-2 shrink-0">+{refinement.totalBoost}%</span>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		{/if}
 	{/if}
 </div>
 
