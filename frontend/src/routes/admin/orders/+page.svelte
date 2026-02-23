@@ -235,7 +235,7 @@
 				body: JSON.stringify({ reason: confirmReason })
 			});
 			const text = await response.text();
-			let json: any = null;
+			let json: Record<string, string> | null = null;
 			try {
 				json = JSON.parse(text);
 			} catch {
@@ -280,7 +280,7 @@
 				credentials: 'include'
 			});
 			const text = await response.text();
-			let json: any = null;
+			let json: Record<string, string> | null = null;
 			try {
 				json = JSON.parse(text);
 			} catch {

@@ -916,7 +916,6 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
 
     let scrapsAwarded = 0;
     if (action === "approved") {
-      const hours = hoursOverride ?? project[0].hours ?? 0;
       const tier = tierOverride ?? project[0].tier ?? 1;
 
       // Compute effective hours using activity-derived shipped dates
@@ -1633,13 +1632,23 @@ admin.post("/shop/compute-roll-costs", async ({ headers, body, status }) => {
   const user = await requireAdmin(headers as Record<string, string>);
   if (!user) return status(401, { error: "Unauthorized" });
 
+  interface RollCostItem {
+    id: number;
+    price: number;
+    baseProbability?: number;
+    rollCostOverride?: number | null;
+    perRollMultiplier?: number;
+    rollCount?: number;
+    userBoostPercent?: number;
+  }
+
   const { itemIds, items } = body as {
     itemIds?: number[];
-    items?: Array<any>;
+    items?: RollCostItem[];
   };
 
   try {
-    let rows: any[] = [];
+    let rows: RollCostItem[] = [];
 
     // If list of DB IDs provided, load canonical fields from DB
     if (Array.isArray(itemIds) && itemIds.length > 0) {
@@ -1731,10 +1740,9 @@ admin.post("/shop/items", async ({ headers, body, status }) => {
     category,
     count,
     baseProbability,
-    baseUpgradeCost,
-    costMultiplier,
-    boostAmount,
     rollCostOverride,
+    perRollMultiplier: bodyPerRollMultiplier,
+    upgradeBudgetMultiplier: bodyUpgradeBudgetMultiplier,
   } = body as {
     name: string;
     image: string;
@@ -1743,10 +1751,9 @@ admin.post("/shop/items", async ({ headers, body, status }) => {
     category: string;
     count: number;
     baseProbability?: number;
-    baseUpgradeCost?: number;
-    costMultiplier?: number;
-    boostAmount?: number;
     rollCostOverride?: number | null;
+    perRollMultiplier?: number;
+    upgradeBudgetMultiplier?: number;
   };
 
   if (
@@ -1781,9 +1788,8 @@ admin.post("/shop/items", async ({ headers, body, status }) => {
     const pricing = computeItemPricing(dollarCost, baseProbability, count ?? 1);
 
     // Allow admin-supplied multipliers (optional); fallback to sensible defaults.
-    const perRollMultiplierVal = (body as any)?.perRollMultiplier ?? 0.05;
-    const upgradeBudgetMultiplierVal =
-      (body as any)?.upgradeBudgetMultiplier ?? 3.0;
+    const perRollMultiplierVal = bodyPerRollMultiplier ?? 0.05;
+    const upgradeBudgetMultiplierVal = bodyUpgradeBudgetMultiplier ?? 3.0;
 
     await db.insert(shopItemsTable).values({
       name: name.trim(),
@@ -2448,7 +2454,7 @@ admin.delete("/orders/:id", async ({ params, headers, body, status }) => {
       return status(400, { error: "Invalid order id" });
     }
 
-    const reason = (body && (body as any).reason) || null;
+    const reason = (body && (body as { reason?: string }).reason) || null;
     if (!reason || typeof reason !== "string" || reason.trim().length < 3) {
       return status(400, {
         error: "Provide a short reason (min 3 chars) for deleting this order",
@@ -2489,14 +2495,18 @@ admin.delete("/orders/:id", async ({ params, headers, body, status }) => {
       const already = await db.execute(
         sql`SELECT 1 FROM admin_deleted_orders WHERE original_order_id = ${orderId} AND restored = false LIMIT 1`,
       );
+      const alreadyResult = already as { rows?: Record<string, unknown>[] };
       alreadyRow =
-        (already as any).rows?.[0] ??
-        (Array.isArray(already) ? (already as any)[0] : null);
+        alreadyResult.rows?.[0] ??
+        (Array.isArray(already)
+          ? (already as Record<string, unknown>[])[0]
+          : null);
     } catch (err) {
       // If the table doesn't exist, create it on-demand (safe: CREATE TABLE IF NOT EXISTS)
       // and retry the select. If it's a different error, rethrow.
-      const msg = (err as any)?.message ?? "";
-      const code = (err as any)?.code ?? null;
+      const dbErr = err as { message?: string; code?: string };
+      const msg = dbErr?.message ?? "";
+      const code = dbErr?.code ?? null;
       if (msg.includes("does not exist") || code === "42P01") {
         // Create the table to match the migration shape (minimal safe schema)
         await db.execute(sql`
@@ -2530,9 +2540,12 @@ admin.delete("/orders/:id", async ({ params, headers, body, status }) => {
         const already2 = await db.execute(
           sql`SELECT 1 FROM admin_deleted_orders WHERE original_order_id = ${orderId} AND restored = false LIMIT 1`,
         );
+        const already2Result = already2 as { rows?: Record<string, unknown>[] };
         alreadyRow =
-          (already2 as any).rows?.[0] ??
-          (Array.isArray(already2) ? (already2 as any)[0] : null);
+          already2Result.rows?.[0] ??
+          (Array.isArray(already2)
+            ? (already2 as Record<string, unknown>[])[0]
+            : null);
       } else {
         throw err;
       }
@@ -2657,31 +2670,17 @@ admin.delete("/orders/:id", async ({ params, headers, body, status }) => {
     // Log full error details for diagnostics: stack, name, message, cause, and any DB-driver fields.
     // Wrap logging in a try/catch to avoid masking the original error if logging itself fails.
     try {
-      console.error(
-        "Admin delete order error (stack):",
-        (err as any)?.stack ?? err,
-      );
-      console.error(
-        "Admin delete order error (name):",
-        (err as any)?.name ?? null,
-      );
+      const e = err as Record<string, unknown>;
+      console.error("Admin delete order error (stack):", e?.stack ?? err);
+      console.error("Admin delete order error (name):", e?.name ?? null);
       console.error(
         "Admin delete order error (message):",
-        (err as any)?.message ?? String(err),
+        e?.message ?? String(err),
       );
-      console.error(
-        "Admin delete order error (cause):",
-        (err as any)?.cause ?? null,
-      );
+      console.error("Admin delete order error (cause):", e?.cause ?? null);
       // Some drivers attach query and params for failed queries (helpful for debugging)
-      console.error(
-        "Admin delete order error (query):",
-        (err as any)?.query ?? null,
-      );
-      console.error(
-        "Admin delete order error (params):",
-        (err as any)?.params ?? null,
-      );
+      console.error("Admin delete order error (query):", e?.query ?? null);
+      console.error("Admin delete order error (params):", e?.params ?? null);
       // Attempt to log the full error object including non-enumerable props
       try {
         console.error(
@@ -2699,7 +2698,8 @@ admin.delete("/orders/:id", async ({ params, headers, body, status }) => {
 
     return status(500, {
       error:
-        "Failed to delete order: " + ((err as any)?.message || String(err)),
+        "Failed to delete order: " +
+        (err instanceof Error ? err.message : String(err)),
     });
   }
 });
@@ -2717,9 +2717,12 @@ admin.post("/orders/:id/restore", async ({ params, headers, status }) => {
     const archivedRes = await db.execute(
       sql`SELECT * FROM admin_deleted_orders WHERE original_order_id = ${originalOrderId} AND restored = false LIMIT 1`,
     );
+    const archivedResult = archivedRes as { rows?: Record<string, unknown>[] };
     const archived =
-      (archivedRes as any).rows?.[0] ??
-      (Array.isArray(archivedRes) ? (archivedRes as any)[0] : null);
+      archivedResult.rows?.[0] ??
+      (Array.isArray(archivedRes)
+        ? (archivedRes as Record<string, unknown>[])[0]
+        : null);
     if (!archived)
       return status(404, {
         error: "Archived order not found or already restored",
@@ -3103,7 +3106,7 @@ admin.get("/users/:id/timeline", async ({ params, headers, status }) => {
 });
 
 // Sync all submitted/pending projects to YSWS
-admin.post("/sync-ysws", async ({ headers, set }) => {
+admin.post("/sync-ysws", async ({ headers }) => {
   const user = await requireAdmin(headers as Record<string, string>);
   if (!user) return { error: "Unauthorized" };
 

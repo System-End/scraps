@@ -246,7 +246,7 @@
 {#if open}
 	<div
 		class="fixed inset-0 flex items-center justify-center p-4 {tutorialMode
-			? 'z-[200] bg-transparent'
+			? 'z-200 bg-transparent'
 			: 'z-50 bg-black/50'}"
 		onclick={handleBackdropClick}
 		onkeydown={(e) => !tutorialMode && e.key === 'Escape' && handleClose()}
@@ -255,7 +255,7 @@
 	>
 		<div
 			class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border-4 border-black bg-white p-6 {tutorialMode
-				? 'z-[250]'
+				? 'z-250'
 				: ''}"
 			data-tutorial="create-project-modal"
 		>

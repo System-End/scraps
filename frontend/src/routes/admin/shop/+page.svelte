@@ -264,7 +264,18 @@
 
 	// Optimal pricing is fetched from the server so the UI always matches backend logic.
 	// When price is overridden, request EV-safe upgrade costs computed on the server.
-	let optimalPricing = $state<any>(null);
+	let optimalPricing = $state<{
+		price: number;
+		baseProbability: number;
+		baseUpgradeCost: number;
+		costMultiplier: number;
+		boostAmount: number;
+		rollCost?: number;
+		expectedRollsAtBase?: number;
+		expectedSpendAtBase?: number;
+		dollarCost?: number;
+		scrapsPerDollar?: number;
+	} | null>(null);
 
 	let hasCustomPricing = $derived(
 		formPrice > 0 &&
