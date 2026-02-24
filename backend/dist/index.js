@@ -31554,6 +31554,7 @@ async function syncSingleProject(projectId) {
       id: projectsTable.id,
       hackatimeProject: projectsTable.hackatimeProject,
       hours: projectsTable.hours,
+      userId: projectsTable.userId,
       userEmail: usersTable.email
     }).from(projectsTable).innerJoin(usersTable, eq(projectsTable.userId, usersTable.id)).where(eq(projectsTable.id, projectId)).limit(1);
     if (!project)
@@ -31564,6 +31565,10 @@ async function syncSingleProject(projectId) {
     if (entries.length === 0)
       return { hours: project.hours ?? 0, updated: false, error: "Invalid Hackatime project format" };
     const hackatimeUser = await getHackatimeUser(project.userEmail);
+    if (hackatimeUser?.banned) {
+      await db.delete(sessionsTable).where(eq(sessionsTable.userId, project.userId));
+      return { hours: 0, updated: false, error: "User is banned on Hackatime" };
+    }
     let totalSeconds = 0;
     const migratedEntries = [];
     let needsMigration = false;

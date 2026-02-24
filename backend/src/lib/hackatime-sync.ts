@@ -1,6 +1,7 @@
 import { db } from '../db'
 import { projectsTable } from '../schemas/projects'
 import { usersTable } from '../schemas/users'
+import { sessionsTable } from '../schemas/sessions'
 import { userActivityTable } from '../schemas/user-emails'
 import { isNotNull, and, or, eq, isNull, sql } from 'drizzle-orm'
 import { config } from '../config'
@@ -244,6 +245,15 @@ async function syncAllProjects(): Promise<void> {
 		for (const [email, userProjects] of projectsByEmail) {
 			const hackatimeUser = await getHackatimeUser(email)
 
+			if (hackatimeUser?.banned) {
+				const userId = userProjects[0].userId
+				const deleted = await db.delete(sessionsTable).where(eq(sessionsTable.userId, userId)).returning()
+				if (deleted.length > 0) {
+					console.log(`[HACKATIME-SYNC] Banned user ${email} (id=${userId}): deleted ${deleted.length} sessions`)
+				}
+				continue
+			}
+
 			for (const project of userProjects) {
 				const entries = parseHackatimeProjects(project.hackatimeProject)
 				if (entries.length === 0) continue
@@ -403,6 +413,7 @@ export async function syncSingleProject(projectId: number): Promise<{ hours: num
 				id: projectsTable.id,
 				hackatimeProject: projectsTable.hackatimeProject,
 				hours: projectsTable.hours,
+				userId: projectsTable.userId,
 				userEmail: usersTable.email
 			})
 			.from(projectsTable)
@@ -417,6 +428,11 @@ export async function syncSingleProject(projectId: number): Promise<{ hours: num
 		if (entries.length === 0) return { hours: project.hours ?? 0, updated: false, error: 'Invalid Hackatime project format' }
 
 		const hackatimeUser = await getHackatimeUser(project.userEmail)
+
+		if (hackatimeUser?.banned) {
+			await db.delete(sessionsTable).where(eq(sessionsTable.userId, project.userId))
+			return { hours: 0, updated: false, error: 'User is banned on Hackatime' }
+		}
 
 		let totalSeconds = 0
 		const migratedEntries: string[] = []
