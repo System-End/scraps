@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Undo2 } from '@lucide/svelte';
+
 	import { getUser, refreshUserScraps, userScrapsStore } from '$lib/auth-client';
 	import { shopItemsStore, shopLoading, fetchShopItems, type ShopItem } from '$lib/stores';
 	import { t } from '$lib/i18n';
@@ -44,7 +44,7 @@
 				)
 			);
 			await refreshUserScraps();
-		} catch (e) {
+		} catch (_e) {
 			alertMessage = $t.refinery.failedToUpgrade;
 		} finally {
 			upgrading = null;
@@ -81,7 +81,7 @@
 			);
 			await refreshUserScraps();
 			alertMessage = `Refunded ${data.refundedCost} scraps`;
-		} catch (e) {
+		} catch (_e) {
 			alertMessage = $t.refinery.failedToUndo || 'Failed to undo upgrade';
 		} finally {
 			undoing = null;
@@ -118,7 +118,7 @@
 			);
 			await refreshUserScraps();
 			alertMessage = `Refunded ${data.refundedCost} scraps (${data.undoneCount} upgrades)`;
-		} catch (e) {
+		} catch (_e) {
 			alertMessage = 'Failed to undo upgrades';
 		} finally {
 			undoing = null;

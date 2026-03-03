@@ -87,6 +87,7 @@
 	let isAdmin = $state(false);
 
 	// Payout state
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in template
 	let payoutLoading = $state(false);
 	let payoutInfo = $state<{
 		pendingProjects: number;
@@ -208,7 +209,7 @@
 			} else {
 				fixResult = data;
 			}
-		} catch (e) {
+		} catch (_e) {
 			fixError = 'Failed to fix negative balances';
 		} finally {
 			fixingBalances = false;

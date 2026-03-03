@@ -113,7 +113,7 @@
 				const data = await response.json();
 				formError = data.error || 'Failed to save';
 			}
-		} catch (e) {
+		} catch (_e) {
 			formError = 'Failed to save news';
 		} finally {
 			saving = false;

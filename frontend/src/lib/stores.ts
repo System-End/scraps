@@ -92,6 +92,12 @@ export interface ErrorState {
 	details?: string;
 }
 
+export interface Toast {
+	id: number;
+	message: string;
+	type: 'success' | 'error' | 'info';
+}
+
 // Stores
 export const userStore = writable<User | null>(null);
 export const tutorialActiveStore = writable(false);
@@ -108,6 +114,7 @@ export const newsStore = writable<NewsItem[]>([]);
 export const probabilityLeadersStore = writable<ProbabilityLeader[]>([]);
 export const viewsLeaderboardStore = writable<ViewsLeaderEntry[]>([]);
 export const errorStore = writable<ErrorState | null>(null);
+export const toastStore = writable<Toast[]>([]);
 
 // Loading states
 export const projectsLoading = writable(true);
@@ -344,6 +351,19 @@ export function showError(error: ErrorState | string) {
 
 export function clearError() {
 	errorStore.set(null);
+}
+
+let toastId = 0;
+export function showToast(message: string, type: Toast['type'] = 'info', duration = 5000) {
+	const id = ++toastId;
+	toastStore.update((toasts) => [...toasts, { id, message, type }]);
+	if (duration > 0) {
+		setTimeout(() => dismissToast(id), duration);
+	}
+}
+
+export function dismissToast(id: number) {
+	toastStore.update((toasts) => toasts.filter((t) => t.id !== id));
 }
 
 export async function handleApiError(response: Response, fallbackMessage = 'something went wrong') {

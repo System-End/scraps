@@ -42,7 +42,7 @@
 	let uploadingImage = $state(false);
 	let selectedHackatimeProjects = $state<HackatimeProject[]>([]);
 	let hackatimeProjects = $state<HackatimeProject[]>([]);
-	let userSlackId = $state<string | null>(null);
+	let _userSlackId = $state<string | null>(null);
 	let loadingProjects = $state(false);
 	let showDropdown = $state(false);
 	let loading = $state(false);
@@ -64,8 +64,8 @@
 	const DESC_MIN = 20;
 	const DESC_MAX = 1000;
 
-	let hasImage = $derived(!!imageUrl);
-	let hasHackatime = $derived(selectedHackatimeProjects.length > 0);
+	let _hasImage = $derived(!!imageUrl);
+	let _hasHackatime = $derived(selectedHackatimeProjects.length > 0);
 	let hasDescription = $derived(
 		description.trim().length >= DESC_MIN && description.trim().length <= DESC_MAX
 	);
@@ -83,7 +83,7 @@
 			if (response.ok) {
 				const data = await response.json();
 				hackatimeProjects = data.projects || [];
-				userSlackId = data.slackId || null;
+				_userSlackId = data.slackId || null;
 			}
 		} catch (e) {
 			console.error('Failed to fetch hackatime projects:', e);

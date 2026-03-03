@@ -14,7 +14,7 @@ export async function fetchServerConfig(): Promise<void> {
 		if (!res.ok) return;
 		const data = await res.json();
 		Object.assign(serverConfig, data);
-	} catch (e) {
+	} catch (_e) {
 		// Intentionally ignore errors — frontend can fall back to local constants if needed
 	}
 }

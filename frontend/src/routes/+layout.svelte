@@ -7,6 +7,7 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import Tutorial from '$lib/components/Tutorial.svelte';
 	import ErrorModal from '$lib/components/ErrorModal.svelte';
+	import Toast from '$lib/components/Toast.svelte';
 	import { handleNavigation, prefetchUserData } from '$lib/stores';
 	import { getUser, type User } from '$lib/auth-client';
 
@@ -101,3 +102,4 @@
 {/if}
 
 <ErrorModal />
+<Toast />

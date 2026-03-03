@@ -16,6 +16,7 @@
 	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
+	import { showToast } from '$lib/stores';
 	import { t } from '$lib/i18n';
 
 	interface ShippingAddress {
@@ -76,7 +77,7 @@
 	let searchQuery = $state('');
 	let dateFrom = $state('');
 	let dateTo = $state('');
-	let confirmRevert = $state<Order | null>(null);
+	let _confirmRevert = $state<Order | null>(null);
 	let confirmDelete = $state<Order | null>(null);
 	// short reason for deletion (shown in admin logs) - required by server when deleting/reverting
 	let confirmReason = $state('');
@@ -204,8 +205,8 @@
 			if (response.ok) {
 				orders = await response.json();
 			}
-		} catch (e) {
-			console.error('Failed to fetch orders:', e);
+		} catch (_e) {
+			showToast('failed to load orders', 'error');
 		} finally {
 			loading = false;
 		}
@@ -235,9 +236,16 @@
 						? { ...o, isFulfilled: !o.isFulfilled, trackingNumber: trackingValue }
 						: o
 				);
+				showToast(
+					order.isFulfilled ? 'order marked as unfulfilled' : 'order marked as fulfilled',
+					'success'
+				);
+			} else {
+				const data = await response.json().catch(() => ({}));
+				showToast(data.error || 'failed to update order', 'error');
 			}
-		} catch (e) {
-			console.error('Failed to update order:', e);
+		} catch (_e) {
+			showToast('failed to update order', 'error');
 		} finally {
 			actionLoading = false;
 		}
@@ -278,10 +286,10 @@
 				}, 30000);
 			} else {
 				const err = (json && (json.error || json.message)) || text || 'failed to delete';
-				console.error('Failed to delete order:', err);
+				showToast(err, 'error');
 			}
-		} catch (e) {
-			console.error('Failed to delete order:', e);
+		} catch (_e) {
+			showToast('failed to delete order', 'error');
 		} finally {
 			actionLoading = false;
 			confirmDelete = null;
@@ -314,14 +322,16 @@
 				lastDeleted = null;
 				lastDeletedTimer = null;
 				lastDeletedError = null;
+				showToast('order restored successfully', 'success');
 			} else {
 				const err = (json && (json.error || json.message)) || text || 'restore failed';
 				lastDeletedError = String(err);
-				console.error('Failed to restore archived order:', err);
+				showToast(err, 'error');
 			}
 		} catch (e) {
-			lastDeletedError = String(e instanceof Error ? e.message : e);
-			console.error('Failed to restore archived order:', e);
+			const msg = e instanceof Error ? e.message : String(e);
+			lastDeletedError = msg;
+			showToast('failed to restore order: ' + msg, 'error');
 		} finally {
 			actionLoading = false;
 		}
@@ -646,7 +656,6 @@
 
 													{#if parseShippingAddress(order.shippingAddress)}
 														{@const addr = parseShippingAddress(order.shippingAddress)!}
-														<!-- svelte-ignore a11y_no_static_element_interactions -->
 														<div
 															class="group/addr rounded-xl border-2 border-gray-300 bg-white p-4"
 														>

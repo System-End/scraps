@@ -30,7 +30,7 @@
 </script>
 
 <div class="relative h-full w-full overflow-hidden bg-gray-50">
-	{#each spools as spool, i}
+	{#each spools as spool, _i}
 		<div
 			class="absolute text-black"
 			style="left: {spool.x}%; top: {spool.y}%; transform: translate(-50%, -50%) rotate({spool.rotation}deg); opacity: {spool.opacity};"

@@ -39,7 +39,7 @@
 	let users = $state<AdminUser[]>([]);
 	let pagination = $state<Pagination | null>(null);
 	let loading = $state(true);
-	let scraps = $derived(user?.scraps ?? 0);
+	let _scraps = $derived(user?.scraps ?? 0);
 	let editingUser = $state<AdminUser | null>(null);
 	let editingNotes = $state('');
 	let editingRole = $state('');

@@ -42,7 +42,7 @@
 	let pagination = $state<Pagination | null>(null);
 	let loading = $state(true);
 	let sortOrder = $state<'oldest' | 'newest'>('oldest');
-	let scraps = $derived(user?.scraps ?? 0);
+	let _scraps = $derived(user?.scraps ?? 0);
 
 	async function fetchReviews(page = 1) {
 		loading = true;

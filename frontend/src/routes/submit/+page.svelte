@@ -32,7 +32,7 @@
 	let showDropdown = $state(false);
 	let submitting = $state(false);
 	let error = $state<string | null>(null);
-	let scraps = $derived(user?.scraps ?? 0);
+	let _scraps = $derived(user?.scraps ?? 0);
 
 	let feedbackSource = $state('');
 	let feedbackGood = $state('');

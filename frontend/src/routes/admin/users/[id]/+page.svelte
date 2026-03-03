@@ -16,7 +16,6 @@
 		History,
 		TrendingUp,
 		TrendingDown,
-		Undo2,
 		Trash2,
 		ShoppingCart,
 		Dices,
@@ -125,7 +124,7 @@
 	let unshipping = $state(false);
 
 	// lightweight toast helper (DOM-based, so no extra markup required)
-	function showToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
+	function _showToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
 		try {
 			const el = document.createElement('div');
 			el.textContent = message;
@@ -157,7 +156,7 @@
 					el.remove();
 				}, 300);
 			}, 3500);
-		} catch (err) {
+		} catch (_err) {
 			// Fallback to alert if the DOM approach fails
 			try {
 				alert(message);

@@ -6,7 +6,6 @@
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { formatHours } from '$lib/utils';
-	import { t } from '$lib/i18n';
 
 	interface Project {
 		id: number;
@@ -42,7 +41,7 @@
 	let pagination = $state<Pagination | null>(null);
 	let loading = $state(true);
 	let sortOrder = $state<'oldest' | 'newest'>('oldest');
-	let scraps = $derived(user?.scraps ?? 0);
+	let _scraps = $derived(user?.scraps ?? 0);
 
 	async function fetchSecondPass(page = 1) {
 		loading = true;

@@ -59,7 +59,6 @@
 
 	// Reset card position when step changes
 	$effect(() => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 		currentStep;
 		cardOffset = null;
 	});
@@ -168,7 +167,6 @@
 
 	let highlightTick = $state(0);
 	let highlightRect = $derived.by(() => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 		highlightTick; // trigger reactivity
 		return getHighlightPosition(currentStepData.highlight);
 	});

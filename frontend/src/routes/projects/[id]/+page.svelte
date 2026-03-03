@@ -522,7 +522,7 @@
 					<!-- Timeline line -->
 					<div class="absolute top-0 bottom-0 left-3 w-0.5 bg-gray-200"></div>
 					<div class="space-y-4">
-						{#each activity as entry, i}
+						{#each activity as entry, _i}
 							{#if entry.type === 'review' && entry.action}
 								{@const ReviewIcon = getReviewIcon(entry.action)}
 								<div class="relative">

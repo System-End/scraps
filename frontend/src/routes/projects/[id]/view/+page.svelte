@@ -7,7 +7,6 @@
 		Clock,
 		CheckCircle,
 		AlertTriangle,
-		Package,
 		RefreshCw,
 		Bot
 	} from '@lucide/svelte';

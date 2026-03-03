@@ -36,7 +36,7 @@
 	let imagePreview = $state<string | null>(null);
 	let uploadingImage = $state(false);
 	let hackatimeProjects = $state<HackatimeProject[]>([]);
-	let userSlackId = $state<string | null>(null);
+	let _userSlackId = $state<string | null>(null);
 	let selectedHackatimeName = $state<string | null>(null);
 	let loadingProjects = $state(false);
 	let showDropdown = $state(false);
@@ -71,7 +71,7 @@
 			if (response.ok) {
 				const data = await response.json();
 				hackatimeProjects = data.projects || [];
-				userSlackId = data.slackId || null;
+				_userSlackId = data.slackId || null;
 			}
 		} catch (e) {
 			console.error('Failed to fetch hackatime projects:', e);

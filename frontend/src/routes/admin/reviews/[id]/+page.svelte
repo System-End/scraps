@@ -14,11 +14,9 @@
 		Globe,
 		RefreshCw,
 		Bot,
-		Loader,
 		ArrowLeft,
 		MessageSquare,
 		ShieldAlert,
-		Clipboard,
 		Lock
 	} from '@lucide/svelte';
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
@@ -100,7 +98,7 @@
 	let savingNotes = $state(false);
 	let syncing = $state(false);
 	let error = $state<string | null>(null);
-	let scraps = $derived(user?.scraps ?? 0);
+	let _scraps = $derived(user?.scraps ?? 0);
 
 	let feedbackForAuthor = $state('');
 	let internalJustification = $state('');

@@ -215,7 +215,7 @@
 		}
 	}
 
-	function getReviewIcon(action: string) {
+	function _getReviewIcon(action: string) {
 		switch (action) {
 			case 'approved':
 				return CheckCircle;
@@ -229,7 +229,7 @@
 		}
 	}
 
-	function getReviewIconColor(action: string) {
+	function _getReviewIconColor(action: string) {
 		switch (action) {
 			case 'approved':
 				return 'text-green-600';

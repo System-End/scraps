@@ -83,8 +83,10 @@
 	let formRollCostOverride = $state<number | null>(null);
 	let formMonetaryValue = $state(0);
 	let formError = $state<string | null>(null);
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in template
 	let errorModal = $state<string | null>(null);
 	let resettingRefinery = $state(false);
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in template
 	let showResetConfirm = $state(false);
 
 	const PHI = (1 + Math.sqrt(5)) / 2;
@@ -122,6 +124,7 @@
 			Math.min(80, Math.round((priceRarityFactor * 0.4 + stockRarityFactor * 0.6) * 80))
 		);
 
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const rollCost = Math.max(1, Math.round(price * (baseProbability / 100)));
 
 		const probabilityGap = 100 - baseProbability;
@@ -490,7 +493,7 @@
 				const data = await response.json();
 				formError = data.error || 'Failed to save';
 			}
-		} catch (e) {
+		} catch (_e) {
 			formError = 'Failed to save item';
 		} finally {
 			saving = false;
@@ -501,6 +504,7 @@
 		deleteConfirmId = id;
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- called from template
 	async function confirmDelete() {
 		if (!deleteConfirmId) return;
 
@@ -523,6 +527,7 @@
 		}
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- called from template
 	async function resetNonBuyerRefinery() {
 		resettingRefinery = true;
 		try {

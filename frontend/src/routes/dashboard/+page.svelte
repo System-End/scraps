@@ -8,14 +8,13 @@
 	import { getUser } from '$lib/auth-client';
 	import {
 		projectsStore,
-		projectsLoading,
 		fetchProjects,
 		addProject,
 		tutorialActiveStore,
 		type Project
 	} from '$lib/stores';
 	import { formatHours } from '$lib/utils';
-	import { t, locale } from '$lib/i18n';
+	import { t } from '$lib/i18n';
 
 	const greetingPhrases = $derived([
 		$t.dashboard.greetings.readyToScrap,
