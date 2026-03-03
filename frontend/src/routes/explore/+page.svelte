@@ -247,7 +247,9 @@
 										? 'bg-blue-100'
 										: 'bg-gray-100'}"
 							>
-								{project.status === 'waiting_for_review' ? 'under review' : project.status.replace(/_/g, ' ')}
+								{project.status === 'waiting_for_review'
+									? 'under review'
+									: project.status.replace(/_/g, ' ')}
 							</span>
 						</div>
 						<p class="line-clamp-2 flex-1 text-sm text-gray-600">{project.description}</p>

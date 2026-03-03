@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { X, ChevronDown, Upload, Check } from '@lucide/svelte';
 	import { API_URL } from '$lib/config';
-	import { formatHours } from '$lib/utils';
+	import { formatHours, parseHackatimeProjectName } from '$lib/utils';
 
 	interface Project {
 		id: number;
@@ -85,7 +85,9 @@
 			editedProject = { ...project };
 			imagePreview = project.image;
 			error = null;
-			selectedHackatimeName = project.hackatimeProject || null;
+			selectedHackatimeName = project.hackatimeProject
+				? parseHackatimeProjectName(project.hackatimeProject)
+				: null;
 			fetchHackatimeProjects();
 		}
 	});

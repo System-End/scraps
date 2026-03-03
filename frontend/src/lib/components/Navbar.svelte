@@ -25,7 +25,13 @@
 		Languages,
 		ChevronDown
 	} from '@lucide/svelte';
-	import { logout, getUser, userScrapsStore, userScrapsPendingStore, nextPayoutDateStore } from '$lib/auth-client';
+	import {
+		logout,
+		getUser,
+		userScrapsStore,
+		userScrapsPendingStore,
+		nextPayoutDateStore
+	} from '$lib/auth-client';
 	import { t, locale, setLocale, type Locale } from '$lib/i18n';
 
 	interface User {
@@ -53,7 +59,9 @@
 	let isReviewer = $derived(user?.role === 'admin' || user?.role === 'reviewer');
 	let isAdminOnly = $derived(user?.role === 'admin');
 	let isInAdminSection = $derived(currentPath.startsWith('/admin'));
-	let dashboardMoreActive = $derived(currentPath === '/leaderboard' || currentPath === '/shop' || currentPath === '/refinery');
+	let dashboardMoreActive = $derived(
+		currentPath === '/leaderboard' || currentPath === '/shop' || currentPath === '/refinery'
+	);
 	let adminMoreActive = $derived(
 		currentPath.startsWith('/admin/second-pass') ||
 			currentPath.startsWith('/admin/shop') ||
@@ -299,7 +307,7 @@
 					<!-- Visible on xl+ only -->
 					<a
 						href="/admin/second-pass"
-						class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
+						class="hidden cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 xl:flex {currentPath.startsWith(
 							'/admin/second-pass'
 						)
 							? 'border-yellow-500 bg-yellow-500 text-white'
@@ -311,7 +319,7 @@
 
 					<a
 						href="/admin/shop"
-						class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
+						class="hidden cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 xl:flex {currentPath.startsWith(
 							'/admin/shop'
 						)
 							? 'border-black bg-black text-white'
@@ -322,7 +330,7 @@
 					</a>
 					<a
 						href="/admin/news"
-						class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
+						class="hidden cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 xl:flex {currentPath.startsWith(
 							'/admin/news'
 						)
 							? 'border-black bg-black text-white'
@@ -333,7 +341,7 @@
 					</a>
 					<a
 						href="/admin/orders"
-						class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath.startsWith(
+						class="hidden cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 xl:flex {currentPath.startsWith(
 							'/admin/orders'
 						)
 							? 'border-black bg-black text-white'
@@ -352,14 +360,23 @@
 								: 'border-black hover:border-dashed'}"
 						>
 							<span class="text-lg font-bold">{$t.nav.more}</span>
-							<ChevronDown size={16} class="transition-transform duration-200 {showMoreMenu ? 'rotate-180' : ''}" />
+							<ChevronDown
+								size={16}
+								class="transition-transform duration-200 {showMoreMenu ? 'rotate-180' : ''}"
+							/>
 						</button>
 						{#if showMoreMenu}
-							<div class="absolute top-full left-0 z-50 mt-2 min-w-48 overflow-hidden rounded-2xl border-4 border-black bg-white">
+							<div
+								class="absolute top-full left-0 z-50 mt-2 min-w-48 overflow-hidden rounded-2xl border-4 border-black bg-white"
+							>
 								<a
 									href="/admin/second-pass"
 									onclick={closeMoreMenu}
-									class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath.startsWith('/admin/second-pass') ? 'bg-yellow-50' : ''}"
+									class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath.startsWith(
+										'/admin/second-pass'
+									)
+										? 'bg-yellow-50'
+										: ''}"
 								>
 									<ClipboardList size={18} />
 									<span class="font-bold">2nd pass</span>
@@ -367,7 +384,11 @@
 								<a
 									href="/admin/shop"
 									onclick={closeMoreMenu}
-									class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath.startsWith('/admin/shop') ? 'bg-gray-100' : ''}"
+									class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath.startsWith(
+										'/admin/shop'
+									)
+										? 'bg-gray-100'
+										: ''}"
 								>
 									<ShoppingBag size={18} />
 									<span class="font-bold">{$t.nav.shop}</span>
@@ -375,7 +396,11 @@
 								<a
 									href="/admin/news"
 									onclick={closeMoreMenu}
-									class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath.startsWith('/admin/news') ? 'bg-gray-100' : ''}"
+									class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath.startsWith(
+										'/admin/news'
+									)
+										? 'bg-gray-100'
+										: ''}"
 								>
 									<Newspaper size={18} />
 									<span class="font-bold">{$t.nav.news}</span>
@@ -383,7 +408,11 @@
 								<a
 									href="/admin/orders"
 									onclick={closeMoreMenu}
-									class="flex w-full cursor-pointer items-center gap-2 px-4 py-3 transition-colors hover:bg-gray-100 {currentPath.startsWith('/admin/orders') ? 'bg-gray-100' : ''}"
+									class="flex w-full cursor-pointer items-center gap-2 px-4 py-3 transition-colors hover:bg-gray-100 {currentPath.startsWith(
+										'/admin/orders'
+									)
+										? 'bg-gray-100'
+										: ''}"
 								>
 									<PackageCheck size={18} />
 									<span class="font-bold">{$t.nav.orders}</span>
@@ -422,7 +451,7 @@
 			<!-- Visible on xl+ only -->
 			<a
 				href="/leaderboard"
-				class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
+				class="hidden cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 xl:flex {currentPath ===
 				'/leaderboard'
 					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
@@ -433,7 +462,7 @@
 
 			<a
 				href="/shop"
-				class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
+				class="hidden cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 xl:flex {currentPath ===
 				'/shop'
 					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
@@ -444,7 +473,7 @@
 
 			<a
 				href="/refinery"
-				class="hidden xl:flex cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 {currentPath ===
+				class="hidden cursor-pointer items-center gap-2 rounded-full border-4 px-6 py-2 transition-all duration-300 xl:flex {currentPath ===
 				'/refinery'
 					? 'border-black bg-black text-white'
 					: 'border-black hover:border-dashed'}"
@@ -462,14 +491,22 @@
 						: 'border-black hover:border-dashed'}"
 				>
 					<span class="text-lg font-bold">{$t.nav.more}</span>
-					<ChevronDown size={16} class="transition-transform duration-200 {showMoreMenu ? 'rotate-180' : ''}" />
+					<ChevronDown
+						size={16}
+						class="transition-transform duration-200 {showMoreMenu ? 'rotate-180' : ''}"
+					/>
 				</button>
 				{#if showMoreMenu}
-					<div class="absolute top-full left-0 z-50 mt-2 min-w-48 overflow-hidden rounded-2xl border-4 border-black bg-white">
+					<div
+						class="absolute top-full left-0 z-50 mt-2 min-w-48 overflow-hidden rounded-2xl border-4 border-black bg-white"
+					>
 						<a
 							href="/leaderboard"
 							onclick={closeMoreMenu}
-							class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath === '/leaderboard' ? 'bg-gray-100 font-bold' : ''}"
+							class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath ===
+							'/leaderboard'
+								? 'bg-gray-100 font-bold'
+								: ''}"
 						>
 							<Trophy size={18} />
 							<span class="font-bold">{$t.nav.leaderboard}</span>
@@ -477,7 +514,10 @@
 						<a
 							href="/shop"
 							onclick={closeMoreMenu}
-							class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath === '/shop' ? 'bg-gray-100 font-bold' : ''}"
+							class="flex w-full cursor-pointer items-center gap-2 border-b-2 border-black px-4 py-3 transition-colors hover:bg-gray-100 {currentPath ===
+							'/shop'
+								? 'bg-gray-100 font-bold'
+								: ''}"
 						>
 							<Store size={18} />
 							<span class="font-bold">{$t.nav.shop}</span>
@@ -485,7 +525,10 @@
 						<a
 							href="/refinery"
 							onclick={closeMoreMenu}
-							class="flex w-full cursor-pointer items-center gap-2 px-4 py-3 transition-colors hover:bg-gray-100 {currentPath === '/refinery' ? 'bg-gray-100 font-bold' : ''}"
+							class="flex w-full cursor-pointer items-center gap-2 px-4 py-3 transition-colors hover:bg-gray-100 {currentPath ===
+							'/refinery'
+								? 'bg-gray-100 font-bold'
+								: ''}"
 						>
 							<Flame size={18} />
 							<span class="font-bold">{$t.nav.refinery}</span>
@@ -511,7 +554,11 @@
 				<div
 					data-tutorial="scraps-counter"
 					class="relative"
-					title={$userScrapsPendingStore > 0 ? `+${$userScrapsPendingStore} pending — payout in ${countdownText}` : countdownText ? `next payout in ${countdownText}` : ''}
+					title={$userScrapsPendingStore > 0
+						? `+${$userScrapsPendingStore} pending — payout in ${countdownText}`
+						: countdownText
+							? `next payout in ${countdownText}`
+							: ''}
 				>
 					<div class="flex items-center gap-2 rounded-full border-4 border-black px-6 py-2">
 						<Spool size={20} />
@@ -521,7 +568,10 @@
 						{/if}
 					</div>
 					{#if countdownText}
-						<span class="absolute top-full left-1/2 -translate-x-1/2 mt-0.5 text-xs text-gray-500 whitespace-nowrap">⏱ {countdownText}</span>
+						<span
+							class="absolute top-full left-1/2 mt-0.5 -translate-x-1/2 text-xs whitespace-nowrap text-gray-500"
+							>⏱ {countdownText}</span
+						>
 					{/if}
 				</div>
 

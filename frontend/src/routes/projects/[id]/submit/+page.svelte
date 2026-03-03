@@ -1,7 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { ArrowLeft, Send, Check, ChevronDown, Upload, X, RefreshCw, Bot, MessageSquare } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		Send,
+		Check,
+		ChevronDown,
+		Upload,
+		X,
+		RefreshCw,
+		Bot,
+		MessageSquare
+	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
 	import { formatHours, validateGithubUrl, validatePlayableUrl } from '$lib/utils';
@@ -86,7 +96,15 @@
 	let hasUpdateDescription = $derived(!isShippedUpdate || updateDescription.trim().length > 0);
 	let hasAiDescription = $derived(!usedAi || aiDescription.trim().length > 0);
 	let allRequirementsMet = $derived(
-		hasImage && hasHackatime && hasGithub && hasPlayableUrl && hasDescription && hasName && hasFeedback && hasUpdateDescription && hasAiDescription
+		hasImage &&
+			hasHackatime &&
+			hasGithub &&
+			hasPlayableUrl &&
+			hasDescription &&
+			hasName &&
+			hasFeedback &&
+			hasUpdateDescription &&
+			hasAiDescription
 	);
 
 	onMount(async () => {
@@ -116,11 +134,14 @@
 			isShippedUpdate = project?.status === 'shipped';
 			reviewerNotes = project?.reviewerNotes || '';
 			if (project?.hackatimeProject) {
-				selectedHackatimeNames = project.hackatimeProject.split(',').map((p: string) => {
-					const trimmed = p.trim();
-					const slashIndex = trimmed.indexOf('/');
-					return slashIndex !== -1 ? trimmed.substring(slashIndex + 1) : trimmed;
-				}).filter((p: string) => p.length > 0);
+				selectedHackatimeNames = project.hackatimeProject
+					.split(',')
+					.map((p: string) => {
+						const trimmed = p.trim();
+						const slashIndex = trimmed.indexOf('/');
+						return slashIndex !== -1 ? trimmed.substring(slashIndex + 1) : trimmed;
+					})
+					.filter((p: string) => p.length > 0);
 			}
 			selectedTier = project?.tier ?? 1;
 			fetchHackatimeProjects();
@@ -204,7 +225,7 @@
 			}
 			// Recalculate total hours from all selected projects
 			const totalHours = selectedHackatimeNames.reduce((sum, name) => {
-				const found = hackatimeProjects.find(p => p.name === name);
+				const found = hackatimeProjects.find((p) => p.name === name);
 				return sum + (found?.hours || 0);
 			}, 0);
 			project.hours = Math.round(totalHours * 10) / 10;
@@ -215,10 +236,10 @@
 	}
 
 	function removeHackatimeProject(name: string) {
-		selectedHackatimeNames = selectedHackatimeNames.filter(n => n !== name);
+		selectedHackatimeNames = selectedHackatimeNames.filter((n) => n !== name);
 		if (project) {
 			const totalHours = selectedHackatimeNames.reduce((sum, n) => {
-				const found = hackatimeProjects.find(p => p.name === n);
+				const found = hackatimeProjects.find((p) => p.name === n);
 				return sum + (found?.hours || 0);
 			}, 0);
 			project.hours = Math.round(totalHours * 10) / 10;
@@ -231,9 +252,12 @@
 		submitting = true;
 		error = null;
 
-		const hackatimeValue = selectedHackatimeNames.length > 0
-			? selectedHackatimeNames.map(name => userSlackId ? `${userSlackId}/${name}` : name).join(',')
-			: null;
+		const hackatimeValue =
+			selectedHackatimeNames.length > 0
+				? selectedHackatimeNames
+						.map((name) => (userSlackId ? `${userSlackId}/${name}` : name))
+						.join(',')
+				: null;
 
 		try {
 			// First update the project with any changes
@@ -320,9 +344,13 @@
 		</div>
 	{:else if project}
 		<div class="rounded-2xl border-4 border-black bg-white p-6">
-			<h1 class="mb-2 text-3xl font-bold">{isShippedUpdate ? 'ship update' : $t.project.submitForReview}</h1>
+			<h1 class="mb-2 text-3xl font-bold">
+				{isShippedUpdate ? 'ship update' : $t.project.submitForReview}
+			</h1>
 			<p class="mb-6 text-gray-600">
-				{isShippedUpdate ? 'submit your updated project for review. you\'ll earn the difference in scraps based on your new hours.' : $t.project.submitRequirementsHint}
+				{isShippedUpdate
+					? "submit your updated project for review. you'll earn the difference in scraps based on your new hours."
+					: $t.project.submitRequirementsHint}
 			</p>
 
 			{#if error}
@@ -416,7 +444,10 @@
 						type="url"
 						bind:value={project.githubUrl}
 						placeholder="https://github.com/user/repo"
-						class="w-full rounded-lg border-2 px-4 py-3 focus:border-dashed focus:outline-none {project.githubUrl?.trim() && !githubValidation.valid ? 'border-red-500' : 'border-black'}"
+						class="w-full rounded-lg border-2 px-4 py-3 focus:border-dashed focus:outline-none {project.githubUrl?.trim() &&
+						!githubValidation.valid
+							? 'border-red-500'
+							: 'border-black'}"
 					/>
 					{#if project.githubUrl?.trim() && !githubValidation.valid}
 						<p class="mt-1 text-xs text-red-500">{githubValidation.error}</p>
@@ -433,7 +464,10 @@
 						type="url"
 						bind:value={project.playableUrl}
 						placeholder="https://yourproject.com or https://replit.com/..."
-						class="w-full rounded-lg border-2 px-4 py-3 focus:border-dashed focus:outline-none {project.playableUrl?.trim() && !playableValidation.valid ? 'border-red-500' : 'border-black'}"
+						class="w-full rounded-lg border-2 px-4 py-3 focus:border-dashed focus:outline-none {project.playableUrl?.trim() &&
+						!playableValidation.valid
+							? 'border-red-500'
+							: 'border-black'}"
 					/>
 					{#if project.playableUrl?.trim() && !playableValidation.valid}
 						<p class="mt-1 text-xs text-red-500">{playableValidation.error}</p>
@@ -450,8 +484,10 @@
 					{#if selectedHackatimeNames.length > 0}
 						<div class="mb-2 flex flex-wrap gap-2">
 							{#each selectedHackatimeNames as name}
-								{@const hp = hackatimeProjects.find(p => p.name === name)}
-								<span class="flex items-center gap-1 rounded-full border-2 border-black bg-gray-100 px-3 py-1 text-sm font-medium">
+								{@const hp = hackatimeProjects.find((p) => p.name === name)}
+								<span
+									class="flex items-center gap-1 rounded-full border-2 border-black bg-gray-100 px-3 py-1 text-sm font-medium"
+								>
 									{name}
 									{#if hp}
 										<span class="text-gray-500">({formatHours(hp.hours)}h)</span>
@@ -498,7 +534,9 @@
 										<button
 											type="button"
 											onclick={() => selectHackatimeProject(hp)}
-											class="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-left hover:bg-gray-100 {isSelected ? 'bg-gray-50' : ''}"
+											class="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-left hover:bg-gray-100 {isSelected
+												? 'bg-gray-50'
+												: ''}"
 										>
 											<span class="flex items-center gap-2">
 												{#if isSelected}
@@ -746,7 +784,9 @@
 							>
 								{#if hasUpdateDescription}<Check size={12} />{/if}
 							</span>
-							<span class={hasUpdateDescription ? '' : 'text-gray-500'}>update description provided</span>
+							<span class={hasUpdateDescription ? '' : 'text-gray-500'}
+								>update description provided</span
+							>
 						</li>
 					{/if}
 					{#if usedAi}
@@ -770,9 +810,7 @@
 							>
 								{#if hasFeedback}<Check size={12} />{/if}
 							</span>
-							<span class={hasFeedback ? '' : 'text-gray-500'}
-								>{$t.project.feedbackCompleted}</span
-							>
+							<span class={hasFeedback ? '' : 'text-gray-500'}>{$t.project.feedbackCompleted}</span>
 						</li>
 					{/if}
 				</ul>
@@ -796,7 +834,11 @@
 					{:else}
 						<Send size={18} />
 					{/if}
-					{submitting ? $t.project.submitting : isShippedUpdate ? 'ship update' : $t.project.submitForReview}
+					{submitting
+						? $t.project.submitting
+						: isShippedUpdate
+							? 'ship update'
+							: $t.project.submitForReview}
 				</button>
 			</div>
 		</div>

@@ -47,9 +47,12 @@
 	async function fetchReviews(page = 1) {
 		loading = true;
 		try {
-			const response = await fetch(`${API_URL}/admin/reviews?page=${page}&limit=12&sort=${sortOrder}`, {
-				credentials: 'include'
-			});
+			const response = await fetch(
+				`${API_URL}/admin/reviews?page=${page}&limit=12&sort=${sortOrder}`,
+				{
+					credentials: 'include'
+				}
+			);
 			if (response.ok) {
 				const data = await response.json();
 				projects = data.data || [];
@@ -104,7 +107,9 @@
 			class="flex cursor-pointer items-center gap-2 rounded-full border-2 border-black px-4 py-2 text-sm font-bold transition-all hover:border-dashed"
 		>
 			<ArrowUpDown size={16} />
-			{$t.admin.sort}: {sortOrder === 'oldest' ? $t.admin.sortOldestFirst : $t.admin.sortNewestFirst}
+			{$t.admin.sort}: {sortOrder === 'oldest'
+				? $t.admin.sortOldestFirst
+				: $t.admin.sortNewestFirst}
 		</button>
 	</div>
 
@@ -133,10 +138,12 @@
 						<p class="mb-2 line-clamp-2 text-sm text-gray-600">{project.description}</p>
 						<div class="flex flex-wrap items-center gap-2">
 							{#if project.deductedHours > 0}
-								<span class="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold text-gray-400 line-through"
+								<span
+									class="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold text-gray-400 line-through"
 									>{formatHours(project.hours)}h</span
 								>
-								<span class="rounded-full border-2 border-yellow-500 bg-yellow-100 px-3 py-1 text-sm font-bold text-yellow-800"
+								<span
+									class="rounded-full border-2 border-yellow-500 bg-yellow-100 px-3 py-1 text-sm font-bold text-yellow-800"
 									>{formatHours(project.effectiveHours)}h</span
 								>
 							{:else}

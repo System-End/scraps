@@ -117,7 +117,9 @@
 	let showTimeline = $state(false);
 	let undoingOrder = $state<number | null>(null);
 	let deletingBonus = $state<number | null>(null);
-	let showDeleteConfirm = $state<{ type: 'order'; id: number } | { type: 'bonus'; id: number } | null>(null);
+	let showDeleteConfirm = $state<
+		{ type: 'order'; id: number } | { type: 'bonus'; id: number } | null
+	>(null);
 	let showUnshipConfirm = $state<number | null>(null);
 	let unshipReason = $state('');
 	let unshipping = $state(false);
@@ -1042,9 +1044,11 @@
 			</h2>
 			<p class="mb-6 text-gray-600">
 				{#if showDeleteConfirm.type === 'bonus'}
-					this will permanently delete this bonus entry from the database. the user's balance will be recalculated.
+					this will permanently delete this bonus entry from the database. the user's balance will
+					be recalculated.
 				{:else}
-					this will permanently delete this order and all associated records (refinery upgrades, rolls, penalties). item stock will be restored.
+					this will permanently delete this order and all associated records (refinery upgrades,
+					rolls, penalties). item stock will be restored.
 				{/if}
 			</p>
 			<div class="flex gap-3">

@@ -382,7 +382,8 @@ export default {
 		imageMustBeLessThan: 'Image must be less than 5MB',
 		unsubmitProject: 'unsubmit project',
 		unsubmitConfirmTitle: 'unsubmit project?',
-		unsubmitConfirmMessage: 'this will remove your project from the review queue and return it to in-progress status.',
+		unsubmitConfirmMessage:
+			'this will remove your project from the review queue and return it to in-progress status.',
 		unsubmitting: 'unsubmitting...',
 		unsubmitSuccess: 'project unsubmitted successfully',
 		isUpdateLabel: 'this project is an update to a previous project',
@@ -560,7 +561,8 @@ export default {
 		restore: 'restore',
 		permanentDelete: 'permanently delete',
 		confirmSoftDelete: 'are you sure you want to remove this order? it can be restored later.',
-		confirmPermanentDelete: 'are you sure you want to permanently delete this order? this will refund the scraps and restore inventory. this cannot be undone.',
+		confirmPermanentDelete:
+			'are you sure you want to permanently delete this order? this will refund the scraps and restore inventory. this cannot be undone.',
 		adminUserPage: 'admin user page'
 	},
 	auth: {

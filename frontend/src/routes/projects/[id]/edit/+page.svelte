@@ -1,10 +1,24 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { ArrowLeft, ChevronDown, Upload, X, Save, Check, Trash2, MessageSquare } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		ChevronDown,
+		Upload,
+		X,
+		Save,
+		Check,
+		Trash2,
+		MessageSquare
+	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
-	import { formatHours, validateGithubUrl, validatePlayableUrl } from '$lib/utils';
+	import {
+		formatHours,
+		validateGithubUrl,
+		validatePlayableUrl,
+		parseHackatimeProjectNames
+	} from '$lib/utils';
 	import { invalidateAllStores } from '$lib/stores';
 	import { t } from '$lib/i18n';
 
@@ -76,7 +90,14 @@
 	let playableValidation = $derived(validatePlayableUrl(project?.playableUrl));
 	let updateValid = $derived(!isUpdate || updateDescription.trim().length > 0);
 	let aiValid = $derived(!usedAi || aiDescription.trim().length > 0);
-	let canSave = $derived(hasDescription && hasName && githubValidation.valid && playableValidation.valid && updateValid && aiValid);
+	let canSave = $derived(
+		hasDescription &&
+			hasName &&
+			githubValidation.valid &&
+			playableValidation.valid &&
+			updateValid &&
+			aiValid
+	);
 
 	onMount(async () => {
 		const user = await getUser();
@@ -99,13 +120,13 @@
 			project = responseData.project;
 			imagePreview = project?.image || null;
 			selectedTier = project?.tier || 1;
-			isUpdate = !!(project?.updateDescription);
+			isUpdate = !!project?.updateDescription;
 			updateDescription = project?.updateDescription || '';
-			usedAi = !!(project?.aiDescription);
+			usedAi = !!project?.aiDescription;
 			aiDescription = project?.aiDescription || '';
 			reviewerNotes = project?.reviewerNotes || '';
 			if (project?.hackatimeProject) {
-				selectedHackatimeNames = project.hackatimeProject.split(',').map((p: string) => p.trim()).filter((p: string) => p.length > 0);
+				selectedHackatimeNames = parseHackatimeProjectNames(project.hackatimeProject);
 			}
 			fetchHackatimeProjects();
 		} catch (e) {
@@ -188,7 +209,7 @@
 			}
 			// Recalculate total hours from all selected projects
 			const totalHours = selectedHackatimeNames.reduce((sum, name) => {
-				const found = hackatimeProjects.find(p => p.name === name);
+				const found = hackatimeProjects.find((p) => p.name === name);
 				return sum + (found?.hours || 0);
 			}, 0);
 			project.hours = Math.round(totalHours * 10) / 10;
@@ -199,10 +220,10 @@
 	}
 
 	function removeHackatimeProject(name: string) {
-		selectedHackatimeNames = selectedHackatimeNames.filter(n => n !== name);
+		selectedHackatimeNames = selectedHackatimeNames.filter((n) => n !== name);
 		if (project) {
 			const totalHours = selectedHackatimeNames.reduce((sum, n) => {
-				const found = hackatimeProjects.find(p => p.name === n);
+				const found = hackatimeProjects.find((p) => p.name === n);
 				return sum + (found?.hours || 0);
 			}, 0);
 			project.hours = Math.round(totalHours * 10) / 10;
@@ -215,9 +236,8 @@
 		saving = true;
 		error = null;
 
-		const hackatimeValue = selectedHackatimeNames.length > 0
-			? selectedHackatimeNames.join(',')
-			: null;
+		const hackatimeValue =
+			selectedHackatimeNames.length > 0 ? selectedHackatimeNames.join(',') : null;
 
 		try {
 			const response = await fetch(`${API_URL}/projects/${project.id}`, {
@@ -399,7 +419,10 @@
 						type="url"
 						bind:value={project.githubUrl}
 						placeholder="https://github.com/user/repo"
-						class="w-full rounded-lg border-2 px-4 py-3 focus:border-dashed focus:outline-none {project.githubUrl?.trim() && !githubValidation.valid ? 'border-red-500' : 'border-black'}"
+						class="w-full rounded-lg border-2 px-4 py-3 focus:border-dashed focus:outline-none {project.githubUrl?.trim() &&
+						!githubValidation.valid
+							? 'border-red-500'
+							: 'border-black'}"
 					/>
 					{#if project.githubUrl?.trim() && !githubValidation.valid}
 						<p class="mt-1 text-xs text-red-500">{githubValidation.error}</p>
@@ -417,7 +440,10 @@
 						type="url"
 						bind:value={project.playableUrl}
 						placeholder="https://yourproject.com or https://replit.com/..."
-						class="w-full rounded-lg border-2 px-4 py-3 focus:border-dashed focus:outline-none {project.playableUrl?.trim() && !playableValidation.valid ? 'border-red-500' : 'border-black'}"
+						class="w-full rounded-lg border-2 px-4 py-3 focus:border-dashed focus:outline-none {project.playableUrl?.trim() &&
+						!playableValidation.valid
+							? 'border-red-500'
+							: 'border-black'}"
 					/>
 					{#if project.playableUrl?.trim() && !playableValidation.valid}
 						<p class="mt-1 text-xs text-red-500">{playableValidation.error}</p>
@@ -435,8 +461,10 @@
 					{#if selectedHackatimeNames.length > 0}
 						<div class="mb-2 flex flex-wrap gap-2">
 							{#each selectedHackatimeNames as name}
-								{@const hp = hackatimeProjects.find(p => p.name === name)}
-								<span class="flex items-center gap-1 rounded-full border-2 border-black bg-gray-100 px-3 py-1 text-sm font-medium">
+								{@const hp = hackatimeProjects.find((p) => p.name === name)}
+								<span
+									class="flex items-center gap-1 rounded-full border-2 border-black bg-gray-100 px-3 py-1 text-sm font-medium"
+								>
 									{name}
 									{#if hp}
 										<span class="text-gray-500">({formatHours(hp.hours)}h)</span>
@@ -483,7 +511,9 @@
 										<button
 											type="button"
 											onclick={() => selectHackatimeProject(hp)}
-											class="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-left hover:bg-gray-100 {isSelected ? 'bg-gray-50' : ''}"
+											class="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-left hover:bg-gray-100 {isSelected
+												? 'bg-gray-50'
+												: ''}"
 										>
 											<span class="flex items-center gap-2">
 												{#if isSelected}

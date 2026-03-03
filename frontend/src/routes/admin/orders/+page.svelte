@@ -118,7 +118,11 @@
 			result = result.filter((o) => {
 				const addr = parseShippingAddress(o.shippingAddress);
 				const country = addr?.country?.toLowerCase().trim() ?? '';
-				const isUS = country === 'us' || country === 'usa' || country === 'united states' || country === 'united states of america';
+				const isUS =
+					country === 'us' ||
+					country === 'usa' ||
+					country === 'united states' ||
+					country === 'united states of america';
 				return filterRegion === 'us' ? isUS : !isUS;
 			});
 		}
@@ -223,9 +227,13 @@
 				body: JSON.stringify(patchBody)
 			});
 			if (response.ok) {
-				const trackingValue = !order.isFulfilled ? (trackingInputs[order.id]?.trim() || null) : order.trackingNumber;
+				const trackingValue = !order.isFulfilled
+					? trackingInputs[order.id]?.trim() || null
+					: order.trackingNumber;
 				orders = orders.map((o) =>
-					o.id === order.id ? { ...o, isFulfilled: !o.isFulfilled, trackingNumber: trackingValue } : o
+					o.id === order.id
+						? { ...o, isFulfilled: !o.isFulfilled, trackingNumber: trackingValue }
+						: o
 				);
 			}
 		} catch (e) {
@@ -424,7 +432,9 @@
 				<select
 					id="filter-item"
 					bind:value={filterItem}
-					class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none {filterItem ? 'bg-black text-white' : ''}"
+					class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none {filterItem
+						? 'bg-black text-white'
+						: ''}"
 				>
 					<option value="">all items</option>
 					{#each uniqueItems as item}
@@ -437,7 +447,9 @@
 				<select
 					id="filter-user"
 					bind:value={filterUser}
-					class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none {filterUser ? 'bg-black text-white' : ''}"
+					class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none {filterUser
+						? 'bg-black text-white'
+						: ''}"
 				>
 					<option value="">all users</option>
 					{#each uniqueUsers as username}
@@ -446,11 +458,15 @@
 				</select>
 			</div>
 			<div class="flex flex-col">
-				<label for="filter-region" class="mb-1 text-xs font-bold text-gray-500 uppercase">region</label>
+				<label for="filter-region" class="mb-1 text-xs font-bold text-gray-500 uppercase"
+					>region</label
+				>
 				<select
 					id="filter-region"
 					bind:value={filterRegion}
-					class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none {filterRegion ? 'bg-black text-white' : ''}"
+					class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none {filterRegion
+						? 'bg-black text-white'
+						: ''}"
 				>
 					<option value="">all regions</option>
 					<option value="us">US only</option>
@@ -687,7 +703,9 @@
 															class="w-full rounded-lg border-2 border-black px-3 py-2 text-sm font-bold transition-all duration-200 placeholder:text-gray-400 focus:border-dashed focus:outline-none"
 														/>
 													{:else if order.trackingNumber}
-														<div class="rounded-lg border-2 border-gray-300 bg-gray-50 px-3 py-2 text-sm">
+														<div
+															class="rounded-lg border-2 border-gray-300 bg-gray-50 px-3 py-2 text-sm"
+														>
 															<p class="text-xs font-bold text-gray-500 uppercase">tracking</p>
 															<p class="font-bold break-all">{order.trackingNumber}</p>
 														</div>

@@ -47,9 +47,12 @@
 	async function fetchSecondPass(page = 1) {
 		loading = true;
 		try {
-			const response = await fetch(`${API_URL}/admin/second-pass?page=${page}&limit=12&sort=${sortOrder}`, {
-				credentials: 'include'
-			});
+			const response = await fetch(
+				`${API_URL}/admin/second-pass?page=${page}&limit=12&sort=${sortOrder}`,
+				{
+					credentials: 'include'
+				}
+			);
 			if (response.ok) {
 				const data = await response.json();
 				projects = data.data || [];
@@ -97,7 +100,9 @@
 	<div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 		<div>
 			<h1 class="mb-2 text-4xl font-bold md:text-5xl">second pass reviews</h1>
-			<p class="text-lg text-gray-600">projects approved by reviewers, awaiting admin confirmation</p>
+			<p class="text-lg text-gray-600">
+				projects approved by reviewers, awaiting admin confirmation
+			</p>
 		</div>
 		<button
 			onclick={toggleSort}
@@ -133,10 +138,12 @@
 						<p class="mb-2 line-clamp-2 text-sm text-gray-600">{project.description}</p>
 						<div class="flex flex-wrap items-center gap-2">
 							{#if project.deductedHours > 0}
-								<span class="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold text-gray-400 line-through"
+								<span
+									class="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold text-gray-400 line-through"
 									>{formatHours(project.hours)}h</span
 								>
-								<span class="rounded-full border-2 border-yellow-600 bg-yellow-100 px-3 py-1 text-sm font-bold text-yellow-800"
+								<span
+									class="rounded-full border-2 border-yellow-600 bg-yellow-100 px-3 py-1 text-sm font-bold text-yellow-800"
 									>{formatHours(project.effectiveHours)}h</span
 								>
 							{:else}

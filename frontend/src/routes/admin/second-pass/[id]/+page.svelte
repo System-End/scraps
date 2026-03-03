@@ -101,7 +101,9 @@
 		overlappingProjects.reduce((sum: number, op: OverlappingProject) => sum + op.hours, 0)
 	);
 	let effectiveHours = $derived(
-		project ? Math.max(0, (hoursOverride ?? project.hoursOverride ?? project.hours) - deductedHours) : 0
+		project
+			? Math.max(0, (hoursOverride ?? project.hoursOverride ?? project.hours) - deductedHours)
+			: 0
 	);
 	const PHI = (1 + Math.sqrt(5)) / 2;
 	const MULTIPLIER = 10;
@@ -276,7 +278,9 @@
 					<ShieldAlert size={20} class="text-red-600" />
 					<div>
 						<p class="font-bold text-red-800">hackatime banned</p>
-						<p class="text-sm text-red-700">this user is banned on hackatime. they will be redirected to fraud.land on login.</p>
+						<p class="text-sm text-red-700">
+							this user is banned on hackatime. they will be redirected to fraud.land on login.
+						</p>
 					</div>
 				</div>
 			</div>
@@ -287,7 +291,10 @@
 					<ShieldAlert size={20} class="text-orange-600" />
 					<div>
 						<p class="font-bold text-orange-800">hackatime suspected</p>
-						<p class="text-sm text-orange-700">this user is flagged as suspected on hackatime. please review their activity carefully.</p>
+						<p class="text-sm text-orange-700">
+							this user is flagged as suspected on hackatime. please review their activity
+							carefully.
+						</p>
 					</div>
 				</div>
 			</div>
@@ -307,8 +314,7 @@
 				</div>
 				<a
 					href="/projects/{project.id}"
-					class="font-bold text-yellow-600 underline hover:text-black"
-					>view project</a
+					class="font-bold text-yellow-600 underline hover:text-black">view project</a
 				>
 			</div>
 		</div>
@@ -429,7 +435,8 @@
 						update — scraps preview
 					</p>
 					<p class="mb-2 text-sm text-blue-700">
-						this is an updated project. previously awarded scraps will be subtracted from the new total.
+						this is an updated project. previously awarded scraps will be subtracted from the new
+						total.
 					</p>
 					<div class="flex flex-wrap gap-3 text-sm font-bold">
 						<span class="rounded-full border-2 border-blue-600 bg-blue-100 px-3 py-1 text-blue-800">
@@ -563,9 +570,7 @@
 		{#if approvalReview}
 			<div class="mb-6 rounded-2xl border-4 border-green-500 bg-green-50 p-6">
 				<h2 class="mb-4 text-xl font-bold text-green-800">reviewer approval</h2>
-				<div
-					class="rounded-lg border-2 border-green-600 bg-white p-4 transition-all duration-200"
-				>
+				<div class="rounded-lg border-2 border-green-600 bg-white p-4 transition-all duration-200">
 					<div class="mb-2 flex items-center justify-between">
 						<a
 							href="/admin/users/{approvalReview.reviewerId}"
@@ -584,7 +589,9 @@
 							<span class="font-bold">{approvalReview.reviewerName || 'reviewer'}</span>
 						</a>
 						<div class="flex items-center gap-2">
-							<span class="rounded border border-green-600 bg-green-100 px-2 py-1 text-xs font-bold text-green-700">
+							<span
+								class="rounded border border-green-600 bg-green-100 px-2 py-1 text-xs font-bold text-green-700"
+							>
 								approved
 							</span>
 							<span class="text-xs text-gray-500">
@@ -611,7 +618,7 @@
 			<div class="mb-6 rounded-2xl border-4 border-black bg-white p-6">
 				<h2 class="mb-4 text-xl font-bold">user internal notes</h2>
 				<div class="rounded-lg border-2 border-gray-300 bg-gray-50 p-4">
-					<p class="whitespace-pre-wrap text-sm text-gray-700">{projectUser.internalNotes}</p>
+					<p class="text-sm whitespace-pre-wrap text-gray-700">{projectUser.internalNotes}</p>
 				</div>
 			</div>
 		{/if}
@@ -627,14 +634,21 @@
 			<h2 class="mb-4 text-xl font-bold">admin decision</h2>
 			<div class="space-y-4">
 				<div>
-					<label class="mb-1 block text-sm font-bold">hours override {#if deductedHours > 0}<span class="font-normal text-yellow-600">(effective: {formatHours(effectiveHours)}h after -{formatHours(deductedHours)}h deduction)</span>{/if}</label>
+					<label class="mb-1 block text-sm font-bold"
+						>hours override {#if deductedHours > 0}<span class="font-normal text-yellow-600"
+								>(effective: {formatHours(effectiveHours)}h after -{formatHours(deductedHours)}h
+								deduction)</span
+							>{/if}</label
+					>
 					<input
 						type="number"
 						step="0.1"
 						min="0"
 						max={project.hours}
 						bind:value={hoursOverride}
-						placeholder="{formatHours(project.hoursOverride ?? project.hours)}h ({formatHours(effectiveHours)}h effective)"
+						placeholder="{formatHours(project.hoursOverride ?? project.hours)}h ({formatHours(
+							effectiveHours
+						)}h effective)"
 						class="w-full rounded-lg border-2 px-4 py-2 focus:border-dashed focus:outline-none {hoursOverrideError
 							? 'border-red-500'
 							: 'border-black'}"
@@ -694,8 +708,8 @@
 			</h2>
 			<p class="mb-6 text-gray-600">
 				{#if confirmAction === 'accept'}
-					are you sure you want to <strong>accept</strong> this approval and ship the project? the
-					user will be notified and scraps will be awarded.
+					are you sure you want to <strong>accept</strong> this approval and ship the project? the user
+					will be notified and scraps will be awarded.
 				{:else}
 					are you sure you want to <strong>reject</strong> this approval? the original approval review
 					will be deleted and the user will need to resubmit.

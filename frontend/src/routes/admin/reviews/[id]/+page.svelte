@@ -401,7 +401,9 @@
 					<ShieldAlert size={20} class="text-red-600" />
 					<div>
 						<p class="font-bold text-red-800">hackatime banned</p>
-						<p class="text-sm text-red-700">this user is banned on hackatime. they will be redirected to fraud.land on login.</p>
+						<p class="text-sm text-red-700">
+							this user is banned on hackatime. they will be redirected to fraud.land on login.
+						</p>
 					</div>
 				</div>
 			</div>
@@ -412,7 +414,10 @@
 					<ShieldAlert size={20} class="text-orange-600" />
 					<div>
 						<p class="font-bold text-orange-800">hackatime suspected</p>
-						<p class="text-sm text-orange-700">this user is flagged as suspected on hackatime. please review their activity carefully.</p>
+						<p class="text-sm text-orange-700">
+							this user is flagged as suspected on hackatime. please review their activity
+							carefully.
+						</p>
 					</div>
 				</div>
 			</div>
@@ -429,7 +434,10 @@
 							<p class="text-sm text-gray-500">status: {project.status}</p>
 						</div>
 					</div>
-					<a href="/projects/{project.id}" class="font-bold underline text-gray-600 hover:text-black">view project</a>
+					<a
+						href="/projects/{project.id}"
+						class="font-bold text-gray-600 underline hover:text-black">view project</a
+					>
 				</div>
 			</div>
 		{/if}
@@ -483,10 +491,12 @@
 			{/if}
 			<div class="flex flex-wrap items-center gap-3 text-sm">
 				{#if deductedHours > 0}
-					<span class="rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold text-gray-400 line-through"
+					<span
+						class="rounded-full border-2 border-black bg-gray-100 px-3 py-1 font-bold text-gray-400 line-through"
 						>{formatHours(project.hours)}h logged</span
 					>
-					<span class="rounded-full border-2 border-yellow-500 bg-yellow-100 px-3 py-1 font-bold text-yellow-800"
+					<span
+						class="rounded-full border-2 border-yellow-500 bg-yellow-100 px-3 py-1 font-bold text-yellow-800"
 						>{formatHours(effectiveHours)}h effective</span
 					>
 				{:else}
@@ -511,7 +521,8 @@
 						shared hackatime project — hours will be deducted
 					</p>
 					<p class="mb-2 text-sm text-yellow-700">
-						this project shares a hackatime project with other shipped projects. hours from those projects will be subtracted when calculating scraps.
+						this project shares a hackatime project with other shipped projects. hours from those
+						projects will be subtracted when calculating scraps.
 					</p>
 					<ul class="mb-3 space-y-1 text-sm text-yellow-800">
 						{#each overlappingProjects as op}
@@ -523,10 +534,14 @@
 						{/each}
 					</ul>
 					<div class="flex flex-wrap gap-3 text-sm font-bold">
-						<span class="rounded-full border-2 border-yellow-600 bg-yellow-100 px-3 py-1 text-yellow-800">
+						<span
+							class="rounded-full border-2 border-yellow-600 bg-yellow-100 px-3 py-1 text-yellow-800"
+						>
 							total: {formatHours(hoursOverride ?? project.hours)}h
 						</span>
-						<span class="rounded-full border-2 border-yellow-600 bg-yellow-100 px-3 py-1 text-yellow-800">
+						<span
+							class="rounded-full border-2 border-yellow-600 bg-yellow-100 px-3 py-1 text-yellow-800"
+						>
 							deducted: -{formatHours(deductedHours)}h
 						</span>
 						<span class="rounded-full border-2 border-black bg-yellow-200 px-3 py-1 text-black">
@@ -543,7 +558,8 @@
 						update — scraps preview
 					</p>
 					<p class="mb-2 text-sm text-blue-700">
-						this is an updated project. previously awarded scraps will be subtracted from the new total.
+						this is an updated project. previously awarded scraps will be subtracted from the new
+						total.
 					</p>
 					<div class="flex flex-wrap gap-3 text-sm font-bold">
 						<span class="rounded-full border-2 border-blue-600 bg-blue-100 px-3 py-1 text-blue-800">
@@ -721,7 +737,11 @@
 												? 'border-yellow-600 bg-yellow-100 text-yellow-700'
 												: 'border-red-600 bg-red-100 text-red-700'}"
 									>
-										{review.action === 'permanently_rejected' ? 'rejected' : review.action === 'scraps_unawarded' ? 'scraps unawarded' : review.action}
+										{review.action === 'permanently_rejected'
+											? 'rejected'
+											: review.action === 'scraps_unawarded'
+												? 'scraps unawarded'
+												: review.action}
 									</span>
 									<span class="text-xs text-gray-500">
 										{new Date(review.createdAt).toLocaleString()}
@@ -774,43 +794,68 @@
 		{/if}
 
 		<!-- Review-only sections (sold-out effect when not reviewable) -->
-		<div class="relative {!isReviewable ? 'pointer-events-none select-none opacity-50 grayscale' : ''}">
-
+		<div
+			class="relative {!isReviewable ? 'pointer-events-none opacity-50 grayscale select-none' : ''}"
+		>
 			<!-- Tier Reference -->
 			<div class="mb-6 rounded-2xl border-4 border-black p-6">
 				<h2 class="mb-4 text-xl font-bold">tier reference</h2>
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-					<div class="rounded-lg border-2 {project.tier === 1 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
+					<div
+						class="rounded-lg border-2 {project.tier === 1
+							? 'border-black bg-black text-white'
+							: 'border-gray-300'} px-4 py-3"
+					>
 						<div class="flex items-center justify-between">
 							<span class="font-bold">tier 1</span>
-							<span class="text-sm {project.tier === 1 ? 'text-gray-300' : 'text-gray-500'}">0.8×</span>
+							<span class="text-sm {project.tier === 1 ? 'text-gray-300' : 'text-gray-500'}"
+								>0.8×</span
+							>
 						</div>
 						<p class="mt-1 text-xs {project.tier === 1 ? 'text-gray-300' : 'text-gray-500'}">
 							{$t.project.tierDescriptions.tier1}
 						</p>
 					</div>
-					<div class="rounded-lg border-2 {project.tier === 2 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
+					<div
+						class="rounded-lg border-2 {project.tier === 2
+							? 'border-black bg-black text-white'
+							: 'border-gray-300'} px-4 py-3"
+					>
 						<div class="flex items-center justify-between">
 							<span class="font-bold">tier 2</span>
-							<span class="text-sm {project.tier === 2 ? 'text-gray-300' : 'text-gray-500'}">1.0×</span>
+							<span class="text-sm {project.tier === 2 ? 'text-gray-300' : 'text-gray-500'}"
+								>1.0×</span
+							>
 						</div>
 						<p class="mt-1 text-xs {project.tier === 2 ? 'text-gray-300' : 'text-gray-500'}">
 							{$t.project.tierDescriptions.tier2}
 						</p>
 					</div>
-					<div class="rounded-lg border-2 {project.tier === 3 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
+					<div
+						class="rounded-lg border-2 {project.tier === 3
+							? 'border-black bg-black text-white'
+							: 'border-gray-300'} px-4 py-3"
+					>
 						<div class="flex items-center justify-between">
 							<span class="font-bold">tier 3</span>
-							<span class="text-sm {project.tier === 3 ? 'text-gray-300' : 'text-gray-500'}">1.25×</span>
+							<span class="text-sm {project.tier === 3 ? 'text-gray-300' : 'text-gray-500'}"
+								>1.25×</span
+							>
 						</div>
 						<p class="mt-1 text-xs {project.tier === 3 ? 'text-gray-300' : 'text-gray-500'}">
 							{$t.project.tierDescriptions.tier3}
 						</p>
 					</div>
-					<div class="rounded-lg border-2 {project.tier === 4 ? 'border-black bg-black text-white' : 'border-gray-300'} px-4 py-3">
+					<div
+						class="rounded-lg border-2 {project.tier === 4
+							? 'border-black bg-black text-white'
+							: 'border-gray-300'} px-4 py-3"
+					>
 						<div class="flex items-center justify-between">
 							<span class="font-bold">tier 4</span>
-							<span class="text-sm {project.tier === 4 ? 'text-gray-300' : 'text-gray-500'}">1.5×</span>
+							<span class="text-sm {project.tier === 4 ? 'text-gray-300' : 'text-gray-500'}"
+								>1.5×</span
+							>
 						</div>
 						<p class="mt-1 text-xs {project.tier === 4 ? 'text-gray-300' : 'text-gray-500'}">
 							{$t.project.tierDescriptions.tier4}
@@ -824,7 +869,12 @@
 				<h2 class="mb-4 text-xl font-bold">submit review</h2>
 				<div class="space-y-4">
 					<div>
-						<label class="mb-1 block text-sm font-bold">hours override {#if deductedHours > 0}<span class="font-normal text-yellow-600">(effective: {formatHours(effectiveHours)}h after -{formatHours(deductedHours)}h deduction)</span>{/if}</label>
+						<label class="mb-1 block text-sm font-bold"
+							>hours override {#if deductedHours > 0}<span class="font-normal text-yellow-600"
+									>(effective: {formatHours(effectiveHours)}h after -{formatHours(deductedHours)}h
+									deduction)</span
+								>{/if}</label
+						>
 						<input
 							type="number"
 							step="0.1"

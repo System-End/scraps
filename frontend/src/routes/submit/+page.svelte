@@ -171,7 +171,9 @@
 
 			<!-- Feedback Questions -->
 			<div>
-				<label for="feedbackSource" class="mb-2 block text-sm font-bold">{$t.submit.feedbackSourceLabel}</label>
+				<label for="feedbackSource" class="mb-2 block text-sm font-bold"
+					>{$t.submit.feedbackSourceLabel}</label
+				>
 				<textarea
 					id="feedbackSource"
 					bind:value={feedbackSource}
@@ -182,7 +184,9 @@
 			</div>
 
 			<div>
-				<label for="feedbackGood" class="mb-2 block text-sm font-bold">{$t.submit.feedbackGoodLabel}</label>
+				<label for="feedbackGood" class="mb-2 block text-sm font-bold"
+					>{$t.submit.feedbackGoodLabel}</label
+				>
 				<textarea
 					id="feedbackGood"
 					bind:value={feedbackGood}
@@ -193,7 +197,9 @@
 			</div>
 
 			<div>
-				<label for="feedbackImprove" class="mb-2 block text-sm font-bold">{$t.submit.feedbackImproveLabel}</label>
+				<label for="feedbackImprove" class="mb-2 block text-sm font-bold"
+					>{$t.submit.feedbackImproveLabel}</label
+				>
 				<textarea
 					id="feedbackImprove"
 					bind:value={feedbackImprove}

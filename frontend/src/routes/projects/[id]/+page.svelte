@@ -265,7 +265,7 @@
 			<!-- Content -->
 			<div class="p-6">
 				<div class="mb-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-					<h1 class="min-w-0 wrap-break-word text-3xl font-bold md:text-4xl">{project.name}</h1>
+					<h1 class="min-w-0 text-3xl font-bold wrap-break-word md:text-4xl">{project.name}</h1>
 					{#if project.status === 'shipped'}
 						<span
 							class="flex shrink-0 items-center gap-1 rounded-full border-2 border-green-600 bg-green-100 px-3 py-1 text-sm font-bold text-green-700"
@@ -351,7 +351,9 @@
 					{#if (isOwner || isAdmin) && project.deductedHours > 0}
 						<span
 							class="flex items-center gap-2 rounded-full border-4 border-yellow-500 bg-yellow-100 px-4 py-2 font-bold text-yellow-700"
-							title="{formatHours(project.deductedHours)}h deducted from overlapping shipped projects"
+							title="{formatHours(
+								project.deductedHours
+							)}h deducted from overlapping shipped projects"
 						>
 							{formatHours(project.effectiveHours)}h effective
 						</span>
@@ -429,62 +431,62 @@
 		{#if isOwner}
 			<div class="mb-8 flex flex-col gap-3">
 				<div class="flex flex-col gap-3 sm:flex-row sm:gap-4">
-				{#if project.status === 'waiting_for_review'}
-					<span
-						class="flex flex-1 items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
-					>
-						<Pencil size={18} />
-						{$t.project.editProject}
-					</span>
-				{:else}
-					<a
-						href="/projects/{project.id}/edit"
-						class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black px-4 py-3 text-center text-sm font-bold transition-all duration-200 hover:border-dashed sm:px-6 sm:text-base"
-					>
-						<Pencil size={18} />
-						{$t.project.editProject}
-					</a>
-				{/if}
-				{#if project.status === 'waiting_for_review'}
-					<span
-						class="flex flex-1 items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
-					>
-						<Send size={18} />
-						{$t.project.awaitingReview}
-					</span>
-				{:else if project.status === 'shipped'}
-					<a
-						href="/projects/{project.id}/submit"
-						class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-black px-4 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 sm:px-6 sm:text-base"
-					>
-						<RefreshCw size={18} />
-						ship update
-					</a>
-				{:else if project.status === 'permanently_rejected'}
-					<span
-						class="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full border-4 border-black bg-red-100 px-4 py-3 text-center text-sm font-bold text-red-600 sm:px-6 sm:text-base"
-					>
-						<XCircle size={18} />
-						{$t.project.permanentlyRejected}
-					</span>
-				{:else if $tutorialActiveStore}
-					<span
-						data-tutorial="submit-button"
-						class="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full border-4 border-black bg-black px-4 py-3 text-sm font-bold text-white sm:px-6 sm:text-base"
-					>
-						<Send size={18} />
-						{$t.project.reviewAndSubmit}
-					</span>
-				{:else}
-					<a
-						href="/projects/{project.id}/submit"
-						data-tutorial="submit-button"
-						class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-black px-4 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 sm:px-6 sm:text-base"
-					>
-						<Send size={18} />
-						{$t.project.reviewAndSubmit}
-					</a>
-				{/if}
+					{#if project.status === 'waiting_for_review'}
+						<span
+							class="flex flex-1 items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
+						>
+							<Pencil size={18} />
+							{$t.project.editProject}
+						</span>
+					{:else}
+						<a
+							href="/projects/{project.id}/edit"
+							class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black px-4 py-3 text-center text-sm font-bold transition-all duration-200 hover:border-dashed sm:px-6 sm:text-base"
+						>
+							<Pencil size={18} />
+							{$t.project.editProject}
+						</a>
+					{/if}
+					{#if project.status === 'waiting_for_review'}
+						<span
+							class="flex flex-1 items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
+						>
+							<Send size={18} />
+							{$t.project.awaitingReview}
+						</span>
+					{:else if project.status === 'shipped'}
+						<a
+							href="/projects/{project.id}/submit"
+							class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-black px-4 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 sm:px-6 sm:text-base"
+						>
+							<RefreshCw size={18} />
+							ship update
+						</a>
+					{:else if project.status === 'permanently_rejected'}
+						<span
+							class="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full border-4 border-black bg-red-100 px-4 py-3 text-center text-sm font-bold text-red-600 sm:px-6 sm:text-base"
+						>
+							<XCircle size={18} />
+							{$t.project.permanentlyRejected}
+						</span>
+					{:else if $tutorialActiveStore}
+						<span
+							data-tutorial="submit-button"
+							class="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full border-4 border-black bg-black px-4 py-3 text-sm font-bold text-white sm:px-6 sm:text-base"
+						>
+							<Send size={18} />
+							{$t.project.reviewAndSubmit}
+						</span>
+					{:else}
+						<a
+							href="/projects/{project.id}/submit"
+							data-tutorial="submit-button"
+							class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-black px-4 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 sm:px-6 sm:text-base"
+						>
+							<Send size={18} />
+							{$t.project.reviewAndSubmit}
+						</a>
+					{/if}
 				</div>
 				{#if project.status === 'waiting_for_review'}
 					<button
@@ -515,107 +517,106 @@
 						<p class="mt-2 text-sm text-gray-400">{$t.project.submitToGetStarted}</p>
 					{/if}
 				</div>
-				{:else}
-					<div class="relative">
-						<!-- Timeline line -->
-						<div class="absolute top-0 bottom-0 left-3 w-0.5 bg-gray-200"></div>
-						<div class="space-y-4">
-							{#each activity as entry, i}
-								{#if entry.type === 'review' && entry.action}
-									{@const ReviewIcon = getReviewIcon(entry.action)}
-									<div class="relative">
+			{:else}
+				<div class="relative">
+					<!-- Timeline line -->
+					<div class="absolute top-0 bottom-0 left-3 w-0.5 bg-gray-200"></div>
+					<div class="space-y-4">
+						{#each activity as entry, i}
+							{#if entry.type === 'review' && entry.action}
+								{@const ReviewIcon = getReviewIcon(entry.action)}
+								<div class="relative">
+									<div
+										class="ml-8 rounded-2xl border-4 border-black bg-white p-6 transition-all duration-200 hover:border-dashed"
+									>
 										<div
-											class="ml-8 rounded-2xl border-4 border-black bg-white p-6 transition-all duration-200 hover:border-dashed"
+											class="absolute top-6 left-0 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
 										>
-											<div
-												class="absolute top-6 left-0 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
-											>
-												<ReviewIcon size={20} class={getReviewColor(entry.action)} />
+											<ReviewIcon size={20} class={getReviewColor(entry.action)} />
+										</div>
+										<div>
+											<div class="mb-2 flex items-center justify-between">
+												<span class="font-bold">{getReviewLabel(entry.action)}</span>
+												<span class="text-sm text-gray-500">{formatDate(entry.createdAt)}</span>
 											</div>
-											<div>
-												<div class="mb-2 flex items-center justify-between">
-													<span class="font-bold">{getReviewLabel(entry.action)}</span>
-													<span class="text-sm text-gray-500">{formatDate(entry.createdAt)}</span>
-												</div>
-												{#if entry.feedbackForAuthor}
-													<p class="mb-3 text-gray-700">{entry.feedbackForAuthor}</p>
-												{/if}
-												{#if entry.reviewer}
-													<a
-														href="/users/{entry.reviewer.id}"
-														class="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-500 transition-all duration-200 hover:text-black"
+											{#if entry.feedbackForAuthor}
+												<p class="mb-3 text-gray-700">{entry.feedbackForAuthor}</p>
+											{/if}
+											{#if entry.reviewer}
+												<a
+													href="/users/{entry.reviewer.id}"
+													class="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-500 transition-all duration-200 hover:text-black"
+												>
+													{#if entry.reviewer.avatar}
+														<img
+															src={entry.reviewer.avatar}
+															alt=""
+															class="h-6 w-6 rounded-full border-2 border-black"
+														/>
+													{:else}
+														<div
+															class="h-6 w-6 rounded-full border-2 border-black bg-gray-200"
+														></div>
+													{/if}
+													<span
+														>{$t.project.reviewedBy}
+														<strong>{entry.reviewer.username || $t.project.reviewer}</strong></span
 													>
-														{#if entry.reviewer.avatar}
-															<img
-																src={entry.reviewer.avatar}
-																alt=""
-																class="h-6 w-6 rounded-full border-2 border-black"
-															/>
-														{:else}
-															<div
-																class="h-6 w-6 rounded-full border-2 border-black bg-gray-200"
-															></div>
-														{/if}
-														<span
-															>{$t.project.reviewedBy}
-															<strong>{entry.reviewer.username || $t.project.reviewer}</strong
-															></span
-														>
-													</a>
-												{/if}
-											</div>
+												</a>
+											{/if}
 										</div>
 									</div>
-								{:else if entry.type === 'scraps_earned'}
-									<div class="relative ml-8 flex items-center gap-3 py-2">
-										<div
-											class="absolute left-[-26px] z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
-										>
-											<Spool size={16} class="text-green-600" />
-										</div>
-										<span class="text-sm font-bold text-green-600"
-											>{entry.action} · {formatDate(entry.createdAt)}</span
-										>
+								</div>
+							{:else if entry.type === 'scraps_earned'}
+								<div class="relative ml-8 flex items-center gap-3 py-2">
+									<div
+										class="absolute left-[-26px] z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
+									>
+										<Spool size={16} class="text-green-600" />
 									</div>
-								{:else if entry.type === 'submitted'}
-									<div class="relative ml-8 flex items-center gap-3 py-2">
-										<div
-											class="absolute left-[-26px] z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
-										>
-											<PlaneTakeoff size={16} class="text-gray-500" />
-										</div>
-										<span class="text-sm text-gray-500"
-											>{$t.project.submittedForReview} · {formatDate(entry.createdAt)}</span
-										>
+									<span class="text-sm font-bold text-green-600"
+										>{entry.action} · {formatDate(entry.createdAt)}</span
+									>
+								</div>
+							{:else if entry.type === 'submitted'}
+								<div class="relative ml-8 flex items-center gap-3 py-2">
+									<div
+										class="absolute left-[-26px] z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
+									>
+										<PlaneTakeoff size={16} class="text-gray-500" />
 									</div>
-								{:else if entry.type === 'unsubmitted'}
-									<div class="relative ml-8 flex items-center gap-3 py-2">
-										<div
-											class="absolute left-[-26px] z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
-										>
-											<Undo2 size={16} class="text-orange-500" />
-										</div>
-										<span class="text-sm text-orange-500"
-											>{$t.project.unsubmittedFromReview} · {formatDate(entry.createdAt)}</span
-										>
+									<span class="text-sm text-gray-500"
+										>{$t.project.submittedForReview} · {formatDate(entry.createdAt)}</span
+									>
+								</div>
+							{:else if entry.type === 'unsubmitted'}
+								<div class="relative ml-8 flex items-center gap-3 py-2">
+									<div
+										class="absolute left-[-26px] z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
+									>
+										<Undo2 size={16} class="text-orange-500" />
 									</div>
-								{:else if entry.type === 'created'}
-									<div class="relative ml-8 flex items-center gap-3 py-2">
-										<div
-											class="absolute left-[-26px] z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
-										>
-											<Plus size={16} class="text-gray-500" />
-										</div>
-										<span class="text-sm text-gray-500"
-											>{$t.project.projectCreated} · {formatDate(entry.createdAt)}</span
-										>
+									<span class="text-sm text-orange-500"
+										>{$t.project.unsubmittedFromReview} · {formatDate(entry.createdAt)}</span
+									>
+								</div>
+							{:else if entry.type === 'created'}
+								<div class="relative ml-8 flex items-center gap-3 py-2">
+									<div
+										class="absolute left-[-26px] z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white"
+									>
+										<Plus size={16} class="text-gray-500" />
 									</div>
-								{/if}
-							{/each}
-						</div>
+									<span class="text-sm text-gray-500"
+										>{$t.project.projectCreated} · {formatDate(entry.createdAt)}</span
+									>
+								</div>
+							{/if}
+						{/each}
 					</div>
-				{/if}
-			</div>
+				</div>
+			{/if}
+		</div>
 	{/if}
 </div>
 

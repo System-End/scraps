@@ -422,7 +422,8 @@ export default {
 		imageMustBeLessThan: 'La imagen debe ser menor a 5MB',
 		unsubmitProject: 'retirar proyecto',
 		unsubmitConfirmTitle: '¿retirar proyecto?',
-		unsubmitConfirmMessage: 'esto eliminará tu proyecto de la cola de revisión y lo devolverá al estado en progreso.',
+		unsubmitConfirmMessage:
+			'esto eliminará tu proyecto de la cola de revisión y lo devolverá al estado en progreso.',
 		unsubmitting: 'retirando...',
 		unsubmitSuccess: 'proyecto retirado exitosamente',
 		isUpdateLabel: 'este proyecto es una actualización de un proyecto anterior',
@@ -562,8 +563,10 @@ export default {
 		softDelete: 'eliminar',
 		restore: 'restaurar',
 		permanentDelete: 'eliminar permanentemente',
-		confirmSoftDelete: '¿estás seguro de que quieres eliminar este pedido? se puede restaurar después.',
-		confirmPermanentDelete: '¿estás seguro de que quieres eliminar permanentemente este pedido? esto reembolsará los scraps y restaurará el inventario. esto no se puede deshacer.',
+		confirmSoftDelete:
+			'¿estás seguro de que quieres eliminar este pedido? se puede restaurar después.',
+		confirmPermanentDelete:
+			'¿estás seguro de que quieres eliminar permanentemente este pedido? esto reembolsará los scraps y restaurará el inventario. esto no se puede deshacer.',
 		adminUserPage: 'página de admin del usuario'
 	},
 	auth: {
