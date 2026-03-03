@@ -2323,6 +2323,7 @@ admin.get("/orders", async ({ headers, query, status }) => {
 
     return rows.map(({ userEmail, ...row }) => ({
       ...row,
+      email: userEmail,
       hackatimeBanned: banMap.get(userEmail ?? "") ?? false,
     }));
   } catch (err) {

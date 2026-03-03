@@ -44,6 +44,7 @@
 		isFulfilled: boolean;
 		shippingAddress: string | null;
 		phone: string | null;
+		email: string | null;
 		createdAt: string;
 		itemId: number;
 		itemName: string;
@@ -65,6 +66,11 @@
 
 	function formatName(addr: ShippingAddress): string {
 		return `${addr.firstName} ${addr.lastName}`.trim();
+	}
+
+	async function copyField(value: string) {
+		await navigator.clipboard.writeText(value);
+		showToast('Copied!', 'success');
 	}
 
 	interface User {
@@ -682,24 +688,28 @@
 																class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 blur-sm transition-all duration-300 select-none group-hover/addr:blur-none group-hover/addr:select-auto"
 															>
 																<span class="font-bold text-gray-500">name</span>
-																<span>{formatName(addr)}</span>
+																<span class="cursor-pointer hover:underline" onclick={() => copyField(formatName(addr))}>{formatName(addr)}</span>
 																<span class="font-bold text-gray-500">address 1</span>
-																<span>{addr.address1}</span>
+																<span class="cursor-pointer hover:underline" onclick={() => copyField(addr.address1)}>{addr.address1}</span>
 																{#if addr.address2}
 																	<span class="font-bold text-gray-500">address 2</span>
-																	<span>{addr.address2}</span>
+																	<span class="cursor-pointer hover:underline" onclick={() => copyField(addr.address2!)}>{addr.address2}</span>
 																{/if}
 																<span class="font-bold text-gray-500">city</span>
-																<span>{addr.city}</span>
+																<span class="cursor-pointer hover:underline" onclick={() => copyField(addr.city)}>{addr.city}</span>
 																<span class="font-bold text-gray-500">state</span>
-																<span>{addr.state}</span>
+																<span class="cursor-pointer hover:underline" onclick={() => copyField(addr.state)}>{addr.state}</span>
 																<span class="font-bold text-gray-500">zip</span>
-																<span>{addr.postalCode}</span>
+																<span class="cursor-pointer hover:underline" onclick={() => copyField(addr.postalCode)}>{addr.postalCode}</span>
 																<span class="font-bold text-gray-500">country</span>
-																<span>{addr.country}</span>
+																<span class="cursor-pointer hover:underline" onclick={() => copyField(addr.country)}>{addr.country}</span>
 																{#if order.phone || addr.phone}
 																	<span class="font-bold text-gray-500">phone</span>
-																	<span>{order.phone || addr.phone}</span>
+																	<span class="cursor-pointer hover:underline" onclick={() => copyField((order.phone || addr.phone)!)}>{order.phone || addr.phone}</span>
+																{/if}
+																{#if order.email}
+																	<span class="font-bold text-gray-500">email</span>
+																	<span class="cursor-pointer hover:underline" onclick={() => copyField(order.email!)}>{order.email}</span>
 																{/if}
 															</div>
 														</div>
@@ -708,11 +718,17 @@
 															<p class="font-bold text-yellow-700">no shipping address provided</p>
 														</div>
 													{/if}
-													{#if order.phone && !parseShippingAddress(order.shippingAddress)}
+													{#if (order.phone || order.email) && !parseShippingAddress(order.shippingAddress)}
 														<div class="mt-2 rounded-xl border-2 border-gray-300 bg-white p-4">
-															<div class="grid grid-cols-[auto_1fr] gap-x-4">
-																<span class="font-bold text-gray-500">phone</span>
-																<span>{order.phone}</span>
+															<div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+																{#if order.phone}
+																	<span class="font-bold text-gray-500">phone</span>
+																	<span class="cursor-pointer hover:underline" onclick={() => copyField(order.phone!)}>{order.phone}</span>
+																{/if}
+																{#if order.email}
+																	<span class="font-bold text-gray-500">email</span>
+																	<span class="cursor-pointer hover:underline" onclick={() => copyField(order.email!)}>{order.email}</span>
+																{/if}
 															</div>
 														</div>
 													{/if}
