@@ -1,5 +1,16 @@
 import { Elysia } from "elysia";
-import { eq, ne, and, inArray, sql, desc, asc, or, isNull } from "drizzle-orm";
+import {
+  eq,
+  ne,
+  and,
+  inArray,
+  notInArray,
+  sql,
+  desc,
+  asc,
+  or,
+  isNull,
+} from "drizzle-orm";
 import { db } from "../db";
 import { usersTable, userBonusesTable } from "../schemas/users";
 import { projectsTable } from "../schemas/projects";
@@ -194,8 +205,9 @@ admin.get("/stats", async ({ headers, status }) => {
       ? Math.round((totalTierCost / roundedTotalHours) * 100) / 100
       : 0;
 
-  // Max dollar cost from shop fulfillment (all luck_win orders regardless of fulfillment)
-  const [luckWinOrders, consolationCount] = await Promise.all([
+  // Max dollar cost from shop fulfillment (all non-cancelled/deleted orders)
+  const activeOrderStatuses = ["cancelled", "deleted"];
+  const [luckWinOrders, purchaseOrders, consolationCount] = await Promise.all([
     db
       .select({
         itemPrice: shopItemsTable.price,
@@ -205,73 +217,130 @@ admin.get("/stats", async ({ headers, status }) => {
         shopItemsTable,
         eq(shopOrdersTable.shopItemId, shopItemsTable.id),
       )
-      .where(eq(shopOrdersTable.orderType, "luck_win")),
+      .where(
+        and(
+          eq(shopOrdersTable.orderType, "luck_win"),
+          notInArray(shopOrdersTable.status, activeOrderStatuses),
+        ),
+      ),
+    db
+      .select({
+        itemPrice: shopItemsTable.price,
+        quantity: shopOrdersTable.quantity,
+      })
+      .from(shopOrdersTable)
+      .innerJoin(
+        shopItemsTable,
+        eq(shopOrdersTable.shopItemId, shopItemsTable.id),
+      )
+      .where(
+        and(
+          eq(shopOrdersTable.orderType, "purchase"),
+          notInArray(shopOrdersTable.status, activeOrderStatuses),
+        ),
+      ),
     db
       .select({ count: sql<number>`count(*)` })
       .from(shopOrdersTable)
-      .where(eq(shopOrdersTable.orderType, "consolation")),
+      .where(
+        and(
+          eq(shopOrdersTable.orderType, "consolation"),
+          notInArray(shopOrdersTable.status, activeOrderStatuses),
+        ),
+      ),
   ]);
 
   const luckWinDollarCost = luckWinOrders.reduce(
     (sum, o) => sum + o.itemPrice / SCRAPS_PER_DOLLAR,
     0,
   );
+  const purchaseDollarCost = purchaseOrders.reduce(
+    (sum, o) => sum + (o.itemPrice * o.quantity) / SCRAPS_PER_DOLLAR,
+    0,
+  );
   const consolationDollarCost = Number(consolationCount[0]?.count || 0) * 2;
-  const totalRealCost = luckWinDollarCost + consolationDollarCost;
+  const totalRealCost =
+    luckWinDollarCost + purchaseDollarCost + consolationDollarCost;
   const realCostPerHour =
     roundedTotalHours > 0
       ? Math.round((totalRealCost / roundedTotalHours) * 100) / 100
       : 0;
 
   // Actual fulfillment cost (only fulfilled orders + upgrades consumed on fulfilled wins)
-  const [fulfilledLuckWinOrders, fulfilledConsolationCount, fulfilledUpgrades] =
-    await Promise.all([
-      db
-        .select({
-          itemPrice: shopItemsTable.price,
-        })
-        .from(shopOrdersTable)
-        .innerJoin(
-          shopItemsTable,
-          eq(shopOrdersTable.shopItemId, shopItemsTable.id),
-        )
-        .where(
-          and(
-            eq(shopOrdersTable.orderType, "luck_win"),
-            eq(shopOrdersTable.isFulfilled, true),
-          ),
+  const [
+    fulfilledLuckWinOrders,
+    fulfilledPurchaseOrders,
+    fulfilledConsolationCount,
+    fulfilledUpgrades,
+  ] = await Promise.all([
+    db
+      .select({
+        itemPrice: shopItemsTable.price,
+      })
+      .from(shopOrdersTable)
+      .innerJoin(
+        shopItemsTable,
+        eq(shopOrdersTable.shopItemId, shopItemsTable.id),
+      )
+      .where(
+        and(
+          eq(shopOrdersTable.orderType, "luck_win"),
+          eq(shopOrdersTable.isFulfilled, true),
         ),
-      db
-        .select({ count: sql<number>`count(*)` })
-        .from(shopOrdersTable)
-        .where(
-          and(
-            eq(shopOrdersTable.orderType, "consolation"),
-            eq(shopOrdersTable.isFulfilled, true),
-          ),
-        ),
-      db.execute(
-        sql`SELECT COALESCE(SUM(rsh.cost), 0) AS total_cost
-            FROM refinery_spending_history rsh
-            WHERE (rsh.user_id, rsh.shop_item_id) IN (
-              SELECT DISTINCT so.user_id, so.shop_item_id
-              FROM shop_orders so
-              WHERE so.order_type = 'luck_win' AND so.is_fulfilled = true
-            )`,
       ),
-    ]);
+    db
+      .select({
+        itemPrice: shopItemsTable.price,
+        quantity: shopOrdersTable.quantity,
+      })
+      .from(shopOrdersTable)
+      .innerJoin(
+        shopItemsTable,
+        eq(shopOrdersTable.shopItemId, shopItemsTable.id),
+      )
+      .where(
+        and(
+          eq(shopOrdersTable.orderType, "purchase"),
+          eq(shopOrdersTable.isFulfilled, true),
+        ),
+      ),
+    db
+      .select({ count: sql<number>`count(*)` })
+      .from(shopOrdersTable)
+      .where(
+        and(
+          eq(shopOrdersTable.orderType, "consolation"),
+          eq(shopOrdersTable.isFulfilled, true),
+        ),
+      ),
+    db.execute(
+      sql`SELECT COALESCE(SUM(rsh.cost), 0) AS total_cost
+          FROM refinery_spending_history rsh
+          WHERE (rsh.user_id, rsh.shop_item_id) IN (
+            SELECT DISTINCT so.user_id, so.shop_item_id
+            FROM shop_orders so
+            WHERE so.order_type = 'luck_win' AND so.is_fulfilled = true
+          )`,
+    ),
+  ]);
 
   const fulfilledLuckWinDollarCost = fulfilledLuckWinOrders.reduce(
     (sum, o) => sum + o.itemPrice / SCRAPS_PER_DOLLAR,
     0,
   );
+  const fulfilledPurchaseDollarCost = fulfilledPurchaseOrders.reduce(
+    (sum, o) => sum + (o.itemPrice * o.quantity) / SCRAPS_PER_DOLLAR,
+    0,
+  );
   const fulfilledConsolationDollarCost =
     Number(fulfilledConsolationCount[0]?.count || 0) * 2;
   const fulfilledUpgradeDollarCost =
-    Number((fulfilledUpgrades.rows[0] as { total_cost: string })?.total_cost || 0) /
-    SCRAPS_PER_DOLLAR;
+    Number(
+      (fulfilledUpgrades.rows[0] as { total_cost: string })?.total_cost || 0,
+    ) / SCRAPS_PER_DOLLAR;
   const totalActualCost =
     fulfilledLuckWinDollarCost +
+    fulfilledPurchaseDollarCost +
     fulfilledConsolationDollarCost +
     fulfilledUpgradeDollarCost;
   const actualCostPerHour =
@@ -288,7 +357,9 @@ admin.get("/stats", async ({ headers, status }) => {
         { headers: { Accept: "application/json" } },
       );
       if (hcbRes.ok) {
-        const hcbData = await hcbRes.json() as { balances?: { balance_cents?: number } };
+        const hcbData = (await hcbRes.json()) as {
+          balances?: { balance_cents?: number };
+        };
         hcbBalanceCents = hcbData.balances?.balance_cents ?? 0;
       }
     } catch {
@@ -319,6 +390,8 @@ admin.get("/stats", async ({ headers, status }) => {
     shopRealCost: {
       luckWinItemsCost: Math.round(luckWinDollarCost * 100) / 100,
       luckWinCount: luckWinOrders.length,
+      purchaseItemsCost: Math.round(purchaseDollarCost * 100) / 100,
+      purchaseCount: purchaseOrders.length,
       consolationShippingCost: Math.round(consolationDollarCost * 100) / 100,
       consolationCount: Number(consolationCount[0]?.count || 0),
       totalRealCost: Math.round(totalRealCost * 100) / 100,
@@ -329,6 +402,9 @@ admin.get("/stats", async ({ headers, status }) => {
       hcbBalance: Math.round((hcbBalanceCents / 100) * 100) / 100,
       fulfilledLuckWinCost: Math.round(fulfilledLuckWinDollarCost * 100) / 100,
       fulfilledLuckWinCount: fulfilledLuckWinOrders.length,
+      fulfilledPurchaseCost:
+        Math.round(fulfilledPurchaseDollarCost * 100) / 100,
+      fulfilledPurchaseCount: fulfilledPurchaseOrders.length,
       fulfilledConsolationCost:
         Math.round(fulfilledConsolationDollarCost * 100) / 100,
       fulfilledConsolationCount: Number(
@@ -1121,30 +1197,12 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
           .limit(1);
 
         if (projectAuthor[0]?.slackId) {
-          // Get admin Slack IDs for permanently rejected projects
-          let adminSlackIds: string[] = [];
-          if (action === "permanently_rejected") {
-            const admins = await db
-              .select({ slackId: usersTable.slackId })
-              .from(usersTable)
-              .where(eq(usersTable.role, "admin"));
-
-            adminSlackIds = admins
-              .map((a) => a.slackId)
-              .filter((id): id is string => !!id);
-          }
-
-          // Get the reviewer's Slack ID
-          const reviewerSlackId = user.slackId ?? null;
-
           await notifyProjectReview({
             userSlackId: projectAuthor[0].slackId,
             projectName: project[0].name,
             projectId,
             action,
             feedbackForAuthor,
-            reviewerSlackId,
-            adminSlackIds,
             scrapsAwarded,
             frontendUrl: config.frontendUrl,
             token: config.slackBotToken,
@@ -1479,8 +1537,6 @@ admin.post("/second-pass/:id", async ({ params, body, headers }) => {
               projectId,
               action: "approved",
               feedbackForAuthor: "Your project has been approved and shipped!",
-              reviewerSlackId: user.slackId ?? null,
-              adminSlackIds: [],
               scrapsAwarded,
               frontendUrl: config.frontendUrl,
               token: config.slackBotToken,
@@ -1539,8 +1595,6 @@ admin.post("/second-pass/:id", async ({ params, body, headers }) => {
               feedbackForAuthor:
                 feedbackForAuthor ||
                 "The admin has rejected the initial approval. Please make improvements and resubmit.",
-              reviewerSlackId: user.slackId ?? null,
-              adminSlackIds: [],
               scrapsAwarded: 0,
               frontendUrl: config.frontendUrl,
               token: config.slackBotToken,
@@ -2295,7 +2349,9 @@ admin.get("/orders", async ({ headers, query, status }) => {
     const rows = await ordersQuery;
 
     // Batch-check Hackatime ban status for unique user emails
-    const uniqueEmails = [...new Set(rows.map((r) => r.userEmail).filter(Boolean))] as string[];
+    const uniqueEmails = [
+      ...new Set(rows.map((r) => r.userEmail).filter(Boolean)),
+    ] as string[];
     const banMap = new Map<string, boolean>();
     await Promise.all(
       uniqueEmails.map(async (email) => {
@@ -2359,6 +2415,7 @@ admin.patch("/orders/:id", async ({ params, body, headers, status }) => {
         orderType: shopOrdersTable.orderType,
         shopItemId: shopOrdersTable.shopItemId,
         quantity: shopOrdersTable.quantity,
+        isFulfilled: shopOrdersTable.isFulfilled,
       })
       .from(shopOrdersTable)
       .where(eq(shopOrdersTable.id, orderId))
@@ -2434,7 +2491,12 @@ admin.patch("/orders/:id", async ({ params, body, headers, status }) => {
       return status(404, { error: "Not found" });
     }
 
-    if (isFulfilled === true && config.slackBotToken) {
+    if (
+      isFulfilled === true &&
+      orderBeforeUpdate[0] &&
+      !orderBeforeUpdate[0].isFulfilled &&
+      config.slackBotToken
+    ) {
       const [orderUser] = await db
         .select({ slackId: usersTable.slackId })
         .from(usersTable)
@@ -2444,8 +2506,7 @@ admin.patch("/orders/:id", async ({ params, body, headers, status }) => {
       const [orderItem] = await db
         .select({ name: shopItemsTable.name })
         .from(shopItemsTable)
-        .innerJoin(shopOrdersTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id))
-        .where(eq(shopOrdersTable.id, parseInt(params.id)))
+        .where(eq(shopItemsTable.id, orderBeforeUpdate[0].shopItemId))
         .limit(1);
 
       if (orderUser?.slackId && orderItem?.name) {
@@ -2454,7 +2515,7 @@ admin.patch("/orders/:id", async ({ params, body, headers, status }) => {
           itemName: orderItem.name,
           trackingNumber: updated[0].trackingNumber,
           token: config.slackBotToken,
-        }).catch((err) => console.error('Failed to send fulfillment DM:', err));
+        }).catch((err) => console.error("Failed to send fulfillment DM:", err));
       }
     }
 

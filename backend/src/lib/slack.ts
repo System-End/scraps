@@ -142,15 +142,15 @@ export async function notifyOrderFulfilled({
 }): Promise<boolean> {
   const trackingLine = trackingNumber
     ? `\n\n*tracking number:* \`${trackingNumber}\``
-    : '';
+    : "";
 
-  const fallbackText = `:scraps: hey <@${userSlackId}>! your order for *${itemName}* has been fulfilled and is on its way!${trackingNumber ? ` tracking number: ${trackingNumber}` : ''} :blobhaj_party:`;
+  const fallbackText = `:scraps: hey <@${userSlackId}>! your order for *${itemName}* has been fulfilled and is on its way!${trackingNumber ? ` tracking number: ${trackingNumber}` : ""} :blobhaj_party:`;
 
   const blocks = [
     {
-      type: 'section',
+      type: "section",
       text: {
-        type: 'mrkdwn',
+        type: "mrkdwn",
         text: `:scraps: hey <@${userSlackId}>! :blobhaj_party:\n\nyour order for *${itemName}* has been fulfilled and is on its way!${trackingLine}`,
       },
     },
@@ -216,8 +216,6 @@ export async function notifyProjectReview({
   projectId,
   action,
   feedbackForAuthor,
-  reviewerSlackId,
-  adminSlackIds,
   scrapsAwarded,
   frontendUrl,
   token,
@@ -227,8 +225,6 @@ export async function notifyProjectReview({
   projectId: number;
   action: "approved" | "denied" | "permanently_rejected";
   feedbackForAuthor: string;
-  reviewerSlackId?: string | null;
-  adminSlackIds: string[];
   scrapsAwarded?: number;
   frontendUrl: string;
   token: string;
