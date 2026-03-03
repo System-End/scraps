@@ -4,25 +4,43 @@ var __getProtoOf = Object.getPrototypeOf;
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+function __accessProp(key) {
+  return this[key];
+}
+var __toESMCache_node;
+var __toESMCache_esm;
 var __toESM = (mod, isNodeMode, target) => {
+  var canCache = mod != null && typeof mod === "object";
+  if (canCache) {
+    var cache = isNodeMode ? __toESMCache_node ??= new WeakMap : __toESMCache_esm ??= new WeakMap;
+    var cached = cache.get(mod);
+    if (cached)
+      return cached;
+  }
   target = mod != null ? __create(__getProtoOf(mod)) : {};
   const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
   for (let key of __getOwnPropNames(mod))
     if (!__hasOwnProp.call(to, key))
       __defProp(to, key, {
-        get: () => mod[key],
+        get: __accessProp.bind(mod, key),
         enumerable: true
       });
+  if (canCache)
+    cache.set(mod, to);
   return to;
 };
 var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
+var __returnValue = (v) => v;
+function __exportSetter(name, newValue) {
+  this[name] = __returnValue.bind(null, newValue);
+}
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, {
       get: all[name],
       enumerable: true,
       configurable: true,
-      set: (newValue) => all[name] = () => newValue
+      set: __exportSetter.bind(all, name)
     });
 };
 var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
@@ -14501,7 +14519,6 @@ __export(exports_type3, {
 
 // node_modules/@sinclair/typebox/build/esm/type/type/index.mjs
 var Type = exports_type3;
-
 // node_modules/@sinclair/typebox/build/esm/errors/function.mjs
 function DefaultErrorFunction(error) {
   switch (error.errorType) {
@@ -15779,6 +15796,7 @@ function Errors(...args) {
   const iterator = args.length === 3 ? Visit6(args[0], args[1], "", args[2]) : Visit6(args[0], [], "", args[1]);
   return new ValueErrorIterator(iterator);
 }
+
 // node_modules/@sinclair/typebox/build/esm/value/assert/assert.mjs
 var __classPrivateFieldSet = function(receiver, state, value, kind, f) {
   if (kind === "m")
@@ -31159,7 +31177,11 @@ your scraps project *<${projectUrl}|${projectName}>* is currently waiting for a 
       elements: [
         {
           type: "button",
-          text: { type: "plain_text", text: ":scraps: view your project", emoji: true },
+          text: {
+            type: "plain_text",
+            text: ":scraps: view your project",
+            emoji: true
+          },
           url: projectUrl,
           action_id: "view_project"
         }
@@ -31215,7 +31237,11 @@ keep building and ship again for more scraps! :blobhaj_party:`
         elements: [
           {
             type: "button",
-            text: { type: "plain_text", text: ":scraps: view your project", emoji: true },
+            text: {
+              type: "plain_text",
+              text: ":scraps: view your project",
+              emoji: true
+            },
             url: projectUrl,
             action_id: "view_project"
           }
@@ -31223,8 +31249,7 @@ keep building and ship again for more scraps! :blobhaj_party:`
       }
     ];
   } else if (action === "denied") {
-    const reviewerMention = reviewerSlackId ? `<@${reviewerSlackId}>` : "a reviewer";
-    fallbackText = `:scraps: hey <@${userSlackId}>! your scraps project ${projectName} needs some changes before it can be approved for scraps. here's some feedback from your reviewer, ${reviewerMention}: ${feedbackForAuthor}`;
+    fallbackText = `:scraps: hey <@${userSlackId}>! your scraps project ${projectName} needs some changes before it can be approved for scraps. here's some feedback from your reviewer: ${feedbackForAuthor}`;
     blocks = [
       {
         type: "section",
@@ -31232,7 +31257,7 @@ keep building and ship again for more scraps! :blobhaj_party:`
           type: "mrkdwn",
           text: `:scraps: hey <@${userSlackId}>! :scraps:
 
-your scraps project *<${projectUrl}|${projectName}>* needs some changes before it can be approved for scraps. here's some feedback from your reviewer, ${reviewerMention}:
+your scraps project *<${projectUrl}|${projectName}>* needs some changes before it can be approved for scraps. here's some feedback from your reviewer:
 
 > ${feedbackForAuthor}
 
@@ -31244,7 +31269,11 @@ don't worry \u2014 make the requested changes and resubmit! :scraps:`
         elements: [
           {
             type: "button",
-            text: { type: "plain_text", text: ":scraps: view your project", emoji: true },
+            text: {
+              type: "plain_text",
+              text: ":scraps: view your project",
+              emoji: true
+            },
             url: projectUrl,
             action_id: "view_project"
           }
@@ -31252,9 +31281,8 @@ don't worry \u2014 make the requested changes and resubmit! :scraps:`
       }
     ];
   } else if (action === "permanently_rejected") {
-    const reviewerMention = reviewerSlackId ? `<@${reviewerSlackId}>` : "a reviewer";
     const adminMentions = adminSlackIds.length > 0 ? adminSlackIds.map((id) => `<@${id}>`).join(", ") : "an admin";
-    fallbackText = `:scraps: hey <@${userSlackId}>! unfortunately, your scraps project ${projectName} has been permanently rejected by ${reviewerMention}. reason: ${feedbackForAuthor}. if you have any questions, please reach out to an admin: ${adminMentions}`;
+    fallbackText = `:scraps: hey <@${userSlackId}>! unfortunately, your scraps project ${projectName} has been permanently rejected. reason: ${feedbackForAuthor}. if you have any questions, please reach out to an admin: ${adminMentions}`;
     blocks = [
       {
         type: "section",
@@ -31262,7 +31290,7 @@ don't worry \u2014 make the requested changes and resubmit! :scraps:`
           type: "mrkdwn",
           text: `:scraps: hey <@${userSlackId}>! :scraps:
 
-unfortunately, your scraps project *<${projectUrl}|${projectName}>* has been *permanently rejected* by ${reviewerMention}.
+unfortunately, your scraps project *<${projectUrl}|${projectName}>* has been *permanently rejected*.
 
 *reason:*
 > ${feedbackForAuthor}
@@ -31275,7 +31303,11 @@ if you have any questions about this decision, please reach out to one of our ad
         elements: [
           {
             type: "button",
-            text: { type: "plain_text", text: ":scraps: view your project", emoji: true },
+            text: {
+              type: "plain_text",
+              text: ":scraps: view your project",
+              emoji: true
+            },
             url: projectUrl,
             action_id: "view_project"
           }
@@ -31968,13 +32000,18 @@ projects.get("/:id", async ({ params, headers }) => {
   if (!project[0])
     return { error: "Not found" };
   const isOwner = project[0].userId === user.id;
+  const isStaff = user.role === "admin" || user.role === "reviewer";
   if (!isOwner && project[0].status !== "shipped" && project[0].status !== "in_progress" && project[0].status !== "waiting_for_review" && project[0].status !== "pending_admin_approval") {
     return { error: "Not found" };
   }
   if (!isOwner) {
     await db.update(projectsTable).set({ views: sql`${projectsTable.views} + 1` }).where(eq(projectsTable.id, parseInt(params.id)));
   }
-  const projectOwner = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
+  const projectOwner = await db.select({
+    id: usersTable.id,
+    username: usersTable.username,
+    avatar: usersTable.avatar
+  }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
   let activity = [];
   const reviews = await db.select({
     id: reviewsTable.id,
@@ -31986,7 +32023,11 @@ projects.get("/:id", async ({ params, headers }) => {
   const reviewerIds = reviews.map((r) => r.reviewerId);
   let reviewers = [];
   if (reviewerIds.length > 0) {
-    reviewers = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
+    reviewers = await db.select({
+      id: usersTable.id,
+      username: usersTable.username,
+      avatar: usersTable.avatar
+    }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
   }
   const isPendingAdmin = project[0].status === "pending_admin_approval";
   for (const r of reviews) {
@@ -31997,7 +32038,7 @@ projects.get("/:id", async ({ params, headers }) => {
       action: r.action,
       feedbackForAuthor: r.feedbackForAuthor,
       createdAt: r.createdAt,
-      reviewer: reviewers.find((rv) => rv.id === r.reviewerId) || null
+      reviewer: isStaff ? reviewers.find((rv) => rv.id === r.reviewerId) || null : null
     });
   }
   const activityEntries = await db.select({
@@ -32104,7 +32145,10 @@ projects.post("/", async ({ body, headers }) => {
     projectId: newProject[0].id,
     action: "project_created"
   });
-  return { ...newProject[0], hackatimeProject: stripHackatimeIds(newProject[0].hackatimeProject) };
+  return {
+    ...newProject[0],
+    hackatimeProject: stripHackatimeIds(newProject[0].hackatimeProject)
+  };
 });
 projects.put("/:id", async ({ params, body, headers }) => {
   const user = await getUserFromSession(headers);
@@ -32145,7 +32189,10 @@ projects.put("/:id", async ({ params, body, headers }) => {
     const syncResult = await syncSingleProject(updated[0].id);
     updated[0].hours = syncResult.hours;
   }
-  return { ...updated[0], hackatimeProject: stripHackatimeIds(updated[0].hackatimeProject) };
+  return {
+    ...updated[0],
+    hackatimeProject: stripHackatimeIds(updated[0].hackatimeProject)
+  };
 });
 projects.delete("/:id", async ({ params, headers }) => {
   const user = await getUserFromSession(headers);
@@ -32169,7 +32216,9 @@ projects.post("/:id/unsubmit", async ({ params, headers }) => {
   if (!project[0])
     return { error: "Not found" };
   if (project[0].status !== "waiting_for_review" && project[0].status !== "pending_admin_approval") {
-    return { error: "Project can only be unsubmitted while waiting for review" };
+    return {
+      error: "Project can only be unsubmitted while waiting for review"
+    };
   }
   if (project[0].status === "pending_admin_approval") {
     await db.delete(reviewsTable).where(and(eq(reviewsTable.projectId, parseInt(params.id)), eq(reviewsTable.action, "approved")));
@@ -32183,7 +32232,10 @@ projects.post("/:id/unsubmit", async ({ params, headers }) => {
     projectId: updated[0].id,
     action: "project_unsubmitted"
   });
-  return { ...updated[0], hackatimeProject: stripHackatimeIds(updated[0].hackatimeProject) };
+  return {
+    ...updated[0],
+    hackatimeProject: stripHackatimeIds(updated[0].hackatimeProject)
+  };
 });
 projects.post("/:id/submit", async ({ params, headers, body }) => {
   const user = await getUserFromSession(headers);
@@ -32196,7 +32248,10 @@ projects.post("/:id/submit", async ({ params, headers, body }) => {
       const { identity } = meResponse;
       await db.update(usersTable).set({ verificationStatus: identity.verification_status }).where(eq(usersTable.id, user.id));
       if (identity.verification_status === "ineligible") {
-        return { error: "ineligible", redirectTo: "/auth/error?reason=not-eligible" };
+        return {
+          error: "ineligible",
+          redirectTo: "/auth/error?reason=not-eligible"
+        };
       }
     }
   }
@@ -32241,12 +32296,16 @@ projects.post("/:id/submit", async ({ params, headers, body }) => {
       console.error("Failed to send Slack submission notification:", slackErr);
     }
   }
-  return { ...updated[0], hackatimeProject: stripHackatimeIds(updated[0].hackatimeProject) };
+  return {
+    ...updated[0],
+    hackatimeProject: stripHackatimeIds(updated[0].hackatimeProject)
+  };
 });
 projects.get("/:id/reviews", async ({ params, headers }) => {
   const user = await getUserFromSession(headers);
   if (!user)
     return { error: "Unauthorized" };
+  const isStaff = user.role === "admin" || user.role === "reviewer";
   const project = await db.select().from(projectsTable).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).limit(1);
   if (!project[0])
     return { error: "Not found" };
@@ -32259,8 +32318,12 @@ projects.get("/:id/reviews", async ({ params, headers }) => {
   }).from(reviewsTable).where(eq(reviewsTable.projectId, parseInt(params.id)));
   const reviewerIds = reviews.map((r) => r.reviewerId);
   let reviewers = [];
-  if (reviewerIds.length > 0) {
-    reviewers = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
+  if (isStaff && reviewerIds.length > 0) {
+    reviewers = await db.select({
+      id: usersTable.id,
+      username: usersTable.username,
+      avatar: usersTable.avatar
+    }).from(usersTable).where(inArray(usersTable.id, reviewerIds));
   }
   const filteredReviews = project[0].status === "pending_admin_approval" ? reviews.filter((r) => r.action !== "approved") : reviews;
   return filteredReviews.map((r) => ({
@@ -32268,7 +32331,7 @@ projects.get("/:id/reviews", async ({ params, headers }) => {
     action: r.action,
     feedbackForAuthor: r.feedbackForAuthor,
     createdAt: r.createdAt,
-    reviewer: reviewers.find((rv) => rv.id === r.reviewerId) || null
+    reviewer: isStaff ? reviewers.find((rv) => rv.id === r.reviewerId) || null : null
   }));
 });
 var projects_default = projects;
@@ -35566,6 +35629,32 @@ admin.patch("/orders/:id", async ({ params, body, headers, status: status2 }) =>
     if (orderStatus && !validStatuses.includes(orderStatus)) {
       return status2(400, { error: "Invalid status" });
     }
+    const orderId = parseInt(params.id);
+    const orderBeforeUpdate = await db.select({
+      id: shopOrdersTable.id,
+      status: shopOrdersTable.status,
+      orderType: shopOrdersTable.orderType,
+      shopItemId: shopOrdersTable.shopItemId,
+      quantity: shopOrdersTable.quantity
+    }).from(shopOrdersTable).where(eq(shopOrdersTable.id, orderId)).limit(1);
+    if (orderStatus && orderBeforeUpdate[0] && (orderBeforeUpdate[0].orderType === "purchase" || orderBeforeUpdate[0].orderType === "luck_win")) {
+      const wasInactive = orderBeforeUpdate[0].status === "cancelled" || orderBeforeUpdate[0].status === "deleted";
+      const willBeInactive = orderStatus === "cancelled" || orderStatus === "deleted";
+      const qty = orderBeforeUpdate[0].quantity ?? 1;
+      if (!wasInactive && willBeInactive) {
+        await db.update(shopItemsTable).set({
+          count: sql`${shopItemsTable.count} + ${qty}`,
+          updatedAt: new Date
+        }).where(eq(shopItemsTable.id, orderBeforeUpdate[0].shopItemId));
+        console.log(`[ADMIN] Order #${orderId} status\u2192${orderStatus}: restored ${qty} stock to item #${orderBeforeUpdate[0].shopItemId}`);
+      } else if (wasInactive && !willBeInactive) {
+        await db.update(shopItemsTable).set({
+          count: sql`GREATEST(${shopItemsTable.count} - ${qty}, 0)`,
+          updatedAt: new Date
+        }).where(eq(shopItemsTable.id, orderBeforeUpdate[0].shopItemId));
+        console.log(`[ADMIN] Order #${orderId} status\u2192${orderStatus}: decremented ${qty} stock from item #${orderBeforeUpdate[0].shopItemId}`);
+      }
+    }
     const updateData = { updatedAt: new Date };
     if (orderStatus)
       updateData.status = orderStatus;
@@ -35575,7 +35664,7 @@ admin.patch("/orders/:id", async ({ params, body, headers, status: status2 }) =>
       updateData.trackingNumber = trackingNumber;
     if (isFulfilled !== undefined)
       updateData.isFulfilled = isFulfilled;
-    const updated = await db.update(shopOrdersTable).set(updateData).where(eq(shopOrdersTable.id, parseInt(params.id))).returning({
+    const updated = await db.update(shopOrdersTable).set(updateData).where(eq(shopOrdersTable.id, orderId)).returning({
       id: shopOrdersTable.id,
       quantity: shopOrdersTable.quantity,
       pricePerItem: shopOrdersTable.pricePerItem,
@@ -35772,8 +35861,9 @@ admin.delete("/orders/:id", async ({ params, headers, body, status: status2 }) =
     } catch (err) {
       const dbErr = err;
       const msg = dbErr?.message ?? "";
-      const code = dbErr?.code ?? null;
-      if (msg.includes("does not exist") || code === "42P01") {
+      const causeMsg = dbErr?.cause?.message ?? "";
+      const code = dbErr?.code ?? dbErr?.cause?.code ?? null;
+      if (msg.includes("does not exist") || causeMsg.includes("does not exist") || code === "42P01") {
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS admin_deleted_orders (
             id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
@@ -35837,13 +35927,36 @@ admin.delete("/orders/:id", async ({ params, headers, body, status: status2 }) =
       await tx.delete(refinerySpendingHistoryTable).where(and(eq(refinerySpendingHistoryTable.userId, order[0].userId), eq(refinerySpendingHistoryTable.shopItemId, order[0].shopItemId)));
       await tx.delete(refineryOrdersTable).where(and(eq(refineryOrdersTable.userId, order[0].userId), eq(refineryOrdersTable.shopItemId, order[0].shopItemId)));
       await tx.delete(shopRollsTable).where(and(eq(shopRollsTable.userId, order[0].userId), eq(shopRollsTable.shopItemId, order[0].shopItemId)));
-      await tx.delete(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, order[0].userId), eq(shopPenaltiesTable.shopItemId, order[0].shopItemId)));
+      if (order[0].orderType === "luck_win") {
+        const currentPenalty = await tx.select({
+          probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier
+        }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, order[0].userId), eq(shopPenaltiesTable.shopItemId, order[0].shopItemId))).limit(1);
+        if (currentPenalty.length > 0) {
+          const restored = Math.min(100, currentPenalty[0].probabilityMultiplier * 2);
+          if (restored >= 100) {
+            await tx.delete(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, order[0].userId), eq(shopPenaltiesTable.shopItemId, order[0].shopItemId)));
+          } else {
+            await tx.update(shopPenaltiesTable).set({
+              probabilityMultiplier: restored,
+              updatedAt: new Date
+            }).where(and(eq(shopPenaltiesTable.userId, order[0].userId), eq(shopPenaltiesTable.shopItemId, order[0].shopItemId)));
+          }
+          console.log(`[ADMIN] Order #${orderId} delete (luck_win): reversed penalty halving ${currentPenalty[0].probabilityMultiplier}\u2192${restored >= 100 ? "deleted" : restored} for user #${order[0].userId} item #${order[0].shopItemId}`);
+        }
+      } else {
+        await tx.delete(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, order[0].userId), eq(shopPenaltiesTable.shopItemId, order[0].shopItemId)));
+      }
       await tx.delete(shopOrdersTable).where(eq(shopOrdersTable.id, orderId));
-      if (order[0].orderType === "purchase" || order[0].orderType === "luck_win") {
-        await tx.update(shopItemsTable).set({
-          count: sql`${shopItemsTable.count} + ${order[0].quantity}`,
+      const alreadyInactive = order[0].status === "cancelled" || order[0].status === "deleted";
+      const shouldRestoreStock = !alreadyInactive && (order[0].orderType === "purchase" || order[0].orderType === "luck_win");
+      const restoreQty = order[0].quantity ?? 1;
+      console.log(`[ADMIN] Order #${orderId} delete: orderType=${order[0].orderType} status=${order[0].status} quantity=${order[0].quantity} shopItemId=${order[0].shopItemId} alreadyInactive=${alreadyInactive} shouldRestoreStock=${shouldRestoreStock} restoreQty=${restoreQty}`);
+      if (shouldRestoreStock) {
+        const updated = await tx.update(shopItemsTable).set({
+          count: sql`${shopItemsTable.count} + ${restoreQty}`,
           updatedAt: new Date
-        }).where(eq(shopItemsTable.id, order[0].shopItemId));
+        }).where(eq(shopItemsTable.id, order[0].shopItemId)).returning({ id: shopItemsTable.id, count: shopItemsTable.count });
+        console.log(`[ADMIN] Order #${orderId} stock restored: itemId=${order[0].shopItemId} addedBack=${restoreQty} newCount=${updated[0]?.count ?? "NO_ROW_UPDATED"}`);
       }
     });
     console.log(`[ADMIN] Order #${orderId} archived/deleted by admin #${user2.id}`);
@@ -35936,20 +36049,47 @@ admin.post("/orders/:id/restore", async ({ params, headers, status: status2 }) =
           createdAt: rr.createdAt
         });
       }
-      for (const p of shopPenaltiesPayload) {
-        await tx.insert(shopPenaltiesTable).values({
-          userId: p.userId,
-          shopItemId: p.shopItemId,
-          probabilityMultiplier: p.probabilityMultiplier,
-          createdAt: p.createdAt,
-          updatedAt: p.updatedAt
-        });
+      if (orderPayload.orderType === "luck_win") {
+        const currentPenalty = await tx.select({
+          probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier
+        }).from(shopPenaltiesTable).where(and(eq(shopPenaltiesTable.userId, orderPayload.userId), eq(shopPenaltiesTable.shopItemId, orderPayload.shopItemId))).limit(1);
+        if (currentPenalty.length > 0) {
+          const halved = Math.max(1, Math.floor(currentPenalty[0].probabilityMultiplier / 2));
+          await tx.update(shopPenaltiesTable).set({
+            probabilityMultiplier: halved,
+            updatedAt: new Date
+          }).where(and(eq(shopPenaltiesTable.userId, orderPayload.userId), eq(shopPenaltiesTable.shopItemId, orderPayload.shopItemId)));
+          console.log(`[ADMIN] Restore order #${originalOrderId} (luck_win): re-halved penalty ${currentPenalty[0].probabilityMultiplier}\u2192${halved} for user #${orderPayload.userId} item #${orderPayload.shopItemId}`);
+        } else {
+          await tx.insert(shopPenaltiesTable).values({
+            userId: orderPayload.userId,
+            shopItemId: orderPayload.shopItemId,
+            probabilityMultiplier: 50
+          });
+          console.log(`[ADMIN] Restore order #${originalOrderId} (luck_win): created fresh penalty at 50 for user #${orderPayload.userId} item #${orderPayload.shopItemId}`);
+        }
+      } else {
+        for (const p of shopPenaltiesPayload) {
+          await tx.insert(shopPenaltiesTable).values({
+            userId: p.userId,
+            shopItemId: p.shopItemId,
+            probabilityMultiplier: p.probabilityMultiplier,
+            createdAt: p.createdAt,
+            updatedAt: p.updatedAt
+          });
+        }
       }
-      if (orderPayload.orderType === "purchase" || orderPayload.orderType === "luck_win") {
+      const wasInactiveWhenDeleted = orderPayload.status === "cancelled" || orderPayload.status === "deleted";
+      const shouldDecrementStock = !wasInactiveWhenDeleted && (orderPayload.orderType === "purchase" || orderPayload.orderType === "luck_win");
+      if (shouldDecrementStock) {
+        const qty = orderPayload.quantity ?? 1;
         await tx.update(shopItemsTable).set({
-          count: sql`GREATEST(${shopItemsTable.count} - ${orderPayload.quantity ?? 1}, 0)`,
+          count: sql`GREATEST(${shopItemsTable.count} - ${qty}, 0)`,
           updatedAt: new Date
         }).where(eq(shopItemsTable.id, orderPayload.shopItemId));
+        console.log(`[ADMIN] Restore order #${originalOrderId}: decremented ${qty} stock from item #${orderPayload.shopItemId}`);
+      } else if (wasInactiveWhenDeleted) {
+        console.log(`[ADMIN] Restore order #${originalOrderId}: skipped stock decrement (order was ${orderPayload.status} when archived)`);
       }
       await tx.execute(sql`UPDATE admin_deleted_orders SET restored = true, restored_by = ${user2.id}, restored_at = now() WHERE id = ${archived.id}`);
     });
