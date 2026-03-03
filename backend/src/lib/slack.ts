@@ -301,34 +301,15 @@ export async function notifyProjectReview({
       },
     ];
   } else if (action === "permanently_rejected") {
-    const adminMentions =
-      adminSlackIds.length > 0
-        ? adminSlackIds.map((id) => `<@${id}>`).join(", ")
-        : "an admin";
-    fallbackText = `:scraps: hey <@${userSlackId}>! unfortunately, your scraps project ${projectName} has been permanently rejected. reason: ${feedbackForAuthor}. if you have any questions, please reach out to an admin: ${adminMentions}`;
+    fallbackText = `:scraps: hey <@${userSlackId}>! your scraps project ${projectName} has been unshipped by an admin.`;
 
     blocks = [
       {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `:scraps: hey <@${userSlackId}>! :scraps:\n\nunfortunately, your scraps project *<${projectUrl}|${projectName}>* has been *permanently rejected*.\n\n*reason:*\n> ${feedbackForAuthor}\n\nif you have any questions about this decision, please reach out to one of our admins: ${adminMentions} :scraps:`,
+          text: `:scraps: hey <@${userSlackId}>!\n\nyour scraps project *<${projectUrl}|${projectName}>* has been unshipped by an admin.`,
         },
-      },
-      {
-        type: "actions",
-        elements: [
-          {
-            type: "button",
-            text: {
-              type: "plain_text",
-              text: ":scraps: view your project",
-              emoji: true,
-            },
-            url: projectUrl,
-            action_id: "view_project",
-          },
-        ],
       },
     ];
   }

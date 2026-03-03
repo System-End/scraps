@@ -12,7 +12,8 @@
 		Trash2,
 		ChevronDown,
 		ChevronUp,
-		Search
+		Search,
+		ShieldAlert
 	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
@@ -50,6 +51,7 @@
 		userId: number;
 		username: string;
 		slackId: string | null;
+		hackatimeBanned: boolean;
 	}
 
 	function parseShippingAddress(addr: string | null): ShippingAddress | null {
@@ -157,9 +159,12 @@
 		return result;
 	});
 
-	let groupedOrders = $derived(
-		Object.values(
-			filteredOrders.reduce(
+	let mainOrders = $derived(filteredOrders.filter((o) => !o.hackatimeBanned));
+	let bannedOrders = $derived(filteredOrders.filter((o) => o.hackatimeBanned));
+
+	function buildGroups(orderList: Order[]) {
+		return Object.values(
+			orderList.reduce(
 				(acc, order) => {
 					const groupKey = order.orderType === 'consolation' ? 'Consolations' : order.itemName;
 					if (!acc[groupKey]) {
@@ -183,8 +188,11 @@
 				return (
 					new Date(a.orders[0].createdAt).getTime() - new Date(b.orders[0].createdAt).getTime()
 				);
-			})
-	);
+			});
+	}
+
+	let groupedOrders = $derived(buildGroups(mainOrders));
+	let groupedBannedOrders = $derived(buildGroups(bannedOrders));
 
 	onMount(async () => {
 		user = await getUser();
@@ -523,7 +531,7 @@
 
 	{#if loading}
 		<div class="py-12 text-center text-gray-500">{$t.common.loading}</div>
-	{:else if filteredOrders.length === 0}
+	{:else if mainOrders.length === 0 && bannedOrders.length === 0}
 		<div class="py-12 text-center text-gray-500">no orders found</div>
 	{:else}
 		<div class="flex flex-col gap-8">
@@ -611,6 +619,14 @@
 												>
 													<Check size={12} />
 													fulfilled
+												</span>
+											{/if}
+											{#if order.hackatimeBanned}
+												<span
+													class="hidden items-center gap-1 rounded-full border-2 border-red-600 bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700 md:inline-flex"
+												>
+													<ShieldAlert size={12} />
+													ht banned
 												</span>
 											{/if}
 											<div class="ml-2 text-gray-400">
@@ -752,6 +768,134 @@
 				</div>
 			{/each}
 		</div>
+
+		{#if groupedBannedOrders.length > 0}
+			<div class="mt-12">
+				<div class="mb-4 flex items-center gap-3">
+					<ShieldAlert size={24} class="text-red-600" />
+					<h2 class="text-2xl font-bold text-red-700">hackatime banned orders</h2>
+					<span class="rounded-full border-2 border-red-600 bg-red-100 px-3 py-0.5 text-sm font-bold text-red-700">
+						{bannedOrders.length}
+					</span>
+				</div>
+				<p class="mb-6 text-sm text-gray-500">these orders belong to users who are banned on hackatime — do not fulfill</p>
+				<div class="flex flex-col gap-8">
+					{#each groupedBannedOrders as group}
+						{@const isConsolations = group.itemName === 'Consolations'}
+						{@const isCollapsed = collapsedGroups['banned_' + group.itemName] ?? isConsolations}
+						<div
+							class="rounded-3xl border-4 border-red-500 bg-red-50 shadow-[8px_8px_0px_0px_rgba(220,38,38,1)]"
+						>
+							<button
+								onclick={() => {
+									collapsedGroups['banned_' + group.itemName] = !isCollapsed;
+								}}
+								class="flex w-full cursor-pointer items-center justify-between gap-4 p-6 hover:bg-red-100 {isCollapsed
+									? 'rounded-3xl'
+									: 'rounded-t-3xl'} transition-colors"
+							>
+								<div class="flex items-center gap-4">
+									<img
+										src={group.itemImage}
+										alt={group.itemName}
+										class="h-16 w-16 shrink-0 rounded-lg border-2 border-red-500 object-cover"
+									/>
+									<div class="text-left">
+										<h2 class="text-2xl font-bold text-red-800 md:text-3xl">{group.itemName}</h2>
+										<p class="font-bold text-red-500">
+											{group.orders.length}
+											{group.orders.length === 1 ? 'order' : 'orders'} from banned users
+										</p>
+									</div>
+								</div>
+								<div class="text-red-400">
+									{#if isCollapsed}
+										<ChevronDown size={24} />
+									{:else}
+										<ChevronUp size={24} />
+									{/if}
+								</div>
+							</button>
+
+							{#if !isCollapsed}
+								<div class="grid gap-4 px-6 pt-4 pb-6">
+									{#each group.orders as order}
+										{@const StatusIcon = getStatusIcon(order.status)}
+										<div
+											class="overflow-hidden rounded-2xl border-4 border-red-400 bg-red-50"
+										>
+											<button
+												onclick={() => (expandedOrders[order.id] = !expandedOrders[order.id])}
+												class="flex w-full cursor-pointer items-center justify-between gap-4 p-4 text-left hover:bg-red-100"
+											>
+												<div class="flex flex-wrap items-center gap-3">
+													<a
+														href="/admin/users/{order.userId}"
+														onclick={(e) => e.stopPropagation()}
+														class="text-lg font-bold text-red-800 hover:underline"
+													>
+														@{order.username}
+													</a>
+													<span class="text-red-300">•</span>
+													<span class="text-red-500">{formatDate(order.createdAt)}</span>
+													<span class="text-red-300">•</span>
+													<span class="font-bold text-red-700">{order.totalPrice} scraps</span>
+												</div>
+												<div class="flex shrink-0 items-center gap-2">
+													<span
+														class="hidden items-center gap-1 rounded-full border-2 border-red-600 bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700 md:inline-flex"
+													>
+														<ShieldAlert size={12} />
+														ht banned
+													</span>
+													<div class="ml-2 text-red-400">
+														{#if expandedOrders[order.id]}
+															<ChevronUp size={20} />
+														{:else}
+															<ChevronDown size={20} />
+														{/if}
+													</div>
+												</div>
+											</button>
+
+											{#if expandedOrders[order.id]}
+												<div class="border-t-4 border-dashed border-red-200 p-4">
+													{#if order.notes}
+														<p class="mb-3 text-red-700"><strong>Notes:</strong> {order.notes}</p>
+													{/if}
+													{#if order.shippingAddress}
+														{@const addr = parseShippingAddress(order.shippingAddress)}
+														{#if addr}
+															<div class="rounded-xl border-2 border-red-300 bg-white p-4 text-sm">
+																<p class="mb-2 text-xs font-bold text-red-500 uppercase">shipping address</p>
+																<div class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 blur-sm transition-all duration-300 select-none hover:blur-none hover:select-auto">
+																	<span class="font-bold text-gray-500">name</span><span>{formatName(addr)}</span>
+																	<span class="font-bold text-gray-500">country</span><span>{addr.country}</span>
+																</div>
+															</div>
+														{/if}
+													{/if}
+													<div class="mt-4 flex justify-end">
+														<button
+															onclick={() => (confirmDelete = order)}
+															class="flex cursor-pointer items-center justify-center gap-1 rounded-full border-4 border-red-600 px-3 py-2 font-bold text-red-600 transition-all duration-200 hover:border-dashed"
+															title="delete order"
+														>
+															<Trash2 size={16} />
+															delete order
+														</button>
+													</div>
+												</div>
+											{/if}
+										</div>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
 	{/if}
 </div>
 

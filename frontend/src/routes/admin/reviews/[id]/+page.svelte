@@ -217,7 +217,10 @@
 
 	function requestConfirmation(action: 'approved' | 'denied' | 'permanently_rejected') {
 		if (!feedbackForAuthor.trim()) {
-			error = 'Feedback for author is required';
+			error =
+				action === 'permanently_rejected'
+					? 'Internal reason is required'
+					: 'Feedback for author is required';
 			return;
 		}
 		if (!internalJustification.trim()) {
@@ -234,7 +237,10 @@
 	async function submitReview() {
 		if (!confirmAction) return;
 		if (!feedbackForAuthor.trim()) {
-			error = 'Feedback for author is required';
+			error =
+				confirmAction === 'permanently_rejected'
+					? 'Internal reason is required'
+					: 'Feedback for author is required';
 			return;
 		}
 		if (!internalJustification.trim()) {
@@ -916,14 +922,18 @@
 
 					<div>
 						<label class="mb-1 block text-sm font-bold">
-							feedback for author <span class="text-red-500">*</span>
+							feedback for author / internal reason <span class="text-red-500">*</span>
 						</label>
 						<textarea
 							bind:value={feedbackForAuthor}
 							rows="4"
-							placeholder="This will be shown to the project author"
+							placeholder="Shown to the project author (for approve/reject). For permanent rejection this is an internal reason only."
 							class="w-full resize-none rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
 						></textarea>
+						<p class="mt-1 text-xs text-gray-500">
+							⚠️ for permanent rejection: this is kept internal — the user will only be told their
+							project was unshipped by an admin
+						</p>
 					</div>
 
 					<div class="flex gap-3 pt-4">

@@ -2278,6 +2278,7 @@ admin.get("/orders", async ({ headers, query, status }) => {
         userId: usersTable.id,
         username: usersTable.username,
         slackId: usersTable.slackId,
+        userEmail: usersTable.email,
       })
       .from(shopOrdersTable)
       .innerJoin(
@@ -2293,7 +2294,26 @@ admin.get("/orders", async ({ headers, query, status }) => {
       ) as typeof ordersQuery;
     }
 
-    return await ordersQuery;
+    const rows = await ordersQuery;
+
+    // Batch-check Hackatime ban status for unique user emails
+    const uniqueEmails = [...new Set(rows.map((r) => r.userEmail).filter(Boolean))] as string[];
+    const banMap = new Map<string, boolean>();
+    await Promise.all(
+      uniqueEmails.map(async (email) => {
+        try {
+          const htUser = await getHackatimeUser(email);
+          banMap.set(email, htUser?.banned ?? false);
+        } catch {
+          banMap.set(email, false);
+        }
+      }),
+    );
+
+    return rows.map(({ userEmail, ...row }) => ({
+      ...row,
+      hackatimeBanned: banMap.get(userEmail ?? "") ?? false,
+    }));
   } catch (err) {
     console.error(err);
     return status(500, { error: "Failed to fetch orders" });
