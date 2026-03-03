@@ -195,10 +195,11 @@ admin.get("/stats", async ({ headers, status }) => {
       : 0;
 
   // Max dollar cost from shop fulfillment (all luck_win orders regardless of fulfillment)
-  const [luckWinOrders, consolationCount] = await Promise.all([
+  const [luckWinOrders, consolationOrders] = await Promise.all([
     db
       .select({
         itemPrice: shopItemsTable.price,
+        totalPrice: shopOrdersTable.totalPrice,
       })
       .from(shopOrdersTable)
       .innerJoin(
@@ -207,7 +208,10 @@ admin.get("/stats", async ({ headers, status }) => {
       )
       .where(eq(shopOrdersTable.orderType, "luck_win")),
     db
-      .select({ count: sql<number>`count(*)` })
+      .select({
+        count: sql<number>`count(*)`,
+        totalScraps: sql<number>`COALESCE(SUM(${shopOrdersTable.totalPrice}), 0)`,
+      })
       .from(shopOrdersTable)
       .where(eq(shopOrdersTable.orderType, "consolation")),
   ]);
@@ -216,11 +220,22 @@ admin.get("/stats", async ({ headers, status }) => {
     (sum, o) => sum + o.itemPrice / SCRAPS_PER_DOLLAR,
     0,
   );
-  const consolationDollarCost = Number(consolationCount[0]?.count || 0) * 2;
+  const consolationCount = consolationOrders[0];
+  const consolationDollarCost = Number(consolationCount?.count || 0) * 2;
   const totalRealCost = luckWinDollarCost + consolationDollarCost;
+
+  // Derive hours from the scraps spent on luck_win + consolation orders
+  const luckWinTotalScraps = luckWinOrders.reduce(
+    (sum, o) => sum + o.totalPrice,
+    0,
+  );
+  const consolationTotalScraps = Number(consolationCount?.totalScraps || 0);
+  const scrapsPerHour = SCRAPS_PER_DOLLAR * (DOLLARS_PER_HOUR ?? 4);
+  const fulfillmentHours =
+    (luckWinTotalScraps + consolationTotalScraps) / scrapsPerHour;
   const realCostPerHour =
-    roundedTotalHours > 0
-      ? Math.round((totalRealCost / roundedTotalHours) * 100) / 100
+    fulfillmentHours > 0
+      ? Math.round((totalRealCost / fulfillmentHours) * 100) / 100
       : 0;
 
   // Actual fulfillment cost (only fulfilled orders + upgrades consumed on fulfilled wins)
@@ -320,7 +335,7 @@ admin.get("/stats", async ({ headers, status }) => {
       luckWinItemsCost: Math.round(luckWinDollarCost * 100) / 100,
       luckWinCount: luckWinOrders.length,
       consolationShippingCost: Math.round(consolationDollarCost * 100) / 100,
-      consolationCount: Number(consolationCount[0]?.count || 0),
+      consolationCount: Number(consolationCount?.count || 0),
       totalRealCost: Math.round(totalRealCost * 100) / 100,
       realCostPerHour,
     },
@@ -337,8 +352,6 @@ admin.get("/stats", async ({ headers, status }) => {
       fulfilledUpgradeCost: Math.round(fulfilledUpgradeDollarCost * 100) / 100,
       totalActualCost: Math.round(totalActualCost * 100) / 100,
       actualCostPerHour,
-      remainingBudget:
-        Math.round((hcbBalanceCents / 100 - totalActualCost) * 100) / 100,
     },
   };
 });

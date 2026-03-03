@@ -62,7 +62,6 @@
 		fulfilledUpgradeCost: number;
 		totalActualCost: number;
 		actualCostPerHour: number;
-		remainingBudget: number;
 	}
 
 	interface Stats {
@@ -622,33 +621,6 @@
 							${stats.shopActualCost.hcbBalance.toFixed(2)}
 						</p>
 						<p class="text-xs text-gray-400">hack club bank account</p>
-					</div>
-				</div>
-
-				<div
-					class="flex items-center gap-4 rounded-2xl border-4 p-6 {stats.shopActualCost
-						.remainingBudget >= 0
-						? 'border-green-500 bg-green-50'
-						: 'border-red-500 bg-red-50'}"
-				>
-					<div
-						class="flex h-16 w-16 items-center justify-center rounded-full text-white {stats
-							.shopActualCost.remainingBudget >= 0
-							? 'bg-green-600'
-							: 'bg-red-600'}"
-					>
-						<DollarSign size={32} />
-					</div>
-					<div>
-						<p class="text-sm font-bold text-gray-500">remaining budget</p>
-						<p
-							class="text-4xl font-bold {stats.shopActualCost.remainingBudget >= 0
-								? 'text-green-700'
-								: 'text-red-700'}"
-						>
-							${stats.shopActualCost.remainingBudget.toFixed(2)}
-						</p>
-						<p class="text-xs text-gray-400">hcb balance − actual fulfillment cost</p>
 					</div>
 				</div>
 
