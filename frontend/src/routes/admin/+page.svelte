@@ -46,8 +46,6 @@
 	interface ShopRealCost {
 		luckWinItemsCost: number;
 		luckWinCount: number;
-		purchaseItemsCost: number;
-		purchaseCount: number;
 		consolationShippingCost: number;
 		consolationCount: number;
 		totalRealCost: number;
@@ -59,8 +57,6 @@
 		hcbBalance: number;
 		fulfilledLuckWinCost: number;
 		fulfilledLuckWinCount: number;
-		fulfilledPurchaseCost: number;
-		fulfilledPurchaseCount: number;
 		fulfilledConsolationCost: number;
 		fulfilledConsolationCount: number;
 		fulfilledUpgradeCost: number;
@@ -513,16 +509,6 @@
 						<Coins size={32} />
 					</div>
 					<div>
-						<p class="text-sm font-bold text-gray-500">shop purchases</p>
-						<p class="text-4xl font-bold">{stats.shopStats.shopPurchases.toLocaleString()}</p>
-					</div>
-				</div>
-
-				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
-					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
-						<Coins size={32} />
-					</div>
-					<div>
 						<p class="text-sm font-bold text-gray-500">consolation scraps</p>
 						<p class="text-4xl font-bold">{stats.shopStats.shopConsolations.toLocaleString()}</p>
 					</div>
@@ -579,7 +565,7 @@
 						<p class="text-4xl font-bold text-red-700">
 							${stats.shopRealCost.totalRealCost.toFixed(2)}
 						</p>
-						<p class="text-xs text-gray-400">items won + purchases + consolation shipping</p>
+						<p class="text-xs text-gray-400">items won + consolation shipping</p>
 					</div>
 				</div>
 
@@ -591,21 +577,6 @@
 						<p class="text-sm font-bold text-gray-500">luck win items</p>
 						<p class="text-4xl font-bold">${stats.shopRealCost.luckWinItemsCost.toFixed(2)}</p>
 						<p class="text-xs text-gray-400">{stats.shopRealCost.luckWinCount} items won</p>
-					</div>
-				</div>
-
-				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
-					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
-						<Coins size={32} />
-					</div>
-					<div>
-						<p class="text-sm font-bold text-gray-500">direct purchases</p>
-						<p class="text-4xl font-bold">
-							${stats.shopRealCost.purchaseItemsCost.toFixed(2)}
-						</p>
-						<p class="text-xs text-gray-400">
-							{stats.shopRealCost.purchaseCount} items purchased
-						</p>
 					</div>
 				</div>
 
@@ -697,9 +668,7 @@
 						<p class="text-4xl font-bold text-red-700">
 							${stats.shopActualCost.totalActualCost.toFixed(2)}
 						</p>
-						<p class="text-xs text-gray-400">
-							fulfilled wins + purchases + consolations + upgrades
-						</p>
+						<p class="text-xs text-gray-400">fulfilled wins + consolations + upgrades</p>
 					</div>
 				</div>
 
@@ -714,21 +683,6 @@
 						</p>
 						<p class="text-xs text-gray-400">
 							{stats.shopActualCost.fulfilledLuckWinCount} items fulfilled
-						</p>
-					</div>
-				</div>
-
-				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
-					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
-						<Coins size={32} />
-					</div>
-					<div>
-						<p class="text-sm font-bold text-gray-500">fulfilled purchases</p>
-						<p class="text-4xl font-bold">
-							${stats.shopActualCost.fulfilledPurchaseCost.toFixed(2)}
-						</p>
-						<p class="text-xs text-gray-400">
-							{stats.shopActualCost.fulfilledPurchaseCount} purchases fulfilled
 						</p>
 					</div>
 				</div>
