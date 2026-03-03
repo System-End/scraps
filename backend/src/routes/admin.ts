@@ -705,9 +705,7 @@ admin.delete("/bonuses/:id", async ({ params, headers, status }) => {
       return status(404, { error: "Bonus not found" });
     }
 
-    await db
-      .delete(userBonusesTable)
-      .where(eq(userBonusesTable.id, bonusId));
+    await db.delete(userBonusesTable).where(eq(userBonusesTable.id, bonusId));
 
     return { success: true };
   } catch (err) {
@@ -2312,7 +2310,12 @@ admin.patch("/orders/:id", async ({ params, body, headers, status }) => {
       notes,
       isFulfilled,
       trackingNumber,
-    } = body as { status?: string; notes?: string; isFulfilled?: boolean; trackingNumber?: string };
+    } = body as {
+      status?: string;
+      notes?: string;
+      isFulfilled?: boolean;
+      trackingNumber?: string;
+    };
 
     const validStatuses = [
       "pending",
@@ -2326,16 +2329,72 @@ admin.patch("/orders/:id", async ({ params, body, headers, status }) => {
       return status(400, { error: "Invalid status" });
     }
 
+    const orderId = parseInt(params.id);
+
+    // Fetch the order before updating so we can handle stock changes
+    const orderBeforeUpdate = await db
+      .select({
+        id: shopOrdersTable.id,
+        status: shopOrdersTable.status,
+        orderType: shopOrdersTable.orderType,
+        shopItemId: shopOrdersTable.shopItemId,
+        quantity: shopOrdersTable.quantity,
+      })
+      .from(shopOrdersTable)
+      .where(eq(shopOrdersTable.id, orderId))
+      .limit(1);
+
+    if (
+      orderStatus &&
+      orderBeforeUpdate[0] &&
+      (orderBeforeUpdate[0].orderType === "purchase" ||
+        orderBeforeUpdate[0].orderType === "luck_win")
+    ) {
+      const wasInactive =
+        orderBeforeUpdate[0].status === "cancelled" ||
+        orderBeforeUpdate[0].status === "deleted";
+      const willBeInactive =
+        orderStatus === "cancelled" || orderStatus === "deleted";
+      const qty = orderBeforeUpdate[0].quantity ?? 1;
+
+      if (!wasInactive && willBeInactive) {
+        // Cancelling/soft-deleting an active order → restore stock
+        await db
+          .update(shopItemsTable)
+          .set({
+            count: sql`${shopItemsTable.count} + ${qty}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(shopItemsTable.id, orderBeforeUpdate[0].shopItemId));
+        console.log(
+          `[ADMIN] Order #${orderId} status→${orderStatus}: restored ${qty} stock to item #${orderBeforeUpdate[0].shopItemId}`,
+        );
+      } else if (wasInactive && !willBeInactive) {
+        // Re-activating a cancelled/deleted order → decrement stock again
+        await db
+          .update(shopItemsTable)
+          .set({
+            count: sql`GREATEST(${shopItemsTable.count} - ${qty}, 0)`,
+            updatedAt: new Date(),
+          })
+          .where(eq(shopItemsTable.id, orderBeforeUpdate[0].shopItemId));
+        console.log(
+          `[ADMIN] Order #${orderId} status→${orderStatus}: decremented ${qty} stock from item #${orderBeforeUpdate[0].shopItemId}`,
+        );
+      }
+    }
+
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (orderStatus) updateData.status = orderStatus;
     if (notes !== undefined) updateData.notes = notes;
-    if (trackingNumber !== undefined) updateData.trackingNumber = trackingNumber;
+    if (trackingNumber !== undefined)
+      updateData.trackingNumber = trackingNumber;
     if (isFulfilled !== undefined) updateData.isFulfilled = isFulfilled;
 
     const updated = await db
       .update(shopOrdersTable)
       .set(updateData)
-      .where(eq(shopOrdersTable.id, parseInt(params.id)))
+      .where(eq(shopOrdersTable.id, orderId))
       .returning({
         id: shopOrdersTable.id,
         userId: shopOrdersTable.userId,
@@ -2652,10 +2711,21 @@ admin.delete("/orders/:id", async ({ params, headers, body, status }) => {
     } catch (err) {
       // If the table doesn't exist, create it on-demand (safe: CREATE TABLE IF NOT EXISTS)
       // and retry the select. If it's a different error, rethrow.
-      const dbErr = err as { message?: string; code?: string };
+      // Drizzle wraps PG errors: the top-level message is "Failed query: ..." and the
+      // actual PG error (with code 42P01 / "does not exist") lives in err.cause.
+      const dbErr = err as {
+        message?: string;
+        code?: string;
+        cause?: { message?: string; code?: string };
+      };
       const msg = dbErr?.message ?? "";
-      const code = dbErr?.code ?? null;
-      if (msg.includes("does not exist") || code === "42P01") {
+      const causeMsg = dbErr?.cause?.message ?? "";
+      const code = dbErr?.code ?? dbErr?.cause?.code ?? null;
+      if (
+        msg.includes("does not exist") ||
+        causeMsg.includes("does not exist") ||
+        code === "42P01"
+      ) {
         // Create the table to match the migration shape (minimal safe schema)
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS admin_deleted_orders (
@@ -2785,28 +2855,96 @@ admin.delete("/orders/:id", async ({ params, headers, body, status }) => {
             eq(shopRollsTable.shopItemId, order[0].shopItemId),
           ),
         );
-      await tx
-        .delete(shopPenaltiesTable)
-        .where(
-          and(
-            eq(shopPenaltiesTable.userId, order[0].userId),
-            eq(shopPenaltiesTable.shopItemId, order[0].shopItemId),
-          ),
-        );
+      // For luck_win orders, reverse the penalty halving that happened on win
+      // instead of deleting all penalties. The win either halved an existing
+      // penalty (newMult = floor(old/2)) or created a fresh one at 50.
+      // Reversing: double the current multiplier (capped at 100). If the result
+      // is 100, that's effectively no penalty so we can delete the row.
+      if (order[0].orderType === "luck_win") {
+        const currentPenalty = await tx
+          .select({
+            probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier,
+          })
+          .from(shopPenaltiesTable)
+          .where(
+            and(
+              eq(shopPenaltiesTable.userId, order[0].userId),
+              eq(shopPenaltiesTable.shopItemId, order[0].shopItemId),
+            ),
+          )
+          .limit(1);
+
+        if (currentPenalty.length > 0) {
+          const restored = Math.min(
+            100,
+            currentPenalty[0].probabilityMultiplier * 2,
+          );
+          if (restored >= 100) {
+            await tx
+              .delete(shopPenaltiesTable)
+              .where(
+                and(
+                  eq(shopPenaltiesTable.userId, order[0].userId),
+                  eq(shopPenaltiesTable.shopItemId, order[0].shopItemId),
+                ),
+              );
+          } else {
+            await tx
+              .update(shopPenaltiesTable)
+              .set({
+                probabilityMultiplier: restored,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(shopPenaltiesTable.userId, order[0].userId),
+                  eq(shopPenaltiesTable.shopItemId, order[0].shopItemId),
+                ),
+              );
+          }
+          console.log(
+            `[ADMIN] Order #${orderId} delete (luck_win): reversed penalty halving ${currentPenalty[0].probabilityMultiplier}→${restored >= 100 ? "deleted" : restored} for user #${order[0].userId} item #${order[0].shopItemId}`,
+          );
+        }
+      } else {
+        await tx
+          .delete(shopPenaltiesTable)
+          .where(
+            and(
+              eq(shopPenaltiesTable.userId, order[0].userId),
+              eq(shopPenaltiesTable.shopItemId, order[0].shopItemId),
+            ),
+          );
+      }
       await tx.delete(shopOrdersTable).where(eq(shopOrdersTable.id, orderId));
 
       // Restore item stock for purchase/luck_win orders (count was decremented when the order was placed)
-      if (
-        order[0].orderType === "purchase" ||
-        order[0].orderType === "luck_win"
-      ) {
-        await tx
+      // Skip if the order was already cancelled/deleted (stock was already restored by the PATCH handler)
+      const alreadyInactive =
+        order[0].status === "cancelled" || order[0].status === "deleted";
+      const shouldRestoreStock =
+        !alreadyInactive &&
+        (order[0].orderType === "purchase" ||
+          order[0].orderType === "luck_win");
+      const restoreQty = order[0].quantity ?? 1;
+
+      console.log(
+        `[ADMIN] Order #${orderId} delete: orderType=${order[0].orderType} status=${order[0].status} quantity=${order[0].quantity} shopItemId=${order[0].shopItemId} alreadyInactive=${alreadyInactive} shouldRestoreStock=${shouldRestoreStock} restoreQty=${restoreQty}`,
+      );
+
+      if (shouldRestoreStock) {
+        const updated = await tx
           .update(shopItemsTable)
           .set({
-            count: sql`${shopItemsTable.count} + ${order[0].quantity}`,
+            count: sql`${shopItemsTable.count} + ${restoreQty}`,
             updatedAt: new Date(),
           })
-          .where(eq(shopItemsTable.id, order[0].shopItemId));
+          .where(eq(shopItemsTable.id, order[0].shopItemId))
+          .returning({ id: shopItemsTable.id, count: shopItemsTable.count });
+
+        console.log(
+          `[ADMIN] Order #${orderId} stock restored: itemId=${order[0].shopItemId} addedBack=${restoreQty} newCount=${updated[0]?.count ?? "NO_ROW_UPDATED"}`,
+        );
       }
     });
 
@@ -2941,28 +3079,94 @@ admin.post("/orders/:id/restore", async ({ params, headers, status }) => {
           createdAt: rr.createdAt,
         });
       }
-      for (const p of shopPenaltiesPayload) {
-        await tx.insert(shopPenaltiesTable).values({
-          userId: p.userId,
-          shopItemId: p.shopItemId,
-          probabilityMultiplier: p.probabilityMultiplier,
-          createdAt: p.createdAt,
-          updatedAt: p.updatedAt,
-        });
+      // For luck_win orders, the delete handler reversed the penalty halving
+      // instead of deleting penalties. Restoring means re-applying the halving
+      // to the current live penalty (which the delete handler doubled back).
+      if (orderPayload.orderType === "luck_win") {
+        const currentPenalty = await tx
+          .select({
+            probabilityMultiplier: shopPenaltiesTable.probabilityMultiplier,
+          })
+          .from(shopPenaltiesTable)
+          .where(
+            and(
+              eq(shopPenaltiesTable.userId, orderPayload.userId),
+              eq(shopPenaltiesTable.shopItemId, orderPayload.shopItemId),
+            ),
+          )
+          .limit(1);
+
+        if (currentPenalty.length > 0) {
+          const halved = Math.max(
+            1,
+            Math.floor(currentPenalty[0].probabilityMultiplier / 2),
+          );
+          await tx
+            .update(shopPenaltiesTable)
+            .set({
+              probabilityMultiplier: halved,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(shopPenaltiesTable.userId, orderPayload.userId),
+                eq(shopPenaltiesTable.shopItemId, orderPayload.shopItemId),
+              ),
+            );
+          console.log(
+            `[ADMIN] Restore order #${originalOrderId} (luck_win): re-halved penalty ${currentPenalty[0].probabilityMultiplier}→${halved} for user #${orderPayload.userId} item #${orderPayload.shopItemId}`,
+          );
+        } else {
+          // No existing penalty row — the delete handler must have deleted it
+          // (multiplier doubled to >=100). Re-create at 50 like the win flow does.
+          await tx.insert(shopPenaltiesTable).values({
+            userId: orderPayload.userId,
+            shopItemId: orderPayload.shopItemId,
+            probabilityMultiplier: 50,
+          });
+          console.log(
+            `[ADMIN] Restore order #${originalOrderId} (luck_win): created fresh penalty at 50 for user #${orderPayload.userId} item #${orderPayload.shopItemId}`,
+          );
+        }
+      } else {
+        for (const p of shopPenaltiesPayload) {
+          await tx.insert(shopPenaltiesTable).values({
+            userId: p.userId,
+            shopItemId: p.shopItemId,
+            probabilityMultiplier: p.probabilityMultiplier,
+            createdAt: p.createdAt,
+            updatedAt: p.updatedAt,
+          });
+        }
       }
 
       // Decrement stock that was restored during delete (reverses the count+quantity from delete handler)
-      if (
-        orderPayload.orderType === "purchase" ||
-        orderPayload.orderType === "luck_win"
-      ) {
+      // Only decrement if the DELETE handler actually restored stock — it skips restoration when the
+      // order was already cancelled/deleted (because the PATCH handler already restored stock earlier).
+      const wasInactiveWhenDeleted =
+        orderPayload.status === "cancelled" ||
+        orderPayload.status === "deleted";
+      const shouldDecrementStock =
+        !wasInactiveWhenDeleted &&
+        (orderPayload.orderType === "purchase" ||
+          orderPayload.orderType === "luck_win");
+
+      if (shouldDecrementStock) {
+        const qty = orderPayload.quantity ?? 1;
         await tx
           .update(shopItemsTable)
           .set({
-            count: sql`GREATEST(${shopItemsTable.count} - ${orderPayload.quantity ?? 1}, 0)`,
+            count: sql`GREATEST(${shopItemsTable.count} - ${qty}, 0)`,
             updatedAt: new Date(),
           })
           .where(eq(shopItemsTable.id, orderPayload.shopItemId));
+        console.log(
+          `[ADMIN] Restore order #${originalOrderId}: decremented ${qty} stock from item #${orderPayload.shopItemId}`,
+        );
+      } else if (wasInactiveWhenDeleted) {
+        console.log(
+          `[ADMIN] Restore order #${originalOrderId}: skipped stock decrement (order was ${orderPayload.status} when archived)`,
+        );
       }
 
       await tx.execute(
