@@ -28,7 +28,7 @@ import { payoutPendingScraps, getNextPayoutDate } from "../lib/scraps-payout";
 import { syncSingleProject, getHackatimeUser } from "../lib/hackatime-sync";
 import { computeItemPricing, updateShopItemPricing } from "../lib/shop-pricing";
 import { submitProjectToYSWS } from "../lib/ysws";
-import { notifyProjectReview } from "../lib/slack";
+import { notifyProjectReview, notifyOrderFulfilled } from "../lib/slack";
 import { config } from "../config";
 import {
   computeEffectiveHours,
@@ -2338,6 +2338,7 @@ admin.patch("/orders/:id", async ({ params, body, headers, status }) => {
       .where(eq(shopOrdersTable.id, parseInt(params.id)))
       .returning({
         id: shopOrdersTable.id,
+        userId: shopOrdersTable.userId,
         quantity: shopOrdersTable.quantity,
         pricePerItem: shopOrdersTable.pricePerItem,
         totalPrice: shopOrdersTable.totalPrice,
@@ -2353,7 +2354,33 @@ admin.patch("/orders/:id", async ({ params, body, headers, status }) => {
     if (!updated[0]) {
       return status(404, { error: "Not found" });
     }
-    return updated[0];
+
+    if (isFulfilled === true && config.slackBotToken) {
+      const [orderUser] = await db
+        .select({ slackId: usersTable.slackId })
+        .from(usersTable)
+        .where(eq(usersTable.id, updated[0].userId))
+        .limit(1);
+
+      const [orderItem] = await db
+        .select({ name: shopItemsTable.name })
+        .from(shopItemsTable)
+        .innerJoin(shopOrdersTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id))
+        .where(eq(shopOrdersTable.id, parseInt(params.id)))
+        .limit(1);
+
+      if (orderUser?.slackId && orderItem?.name) {
+        notifyOrderFulfilled({
+          userSlackId: orderUser.slackId,
+          itemName: orderItem.name,
+          trackingNumber: updated[0].trackingNumber,
+          token: config.slackBotToken,
+        }).catch((err) => console.error('Failed to send fulfillment DM:', err));
+      }
+    }
+
+    const { userId: _userId, ...returnedOrder } = updated[0];
+    return returnedOrder;
   } catch (err) {
     console.error(err);
     return status(500, { error: "Failed to update order" });

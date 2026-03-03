@@ -127,6 +127,39 @@ export async function sendSlackDM(
 }
 
 /**
+ * Notify a user via Slack DM that their shop order has been fulfilled.
+ */
+export async function notifyOrderFulfilled({
+  userSlackId,
+  itemName,
+  trackingNumber,
+  token,
+}: {
+  userSlackId: string;
+  itemName: string;
+  trackingNumber?: string | null;
+  token: string;
+}): Promise<boolean> {
+  const trackingLine = trackingNumber
+    ? `\n\n*tracking number:* \`${trackingNumber}\``
+    : '';
+
+  const fallbackText = `:scraps: hey <@${userSlackId}>! your order for *${itemName}* has been fulfilled and is on its way!${trackingNumber ? ` tracking number: ${trackingNumber}` : ''} :blobhaj_party:`;
+
+  const blocks = [
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `:scraps: hey <@${userSlackId}>! :blobhaj_party:\n\nyour order for *${itemName}* has been fulfilled and is on its way!${trackingLine}`,
+      },
+    },
+  ];
+
+  return sendSlackDM(userSlackId, token, fallbackText, blocks);
+}
+
+/**
  * Notify a user via Slack DM that their project has been submitted for review.
  */
 export async function notifyProjectSubmitted({
