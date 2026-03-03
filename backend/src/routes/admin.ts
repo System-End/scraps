@@ -194,7 +194,7 @@ admin.get("/stats", async ({ headers, status }) => {
       ? Math.round((totalTierCost / roundedTotalHours) * 100) / 100
       : 0;
 
-  // Real dollar cost from shop fulfillment
+  // Max dollar cost from shop fulfillment (all luck_win orders regardless of fulfillment)
   const [luckWinOrders, consolationCount] = await Promise.all([
     db
       .select({
@@ -223,6 +223,75 @@ admin.get("/stats", async ({ headers, status }) => {
       ? Math.round((totalRealCost / roundedTotalHours) * 100) / 100
       : 0;
 
+  // Actual fulfillment cost (only fulfilled orders + upgrades consumed on fulfilled wins)
+  const [fulfilledLuckWinOrders, fulfilledConsolationCount, fulfilledUpgrades] =
+    await Promise.all([
+      db
+        .select({
+          itemPrice: shopItemsTable.price,
+        })
+        .from(shopOrdersTable)
+        .innerJoin(
+          shopItemsTable,
+          eq(shopOrdersTable.shopItemId, shopItemsTable.id),
+        )
+        .where(
+          and(
+            eq(shopOrdersTable.orderType, "luck_win"),
+            eq(shopOrdersTable.isFulfilled, true),
+          ),
+        ),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(shopOrdersTable)
+        .where(
+          and(
+            eq(shopOrdersTable.orderType, "consolation"),
+            eq(shopOrdersTable.isFulfilled, true),
+          ),
+        ),
+      db.execute(
+        sql`SELECT COALESCE(SUM(rsh.cost), 0) AS total_cost
+            FROM refinery_spending_history rsh
+            WHERE (rsh.user_id, rsh.shop_item_id) IN (
+              SELECT DISTINCT so.user_id, so.shop_item_id
+              FROM shop_orders so
+              WHERE so.order_type = 'luck_win' AND so.is_fulfilled = true
+            )`,
+      ),
+    ]);
+
+  const fulfilledLuckWinDollarCost = fulfilledLuckWinOrders.reduce(
+    (sum, o) => sum + o.itemPrice / SCRAPS_PER_DOLLAR,
+    0,
+  );
+  const fulfilledConsolationDollarCost =
+    Number(fulfilledConsolationCount[0]?.count || 0) * 2;
+  const fulfilledUpgradeDollarCost =
+    Number((fulfilledUpgrades.rows[0] as { total_cost: string })?.total_cost || 0) /
+    SCRAPS_PER_DOLLAR;
+  const totalActualCost =
+    fulfilledLuckWinDollarCost +
+    fulfilledConsolationDollarCost +
+    fulfilledUpgradeDollarCost;
+
+  // HCB bank balance
+  let hcbBalanceCents = 0;
+  if (config.hcbOrgSlug) {
+    try {
+      const hcbRes = await fetch(
+        `https://hcb.hackclub.com/api/v3/organizations/${config.hcbOrgSlug}`,
+        { headers: { Accept: "application/json" } },
+      );
+      if (hcbRes.ok) {
+        const hcbData = await hcbRes.json() as { balances?: { balance_cents?: number } };
+        hcbBalanceCents = hcbData.balances?.balance_cents ?? 0;
+      }
+    } catch {
+      // HCB unavailable, leave balance at 0
+    }
+  }
+
   return {
     totalUsers,
     totalProjects,
@@ -250,6 +319,21 @@ admin.get("/stats", async ({ headers, status }) => {
       consolationCount: Number(consolationCount[0]?.count || 0),
       totalRealCost: Math.round(totalRealCost * 100) / 100,
       realCostPerHour,
+    },
+    shopActualCost: {
+      hcbBalanceCents,
+      hcbBalance: Math.round((hcbBalanceCents / 100) * 100) / 100,
+      fulfilledLuckWinCost: Math.round(fulfilledLuckWinDollarCost * 100) / 100,
+      fulfilledLuckWinCount: fulfilledLuckWinOrders.length,
+      fulfilledConsolationCost:
+        Math.round(fulfilledConsolationDollarCost * 100) / 100,
+      fulfilledConsolationCount: Number(
+        fulfilledConsolationCount[0]?.count || 0,
+      ),
+      fulfilledUpgradeCost: Math.round(fulfilledUpgradeDollarCost * 100) / 100,
+      totalActualCost: Math.round(totalActualCost * 100) / 100,
+      remainingBudget:
+        Math.round((hcbBalanceCents / 100 - totalActualCost) * 100) / 100,
     },
   };
 });

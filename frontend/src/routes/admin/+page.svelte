@@ -52,6 +52,18 @@
 		realCostPerHour: number;
 	}
 
+	interface ShopActualCost {
+		hcbBalanceCents: number;
+		hcbBalance: number;
+		fulfilledLuckWinCost: number;
+		fulfilledLuckWinCount: number;
+		fulfilledConsolationCost: number;
+		fulfilledConsolationCount: number;
+		fulfilledUpgradeCost: number;
+		totalActualCost: number;
+		remainingBudget: number;
+	}
+
 	interface Stats {
 		totalUsers: number;
 		totalProjects: number;
@@ -66,6 +78,7 @@
 		totalTierCost?: number;
 		avgCostPerHour?: number;
 		shopRealCost?: ShopRealCost;
+		shopActualCost?: ShopActualCost;
 	}
 
 	interface PendingProject {
@@ -533,7 +546,7 @@
 		{/if}
 
 		{#if stats.shopRealCost}
-			<h2 class="mt-10 mb-6 text-2xl font-bold">real fulfillment cost</h2>
+			<h2 class="mt-10 mb-6 text-2xl font-bold">max fulfillment cost</h2>
 			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
 				<div class="flex items-center gap-4 rounded-2xl border-4 border-red-500 bg-red-50 p-6">
 					<div
@@ -588,6 +601,111 @@
 						<p class="text-xs text-gray-400">
 							{stats.shopRealCost.consolationCount} consolations × $2
 						</p>
+					</div>
+				</div>
+			</div>
+		{/if}
+
+		{#if stats.shopActualCost}
+			<h2 class="mt-10 mb-6 text-2xl font-bold">fulfillment cost</h2>
+			<div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-green-500 bg-green-50 p-6">
+					<div
+						class="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-white"
+					>
+						<DollarSign size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">hcb balance</p>
+						<p class="text-4xl font-bold text-green-700">
+							${stats.shopActualCost.hcbBalance.toFixed(2)}
+						</p>
+						<p class="text-xs text-gray-400">hack club bank account</p>
+					</div>
+				</div>
+
+				<div
+					class="flex items-center gap-4 rounded-2xl border-4 p-6 {stats.shopActualCost
+						.remainingBudget >= 0
+						? 'border-green-500 bg-green-50'
+						: 'border-red-500 bg-red-50'}"
+				>
+					<div
+						class="flex h-16 w-16 items-center justify-center rounded-full text-white {stats
+							.shopActualCost.remainingBudget >= 0
+							? 'bg-green-600'
+							: 'bg-red-600'}"
+					>
+						<DollarSign size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">remaining budget</p>
+						<p
+							class="text-4xl font-bold {stats.shopActualCost.remainingBudget >= 0
+								? 'text-green-700'
+								: 'text-red-700'}"
+						>
+							${stats.shopActualCost.remainingBudget.toFixed(2)}
+						</p>
+						<p class="text-xs text-gray-400">hcb balance − actual fulfillment cost</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-red-500 bg-red-50 p-6">
+					<div
+						class="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white"
+					>
+						<DollarSign size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">total actual cost</p>
+						<p class="text-4xl font-bold text-red-700">
+							${stats.shopActualCost.totalActualCost.toFixed(2)}
+						</p>
+						<p class="text-xs text-gray-400">fulfilled items + consolations + upgrades</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
+						<Coins size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">fulfilled luck wins</p>
+						<p class="text-4xl font-bold">
+							${stats.shopActualCost.fulfilledLuckWinCost.toFixed(2)}
+						</p>
+						<p class="text-xs text-gray-400">
+							{stats.shopActualCost.fulfilledLuckWinCount} items fulfilled
+						</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
+						<Coins size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">fulfilled consolations</p>
+						<p class="text-4xl font-bold">
+							${stats.shopActualCost.fulfilledConsolationCost.toFixed(2)}
+						</p>
+						<p class="text-xs text-gray-400">
+							{stats.shopActualCost.fulfilledConsolationCount} consolations × $2
+						</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
+						<Coins size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">upgrades consumed</p>
+						<p class="text-4xl font-bold">
+							${stats.shopActualCost.fulfilledUpgradeCost.toFixed(2)}
+						</p>
+						<p class="text-xs text-gray-400">refinery spending on fulfilled wins</p>
 					</div>
 				</div>
 			</div>

@@ -39,5 +39,8 @@ export const config = {
 	airtableUsersTableId: process.env.AIRTABLE_USERS_TABLE_ID!,
 
 	// YSWS
-	fraudToken: process.env.FRAUD_TOKEN
+	fraudToken: process.env.FRAUD_TOKEN,
+
+	// HCB
+	hcbOrgSlug: 'ysws-scraps',
 }
