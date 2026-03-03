@@ -61,6 +61,7 @@
 		fulfilledConsolationCount: number;
 		fulfilledUpgradeCost: number;
 		totalActualCost: number;
+		actualCostPerHour: number;
 		remainingBudget: number;
 	}
 
@@ -648,6 +649,21 @@
 							${stats.shopActualCost.remainingBudget.toFixed(2)}
 						</p>
 						<p class="text-xs text-gray-400">hcb balance − actual fulfillment cost</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-red-500 bg-red-50 p-6">
+					<div
+						class="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white"
+					>
+						<DollarSign size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">actual cost per hour</p>
+						<p class="text-4xl font-bold text-red-700">
+							${stats.shopActualCost.actualCostPerHour.toFixed(2)}
+						</p>
+						<p class="text-xs text-gray-400">fulfillment cost ÷ shipped hours</p>
 					</div>
 				</div>
 

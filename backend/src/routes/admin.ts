@@ -274,6 +274,10 @@ admin.get("/stats", async ({ headers, status }) => {
     fulfilledLuckWinDollarCost +
     fulfilledConsolationDollarCost +
     fulfilledUpgradeDollarCost;
+  const actualCostPerHour =
+    roundedTotalHours > 0
+      ? Math.round((totalActualCost / roundedTotalHours) * 100) / 100
+      : 0;
 
   // HCB bank balance
   let hcbBalanceCents = 0;
@@ -332,6 +336,7 @@ admin.get("/stats", async ({ headers, status }) => {
       ),
       fulfilledUpgradeCost: Math.round(fulfilledUpgradeDollarCost * 100) / 100,
       totalActualCost: Math.round(totalActualCost * 100) / 100,
+      actualCostPerHour,
       remainingBudget:
         Math.round((hcbBalanceCents / 100 - totalActualCost) * 100) / 100,
     },
