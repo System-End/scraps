@@ -638,7 +638,14 @@
 						>
 							${stats.shopActualCost.remainingBudget.toFixed(2)}
 						</p>
-						<p class="text-xs text-gray-400">hcb balance − actual fulfillment cost</p>
+						<p class="text-xs text-gray-400">
+							hcb balance − actual cost
+							{#if stats.shopRealCost}
+								(projected: ${(
+									stats.shopActualCost.hcbBalance - stats.shopRealCost.totalRealCost
+								).toFixed(2)})
+							{/if}
+						</p>
 					</div>
 				</div>
 
@@ -649,11 +656,30 @@
 						<DollarSign size={32} />
 					</div>
 					<div>
-						<p class="text-sm font-bold text-gray-500">actual cost per hour</p>
+						<p class="text-sm font-bold text-gray-500">projected cost per hour</p>
 						<p class="text-4xl font-bold text-red-700">
+							{#if stats.shopRealCost}
+								${stats.shopRealCost.realCostPerHour.toFixed(2)}
+							{:else}
+								—
+							{/if}
+						</p>
+						<p class="text-xs text-gray-400">if all orders fulfilled</p>
+					</div>
+				</div>
+
+				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
+					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
+						<DollarSign size={32} />
+					</div>
+					<div>
+						<p class="text-sm font-bold text-gray-500">actual cost per hour</p>
+						<p class="text-4xl font-bold">
 							${stats.shopActualCost.actualCostPerHour.toFixed(2)}
 						</p>
-						<p class="text-xs text-gray-400">fulfillment cost ÷ shipped hours</p>
+						<p class="text-xs text-gray-400">
+							${stats.shopActualCost.totalActualCost.toFixed(0)} fulfilled so far ÷ shipped hours
+						</p>
 					</div>
 				</div>
 
@@ -682,7 +708,8 @@
 							${stats.shopActualCost.fulfilledLuckWinCost.toFixed(2)}
 						</p>
 						<p class="text-xs text-gray-400">
-							{stats.shopActualCost.fulfilledLuckWinCount} items fulfilled
+							{stats.shopActualCost.fulfilledLuckWinCount}{#if stats.shopRealCost}/{stats
+									.shopRealCost.luckWinCount}{/if} items fulfilled
 						</p>
 					</div>
 				</div>
@@ -697,21 +724,9 @@
 							${stats.shopActualCost.fulfilledConsolationCost.toFixed(2)}
 						</p>
 						<p class="text-xs text-gray-400">
-							{stats.shopActualCost.fulfilledConsolationCount} consolations × $2
+							{stats.shopActualCost.fulfilledConsolationCount}{#if stats.shopRealCost}/{stats
+									.shopRealCost.consolationCount}{/if} consolations × $2
 						</p>
-					</div>
-				</div>
-
-				<div class="flex items-center gap-4 rounded-2xl border-4 border-black p-6">
-					<div class="flex h-16 w-16 items-center justify-center rounded-full bg-black text-white">
-						<Coins size={32} />
-					</div>
-					<div>
-						<p class="text-sm font-bold text-gray-500">upgrades consumed</p>
-						<p class="text-4xl font-bold">
-							${stats.shopActualCost.fulfilledUpgradeCost.toFixed(2)}
-						</p>
-						<p class="text-xs text-gray-400">refinery spending on fulfilled wins</p>
 					</div>
 				</div>
 			</div>
