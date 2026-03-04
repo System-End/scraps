@@ -57,7 +57,7 @@
 	let isHomePage = $derived(currentPath === '/');
 	let isLoggedIn = $derived(user !== null);
 	let isReviewer = $derived(user?.role === 'admin' || user?.role === 'reviewer' || user?.role === 'creator');
-	let isAdminOnly = $derived(user?.role === 'admin');
+	let isAdminOnly = $derived(user?.role === 'admin' || user?.role === 'creator');
 	let isInAdminSection = $derived(currentPath.startsWith('/admin'));
 	let dashboardMoreActive = $derived(
 		currentPath === '/leaderboard' || currentPath === '/shop' || currentPath === '/refinery'
