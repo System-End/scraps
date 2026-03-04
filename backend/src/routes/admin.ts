@@ -2,6 +2,8 @@ import { Elysia } from "elysia";
 import { eq, ne, and, inArray, sql, desc, asc, or, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { usersTable, userBonusesTable } from "../schemas/users";
+import { sessionsTable } from "../schemas/sessions";
+import { userActivityTable } from "../schemas/user-emails";
 import { projectsTable } from "../schemas/projects";
 import { reviewsTable } from "../schemas/reviews";
 import {
@@ -42,7 +44,7 @@ const admin = new Elysia({ prefix: "/admin" });
 async function requireReviewer(headers: Record<string, string>) {
   const user = await getUserFromSession(headers);
   if (!user) return null;
-  if (user.role !== "reviewer" && user.role !== "admin") return null;
+  if (user.role !== "reviewer" && user.role !== "admin" && user.role !== "creator") return null;
   return user;
 }
 
@@ -50,6 +52,13 @@ async function requireAdmin(headers: Record<string, string>) {
   const user = await getUserFromSession(headers);
   if (!user) return null;
   if (user.role !== "admin") return null;
+  return user;
+}
+
+async function requireCreator(headers: Record<string, string>) {
+  const user = await getUserFromSession(headers);
+  if (!user) return null;
+  if (user.role !== "creator") return null;
   return user;
 }
 
@@ -548,7 +557,7 @@ admin.put("/users/:id/role", async ({ params, body, headers, status }) => {
   }
 
   const { role } = body as { role: string };
-  if (!["member", "reviewer", "admin", "banned"].includes(role)) {
+  if (!["member", "reviewer", "admin", "creator", "banned"].includes(role)) {
     return status(400, { error: "Invalid role" });
   }
 
@@ -3578,6 +3587,97 @@ admin.post("/recalculate-shop-pricing", async ({ headers, status }) => {
   } catch (err) {
     console.error("[ADMIN] Shop pricing recalculation error:", err);
     return status(500, { error: "Failed to recalculate shop pricing" });
+  }
+});
+
+// Delete user and all associated records (creator only)
+admin.delete("/users/:id", async ({ params, headers, status }) => {
+  const user = await requireCreator(headers as Record<string, string>);
+  if (!user) {
+    return status(401, { error: "Unauthorized" });
+  }
+
+  const targetId = parseInt(params.id);
+  if (isNaN(targetId)) {
+    return status(400, { error: "Invalid user ID" });
+  }
+
+  if (user.id === targetId) {
+    return status(400, { error: "Cannot delete yourself" });
+  }
+
+  try {
+    // Get all project IDs for the user before deleting anything
+    const userProjects = await db
+      .select({ id: projectsTable.id })
+      .from(projectsTable)
+      .where(eq(projectsTable.userId, targetId));
+    const projectIds = userProjects.map((p) => p.id);
+
+    // 1. Delete sessions
+    await db.delete(sessionsTable).where(eq(sessionsTable.userId, targetId));
+
+    // 2. Delete user activity
+    await db.delete(userActivityTable).where(eq(userActivityTable.userId, targetId));
+
+    // 3. Delete shop hearts
+    await db.delete(shopHeartsTable).where(eq(shopHeartsTable.userId, targetId));
+
+    // 4. Delete shop penalties
+    await db.delete(shopPenaltiesTable).where(eq(shopPenaltiesTable.userId, targetId));
+
+    // 5. Delete shop rolls
+    await db.delete(shopRollsTable).where(eq(shopRollsTable.userId, targetId));
+
+    // 6. Delete refinery spending history
+    await db.delete(refinerySpendingHistoryTable).where(eq(refinerySpendingHistoryTable.userId, targetId));
+
+    // 7. Delete refinery orders
+    await db.delete(refineryOrdersTable).where(eq(refineryOrdersTable.userId, targetId));
+
+    // 8. Delete shop orders
+    await db.delete(shopOrdersTable).where(eq(shopOrdersTable.userId, targetId));
+
+    // 9. Null out givenBy on bonuses given by this user (so other users' bonuses remain)
+    await db
+      .update(userBonusesTable)
+      .set({ givenBy: null })
+      .where(eq(userBonusesTable.givenBy, targetId));
+
+    // 10. Delete user's own bonuses
+    await db.delete(userBonusesTable).where(eq(userBonusesTable.userId, targetId));
+
+    // 11. Delete reviews done by this user as reviewer
+    await db.delete(reviewsTable).where(eq(reviewsTable.reviewerId, targetId));
+
+    if (projectIds.length > 0) {
+      // 12. Delete project activity for user's projects (from any user)
+      await db.delete(projectActivityTable).where(inArray(projectActivityTable.projectId, projectIds));
+
+      // 13. Delete reviews on user's projects
+      await db.delete(reviewsTable).where(inArray(reviewsTable.projectId, projectIds));
+    }
+
+    // 14. Delete project activity by this user (on any project)
+    await db.delete(projectActivityTable).where(eq(projectActivityTable.userId, targetId));
+
+    // 15. Delete user's projects
+    await db.delete(projectsTable).where(eq(projectsTable.userId, targetId));
+
+    // 16. Delete the user
+    const deleted = await db
+      .delete(usersTable)
+      .where(eq(usersTable.id, targetId))
+      .returning();
+
+    if (!deleted[0]) {
+      return status(404, { error: "User not found" });
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error("[ADMIN] Delete user error:", err);
+    return status(500, { error: "Failed to delete user" });
   }
 });
 

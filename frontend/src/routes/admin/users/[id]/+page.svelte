@@ -123,6 +123,9 @@
 	let unshipReason = $state('');
 	let unshipping = $state(false);
 
+	let showDeleteUserConfirm = $state(false);
+	let deletingUser = $state(false);
+
 	// lightweight toast helper (DOM-based, so no extra markup required)
 	function _showToast(message: string, type: 'success' | 'error' | 'info' = 'info') {
 		try {
@@ -166,7 +169,7 @@
 
 	onMount(async () => {
 		currentUser = await getUser();
-		if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'reviewer')) {
+		if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'reviewer' && currentUser.role !== 'creator')) {
 			goto('/dashboard');
 			return;
 		}
@@ -372,6 +375,30 @@
 		}
 	}
 
+	async function deleteUser() {
+		if (!targetUser) return;
+		deletingUser = true;
+		try {
+			const res = await fetch(`${API_URL}/admin/users/${targetUser.id}`, {
+				method: 'DELETE',
+				credentials: 'include'
+			});
+			const result = await res.json();
+			if (!res.ok) {
+				_showToast(result.error || 'Failed to delete user', 'error');
+				return;
+			}
+			_showToast('User deleted successfully', 'success');
+			goto('/admin/users');
+		} catch (e) {
+			console.error('Failed to delete user:', e);
+			_showToast('Failed to delete user', 'error');
+		} finally {
+			deletingUser = false;
+			showDeleteUserConfirm = false;
+		}
+	}
+
 	function getTimelineIcon(type: string) {
 		switch (type) {
 			case 'earned':
@@ -425,6 +452,8 @@
 		switch (role) {
 			case 'admin':
 				return 'bg-red-100 text-red-700';
+			case 'creator':
+				return 'bg-purple-100 text-purple-700';
 			case 'reviewer':
 				return 'bg-blue-100 text-blue-700';
 			case 'banned':
@@ -654,13 +683,24 @@
 					></textarea>
 				</div>
 
-				<button
-					onclick={saveChanges}
-					disabled={saving}
-					class="cursor-pointer rounded-full bg-black px-6 py-2 font-bold text-white transition-all hover:bg-gray-800 disabled:opacity-50"
-				>
-					{saving ? $t.common.saving : $t.project.saveChanges}
-				</button>
+				<div class="flex items-center gap-3">
+					<button
+						onclick={saveChanges}
+						disabled={saving}
+						class="cursor-pointer rounded-full bg-black px-6 py-2 font-bold text-white transition-all hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						{saving ? $t.common.saving : $t.project.saveChanges}
+					</button>
+					{#if currentUser?.role === 'creator'}
+						<button
+							onclick={() => (showDeleteUserConfirm = true)}
+							disabled={deletingUser}
+							class="cursor-pointer rounded-full border-4 border-red-600 px-6 py-2 font-bold text-red-600 transition-all duration-200 hover:border-dashed disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							delete user
+						</button>
+					{/if}
+				</div>
 			</div>
 		</div>
 
@@ -1062,6 +1102,39 @@
 					class="flex-1 cursor-pointer rounded-full border-4 border-red-600 bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					delete
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if showDeleteUserConfirm}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+		onclick={(e) => e.target === e.currentTarget && (showDeleteUserConfirm = false)}
+		onkeydown={(e) => e.key === 'Escape' && (showDeleteUserConfirm = false)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
+			<h2 class="mb-4 text-2xl font-bold">delete user</h2>
+			<p class="mb-6 text-gray-600">
+				are you sure you want to permanently delete <strong>{targetUser?.username || 'this user'}</strong>?
+				this will remove all their data including projects, orders, bonuses, and sessions. this cannot be undone.
+			</p>
+			<div class="flex gap-3">
+				<button
+					onclick={() => (showDeleteUserConfirm = false)}
+					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
+				>
+					cancel
+				</button>
+				<button
+					onclick={deleteUser}
+					disabled={deletingUser}
+					class="flex-1 cursor-pointer rounded-full border-4 border-red-600 bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed disabled:opacity-50 disabled:cursor-not-allowed"
+				>
+					{deletingUser ? 'deleting...' : 'delete permanently'}
 				</button>
 			</div>
 		</div>
