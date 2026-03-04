@@ -7,6 +7,8 @@ import {
   unique,
   text,
   boolean,
+  jsonb,
+  index,
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
@@ -127,4 +129,35 @@ export const refinerySpendingHistoryTable = pgTable(
     cost: integer().notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
+);
+
+export const adminDeletedOrdersTable = pgTable(
+  "admin_deleted_orders",
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    originalOrderId: integer("original_order_id").notNull(),
+    userId: integer("user_id").notNull(),
+    shopItemId: integer("shop_item_id"),
+    quantity: integer().notNull().default(1),
+    pricePerItem: integer("price_per_item").notNull(),
+    totalPrice: integer("total_price").notNull(),
+    status: varchar(),
+    orderType: varchar("order_type"),
+    shippingAddress: text("shipping_address"),
+    phone: varchar(),
+    itemName: varchar("item_name"),
+    createdAt: timestamp("created_at", { withTimezone: true }),
+    deletedBy: integer("deleted_by"),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }).defaultNow().notNull(),
+    reason: text(),
+    deletedPayload: jsonb("deleted_payload"),
+    restored: boolean().notNull().default(false),
+    restoredBy: integer("restored_by"),
+    restoredAt: timestamp("restored_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("idx_admin_deleted_orders_deleted_at").on(table.deletedAt),
+    index("idx_admin_deleted_orders_user_id").on(table.userId),
+    index("idx_admin_deleted_orders_original_order_id").on(table.originalOrderId),
+  ],
 );

@@ -154,24 +154,24 @@ export async function getUserScrapsBalance(
   spent: number;
   balance: number;
 }> {
-  // Earned scraps: sum of scrapsAwarded for projects that have been paid out
+  // Earned scraps: sum of scrapsPaidAmount (what has actually been paid out per project)
   const earnedResult = await txOrDb
     .select({
-      total: sql<number>`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`,
+      total: sql<number>`COALESCE(SUM(${projectsTable.scrapsPaidAmount}), 0)`,
     })
     .from(projectsTable)
     .where(
-      sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsPaidAt} IS NOT NULL`,
+      sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsPaidAmount} > 0`,
     );
 
-  // Pending scraps: scrapsAwarded for shipped projects not yet paid out
+  // Pending scraps: the delta between scrapsAwarded and scrapsPaidAmount for shipped unpaid projects
   const pendingResult = await txOrDb
     .select({
-      total: sql<number>`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`,
+      total: sql<number>`COALESCE(SUM(${projectsTable.scrapsAwarded} - ${projectsTable.scrapsPaidAmount}), 0)`,
     })
     .from(projectsTable)
     .where(
-      sql`${projectsTable.userId} = ${userId} AND ${projectsTable.status} = 'shipped' AND (${projectsTable.deleted} = 0 OR ${projectsTable.deleted} IS NULL) AND ${projectsTable.scrapsPaidAt} IS NULL AND ${projectsTable.scrapsAwarded} > 0`,
+      sql`${projectsTable.userId} = ${userId} AND ${projectsTable.status} = 'shipped' AND (${projectsTable.deleted} = 0 OR ${projectsTable.deleted} IS NULL) AND ${projectsTable.scrapsPaidAt} IS NULL AND ${projectsTable.scrapsAwarded} > ${projectsTable.scrapsPaidAmount}`,
     );
 
   const bonusResult = await txOrDb

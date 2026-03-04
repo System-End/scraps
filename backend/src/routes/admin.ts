@@ -51,7 +51,7 @@ async function requireReviewer(headers: Record<string, string>) {
 async function requireAdmin(headers: Record<string, string>) {
   const user = await getUserFromSession(headers);
   if (!user) return null;
-  if (user.role !== "admin") return null;
+  if (user.role !== "admin" && user.role !== "creator") return null;
   return user;
 }
 
@@ -3269,6 +3269,7 @@ admin.post(
         .set({
           status: "in_progress",
           scrapsAwarded: 0,
+          scrapsPaidAmount: 0,
           scrapsPaidAt: null,
           updatedAt: new Date(),
         })

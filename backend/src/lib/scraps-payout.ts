@@ -110,11 +110,12 @@ export async function payoutPendingScraps(): Promise<{ paidCount: number; totalS
 	const totalScraps = pendingProjects.reduce((sum, p) => sum + p.scrapsAwarded, 0)
 	const uniqueUserIds = [...new Set(pendingProjects.map(p => p.userId))]
 
-	// Mark all pending projects as paid
+	// Mark all pending projects as paid and record the paid amount
 	await db
 		.update(projectsTable)
 		.set({
-			scrapsPaidAt: now
+			scrapsPaidAt: now,
+			scrapsPaidAmount: sql`${projectsTable.scrapsAwarded}`
 		})
 		.where(inArray(projectsTable.id, projectIds))
 
