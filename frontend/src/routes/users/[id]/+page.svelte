@@ -52,7 +52,7 @@
 		id: number;
 		username: string;
 		avatar: string | null;
-		role: 'admin' | 'reviewer' | 'member' | 'banned';
+		role: 'admin' | 'reviewer' | 'creator' | 'member' | 'banned';
 		scraps: number;
 		scrapsPending?: number;
 		createdAt: string;
@@ -76,7 +76,7 @@
 	let filter = $state<FilterType>('all');
 	let isAdmin = $state(false);
 	let showRoleModal = $state(false);
-	let selectedRole = $state<'admin' | 'reviewer' | 'member' | 'banned'>('member');
+	let selectedRole = $state<'admin' | 'reviewer' | 'creator' | 'member' | 'banned'>('member');
 	let savingRole = $state(false);
 
 	let filteredProjects = $derived(
@@ -145,6 +145,8 @@
 		switch (role) {
 			case 'admin':
 				return 'bg-red-100 text-red-700 border-red-300';
+			case 'creator':
+				return 'bg-purple-100 text-purple-700 border-purple-300';
 			case 'reviewer':
 				return 'bg-purple-100 text-purple-700 border-purple-300';
 			case 'banned':

@@ -67,7 +67,7 @@
 
 	onMount(async () => {
 		user = await getUser();
-		if (!user || (user.role !== 'admin' && user.role !== 'reviewer')) {
+		if (!user || (user.role !== 'admin' && user.role !== 'reviewer' && user.role !== 'creator')) {
 			goto('/dashboard');
 			return;
 		}
