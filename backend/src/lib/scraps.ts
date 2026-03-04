@@ -154,24 +154,26 @@ export async function getUserScrapsBalance(
   spent: number;
   balance: number;
 }> {
-  // Earned scraps: sum of scrapsPaidAmount (what has actually been paid out per project)
+  // Earned scraps: sum of paid amounts for projects that have been paid out
+  // Use scrapsPaidAmount if set, otherwise fall back to scrapsAwarded for legacy projects
+  // that were paid before scrapsPaidAmount was introduced
   const earnedResult = await txOrDb
     .select({
-      total: sql<number>`COALESCE(SUM(${projectsTable.scrapsPaidAmount}), 0)`,
+      total: sql<number>`COALESCE(SUM(CASE WHEN ${projectsTable.scrapsPaidAmount} > 0 THEN ${projectsTable.scrapsPaidAmount} ELSE ${projectsTable.scrapsAwarded} END), 0)`,
     })
     .from(projectsTable)
     .where(
-      sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsPaidAmount} > 0`,
+      sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsPaidAt} IS NOT NULL AND ${projectsTable.scrapsAwarded} > 0`,
     );
 
-  // Pending scraps: the delta between scrapsAwarded and scrapsPaidAmount for shipped unpaid projects
+  // Pending scraps: scrapsAwarded for shipped unpaid projects
   const pendingResult = await txOrDb
     .select({
-      total: sql<number>`COALESCE(SUM(${projectsTable.scrapsAwarded} - ${projectsTable.scrapsPaidAmount}), 0)`,
+      total: sql<number>`COALESCE(SUM(${projectsTable.scrapsAwarded} - CASE WHEN ${projectsTable.scrapsPaidAmount} > 0 THEN ${projectsTable.scrapsPaidAmount} ELSE 0 END), 0)`,
     })
     .from(projectsTable)
     .where(
-      sql`${projectsTable.userId} = ${userId} AND ${projectsTable.status} = 'shipped' AND (${projectsTable.deleted} = 0 OR ${projectsTable.deleted} IS NULL) AND ${projectsTable.scrapsPaidAt} IS NULL AND ${projectsTable.scrapsAwarded} > ${projectsTable.scrapsPaidAmount}`,
+      sql`${projectsTable.userId} = ${userId} AND ${projectsTable.status} = 'shipped' AND (${projectsTable.deleted} = 0 OR ${projectsTable.deleted} IS NULL) AND ${projectsTable.scrapsPaidAt} IS NULL AND ${projectsTable.scrapsAwarded} > 0`,
     );
 
   const bonusResult = await txOrDb
@@ -186,7 +188,9 @@ export async function getUserScrapsBalance(
       total: sql<number>`COALESCE(SUM(${shopOrdersTable.totalPrice}), 0)`,
     })
     .from(shopOrdersTable)
-    .where(eq(shopOrdersTable.userId, userId));
+    .where(
+      sql`${shopOrdersTable.userId} = ${userId} AND ${shopOrdersTable.status} NOT IN ('cancelled', 'deleted')`,
+    );
 
   // Calculate scraps spent on refinery upgrades (permanent history, only deleted on undo)
   const upgradeSpentResult = await txOrDb

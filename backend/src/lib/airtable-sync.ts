@@ -44,8 +44,20 @@ function buildJustification(project: {
 	createdAt: Date
 }[], effectiveHours: number): string {
 	const lines: string[] = []
+	const rawHours = project.hours ?? 0
 
-	lines.push(`The user logged ${formatHoursMinutes(effectiveHours)} on hackatime.`)
+	if (project.hoursOverride !== null && project.hoursOverride !== rawHours) {
+		lines.push(`The user logged ${formatHoursMinutes(rawHours)} on hackatime.`)
+		lines.push(`Hours were overridden to ${formatHoursMinutes(project.hoursOverride)} by a reviewer.`)
+		if (effectiveHours !== project.hoursOverride) {
+			lines.push(`After deducting overlapping projects, effective hours: ${formatHoursMinutes(effectiveHours)}.`)
+		}
+	} else if (effectiveHours !== rawHours) {
+		lines.push(`The user logged ${formatHoursMinutes(rawHours)} on hackatime.`)
+		lines.push(`After deducting overlapping projects, effective hours: ${formatHoursMinutes(effectiveHours)}.`)
+	} else {
+		lines.push(`The user logged ${formatHoursMinutes(effectiveHours)} on hackatime.`)
+	}
 	lines.push('')
 	lines.push(`The scraps project can be found at ${config.frontendUrl}/projects/${project.id}`)
 

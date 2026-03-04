@@ -32628,17 +32628,17 @@ function calculateScrapsFromHours(hours, tier = 1) {
 }
 async function getUserScrapsBalance(userId, txOrDb = db) {
   const earnedResult = await txOrDb.select({
-    total: sql`COALESCE(SUM(${projectsTable.scrapsPaidAmount}), 0)`
-  }).from(projectsTable).where(sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsPaidAmount} > 0`);
+    total: sql`COALESCE(SUM(CASE WHEN ${projectsTable.scrapsPaidAmount} > 0 THEN ${projectsTable.scrapsPaidAmount} ELSE ${projectsTable.scrapsAwarded} END), 0)`
+  }).from(projectsTable).where(sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsPaidAt} IS NOT NULL AND ${projectsTable.scrapsAwarded} > 0`);
   const pendingResult = await txOrDb.select({
-    total: sql`COALESCE(SUM(${projectsTable.scrapsAwarded} - ${projectsTable.scrapsPaidAmount}), 0)`
-  }).from(projectsTable).where(sql`${projectsTable.userId} = ${userId} AND ${projectsTable.status} = 'shipped' AND (${projectsTable.deleted} = 0 OR ${projectsTable.deleted} IS NULL) AND ${projectsTable.scrapsPaidAt} IS NULL AND ${projectsTable.scrapsAwarded} > ${projectsTable.scrapsPaidAmount}`);
+    total: sql`COALESCE(SUM(${projectsTable.scrapsAwarded} - CASE WHEN ${projectsTable.scrapsPaidAmount} > 0 THEN ${projectsTable.scrapsPaidAmount} ELSE 0 END), 0)`
+  }).from(projectsTable).where(sql`${projectsTable.userId} = ${userId} AND ${projectsTable.status} = 'shipped' AND (${projectsTable.deleted} = 0 OR ${projectsTable.deleted} IS NULL) AND ${projectsTable.scrapsPaidAt} IS NULL AND ${projectsTable.scrapsAwarded} > 0`);
   const bonusResult = await txOrDb.select({
     total: sql`COALESCE(SUM(${userBonusesTable.amount}), 0)`
   }).from(userBonusesTable).where(eq(userBonusesTable.userId, userId));
   const spentResult = await txOrDb.select({
     total: sql`COALESCE(SUM(${shopOrdersTable.totalPrice}), 0)`
-  }).from(shopOrdersTable).where(eq(shopOrdersTable.userId, userId));
+  }).from(shopOrdersTable).where(sql`${shopOrdersTable.userId} = ${userId} AND ${shopOrdersTable.status} NOT IN ('cancelled', 'deleted')`);
   const upgradeSpentResult = await txOrDb.select({
     total: sql`COALESCE(SUM(${refinerySpendingHistoryTable.cost}), 0)`
   }).from(refinerySpendingHistoryTable).where(eq(refinerySpendingHistoryTable.userId, userId));
@@ -34339,7 +34339,19 @@ function formatHoursMinutes(hours) {
 }
 function buildJustification(project, reviews, effectiveHours) {
   const lines = [];
-  lines.push(`The user logged ${formatHoursMinutes(effectiveHours)} on hackatime.`);
+  const rawHours = project.hours ?? 0;
+  if (project.hoursOverride !== null && project.hoursOverride !== rawHours) {
+    lines.push(`The user logged ${formatHoursMinutes(rawHours)} on hackatime.`);
+    lines.push(`Hours were overridden to ${formatHoursMinutes(project.hoursOverride)} by a reviewer.`);
+    if (effectiveHours !== project.hoursOverride) {
+      lines.push(`After deducting overlapping projects, effective hours: ${formatHoursMinutes(effectiveHours)}.`);
+    }
+  } else if (effectiveHours !== rawHours) {
+    lines.push(`The user logged ${formatHoursMinutes(rawHours)} on hackatime.`);
+    lines.push(`After deducting overlapping projects, effective hours: ${formatHoursMinutes(effectiveHours)}.`);
+  } else {
+    lines.push(`The user logged ${formatHoursMinutes(effectiveHours)} on hackatime.`);
+  }
   lines.push("");
   lines.push(`The scraps project can be found at ${config.frontendUrl}/projects/${project.id}`);
   if (reviews.length > 0) {
