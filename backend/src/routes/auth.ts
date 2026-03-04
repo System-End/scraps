@@ -101,7 +101,7 @@ authRoutes.get("/callback", async ({ query, redirect }) => {
 
         // Check if user is banned on Hackatime
         try {
-            const hackatimeUser = await getHackatimeUser(identity.primary_email)
+            const hackatimeUser = await getHackatimeUser(identity.primary_email, identity.slack_id)
             if (hackatimeUser?.banned) {
                 console.log("[AUTH] Hackatime-banned user attempted login:", { userId: user.id, username: user.username, hackatimeUserId: hackatimeUser.user_id })
                 return redirect('https://fraud.land')

@@ -8,11 +8,11 @@ import { getHackatimeUser } from '../lib/hackatime-sync'
 
 const leaderboard = new Elysia({ prefix: '/leaderboard' })
 
-async function filterHackatimeBanned<T extends { email: string }>(users: T[]): Promise<T[]> {
+async function filterHackatimeBanned<T extends { email: string; slackId?: string | null }>(users: T[]): Promise<T[]> {
 	const filtered: T[] = []
 	for (const user of users) {
 		try {
-			const htUser = await getHackatimeUser(user.email)
+			const htUser = await getHackatimeUser(user.email, user.slackId)
 			if (htUser?.banned) continue
 		} catch {
 			// If lookup fails, don't exclude the user
@@ -32,6 +32,7 @@ leaderboard.get('/', async ({ query }) => {
 				username: usersTable.username,
 				avatar: usersTable.avatar,
 				email: usersTable.email,
+				slackId: usersTable.slackId,
 				scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND scraps_paid_at IS NOT NULL AND status != 'permanently_rejected'), 0)`.as('scraps_earned'),
 				scrapsBonus: sql<number>`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as('scraps_bonus'),
 				scrapsShopSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_shop_spent'),
@@ -70,6 +71,7 @@ leaderboard.get('/', async ({ query }) => {
 			username: usersTable.username,
 			avatar: usersTable.avatar,
 			email: usersTable.email,
+			slackId: usersTable.slackId,
 			scrapsEarned: sql<number>`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND scraps_paid_at IS NOT NULL AND status != 'permanently_rejected'), 0)`.as('scraps_earned'),
 			scrapsBonus: sql<number>`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as('scraps_bonus'),
 			scrapsShopSpent: sql<number>`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as('scraps_shop_spent'),
@@ -115,6 +117,7 @@ leaderboard.get('/views', async () => {
 			views: projectsTable.views,
 			userId: projectsTable.userId,
 			userEmail: usersTable.email,
+			userSlackId: usersTable.slackId,
 			userRole: usersTable.role
 		})
 		.from(projectsTable)
@@ -131,7 +134,7 @@ leaderboard.get('/views', async () => {
 	const filtered: typeof results = []
 	for (const project of results) {
 		try {
-			const htUser = await getHackatimeUser(project.userEmail)
+			const htUser = await getHackatimeUser(project.userEmail, project.userSlackId)
 			if (htUser?.banned) continue
 		} catch {
 			// If lookup fails, don't exclude

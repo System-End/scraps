@@ -514,7 +514,7 @@ admin.get("/users/:id", async ({ params, headers, status }) => {
     let hackatimeBanned = false;
     if (targetUser[0].email) {
       try {
-        const htUser = await getHackatimeUser(targetUser[0].email);
+        const htUser = await getHackatimeUser(targetUser[0].email, targetUser[0].slackId);
         if (htUser) {
           hackatimeSuspected = htUser.suspected || false;
           hackatimeBanned = htUser.banned || false;
@@ -840,6 +840,7 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
         id: usersTable.id,
         username: usersTable.username,
         email: usersTable.email,
+        slackId: usersTable.slackId,
         avatar: usersTable.avatar,
         internalNotes: usersTable.internalNotes,
       })
@@ -875,7 +876,7 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
     let hackatimeBanned = false;
     if (projectUser[0]?.email) {
       try {
-        const htUser = await getHackatimeUser(projectUser[0].email);
+        const htUser = await getHackatimeUser(projectUser[0].email, projectUser[0].slackId);
         if (htUser) {
           hackatimeUserId = htUser.user_id;
           hackatimeSuspected = htUser.suspected || false;
@@ -1312,6 +1313,7 @@ admin.get("/second-pass/:id", async ({ params, headers }) => {
         id: usersTable.id,
         username: usersTable.username,
         email: usersTable.email,
+        slackId: usersTable.slackId,
         avatar: usersTable.avatar,
         internalNotes: usersTable.internalNotes,
       })
@@ -1347,7 +1349,7 @@ admin.get("/second-pass/:id", async ({ params, headers }) => {
     let hackatimeBanned = false;
     if (projectUser[0]?.email) {
       try {
-        const htUser = await getHackatimeUser(projectUser[0].email);
+        const htUser = await getHackatimeUser(projectUser[0].email, projectUser[0].slackId);
         if (htUser) {
           hackatimeUserId = htUser.user_id;
           hackatimeSuspected = htUser.suspected || false;
@@ -2331,11 +2333,17 @@ admin.get("/orders", async ({ headers, query, status }) => {
 
     // Batch-check Hackatime ban status for unique user emails
     const uniqueEmails = [...new Set(rows.map((r) => r.userEmail).filter(Boolean))] as string[];
+    const emailToSlackId = new Map<string, string | null>();
+    for (const row of rows) {
+      if (row.userEmail && !emailToSlackId.has(row.userEmail)) {
+        emailToSlackId.set(row.userEmail, row.slackId);
+      }
+    }
     const banMap = new Map<string, boolean>();
     await Promise.all(
       uniqueEmails.map(async (email) => {
         try {
-          const htUser = await getHackatimeUser(email);
+          const htUser = await getHackatimeUser(email, emailToSlackId.get(email));
           banMap.set(email, htUser?.banned ?? false);
         } catch {
           banMap.set(email, false);

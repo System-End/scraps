@@ -35,7 +35,9 @@ hackatime.get('/projects', async ({ headers }) => {
 	}
 
 	try {
-		// Step 1: Get hackatime user_id by email
+		// Step 1: Get hackatime user_id by email, with slack ID fallback
+		let hackatimeUserId: number | null = null
+
 		const emailResponse = await fetch(`${HACKATIME_ADMIN_API}/user/get_user_by_email`, {
 			method: 'POST',
 			headers: {
@@ -46,14 +48,39 @@ hackatime.get('/projects', async ({ headers }) => {
 			body: JSON.stringify({ email: user.email })
 		})
 
-		if (!emailResponse.ok) {
-			const errorText = await emailResponse.text()
-			console.log('[HACKATIME] Email lookup error:', { status: emailResponse.status, body: errorText })
-			return { projects: [] }
+		if (emailResponse.ok) {
+			const emailData = await emailResponse.json() as { user_id: number }
+			hackatimeUserId = emailData.user_id
+			console.log('[HACKATIME] Found hackatime user_id:', hackatimeUserId, 'for email:', user.email)
+		} else {
+			console.log('[HACKATIME] Email lookup failed for:', user.email, '- trying slack ID fallback')
 		}
 
-		const { user_id: hackatimeUserId } = await emailResponse.json() as { user_id: number }
-		console.log('[HACKATIME] Found hackatime user_id:', hackatimeUserId, 'for email:', user.email)
+		// Fallback: fuzzy search by slack ID if email lookup failed
+		if (hackatimeUserId === null && user.slackId) {
+			const fuzzyResponse = await fetch(`${HACKATIME_ADMIN_API}/user/search_fuzzy`, {
+				method: 'POST',
+				headers: {
+					'Authorization': `Bearer ${config.hackatimeAdminKey}`,
+					'Content-Type': 'application/json',
+					'Accept': 'application/json'
+				},
+				body: JSON.stringify({ query: user.slackId })
+			})
+
+			if (fuzzyResponse.ok) {
+				const fuzzyData = await fuzzyResponse.json() as { users: { id: number }[] }
+				if (fuzzyData.users?.length === 1) {
+					hackatimeUserId = fuzzyData.users[0].id
+					console.log('[HACKATIME] Found hackatime user_id:', hackatimeUserId, 'via slack ID:', user.slackId)
+				}
+			}
+		}
+
+		if (hackatimeUserId === null) {
+			console.log('[HACKATIME] Could not find hackatime user for:', user.email, user.slackId)
+			return { projects: [] }
+		}
 
 		// Step 2: Get projects via admin endpoint with start_date
 		const projectsParams = new URLSearchParams({

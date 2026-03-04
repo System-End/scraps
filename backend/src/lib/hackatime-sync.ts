@@ -42,12 +42,15 @@ const hackatimeUserCache = new Map<string, HackatimeUser>()
 // Cache of hackatime user_id -> hackatime user
 const hackatimeUserIdCache = new Map<number, HackatimeUser>()
 
-export async function getHackatimeUser(email: string): Promise<HackatimeUser | null> {
-	const cached = hackatimeUserCache.get(email)
+export async function getHackatimeUser(email: string, slackId?: string | null): Promise<HackatimeUser | null> {
+	const cacheKey = email || slackId || ''
+	const cached = hackatimeUserCache.get(cacheKey)
 	if (cached !== undefined) return cached
 
 	try {
-		// First get user_id by email
+		let user_id: number | null = null
+
+		// Try email lookup first
 		const emailResponse = await fetch(`${HACKATIME_API}/user/get_user_by_email`, {
 			method: 'POST',
 			headers: {
@@ -57,13 +60,34 @@ export async function getHackatimeUser(email: string): Promise<HackatimeUser | n
 			},
 			body: JSON.stringify({ email })
 		})
-		if (!emailResponse.ok) return null
+		if (emailResponse.ok) {
+			const emailData = await emailResponse.json() as { user_id: number }
+			user_id = parseInt(String(emailData.user_id), 10)
+			if (isNaN(user_id)) user_id = null
+		}
 
-		const emailData = await emailResponse.json() as { user_id: number }
-		const user_id = parseInt(String(emailData.user_id), 10)
-		if (isNaN(user_id)) return null
+		// If email lookup failed and we have a slack ID, try fuzzy search by slack ID
+		if (user_id === null && slackId) {
+			const fuzzyResponse = await fetch(`${HACKATIME_API}/user/search_fuzzy`, {
+				method: 'POST',
+				headers: {
+					'Authorization': `Bearer ${config.hackatimeAdminKey}`,
+					'Content-Type': 'application/json',
+					'Accept': 'application/json'
+				},
+				body: JSON.stringify({ query: slackId })
+			})
+			if (fuzzyResponse.ok) {
+				const fuzzyData = await fuzzyResponse.json() as { users: { id: number }[] }
+				if (fuzzyData.users?.length === 1) {
+					user_id = fuzzyData.users[0].id
+				}
+			}
+		}
 
-		// Then get username and slack_uid by user_id
+		if (user_id === null) return null
+
+		// Get full user info by user_id
 		const infoResponse = await fetch(`${HACKATIME_API}/user/info?user_id=${user_id}`, {
 			headers: {
 				'Authorization': `Bearer ${config.hackatimeAdminKey}`,
@@ -81,7 +105,7 @@ export async function getHackatimeUser(email: string): Promise<HackatimeUser | n
 			banned: userObj.banned || false,
 			suspected: userObj.suspected || false
 		}
-		hackatimeUserCache.set(email, user)
+		hackatimeUserCache.set(cacheKey, user)
 		return user
 	} catch {
 		return null
@@ -213,14 +237,15 @@ async function syncAllProjects(): Promise<void> {
 	adminProjectsCache.clear()
 
 	try {
-		// Get all projects with hackatime projects that are not deleted and not shipped, joined with user email
+		// Get all projects with hackatime projects that are not deleted and not shipped, joined with user email and slackId
 		const projects = await db
 			.select({
 				id: projectsTable.id,
 				hackatimeProject: projectsTable.hackatimeProject,
 				hours: projectsTable.hours,
 				userId: projectsTable.userId,
-				userEmail: usersTable.email
+				userEmail: usersTable.email,
+				userSlackId: usersTable.slackId
 			})
 			.from(projectsTable)
 			.innerJoin(usersTable, eq(projectsTable.userId, usersTable.id))
@@ -243,7 +268,8 @@ async function syncAllProjects(): Promise<void> {
 		let migrated = 0
 
 		for (const [email, userProjects] of projectsByEmail) {
-			const hackatimeUser = await getHackatimeUser(email)
+			const slackId = userProjects[0].userSlackId
+			const hackatimeUser = await getHackatimeUser(email, slackId)
 
 			if (hackatimeUser?.banned) {
 				const userId = userProjects[0].userId
@@ -414,7 +440,8 @@ export async function syncSingleProject(projectId: number): Promise<{ hours: num
 				hackatimeProject: projectsTable.hackatimeProject,
 				hours: projectsTable.hours,
 				userId: projectsTable.userId,
-				userEmail: usersTable.email
+				userEmail: usersTable.email,
+				userSlackId: usersTable.slackId
 			})
 			.from(projectsTable)
 			.innerJoin(usersTable, eq(projectsTable.userId, usersTable.id))
@@ -427,7 +454,7 @@ export async function syncSingleProject(projectId: number): Promise<{ hours: num
 		const entries = parseHackatimeProjects(project.hackatimeProject)
 		if (entries.length === 0) return { hours: project.hours ?? 0, updated: false, error: 'Invalid Hackatime project format' }
 
-		const hackatimeUser = await getHackatimeUser(project.userEmail)
+		const hackatimeUser = await getHackatimeUser(project.userEmail, project.userSlackId)
 
 		if (hackatimeUser?.banned) {
 			await db.delete(sessionsTable).where(eq(sessionsTable.userId, project.userId))

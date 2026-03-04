@@ -32,6 +32,7 @@ function parseHackatimeProject(hackatimeProject: string | null): string | null {
 async function prefixHackatimeIds(
   hackatimeProject: string | null,
   email: string,
+  slackId?: string | null,
 ): Promise<string | null> {
   if (!hackatimeProject) return null;
   const names = hackatimeProject
@@ -51,7 +52,7 @@ async function prefixHackatimeIds(
   });
   if (alreadyPrefixed) return hackatimeProject;
 
-  const hackatimeUser = await getHackatimeUser(email);
+  const hackatimeUser = await getHackatimeUser(email, slackId);
   if (!hackatimeUser || typeof hackatimeUser.user_id !== "number")
     return hackatimeProject;
 
@@ -558,6 +559,7 @@ projects.post("/", async ({ body, headers }) => {
   const projectName = await prefixHackatimeIds(
     parseHackatimeProjects(data.hackatimeProject || null),
     user.email,
+    user.slackId,
   );
   const tier =
     data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : 1;
@@ -647,6 +649,7 @@ projects.put("/:id", async ({ params, body, headers }) => {
   const projectName = await prefixHackatimeIds(
     parseHackatimeProjects(data.hackatimeProject || null),
     user.email,
+    user.slackId,
   );
   const tier =
     data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : undefined;

@@ -31556,11 +31556,13 @@ var SCRAPS_START_DATE = "2026-02-03";
 var SYNC_INTERVAL_MS = 2 * 60 * 1000;
 var hackatimeUserCache = new Map;
 var hackatimeUserIdCache = new Map;
-async function getHackatimeUser(email) {
-  const cached = hackatimeUserCache.get(email);
+async function getHackatimeUser(email, slackId) {
+  const cacheKey = email || slackId || "";
+  const cached = hackatimeUserCache.get(cacheKey);
   if (cached !== undefined)
     return cached;
   try {
+    let user_id = null;
     const emailResponse = await fetch(`${HACKATIME_API}/user/get_user_by_email`, {
       method: "POST",
       headers: {
@@ -31570,11 +31572,30 @@ async function getHackatimeUser(email) {
       },
       body: JSON.stringify({ email })
     });
-    if (!emailResponse.ok)
-      return null;
-    const emailData = await emailResponse.json();
-    const user_id = parseInt(String(emailData.user_id), 10);
-    if (isNaN(user_id))
+    if (emailResponse.ok) {
+      const emailData = await emailResponse.json();
+      user_id = parseInt(String(emailData.user_id), 10);
+      if (isNaN(user_id))
+        user_id = null;
+    }
+    if (user_id === null && slackId) {
+      const fuzzyResponse = await fetch(`${HACKATIME_API}/user/search_fuzzy`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.hackatimeAdminKey}`,
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ query: slackId })
+      });
+      if (fuzzyResponse.ok) {
+        const fuzzyData = await fuzzyResponse.json();
+        if (fuzzyData.users?.length === 1) {
+          user_id = fuzzyData.users[0].id;
+        }
+      }
+    }
+    if (user_id === null)
       return null;
     const infoResponse = await fetch(`${HACKATIME_API}/user/info?user_id=${user_id}`, {
       headers: {
@@ -31593,7 +31614,7 @@ async function getHackatimeUser(email) {
       banned: userObj.banned || false,
       suspected: userObj.suspected || false
     };
-    hackatimeUserCache.set(email, user);
+    hackatimeUserCache.set(cacheKey, user);
     return user;
   } catch {
     return null;
@@ -31670,7 +31691,8 @@ async function syncSingleProject(projectId) {
       hackatimeProject: projectsTable.hackatimeProject,
       hours: projectsTable.hours,
       userId: projectsTable.userId,
-      userEmail: usersTable.email
+      userEmail: usersTable.email,
+      userSlackId: usersTable.slackId
     }).from(projectsTable).innerJoin(usersTable, eq(projectsTable.userId, usersTable.id)).where(eq(projectsTable.id, projectId)).limit(1);
     if (!project)
       return { hours: 0, updated: false, error: "Project not found" };
@@ -31679,7 +31701,7 @@ async function syncSingleProject(projectId) {
     const entries = parseHackatimeProjects(project.hackatimeProject);
     if (entries.length === 0)
       return { hours: project.hours ?? 0, updated: false, error: "Invalid Hackatime project format" };
-    const hackatimeUser = await getHackatimeUser(project.userEmail);
+    const hackatimeUser = await getHackatimeUser(project.userEmail, project.userSlackId);
     if (hackatimeUser?.banned) {
       await db.delete(sessionsTable).where(eq(sessionsTable.userId, project.userId));
       return { hours: 0, updated: false, error: "User is banned on Hackatime" };
@@ -31899,7 +31921,7 @@ async function computeEffectiveHoursForProject(project) {
 
 // src/routes/projects.ts
 var ALLOWED_IMAGE_DOMAIN = "cdn.hackclub.com";
-async function prefixHackatimeIds(hackatimeProject, email) {
+async function prefixHackatimeIds(hackatimeProject, email, slackId) {
   if (!hackatimeProject)
     return null;
   const names = hackatimeProject.split(",").map((p) => p.trim()).filter((p) => p.length > 0);
@@ -31911,7 +31933,7 @@ async function prefixHackatimeIds(hackatimeProject, email) {
   });
   if (alreadyPrefixed)
     return hackatimeProject;
-  const hackatimeUser = await getHackatimeUser(email);
+  const hackatimeUser = await getHackatimeUser(email, slackId);
   if (!hackatimeUser || typeof hackatimeUser.user_id !== "number")
     return hackatimeProject;
   return names.map((name) => {
@@ -32205,7 +32227,7 @@ projects.post("/", async ({ body, headers }) => {
   if (!validateImageUrl(data.image)) {
     return { error: "Image must be from cdn.hackclub.com" };
   }
-  const projectName = await prefixHackatimeIds(parseHackatimeProjects2(data.hackatimeProject || null), user.email);
+  const projectName = await prefixHackatimeIds(parseHackatimeProjects2(data.hackatimeProject || null), user.email, user.slackId);
   const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : 1;
   const newProject = await db.insert(projectsTable).values({
     userId: user.id,
@@ -32251,7 +32273,7 @@ projects.put("/:id", async ({ params, body, headers }) => {
   if (!playableCheck.valid) {
     return { error: playableCheck.error };
   }
-  const projectName = await prefixHackatimeIds(parseHackatimeProjects2(data.hackatimeProject || null), user.email);
+  const projectName = await prefixHackatimeIds(parseHackatimeProjects2(data.hackatimeProject || null), user.email, user.slackId);
   const tier = data.tier !== undefined ? Math.max(1, Math.min(4, data.tier)) : undefined;
   const updated = await db.update(projectsTable).set({
     name: data.name,
@@ -32848,7 +32870,7 @@ authRoutes.get("/callback", async ({ query, redirect: redirect2 }) => {
       return redirect2("https://fraud.land");
     }
     try {
-      const hackatimeUser = await getHackatimeUser(identity.primary_email);
+      const hackatimeUser = await getHackatimeUser(identity.primary_email, identity.slack_id);
       if (hackatimeUser?.banned) {
         console.log("[AUTH] Hackatime-banned user attempted login:", { userId: user.id, username: user.username, hackatimeUserId: hackatimeUser.user_id });
         return redirect2("https://fraud.land");
@@ -33985,7 +34007,7 @@ async function filterHackatimeBanned(users) {
   const filtered = [];
   for (const user2 of users) {
     try {
-      const htUser = await getHackatimeUser(user2.email);
+      const htUser = await getHackatimeUser(user2.email, user2.slackId);
       if (htUser?.banned)
         continue;
     } catch {}
@@ -34001,6 +34023,7 @@ leaderboard.get("/", async ({ query }) => {
       username: usersTable.username,
       avatar: usersTable.avatar,
       email: usersTable.email,
+      slackId: usersTable.slackId,
       scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND scraps_paid_at IS NOT NULL AND status != 'permanently_rejected'), 0)`.as("scraps_earned"),
       scrapsBonus: sql`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as("scraps_bonus"),
       scrapsShopSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_shop_spent"),
@@ -34025,6 +34048,7 @@ leaderboard.get("/", async ({ query }) => {
     username: usersTable.username,
     avatar: usersTable.avatar,
     email: usersTable.email,
+    slackId: usersTable.slackId,
     scrapsEarned: sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND scraps_paid_at IS NOT NULL AND status != 'permanently_rejected'), 0)`.as("scraps_earned"),
     scrapsBonus: sql`COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0)`.as("scraps_bonus"),
     scrapsShopSpent: sql`COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0)`.as("scraps_shop_spent"),
@@ -34056,12 +34080,13 @@ leaderboard.get("/views", async () => {
     views: projectsTable.views,
     userId: projectsTable.userId,
     userEmail: usersTable.email,
+    userSlackId: usersTable.slackId,
     userRole: usersTable.role
   }).from(projectsTable).innerJoin(usersTable, eq(projectsTable.userId, usersTable.id)).where(and(eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), ne(usersTable.role, "banned"))).orderBy(desc(projectsTable.views)).limit(20);
   const filtered = [];
   for (const project of results) {
     try {
-      const htUser = await getHackatimeUser(project.userEmail);
+      const htUser = await getHackatimeUser(project.userEmail, project.userSlackId);
       if (htUser?.banned)
         continue;
     } catch {}
@@ -34161,6 +34186,7 @@ hackatime.get("/projects", async ({ headers }) => {
     return { error: "No email found for user", projects: [] };
   }
   try {
+    let hackatimeUserId = null;
     const emailResponse = await fetch(`${HACKATIME_ADMIN_API}/user/get_user_by_email`, {
       method: "POST",
       headers: {
@@ -34170,13 +34196,35 @@ hackatime.get("/projects", async ({ headers }) => {
       },
       body: JSON.stringify({ email: user2.email })
     });
-    if (!emailResponse.ok) {
-      const errorText = await emailResponse.text();
-      console.log("[HACKATIME] Email lookup error:", { status: emailResponse.status, body: errorText });
+    if (emailResponse.ok) {
+      const emailData = await emailResponse.json();
+      hackatimeUserId = emailData.user_id;
+      console.log("[HACKATIME] Found hackatime user_id:", hackatimeUserId, "for email:", user2.email);
+    } else {
+      console.log("[HACKATIME] Email lookup failed for:", user2.email, "- trying slack ID fallback");
+    }
+    if (hackatimeUserId === null && user2.slackId) {
+      const fuzzyResponse = await fetch(`${HACKATIME_ADMIN_API}/user/search_fuzzy`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.hackatimeAdminKey}`,
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ query: user2.slackId })
+      });
+      if (fuzzyResponse.ok) {
+        const fuzzyData = await fuzzyResponse.json();
+        if (fuzzyData.users?.length === 1) {
+          hackatimeUserId = fuzzyData.users[0].id;
+          console.log("[HACKATIME] Found hackatime user_id:", hackatimeUserId, "via slack ID:", user2.slackId);
+        }
+      }
+    }
+    if (hackatimeUserId === null) {
+      console.log("[HACKATIME] Could not find hackatime user for:", user2.email, user2.slackId);
       return { projects: [] };
     }
-    const { user_id: hackatimeUserId } = await emailResponse.json();
-    console.log("[HACKATIME] Found hackatime user_id:", hackatimeUserId, "for email:", user2.email);
     const projectsParams = new URLSearchParams({
       user_id: String(hackatimeUserId),
       start_date: SCRAPS_START_DATE2
@@ -35038,7 +35086,7 @@ admin.get("/users/:id", async ({ params, headers, status: status2 }) => {
     let hackatimeBanned = false;
     if (targetUser[0].email) {
       try {
-        const htUser = await getHackatimeUser(targetUser[0].email);
+        const htUser = await getHackatimeUser(targetUser[0].email, targetUser[0].slackId);
         if (htUser) {
           hackatimeSuspected = htUser.suspected || false;
           hackatimeBanned = htUser.banned || false;
@@ -35270,6 +35318,7 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
       id: usersTable.id,
       username: usersTable.username,
       email: usersTable.email,
+      slackId: usersTable.slackId,
       avatar: usersTable.avatar,
       internalNotes: usersTable.internalNotes
     }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
@@ -35288,7 +35337,7 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
     let hackatimeBanned = false;
     if (projectUser[0]?.email) {
       try {
-        const htUser = await getHackatimeUser(projectUser[0].email);
+        const htUser = await getHackatimeUser(projectUser[0].email, projectUser[0].slackId);
         if (htUser) {
           hackatimeUserId = htUser.user_id;
           hackatimeSuspected = htUser.suspected || false;
@@ -35573,6 +35622,7 @@ admin.get("/second-pass/:id", async ({ params, headers }) => {
       id: usersTable.id,
       username: usersTable.username,
       email: usersTable.email,
+      slackId: usersTable.slackId,
       avatar: usersTable.avatar,
       internalNotes: usersTable.internalNotes
     }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
@@ -35591,7 +35641,7 @@ admin.get("/second-pass/:id", async ({ params, headers }) => {
     let hackatimeBanned = false;
     if (projectUser[0]?.email) {
       try {
-        const htUser = await getHackatimeUser(projectUser[0].email);
+        const htUser = await getHackatimeUser(projectUser[0].email, projectUser[0].slackId);
         if (htUser) {
           hackatimeUserId = htUser.user_id;
           hackatimeSuspected = htUser.suspected || false;
@@ -36198,10 +36248,16 @@ admin.get("/orders", async ({ headers, query, status: status2 }) => {
     }
     const rows = await ordersQuery;
     const uniqueEmails = [...new Set(rows.map((r) => r.userEmail).filter(Boolean))];
+    const emailToSlackId = new Map;
+    for (const row of rows) {
+      if (row.userEmail && !emailToSlackId.has(row.userEmail)) {
+        emailToSlackId.set(row.userEmail, row.slackId);
+      }
+    }
     const banMap = new Map;
     await Promise.all(uniqueEmails.map(async (email) => {
       try {
-        const htUser = await getHackatimeUser(email);
+        const htUser = await getHackatimeUser(email, emailToSlackId.get(email));
         banMap.set(email, htUser?.banned ?? false);
       } catch {
         banMap.set(email, false);
