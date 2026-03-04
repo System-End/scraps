@@ -1152,3 +1152,58 @@
 		</div>
 	{/if}
 </div>
+
+{#if deleteConfirmId}
+	{@const deleteItem = items.find((i) => i.id === deleteConfirmId)}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+		onclick={(e) => e.target === e.currentTarget && (deleteConfirmId = null)}
+		onkeydown={(e) => e.key === 'Escape' && (deleteConfirmId = null)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
+			<h2 class="mb-4 text-2xl font-bold">delete item</h2>
+			<p class="mb-6 text-gray-600">
+				are you sure you want to delete <span class="font-bold"
+					>{deleteItem?.name ?? 'this item'}</span
+				>? this cannot be undone.
+			</p>
+			<div class="flex gap-3">
+				<button
+					onclick={() => (deleteConfirmId = null)}
+					class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed"
+				>
+					cancel
+				</button>
+				<button
+					onclick={() => confirmDelete()}
+					class="flex-1 cursor-pointer rounded-full border-4 border-red-600 bg-red-600 px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed"
+				>
+					delete
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if errorModal}
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+		onclick={(e) => e.target === e.currentTarget && (errorModal = null)}
+		onkeydown={(e) => e.key === 'Escape' && (errorModal = null)}
+		role="dialog"
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
+			<h2 class="mb-4 text-2xl font-bold">notice</h2>
+			<p class="mb-6 text-gray-600">{errorModal}</p>
+			<button
+				onclick={() => (errorModal = null)}
+				class="w-full cursor-pointer rounded-full bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:bg-gray-800"
+			>
+				ok
+			</button>
+		</div>
+	</div>
+{/if}
