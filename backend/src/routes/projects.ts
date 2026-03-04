@@ -325,7 +325,7 @@ projects.get("/:id", async ({ params, headers }) => {
   if (!project[0]) return { error: "Not found" };
 
   const isOwner = project[0].userId === user.id;
-  const isStaff = user.role === "admin" || user.role === "reviewer";
+  const isStaff = user.role === "admin" || user.role === "reviewer" || user.role === "creator";
 
   // If not owner, only show shipped, in_progress, waiting_for_review, or pending_admin_approval projects
   if (
@@ -889,7 +889,7 @@ projects.get("/:id/reviews", async ({ params, headers }) => {
   const user = await getUserFromSession(headers as Record<string, string>);
   if (!user) return { error: "Unauthorized" };
 
-  const isStaff = user.role === "admin" || user.role === "reviewer";
+  const isStaff = user.role === "admin" || user.role === "reviewer" || user.role === "creator";
 
   const project = await db
     .select()

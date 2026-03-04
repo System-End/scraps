@@ -87,7 +87,7 @@
 			goto('/');
 			return;
 		}
-		isAdmin = user.role === 'admin';
+		isAdmin = user.role === 'admin' || user.role === 'creator';
 
 		try {
 			const projectRes = await fetch(`${API_URL}/projects/${data.id}`, { credentials: 'include' });

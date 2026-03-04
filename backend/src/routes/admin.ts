@@ -32,6 +32,7 @@ import { computeItemPricing, updateShopItemPricing } from "../lib/shop-pricing";
 import { submitProjectToYSWS } from "../lib/ysws";
 import { notifyProjectReview, notifyOrderFulfilled } from "../lib/slack";
 import { config } from "../config";
+import { syncProjectsToAirtable } from "../lib/airtable-sync";
 import {
   computeEffectiveHours,
   getProjectShippedDates,
@@ -438,7 +439,7 @@ admin.get("/users", async ({ headers, query, status }) => {
         username: u.username,
         avatar: u.avatar,
         slackId: u.slackId,
-        email: user.role === "admin" ? u.email : undefined,
+        email: (user.role === "admin" || user.role === "creator") ? u.email : undefined,
         scraps: u.scraps,
         role: u.role,
         internalNotes: u.internalNotes,
@@ -529,7 +530,7 @@ admin.get("/users/:id", async ({ params, headers, status }) => {
         username: targetUser[0].username,
         avatar: targetUser[0].avatar,
         slackId: targetUser[0].slackId,
-        email: user.role === "admin" ? targetUser[0].email : undefined,
+        email: (user.role === "admin" || user.role === "creator") ? targetUser[0].email : undefined,
         scraps: scrapsBalance.balance,
         role: targetUser[0].role,
         internalNotes: targetUser[0].internalNotes,
@@ -885,7 +886,7 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
       }
     }
 
-    const isAdmin = user.role === "admin";
+    const isAdmin = user.role === "admin" || user.role === "creator";
     // Hide pending_admin_approval from non-admin reviewers
     const maskedProject =
       !isAdmin && project[0].status === "pending_admin_approval"
@@ -1129,6 +1130,13 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
       }
     }
 
+    // Trigger immediate Airtable sync when a project is shipped or updated
+    if (canShipDirectly && action === "approved") {
+      syncProjectsToAirtable().catch(err =>
+        console.error("[ADMIN] Failed to trigger Airtable sync after ship:", err)
+      );
+    }
+
     // Send Slack DM notification to the project author
     // Skip notification when a reviewer approves (goes to pending_admin_approval)
     // The second-pass flow sends its own notification when a creator accepts/rejects
@@ -1149,7 +1157,7 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
             const admins = await db
               .select({ slackId: usersTable.slackId })
               .from(usersTable)
-              .where(eq(usersTable.role, "admin"));
+              .where(or(eq(usersTable.role, "admin"), eq(usersTable.role, "creator")));
 
             adminSlackIds = admins
               .map((a) => a.slackId)
@@ -1512,6 +1520,11 @@ admin.post("/second-pass/:id", async ({ params, body, headers }) => {
           console.error("Failed to send Slack notification:", slackErr);
         }
       }
+
+      // Trigger immediate Airtable sync after shipping
+      syncProjectsToAirtable().catch(err =>
+        console.error("[ADMIN] Failed to trigger Airtable sync after second-pass ship:", err)
+      );
 
       return { success: true, scrapsAwarded };
     } else {

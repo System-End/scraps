@@ -177,7 +177,7 @@
 		try {
 			const [userResponse, bonusesResponse] = await Promise.all([
 				fetch(`${API_URL}/admin/users/${data.id}`, { credentials: 'include' }),
-				currentUser.role === 'admin'
+				(currentUser.role === 'admin' || currentUser.role === 'creator')
 					? fetch(`${API_URL}/admin/users/${data.id}/bonuses`, { credentials: 'include' })
 					: Promise.resolve(null)
 			]);
@@ -215,7 +215,7 @@
 				body: JSON.stringify({ internalNotes: editingNotes })
 			});
 
-			if (currentUser?.role === 'admin' && editingRole !== targetUser.role) {
+			if ((currentUser?.role === 'admin' || currentUser?.role === 'creator') && editingRole !== targetUser.role) {
 				await fetch(`${API_URL}/admin/users/${targetUser.id}/role`, {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
@@ -582,7 +582,7 @@
 						<p class="text-4xl font-bold">{targetUser.scraps}</p>
 					</div>
 					<p class="text-sm text-gray-500">{$t.common.scraps}</p>
-					{#if currentUser?.role === 'admin'}
+					{#if currentUser?.role === 'admin' || currentUser?.role === 'creator'}
 						<button
 							onclick={() => (showBonusModal = true)}
 							class="mt-2 flex cursor-pointer items-center gap-1 rounded-full bg-green-500 px-3 py-1 text-sm font-bold text-white transition-all hover:bg-green-600"
@@ -650,7 +650,7 @@
 		<div class="mb-6 rounded-2xl border-4 border-black bg-yellow-50 p-6">
 			<h2 class="mb-4 text-xl font-bold">admin settings</h2>
 			<div class="space-y-4">
-				{#if currentUser?.role === 'admin'}
+				{#if currentUser?.role === 'admin' || currentUser?.role === 'creator'}
 					<div>
 						<label for="role" class="mb-1 block text-sm font-bold">role</label>
 						<select
@@ -771,7 +771,7 @@
 		</div>
 
 		<!-- Bonuses (admin only) -->
-		{#if currentUser?.role === 'admin'}
+		{#if currentUser?.role === 'admin' || currentUser?.role === 'creator'}
 			<div class="mt-6 rounded-2xl border-4 border-black bg-green-50 p-6">
 				<div class="mb-4 flex items-center justify-between">
 					<h2 class="flex items-center gap-2 text-xl font-bold">

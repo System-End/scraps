@@ -116,7 +116,7 @@
 			});
 
 			// Save role if admin
-			if (user?.role === 'admin' && editingRole !== editingUser.role) {
+			if ((user?.role === 'admin' || user?.role === 'creator') && editingRole !== editingUser.role) {
 				await fetch(`${API_URL}/admin/users/${editingUser.id}/role`, {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
@@ -180,7 +180,7 @@
 				<thead>
 					<tr class="border-b-4 border-black bg-black text-white">
 						<th class="px-4 py-4 text-left font-bold">user</th>
-						{#if user?.role === 'admin'}
+						{#if user?.role === 'admin' || user?.role === 'creator'}
 							<th class="px-4 py-4 text-left font-bold">email</th>
 						{/if}
 						<th class="px-4 py-4 text-center font-bold">role</th>
@@ -205,7 +205,7 @@
 									<span class="font-bold">{u.username || 'unknown'}</span>
 								</div>
 							</td>
-							{#if user?.role === 'admin'}
+							{#if user?.role === 'admin' || user?.role === 'creator'}
 								<td class="px-4 py-4 text-gray-600">{u.email || '-'}</td>
 							{/if}
 							<td class="px-4 py-4 text-center">
@@ -279,7 +279,7 @@
 			</h2>
 
 			<div class="space-y-4">
-				{#if user?.role === 'admin'}
+				{#if user?.role === 'admin' || user?.role === 'creator'}
 					<div>
 						<label class="mb-1 block text-sm font-bold">role</label>
 						<select

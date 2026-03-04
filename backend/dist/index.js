@@ -4,43 +4,25 @@ var __getProtoOf = Object.getPrototypeOf;
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-function __accessProp(key) {
-  return this[key];
-}
-var __toESMCache_node;
-var __toESMCache_esm;
 var __toESM = (mod, isNodeMode, target) => {
-  var canCache = mod != null && typeof mod === "object";
-  if (canCache) {
-    var cache = isNodeMode ? __toESMCache_node ??= new WeakMap : __toESMCache_esm ??= new WeakMap;
-    var cached = cache.get(mod);
-    if (cached)
-      return cached;
-  }
   target = mod != null ? __create(__getProtoOf(mod)) : {};
   const to = isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target;
   for (let key of __getOwnPropNames(mod))
     if (!__hasOwnProp.call(to, key))
       __defProp(to, key, {
-        get: __accessProp.bind(mod, key),
+        get: () => mod[key],
         enumerable: true
       });
-  if (canCache)
-    cache.set(mod, to);
   return to;
 };
 var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
-var __returnValue = (v) => v;
-function __exportSetter(name, newValue) {
-  this[name] = __returnValue.bind(null, newValue);
-}
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, {
       get: all[name],
       enumerable: true,
       configurable: true,
-      set: __exportSetter.bind(all, name)
+      set: (newValue) => all[name] = () => newValue
     });
 };
 var __esm = (fn, res) => () => (fn && (res = fn(fn = 0)), res);
@@ -9468,10 +9450,10 @@ var require__Hash = __commonJS((exports, module) => {
   var hashHas = require__hashHas();
   var hashSet = require__hashSet();
   function Hash2(entries) {
-    var index = -1, length = entries == null ? 0 : entries.length;
+    var index2 = -1, length = entries == null ? 0 : entries.length;
     this.clear();
-    while (++index < length) {
-      var entry = entries[index];
+    while (++index2 < length) {
+      var entry = entries[index2];
       this.set(entry[0], entry[1]);
     }
   }
@@ -9521,15 +9503,15 @@ var require__listCacheDelete = __commonJS((exports, module) => {
   var arrayProto = Array.prototype;
   var splice = arrayProto.splice;
   function listCacheDelete(key) {
-    var data = this.__data__, index = assocIndexOf(data, key);
-    if (index < 0) {
+    var data = this.__data__, index2 = assocIndexOf(data, key);
+    if (index2 < 0) {
       return false;
     }
     var lastIndex = data.length - 1;
-    if (index == lastIndex) {
+    if (index2 == lastIndex) {
       data.pop();
     } else {
-      splice.call(data, index, 1);
+      splice.call(data, index2, 1);
     }
     --this.size;
     return true;
@@ -9541,8 +9523,8 @@ var require__listCacheDelete = __commonJS((exports, module) => {
 var require__listCacheGet = __commonJS((exports, module) => {
   var assocIndexOf = require__assocIndexOf();
   function listCacheGet(key) {
-    var data = this.__data__, index = assocIndexOf(data, key);
-    return index < 0 ? undefined : data[index][1];
+    var data = this.__data__, index2 = assocIndexOf(data, key);
+    return index2 < 0 ? undefined : data[index2][1];
   }
   module.exports = listCacheGet;
 });
@@ -9560,12 +9542,12 @@ var require__listCacheHas = __commonJS((exports, module) => {
 var require__listCacheSet = __commonJS((exports, module) => {
   var assocIndexOf = require__assocIndexOf();
   function listCacheSet(key, value) {
-    var data = this.__data__, index = assocIndexOf(data, key);
-    if (index < 0) {
+    var data = this.__data__, index2 = assocIndexOf(data, key);
+    if (index2 < 0) {
       ++this.size;
       data.push([key, value]);
     } else {
-      data[index][1] = value;
+      data[index2][1] = value;
     }
     return this;
   }
@@ -9580,10 +9562,10 @@ var require__ListCache = __commonJS((exports, module) => {
   var listCacheHas = require__listCacheHas();
   var listCacheSet = require__listCacheSet();
   function ListCache(entries) {
-    var index = -1, length = entries == null ? 0 : entries.length;
+    var index2 = -1, length = entries == null ? 0 : entries.length;
     this.clear();
-    while (++index < length) {
-      var entry = entries[index];
+    while (++index2 < length) {
+      var entry = entries[index2];
       this.set(entry[0], entry[1]);
     }
   }
@@ -9687,10 +9669,10 @@ var require__MapCache = __commonJS((exports, module) => {
   var mapCacheHas = require__mapCacheHas();
   var mapCacheSet = require__mapCacheSet();
   function MapCache(entries) {
-    var index = -1, length = entries == null ? 0 : entries.length;
+    var index2 = -1, length = entries == null ? 0 : entries.length;
     this.clear();
-    while (++index < length) {
-      var entry = entries[index];
+    while (++index2 < length) {
+      var entry = entries[index2];
       this.set(entry[0], entry[1]);
     }
   }
@@ -9764,9 +9746,9 @@ var require__stringToPath = __commonJS((exports, module) => {
 // node_modules/lodash/_arrayMap.js
 var require__arrayMap = __commonJS((exports, module) => {
   function arrayMap(array, iteratee) {
-    var index = -1, length = array == null ? 0 : array.length, result = Array(length);
-    while (++index < length) {
-      result[index] = iteratee(array[index], index, array);
+    var index2 = -1, length = array == null ? 0 : array.length, result = Array(length);
+    while (++index2 < length) {
+      result[index2] = iteratee(array[index2], index2, array);
     }
     return result;
   }
@@ -9842,11 +9824,11 @@ var require__baseGet = __commonJS((exports, module) => {
   var toKey = require__toKey();
   function baseGet(object, path) {
     path = castPath(path, object);
-    var index = 0, length = path.length;
-    while (object != null && index < length) {
-      object = object[toKey(path[index++])];
+    var index2 = 0, length = path.length;
+    while (object != null && index2 < length) {
+      object = object[toKey(path[index2++])];
     }
-    return index && index == length ? object : undefined;
+    return index2 && index2 == length ? object : undefined;
   }
   module.exports = baseGet;
 });
@@ -9906,9 +9888,9 @@ var require_isPlainObject = __commonJS((exports, module) => {
 // node_modules/lodash/_baseTimes.js
 var require__baseTimes = __commonJS((exports, module) => {
   function baseTimes(n, iteratee) {
-    var index = -1, result = Array(n);
-    while (++index < n) {
-      result[index] = iteratee(index);
+    var index2 = -1, result = Array(n);
+    while (++index2 < n) {
+      result[index2] = iteratee(index2);
     }
     return result;
   }
@@ -10669,12 +10651,12 @@ var require_object_to_query_param_string = __commonJS((exports, module) => {
   var keys_1 = __importDefault(require_keys());
   function buildParams(prefix, obj, addFn) {
     if (isArray_1.default(obj)) {
-      for (var index = 0;index < obj.length; index++) {
-        var value = obj[index];
+      for (var index2 = 0;index2 < obj.length; index2++) {
+        var value = obj[index2];
         if (/\[\]$/.test(prefix)) {
           addFn(prefix, value);
         } else {
-          buildParams(prefix + "[" + (typeof value === "object" && value !== null ? index : "") + "]", value, addFn);
+          buildParams(prefix + "[" + (typeof value === "object" && value !== null ? index2 : "") + "]", value, addFn);
         }
       }
     } else if (typeof obj === "object") {
@@ -11350,8 +11332,8 @@ var require_table = __commonJS((exports, module) => {
             done(err);
             return;
           }
-          for (var index = 0;index < page.length; index++) {
-            callback(page[index]);
+          for (var index2 = 0;index2 < page.length; index2++) {
+            callback(page[index2]);
           }
           if (newOffset) {
             offset = newOffset;
@@ -14519,6 +14501,7 @@ __export(exports_type3, {
 
 // node_modules/@sinclair/typebox/build/esm/type/type/index.mjs
 var Type = exports_type3;
+
 // node_modules/@sinclair/typebox/build/esm/errors/function.mjs
 function DefaultErrorFunction(error) {
   switch (error.errorType) {
@@ -15796,7 +15779,6 @@ function Errors(...args) {
   const iterator = args.length === 3 ? Visit6(args[0], args[1], "", args[2]) : Visit6(args[0], [], "", args[1]);
   return new ValueErrorIterator(iterator);
 }
-
 // node_modules/@sinclair/typebox/build/esm/value/assert/assert.mjs
 var __classPrivateFieldSet = function(receiver, state, value, kind, f) {
   if (kind === "m")
@@ -25784,7 +25766,8 @@ var config = {
   airtableBaseId: process.env.AIRTABLE_BASE_ID,
   airtableProjectsTableId: process.env.AIRTABLE_PROJECTS_TABLE_ID,
   airtableUsersTableId: process.env.AIRTABLE_USERS_TABLE_ID,
-  fraudToken: process.env.FRAUD_TOKEN
+  fraudToken: process.env.FRAUD_TOKEN,
+  hcbOrgSlug: "ysws-scraps"
 };
 
 // node_modules/drizzle-orm/entity.js
@@ -26202,6 +26185,21 @@ class ExtraConfigColumn extends PgColumn {
     return this;
   }
 }
+
+class IndexedColumn {
+  static [entityKind] = "IndexedColumn";
+  constructor(name, keyAsName, type, indexConfig) {
+    this.name = name;
+    this.keyAsName = keyAsName;
+    this.type = type;
+    this.indexConfig = indexConfig;
+  }
+  name;
+  keyAsName;
+  type;
+  indexConfig;
+}
+
 class PgArrayBuilder extends PgColumnBuilder {
   static [entityKind] = "PgArrayBuilder";
   constructor(name, baseBuilder, size) {
@@ -28844,6 +28842,88 @@ class SelectionProxyHandler {
   }
 }
 
+// node_modules/drizzle-orm/pg-core/indexes.js
+class IndexBuilderOn {
+  constructor(unique2, name) {
+    this.unique = unique2;
+    this.name = name;
+  }
+  static [entityKind] = "PgIndexBuilderOn";
+  on(...columns) {
+    return new IndexBuilder(columns.map((it) => {
+      if (is(it, SQL)) {
+        return it;
+      }
+      it = it;
+      const clonedIndexedColumn = new IndexedColumn(it.name, !!it.keyAsName, it.columnType, it.indexConfig);
+      it.indexConfig = JSON.parse(JSON.stringify(it.defaultConfig));
+      return clonedIndexedColumn;
+    }), this.unique, false, this.name);
+  }
+  onOnly(...columns) {
+    return new IndexBuilder(columns.map((it) => {
+      if (is(it, SQL)) {
+        return it;
+      }
+      it = it;
+      const clonedIndexedColumn = new IndexedColumn(it.name, !!it.keyAsName, it.columnType, it.indexConfig);
+      it.indexConfig = it.defaultConfig;
+      return clonedIndexedColumn;
+    }), this.unique, true, this.name);
+  }
+  using(method, ...columns) {
+    return new IndexBuilder(columns.map((it) => {
+      if (is(it, SQL)) {
+        return it;
+      }
+      it = it;
+      const clonedIndexedColumn = new IndexedColumn(it.name, !!it.keyAsName, it.columnType, it.indexConfig);
+      it.indexConfig = JSON.parse(JSON.stringify(it.defaultConfig));
+      return clonedIndexedColumn;
+    }), this.unique, true, this.name, method);
+  }
+}
+
+class IndexBuilder {
+  static [entityKind] = "PgIndexBuilder";
+  config;
+  constructor(columns, unique2, only, name, method = "btree") {
+    this.config = {
+      name,
+      columns,
+      unique: unique2,
+      only,
+      method
+    };
+  }
+  concurrently() {
+    this.config.concurrently = true;
+    return this;
+  }
+  with(obj) {
+    this.config.with = obj;
+    return this;
+  }
+  where(condition) {
+    this.config.where = condition;
+    return this;
+  }
+  build(table) {
+    return new Index2(this.config, table);
+  }
+}
+
+class Index2 {
+  static [entityKind] = "PgIndex";
+  config;
+  constructor(config2, table) {
+    this.config = { ...config2, table };
+  }
+}
+function index(name) {
+  return new IndexBuilderOn(false, name);
+}
+
 // node_modules/drizzle-orm/casing.js
 function toSnakeCase(input) {
   const words = input.replace(/['\u2019]/g, "").match(/[\da-z]+|[A-Z]+(?![a-z])|[A-Z][\da-z]+/g) ?? [];
@@ -29041,8 +29121,8 @@ class PgDialect {
       return;
     }
     const joinsArray = [];
-    for (const [index, joinMeta] of joins.entries()) {
-      if (index === 0) {
+    for (const [index2, joinMeta] of joins.entries()) {
+      if (index2 === 0) {
         joinsArray.push(sql` `);
       }
       const table = joinMeta.table;
@@ -29063,7 +29143,7 @@ class PgDialect {
       } else {
         joinsArray.push(sql`${sql.raw(joinMeta.joinType)} join${lateralSql} ${table}${onSql}`);
       }
-      if (index < joins.length - 1) {
+      if (index2 < joins.length - 1) {
         joinsArray.push(sql` `);
       }
     }
@@ -31046,6 +31126,7 @@ var projectsTable = pgTable("projects", {
   status: varchar().notNull().default("in_progress"),
   deleted: integer("deleted").default(0),
   scrapsAwarded: integer("scraps_awarded").notNull().default(0),
+  scrapsPaidAmount: integer("scraps_paid_amount").notNull().default(0),
   scrapsPaidAt: timestamp("scraps_paid_at"),
   views: integer().notNull().default(0),
   updateDescription: text("update_description"),
@@ -31152,6 +31233,29 @@ async function sendSlackDM(slackId, token, text2, blocks) {
     console.error("Failed to send Slack DM:", error);
     return false;
   }
+}
+async function notifyOrderFulfilled({
+  userSlackId,
+  itemName,
+  trackingNumber,
+  token
+}) {
+  const trackingLine = trackingNumber ? `
+
+*tracking number:* \`${trackingNumber}\`` : "";
+  const fallbackText = `:scraps: hey <@${userSlackId}>! your order for *${itemName}* has been fulfilled and is on its way!${trackingNumber ? ` tracking number: ${trackingNumber}` : ""} :blobhaj_party:`;
+  const blocks = [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `:scraps: hey <@${userSlackId}>! :blobhaj_party:
+
+your order for *${itemName}* has been fulfilled and is on its way!${trackingLine}`
+      }
+    }
+  ];
+  return sendSlackDM(userSlackId, token, fallbackText, blocks);
 }
 async function notifyProjectSubmitted({
   userSlackId,
@@ -31281,37 +31385,16 @@ don't worry \u2014 make the requested changes and resubmit! :scraps:`
       }
     ];
   } else if (action === "permanently_rejected") {
-    const adminMentions = adminSlackIds.length > 0 ? adminSlackIds.map((id) => `<@${id}>`).join(", ") : "an admin";
-    fallbackText = `:scraps: hey <@${userSlackId}>! unfortunately, your scraps project ${projectName} has been permanently rejected. reason: ${feedbackForAuthor}. if you have any questions, please reach out to an admin: ${adminMentions}`;
+    fallbackText = `:scraps: hey <@${userSlackId}>! your scraps project ${projectName} has been unshipped by an admin.`;
     blocks = [
       {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `:scraps: hey <@${userSlackId}>! :scraps:
+          text: `:scraps: hey <@${userSlackId}>!
 
-unfortunately, your scraps project *<${projectUrl}|${projectName}>* has been *permanently rejected*.
-
-*reason:*
-> ${feedbackForAuthor}
-
-if you have any questions about this decision, please reach out to one of our admins: ${adminMentions} :scraps:`
+your scraps project *<${projectUrl}|${projectName}>* has been unshipped by an admin.`
         }
-      },
-      {
-        type: "actions",
-        elements: [
-          {
-            type: "button",
-            text: {
-              type: "plain_text",
-              text: ":scraps: view your project",
-              emoji: true
-            },
-            url: projectUrl,
-            action_id: "view_project"
-          }
-        ]
       }
     ];
   }
@@ -32000,7 +32083,7 @@ projects.get("/:id", async ({ params, headers }) => {
   if (!project[0])
     return { error: "Not found" };
   const isOwner = project[0].userId === user.id;
-  const isStaff = user.role === "admin" || user.role === "reviewer";
+  const isStaff = user.role === "admin" || user.role === "reviewer" || user.role === "creator";
   if (!isOwner && project[0].status !== "shipped" && project[0].status !== "in_progress" && project[0].status !== "waiting_for_review" && project[0].status !== "pending_admin_approval") {
     return { error: "Not found" };
   }
@@ -32305,7 +32388,7 @@ projects.get("/:id/reviews", async ({ params, headers }) => {
   const user = await getUserFromSession(headers);
   if (!user)
     return { error: "Unauthorized" };
-  const isStaff = user.role === "admin" || user.role === "reviewer";
+  const isStaff = user.role === "admin" || user.role === "reviewer" || user.role === "creator";
   const project = await db.select().from(projectsTable).where(and(eq(projectsTable.id, parseInt(params.id)), eq(projectsTable.userId, user.id))).limit(1);
   if (!project[0])
     return { error: "Not found" };
@@ -32434,6 +32517,32 @@ var refinerySpendingHistoryTable = pgTable("refinery_spending_history", {
   cost: integer().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
+var adminDeletedOrdersTable = pgTable("admin_deleted_orders", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  originalOrderId: integer("original_order_id").notNull(),
+  userId: integer("user_id").notNull(),
+  shopItemId: integer("shop_item_id"),
+  quantity: integer().notNull().default(1),
+  pricePerItem: integer("price_per_item").notNull(),
+  totalPrice: integer("total_price").notNull(),
+  status: varchar(),
+  orderType: varchar("order_type"),
+  shippingAddress: text("shipping_address"),
+  phone: varchar(),
+  itemName: varchar("item_name"),
+  createdAt: timestamp("created_at", { withTimezone: true }),
+  deletedBy: integer("deleted_by"),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }).defaultNow().notNull(),
+  reason: text(),
+  deletedPayload: jsonb("deleted_payload"),
+  restored: boolean().notNull().default(false),
+  restoredBy: integer("restored_by"),
+  restoredAt: timestamp("restored_at", { withTimezone: true })
+}, (table) => [
+  index("idx_admin_deleted_orders_deleted_at").on(table.deletedAt),
+  index("idx_admin_deleted_orders_user_id").on(table.userId),
+  index("idx_admin_deleted_orders_original_order_id").on(table.originalOrderId)
+]);
 
 // src/lib/scraps.ts
 var PHI = (1 + Math.sqrt(5)) / 2;
@@ -32519,11 +32628,11 @@ function calculateScrapsFromHours(hours, tier = 1) {
 }
 async function getUserScrapsBalance(userId, txOrDb = db) {
   const earnedResult = await txOrDb.select({
-    total: sql`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`
-  }).from(projectsTable).where(sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsPaidAt} IS NOT NULL`);
+    total: sql`COALESCE(SUM(${projectsTable.scrapsPaidAmount}), 0)`
+  }).from(projectsTable).where(sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsPaidAmount} > 0`);
   const pendingResult = await txOrDb.select({
-    total: sql`COALESCE(SUM(${projectsTable.scrapsAwarded}), 0)`
-  }).from(projectsTable).where(sql`${projectsTable.userId} = ${userId} AND ${projectsTable.status} = 'shipped' AND (${projectsTable.deleted} = 0 OR ${projectsTable.deleted} IS NULL) AND ${projectsTable.scrapsPaidAt} IS NULL AND ${projectsTable.scrapsAwarded} > 0`);
+    total: sql`COALESCE(SUM(${projectsTable.scrapsAwarded} - ${projectsTable.scrapsPaidAmount}), 0)`
+  }).from(projectsTable).where(sql`${projectsTable.userId} = ${userId} AND ${projectsTable.status} = 'shipped' AND (${projectsTable.deleted} = 0 OR ${projectsTable.deleted} IS NULL) AND ${projectsTable.scrapsPaidAt} IS NULL AND ${projectsTable.scrapsAwarded} > ${projectsTable.scrapsPaidAmount}`);
   const bonusResult = await txOrDb.select({
     total: sql`COALESCE(SUM(${userBonusesTable.amount}), 0)`
   }).from(userBonusesTable).where(eq(userBonusesTable.userId, userId));
@@ -32616,7 +32725,8 @@ async function payoutPendingScraps() {
   const totalScraps = pendingProjects.reduce((sum, p) => sum + p.scrapsAwarded, 0);
   const uniqueUserIds = [...new Set(pendingProjects.map((p) => p.userId))];
   await db.update(projectsTable).set({
-    scrapsPaidAt: now
+    scrapsPaidAt: now,
+    scrapsPaidAmount: sql`${projectsTable.scrapsAwarded}`
   }).where(inArray(projectsTable.id, projectIds));
   const paidCount = pendingProjects.length;
   console.log(`[SCRAPS-PAYOUT] Paid out ${totalScraps} scraps across ${paidCount} projects for ${uniqueUserIds.length} users`);
@@ -33899,8 +34009,8 @@ leaderboard.get("/", async ({ query }) => {
       projectCount: sql`COUNT(${projectsTable.id})`.as("project_count")
     }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), sql`${projectsTable.status} != 'permanently_rejected'`)).where(ne(usersTable.role, "banned")).groupBy(usersTable.id).orderBy(desc(sql`total_hours`)).limit(20);
     const filtered2 = await filterHackatimeBanned(results2);
-    return filtered2.slice(0, 10).map((user2, index) => ({
-      rank: index + 1,
+    return filtered2.slice(0, 10).map((user2, index2) => ({
+      rank: index2 + 1,
       id: user2.id,
       username: user2.username,
       avatar: user2.avatar,
@@ -33923,8 +34033,8 @@ leaderboard.get("/", async ({ query }) => {
     projectCount: sql`COUNT(${projectsTable.id})`.as("project_count")
   }).from(usersTable).leftJoin(projectsTable, and(eq(projectsTable.userId, usersTable.id), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)), sql`${projectsTable.status} != 'permanently_rejected'`)).where(ne(usersTable.role, "banned")).groupBy(usersTable.id).orderBy(desc(sql`COALESCE((SELECT SUM(scraps_awarded) FROM projects WHERE user_id = ${usersTable.id} AND scraps_paid_at IS NOT NULL AND status != 'permanently_rejected'), 0) + COALESCE((SELECT SUM(amount) FROM user_bonuses WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(total_price) FROM shop_orders WHERE user_id = ${usersTable.id}), 0) - COALESCE((SELECT SUM(cost) FROM refinery_spending_history WHERE user_id = ${usersTable.id}), 0)`)).limit(20);
   const filtered = await filterHackatimeBanned(results);
-  return filtered.slice(0, 10).map((user2, index) => ({
-    rank: index + 1,
+  return filtered.slice(0, 10).map((user2, index2) => ({
+    rank: index2 + 1,
     id: user2.id,
     username: user2.username,
     avatar: user2.avatar,
@@ -33963,8 +34073,8 @@ leaderboard.get("/views", async () => {
     users = await db.select({ id: usersTable.id, username: usersTable.username, avatar: usersTable.avatar }).from(usersTable).where(sql`${usersTable.id} IN ${userIds}`);
   }
   const userMap = new Map(users.map((u) => [u.id, u]));
-  return filtered.slice(0, 10).map((project, index) => ({
-    rank: index + 1,
+  return filtered.slice(0, 10).map((project, index2) => ({
+    rank: index2 + 1,
     id: project.id,
     name: project.name,
     image: project.image,
@@ -34206,13 +34316,422 @@ async function updateShopItemPricing() {
   }
 }
 
+// src/lib/airtable-sync.ts
+var import_airtable = __toESM(require_airtable(), 1);
+var SYNC_INTERVAL_MS2 = 5 * 60 * 1000;
+function getBase() {
+  if (!config.airtableToken || !config.airtableBaseId) {
+    console.log("[AIRTABLE-SYNC] Missing AIRTABLE_TOKEN or AIRTABLE_BASE_ID, skipping sync");
+    return null;
+  }
+  const airtable = new import_airtable.default({ apiKey: config.airtableToken });
+  return airtable.base(config.airtableBaseId);
+}
+function formatHoursMinutes(hours) {
+  const totalMinutes = Math.round(hours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h === 0)
+    return `${m}min`;
+  if (m === 0)
+    return `${h}h`;
+  return `${h}h ${m}min`;
+}
+function buildJustification(project, reviews, effectiveHours) {
+  const lines = [];
+  lines.push(`The user logged ${formatHoursMinutes(effectiveHours)} on hackatime.`);
+  lines.push("");
+  lines.push(`The scraps project can be found at ${config.frontendUrl}/projects/${project.id}`);
+  if (reviews.length > 0) {
+    lines.push("");
+    lines.push("Review history:");
+    for (const review of reviews) {
+      const reviewerName = review.reviewerName || "Unknown";
+      const date3 = review.createdAt.toISOString().split("T")[0];
+      lines.push(`- ${reviewerName} ${review.action} on ${date3}`);
+      if (review.internalJustification) {
+        lines.push(`  Justification: ${review.internalJustification}`);
+      }
+    }
+  }
+  lines.push("");
+  lines.push(`Full review history can be found at ${config.frontendUrl}/admin/reviews/${project.id}`);
+  return lines.join(`
+`);
+}
+async function syncProjectsToAirtable() {
+  const base = getBase();
+  if (!base)
+    return;
+  console.log("[AIRTABLE-SYNC] Syncing shipped projects...");
+  try {
+    const projects2 = await db.select({
+      id: projectsTable.id,
+      name: projectsTable.name,
+      description: projectsTable.description,
+      image: projectsTable.image,
+      githubUrl: projectsTable.githubUrl,
+      playableUrl: projectsTable.playableUrl,
+      hours: projectsTable.hours,
+      hoursOverride: projectsTable.hoursOverride,
+      hackatimeProject: projectsTable.hackatimeProject,
+      scrapsPaidAt: projectsTable.scrapsPaidAt,
+      tier: projectsTable.tier,
+      status: projectsTable.status,
+      updateDescription: projectsTable.updateDescription,
+      aiDescription: projectsTable.aiDescription,
+      feedbackSource: projectsTable.feedbackSource,
+      feedbackGood: projectsTable.feedbackGood,
+      feedbackImprove: projectsTable.feedbackImprove,
+      createdAt: projectsTable.createdAt,
+      userId: projectsTable.userId,
+      username: usersTable.username,
+      email: usersTable.email,
+      slackId: usersTable.slackId,
+      accessToken: usersTable.accessToken
+    }).from(projectsTable).innerJoin(usersTable, eq(projectsTable.userId, usersTable.id)).where(and(eq(projectsTable.status, "shipped"), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))));
+    const projectIds = projects2.map((p) => p.id);
+    let reviewsByProjectId = new Map;
+    if (projectIds.length > 0) {
+      const allReviews = await db.select({
+        projectId: reviewsTable.projectId,
+        action: reviewsTable.action,
+        internalJustification: reviewsTable.internalJustification,
+        createdAt: reviewsTable.createdAt,
+        reviewerUsername: usersTable.username
+      }).from(reviewsTable).leftJoin(usersTable, eq(reviewsTable.reviewerId, usersTable.id)).where(inArray(reviewsTable.projectId, projectIds));
+      for (const review of allReviews) {
+        const existing = reviewsByProjectId.get(review.projectId) || [];
+        existing.push({
+          action: review.action,
+          reviewerName: review.reviewerUsername,
+          internalJustification: review.internalJustification,
+          createdAt: review.createdAt
+        });
+        reviewsByProjectId.set(review.projectId, existing);
+      }
+    }
+    let activityByProjectId = new Map;
+    if (projectIds.length > 0) {
+      const allActivity = await db.select({
+        projectId: projectActivityTable.projectId,
+        action: projectActivityTable.action,
+        createdAt: projectActivityTable.createdAt
+      }).from(projectActivityTable).where(inArray(projectActivityTable.projectId, projectIds));
+      for (const activity of allActivity) {
+        if (!activity.projectId)
+          continue;
+        const existing = activityByProjectId.get(activity.projectId) || [];
+        existing.push({ action: activity.action, createdAt: activity.createdAt });
+        activityByProjectId.set(activity.projectId, existing);
+      }
+    }
+    const table = base(config.airtableProjectsTableId);
+    const existingRecords = new Map;
+    const approvedRecords = new Set;
+    const pendingUpdateRecords = new Set;
+    const airtableHoursMap = new Map;
+    const airtableRecordsToDelete = [];
+    const urlRecordCounts = new Map;
+    const recordsToAutoApprove = [];
+    await new Promise((resolve, reject) => {
+      table.select({
+        fields: ["Code URL", "Review Status", "Optional - Override Hours Spent", "Automation - YSWS Record ID"]
+      }).eachPage((records, fetchNextPage) => {
+        for (const record of records) {
+          const githubUrl = record.get("Code URL");
+          if (githubUrl) {
+            const url = String(githubUrl);
+            existingRecords.set(url, record.id);
+            const reviewStatus = record.get("Review Status");
+            const yswsRecordId = record.get("Automation - YSWS Record ID");
+            if (reviewStatus === "Approved") {
+              approvedRecords.add(url);
+              const hours = record.get("Optional - Override Hours Spent");
+              if (hours !== undefined && hours !== null) {
+                airtableHoursMap.set(url, Number(hours));
+              }
+            } else {
+              urlRecordCounts.set(url, (urlRecordCounts.get(url) || 0) + 1);
+              if (yswsRecordId) {
+                recordsToAutoApprove.push(record.id);
+              }
+            }
+          }
+        }
+        fetchNextPage();
+      }, (err) => {
+        if (err)
+          reject(err);
+        else
+          resolve();
+      });
+    });
+    for (const url of urlRecordCounts.keys()) {
+      if (approvedRecords.has(url)) {
+        pendingUpdateRecords.add(url);
+      }
+    }
+    for (let i = 0;i < recordsToAutoApprove.length; i += 10) {
+      const batch = recordsToAutoApprove.slice(i, i + 10);
+      await table.update(batch.map((id) => ({ id, fields: { "Review Status": "Approved" } })));
+    }
+    if (recordsToAutoApprove.length > 0) {
+      console.log(`[AIRTABLE-SYNC] Auto-approved ${recordsToAutoApprove.length} records with YSWS Record ID`);
+    }
+    if (projectIds.length > 0) {
+      const rejectedReviews = await db.select({
+        projectId: reviewsTable.projectId,
+        action: reviewsTable.action
+      }).from(reviewsTable).where(and(inArray(reviewsTable.projectId, projectIds), eq(reviewsTable.action, "scraps_unawarded")));
+      const approvedReviews = await db.select({
+        projectId: reviewsTable.projectId,
+        action: reviewsTable.action
+      }).from(reviewsTable).where(and(inArray(reviewsTable.projectId, projectIds), eq(reviewsTable.action, "approved")));
+      const approvedProjectIds = new Set(approvedReviews.map((r) => r.projectId));
+      for (const review of rejectedReviews) {
+        if (approvedProjectIds.has(review.projectId))
+          continue;
+        const project = projects2.find((p) => p.id === review.projectId);
+        if (project && project.githubUrl) {
+          const airtableId = existingRecords.get(project.githubUrl);
+          if (airtableId) {
+            airtableRecordsToDelete.push(airtableId);
+          }
+        }
+      }
+    }
+    const toCreate = [];
+    const toUpdate = [];
+    const duplicateProjectIds = [];
+    const updateCreates = [];
+    const userInfoCache = new Map;
+    const shippedDates = await getProjectShippedDates(projects2.map((p) => p.id));
+    const seenCodeUrls = new Map;
+    for (const project of projects2) {
+      if (!project.githubUrl)
+        continue;
+      if (!project.image)
+        continue;
+      const isApproved = approvedRecords.has(project.githubUrl);
+      const currentEffectiveHours = Math.round((project.hoursOverride ?? project.hours ?? 0) * 10) / 10;
+      const airtableHours = airtableHoursMap.get(project.githubUrl);
+      const roundedAirtableHours = airtableHours !== undefined ? Math.round(airtableHours * 10) / 10 : undefined;
+      const isUnpaidUpdate = isApproved && !project.scrapsPaidAt;
+      const isHoursUpdate = isApproved && roundedAirtableHours !== undefined && currentEffectiveHours > roundedAirtableHours;
+      const isUpdate = isUnpaidUpdate || isHoursUpdate;
+      if (isApproved && !isUpdate)
+        continue;
+      const previousOwner = seenCodeUrls.get(project.githubUrl);
+      if (previousOwner !== undefined && previousOwner !== project.userId) {
+        console.log(`[AIRTABLE-SYNC] Duplicate Code URL detected for project ${project.id}: ${project.githubUrl}, reverting to waiting_for_review`);
+        duplicateProjectIds.push(project.id);
+        continue;
+      }
+      seenCodeUrls.set(project.githubUrl, project.userId);
+      if (!userInfoCache.has(project.userId) && project.accessToken) {
+        const info = await fetchUserIdentity(project.accessToken);
+        userInfoCache.set(project.userId, info);
+      }
+      const userIdentity = userInfoCache.get(project.userId)?.identity;
+      const projectShippedDate = shippedDates.get(project.id);
+      let effectiveHours = project.hoursOverride ?? project.hours ?? 0;
+      if (project.hackatimeProject && projectShippedDate) {
+        const hackatimeNames = project.hackatimeProject.split(",").map((n) => n.trim()).filter((n) => n.length > 0);
+        if (hackatimeNames.length > 0) {
+          for (const op of projects2) {
+            if (op.id === project.id || op.userId !== project.userId)
+              continue;
+            if (!op.hackatimeProject)
+              continue;
+            const opShippedDate = shippedDates.get(op.id);
+            if (!opShippedDate)
+              continue;
+            if (opShippedDate >= projectShippedDate)
+              continue;
+            const opNames = op.hackatimeProject.split(",").map((n) => n.trim()).filter((n) => n.length > 0);
+            if (opNames.some((name) => hackatimeNames.includes(name))) {
+              effectiveHours -= op.hoursOverride ?? op.hours ?? 0;
+            }
+          }
+          effectiveHours = Math.max(0, effectiveHours);
+        }
+      }
+      const firstName = userIdentity?.first_name || (project.username || "").split(" ")[0] || "";
+      const lastName = userIdentity?.last_name || (project.username || "").split(" ").slice(1).join(" ") || "";
+      const activities = activityByProjectId.get(project.id) || [];
+      const sortedActivities = [...activities].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      let activityTimeline = "";
+      if (sortedActivities.length > 0) {
+        const timelineLines = sortedActivities.map((a) => {
+          const date3 = a.createdAt.toISOString().split("T")[0];
+          const time2 = a.createdAt.toISOString().split("T")[1].split(".")[0];
+          return `- ${a.action} (${date3} ${time2} UTC)`;
+        });
+        activityTimeline = `
+Project timeline:
+${timelineLines.join(`
+`)}`;
+      }
+      const descriptionParts = [project.description || ""];
+      if (project.updateDescription) {
+        descriptionParts.push(`
+This project is an update. ${project.updateDescription}`);
+      }
+      if (project.aiDescription) {
+        descriptionParts.push(`
+AI was used in this project. ${project.aiDescription}`);
+      }
+      if (activityTimeline) {
+        descriptionParts.push(activityTimeline);
+      }
+      if (isUpdate && isApproved && pendingUpdateRecords.has(project.githubUrl))
+        continue;
+      if (isUpdate && isApproved) {
+        const previousHours = roundedAirtableHours ?? 0;
+        const deltaHours = Math.max(0, effectiveHours - previousHours);
+        const updateDescParts = [];
+        updateDescParts.push(`[UPDATE] This is an update to a previously approved project.`);
+        if (project.updateDescription) {
+          updateDescParts.push(`
+What was updated: ${project.updateDescription}`);
+        }
+        updateDescParts.push(`
+Original project had ${formatHoursMinutes(previousHours)} approved.`);
+        updateDescParts.push(`New hours from this update: ${formatHoursMinutes(deltaHours)}`);
+        if (project.description) {
+          updateDescParts.push(`
+Original description: ${project.description}`);
+        }
+        if (project.aiDescription) {
+          updateDescParts.push(`
+AI was used in this project. ${project.aiDescription}`);
+        }
+        if (activityTimeline) {
+          updateDescParts.push(activityTimeline);
+        }
+        const updateFields = {
+          "Code URL": project.githubUrl,
+          Description: updateDescParts.join(`
+`),
+          Email: project.email || "",
+          "First Name": firstName,
+          "Last Name": lastName,
+          "GitHub Username": project.username || "",
+          "How can we improve?": project.feedbackImprove || "",
+          "How did you hear about this?": project.feedbackSource || "",
+          "What are we doing well?": project.feedbackGood || "",
+          "Slack ID": project.slackId || "",
+          "Optional - Override Hours Spent": deltaHours,
+          "Optional - Override Hours Spent Justification": buildJustification(project, reviewsByProjectId.get(project.id) || [], deltaHours),
+          "Playable URL": project.playableUrl || "",
+          Screenshot: [{ url: project.image }]
+        };
+        if (userIdentity?.addresses) {
+          if (userIdentity.addresses[0]) {
+            if (userIdentity.addresses[0].line_1)
+              updateFields["Address (Line 1)"] = userIdentity.addresses[0].line_1;
+            if (userIdentity.addresses[0].line_2)
+              updateFields["Address (Line 2)"] = userIdentity.addresses[0].line_2;
+          }
+          if (userIdentity.addresses[0].city)
+            updateFields["City"] = userIdentity.addresses[0].city;
+          if (userIdentity.addresses[0].state)
+            updateFields["State / Province"] = userIdentity.addresses[0].state;
+          if (userIdentity.addresses[0].postal_code)
+            updateFields["ZIP / Postal Code"] = userIdentity.addresses[0].postal_code;
+          if (userIdentity.addresses[0].country)
+            updateFields["Country"] = userIdentity.addresses[0].country;
+        }
+        if (userIdentity?.birthday) {
+          updateFields["Birthday"] = userIdentity.birthday;
+        }
+        updateCreates.push(updateFields);
+        continue;
+      }
+      const fields = {
+        "Code URL": project.githubUrl,
+        Description: descriptionParts.join(`
+`),
+        Email: project.email || "",
+        "First Name": firstName,
+        "Last Name": lastName,
+        "GitHub Username": project.username || "",
+        "How can we improve?": project.feedbackImprove || "",
+        "How did you hear about this?": project.feedbackSource || "",
+        "What are we doing well?": project.feedbackGood || "",
+        "Slack ID": project.slackId || "",
+        "Optional - Override Hours Spent": effectiveHours,
+        "Optional - Override Hours Spent Justification": buildJustification(project, reviewsByProjectId.get(project.id) || [], effectiveHours),
+        "Playable URL": project.playableUrl || "",
+        Screenshot: [{ url: project.image }]
+      };
+      if (userIdentity?.addresses) {
+        if (userIdentity.addresses[0]) {
+          if (userIdentity.addresses[0].line_1)
+            fields["Address (Line 1)"] = userIdentity.addresses[0].line_1;
+          if (userIdentity.addresses[0].line_2)
+            fields["Address (Line 2)"] = userIdentity.addresses[0].line_2;
+        }
+        if (userIdentity.addresses[0].city)
+          fields["City"] = userIdentity.addresses[0].city;
+        if (userIdentity.addresses[0].state)
+          fields["State / Province"] = userIdentity.addresses[0].state;
+        if (userIdentity.addresses[0].postal_code)
+          fields["ZIP / Postal Code"] = userIdentity.addresses[0].postal_code;
+        if (userIdentity.addresses[0].country)
+          fields["Country"] = userIdentity.addresses[0].country;
+      }
+      if (userIdentity?.birthday) {
+        fields["Birthday"] = userIdentity.birthday;
+      }
+      const existingId = existingRecords.get(project.githubUrl);
+      if (existingId) {
+        toUpdate.push({ id: existingId, fields });
+      } else {
+        toCreate.push(fields);
+      }
+    }
+    const allCreates = [...toCreate, ...updateCreates];
+    for (let i = 0;i < allCreates.length; i += 10) {
+      const batch = allCreates.slice(i, i + 10);
+      await table.create(batch.map((fields) => ({ fields })));
+    }
+    const deduplicatedUpdates = new Map;
+    for (const update of toUpdate) {
+      deduplicatedUpdates.set(update.id, update);
+    }
+    const uniqueUpdates = Array.from(deduplicatedUpdates.values());
+    for (let i = 0;i < uniqueUpdates.length; i += 10) {
+      const batch = uniqueUpdates.slice(i, i + 10);
+      await table.update(batch);
+    }
+    for (let i = 0;i < airtableRecordsToDelete.length; i += 10) {
+      const batch = airtableRecordsToDelete.slice(i, i + 10);
+      await table.destroy(batch);
+    }
+    for (const projectId of duplicateProjectIds) {
+      await db.update(projectsTable).set({ status: "waiting_for_review", updatedAt: new Date }).where(eq(projectsTable.id, projectId));
+    }
+    if (duplicateProjectIds.length > 0) {
+      console.log(`[AIRTABLE-SYNC] Reverted ${duplicateProjectIds.length} duplicate projects back to waiting_for_review`);
+    }
+    if (airtableRecordsToDelete.length > 0) {
+      console.log(`[AIRTABLE-SYNC] Deleted ${airtableRecordsToDelete.length} rejected payout projects from Airtable`);
+    }
+    console.log(`[AIRTABLE-SYNC] Projects: ${toCreate.length} created, ${updateCreates.length} update rows created, ${uniqueUpdates.length} updated`);
+  } catch (error) {
+    console.error("[AIRTABLE-SYNC] Error syncing projects:", error);
+  }
+}
+
 // src/routes/admin.ts
 var admin = new Elysia({ prefix: "/admin" });
 async function requireReviewer(headers) {
   const user2 = await getUserFromSession(headers);
   if (!user2)
     return null;
-  if (user2.role !== "reviewer" && user2.role !== "admin")
+  if (user2.role !== "reviewer" && user2.role !== "admin" && user2.role !== "creator")
     return null;
   return user2;
 }
@@ -34220,7 +34739,15 @@ async function requireAdmin(headers) {
   const user2 = await getUserFromSession(headers);
   if (!user2)
     return null;
-  if (user2.role !== "admin")
+  if (user2.role !== "admin" && user2.role !== "creator")
+    return null;
+  return user2;
+}
+async function requireCreator(headers) {
+  const user2 = await getUserFromSession(headers);
+  if (!user2)
+    return null;
+  if (user2.role !== "creator")
     return null;
   return user2;
 }
@@ -34313,16 +34840,53 @@ admin.get("/stats", async ({ headers, status: status2 }) => {
   const costPerHour = roundedTotalHours > 0 ? Math.round(totalScrapsSpent / roundedTotalHours * 100) / 100 : 0;
   const totalTierCost = tierCostBreakdown.reduce((sum, t2) => sum + t2.totalCost, 0);
   const avgCostPerHour = roundedTotalHours > 0 ? Math.round(totalTierCost / roundedTotalHours * 100) / 100 : 0;
-  const [luckWinOrders, consolationCount] = await Promise.all([
+  const [luckWinOrders, consolationOrders] = await Promise.all([
     db.select({
-      itemPrice: shopItemsTable.price
+      itemPrice: shopItemsTable.price,
+      totalPrice: shopOrdersTable.totalPrice
     }).from(shopOrdersTable).innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id)).where(eq(shopOrdersTable.orderType, "luck_win")),
-    db.select({ count: sql`count(*)` }).from(shopOrdersTable).where(eq(shopOrdersTable.orderType, "consolation"))
+    db.select({
+      count: sql`count(*)`,
+      totalScraps: sql`COALESCE(SUM(${shopOrdersTable.totalPrice}), 0)`
+    }).from(shopOrdersTable).where(eq(shopOrdersTable.orderType, "consolation"))
   ]);
   const luckWinDollarCost = luckWinOrders.reduce((sum, o) => sum + o.itemPrice / SCRAPS_PER_DOLLAR, 0);
-  const consolationDollarCost = Number(consolationCount[0]?.count || 0) * 2;
+  const consolationCount = consolationOrders[0];
+  const consolationDollarCost = Number(consolationCount?.count || 0) * 2;
   const totalRealCost = luckWinDollarCost + consolationDollarCost;
-  const realCostPerHour = roundedTotalHours > 0 ? Math.round(totalRealCost / roundedTotalHours * 100) / 100 : 0;
+  const luckWinTotalScraps = luckWinOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+  const consolationTotalScraps = Number(consolationCount?.totalScraps || 0);
+  const scrapsPerHour = SCRAPS_PER_DOLLAR * (DOLLARS_PER_HOUR ?? 4);
+  const fulfillmentHours = (luckWinTotalScraps + consolationTotalScraps) / scrapsPerHour;
+  const realCostPerHour = fulfillmentHours > 0 ? Math.round(totalRealCost / fulfillmentHours * 100) / 100 : 0;
+  const [fulfilledLuckWinOrders, fulfilledConsolationCount, fulfilledUpgrades] = await Promise.all([
+    db.select({
+      itemPrice: shopItemsTable.price
+    }).from(shopOrdersTable).innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id)).where(and(eq(shopOrdersTable.orderType, "luck_win"), eq(shopOrdersTable.isFulfilled, true))),
+    db.select({ count: sql`count(*)` }).from(shopOrdersTable).where(and(eq(shopOrdersTable.orderType, "consolation"), eq(shopOrdersTable.isFulfilled, true))),
+    db.execute(sql`SELECT COALESCE(SUM(rsh.cost), 0) AS total_cost
+            FROM refinery_spending_history rsh
+            WHERE (rsh.user_id, rsh.shop_item_id) IN (
+              SELECT DISTINCT so.user_id, so.shop_item_id
+              FROM shop_orders so
+              WHERE so.order_type = 'luck_win' AND so.is_fulfilled = true
+            )`)
+  ]);
+  const fulfilledLuckWinDollarCost = fulfilledLuckWinOrders.reduce((sum, o) => sum + o.itemPrice / SCRAPS_PER_DOLLAR, 0);
+  const fulfilledConsolationDollarCost = Number(fulfilledConsolationCount[0]?.count || 0) * 2;
+  const fulfilledUpgradeDollarCost = Number(fulfilledUpgrades.rows[0]?.total_cost || 0) / SCRAPS_PER_DOLLAR;
+  const totalActualCost = fulfilledLuckWinDollarCost + fulfilledConsolationDollarCost + fulfilledUpgradeDollarCost;
+  const actualCostPerHour = roundedTotalHours > 0 ? Math.round(totalActualCost / roundedTotalHours * 100) / 100 : 0;
+  let hcbBalanceCents = 0;
+  if (config.hcbOrgSlug) {
+    try {
+      const hcbRes = await fetch(`https://hcb.hackclub.com/api/v3/organizations/${config.hcbOrgSlug}`, { headers: { Accept: "application/json" } });
+      if (hcbRes.ok) {
+        const hcbData = await hcbRes.json();
+        hcbBalanceCents = hcbData.balances?.balance_cents ?? 0;
+      }
+    } catch {}
+  }
   return {
     totalUsers,
     totalProjects,
@@ -34347,9 +34911,20 @@ admin.get("/stats", async ({ headers, status: status2 }) => {
       luckWinItemsCost: Math.round(luckWinDollarCost * 100) / 100,
       luckWinCount: luckWinOrders.length,
       consolationShippingCost: Math.round(consolationDollarCost * 100) / 100,
-      consolationCount: Number(consolationCount[0]?.count || 0),
+      consolationCount: Number(consolationCount?.count || 0),
       totalRealCost: Math.round(totalRealCost * 100) / 100,
       realCostPerHour
+    },
+    shopActualCost: {
+      hcbBalanceCents,
+      hcbBalance: Math.round(hcbBalanceCents / 100 * 100) / 100,
+      fulfilledLuckWinCost: Math.round(fulfilledLuckWinDollarCost * 100) / 100,
+      fulfilledLuckWinCount: fulfilledLuckWinOrders.length,
+      fulfilledConsolationCost: Math.round(fulfilledConsolationDollarCost * 100) / 100,
+      fulfilledConsolationCount: Number(fulfilledConsolationCount[0]?.count || 0),
+      fulfilledUpgradeCost: Math.round(fulfilledUpgradeDollarCost * 100) / 100,
+      totalActualCost: Math.round(totalActualCost * 100) / 100,
+      actualCostPerHour
     }
   };
 });
@@ -34396,7 +34971,7 @@ admin.get("/users", async ({ headers, query, status: status2 }) => {
         username: u.username,
         avatar: u.avatar,
         slackId: u.slackId,
-        email: user2.role === "admin" ? u.email : undefined,
+        email: user2.role === "admin" || user2.role === "creator" ? u.email : undefined,
         scraps: u.scraps,
         role: u.role,
         internalNotes: u.internalNotes,
@@ -34462,7 +35037,7 @@ admin.get("/users/:id", async ({ params, headers, status: status2 }) => {
         username: targetUser[0].username,
         avatar: targetUser[0].avatar,
         slackId: targetUser[0].slackId,
-        email: user2.role === "admin" ? targetUser[0].email : undefined,
+        email: user2.role === "admin" || user2.role === "creator" ? targetUser[0].email : undefined,
         scraps: scrapsBalance.balance,
         role: targetUser[0].role,
         internalNotes: targetUser[0].internalNotes,
@@ -34487,7 +35062,7 @@ admin.put("/users/:id/role", async ({ params, body, headers, status: status2 }) 
     return status2(401, { error: "Unauthorized" });
   }
   const { role } = body;
-  if (!["member", "reviewer", "admin", "banned"].includes(role)) {
+  if (!["member", "reviewer", "admin", "creator", "banned"].includes(role)) {
     return status2(400, { error: "Invalid role" });
   }
   if (user2.id === parseInt(params.id)) {
@@ -34707,7 +35282,7 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
         console.error("[ADMIN] Failed to look up hackatime user:", e);
       }
     }
-    const isAdmin = user2.role === "admin";
+    const isAdmin = user2.role === "admin" || user2.role === "creator";
     const maskedProject = !isAdmin && project[0].status === "pending_admin_approval" ? { ...project[0], status: "waiting_for_review" } : project[0];
     const visibleReviews = !isAdmin && project[0].status === "pending_admin_approval" ? reviews.filter((r) => r.action !== "approved") : reviews;
     return {
@@ -34789,10 +35364,10 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
       internalJustification
     });
     let newStatus = "in_progress";
-    const isAdmin = user2.role === "admin";
+    const canShipDirectly = user2.role === "admin" || user2.role === "creator";
     switch (action) {
       case "approved":
-        newStatus = isAdmin ? "shipped" : "pending_admin_approval";
+        newStatus = canShipDirectly ? "shipped" : "pending_admin_approval";
         break;
       case "denied":
         newStatus = "in_progress";
@@ -34821,7 +35396,7 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
         hoursOverride: hoursOverride ?? project[0].hoursOverride
       });
       const newScrapsAwarded = calculateScrapsFromHours(effectiveHours, tier);
-      if (isAdmin) {
+      if (canShipDirectly) {
         const previouslyShipped = await hasProjectBeenShipped(projectId);
         if (previouslyShipped && project[0].scrapsAwarded > 0) {
           scrapsAwarded = Math.max(0, newScrapsAwarded - project[0].scrapsAwarded);
@@ -34844,7 +35419,7 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
           action: previouslyShipped ? `earned ${scrapsAwarded} additional scraps (update)` : `earned ${scrapsAwarded} scraps`
         });
       }
-      if (isAdmin) {
+      if (canShipDirectly) {
         await db.insert(projectActivityTable).values({
           userId: project[0].userId,
           projectId,
@@ -34857,14 +35432,17 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
         await db.update(usersTable).set({ internalNotes: userInternalNotes, updatedAt: new Date }).where(eq(usersTable.id, project[0].userId));
       }
     }
-    const shouldNotify = isAdmin || action !== "approved";
+    if (canShipDirectly && action === "approved") {
+      syncProjectsToAirtable().catch((err) => console.error("[ADMIN] Failed to trigger Airtable sync after ship:", err));
+    }
+    const shouldNotify = canShipDirectly || action !== "approved";
     if (config.slackBotToken && shouldNotify) {
       try {
         const projectAuthor = await db.select({ slackId: usersTable.slackId }).from(usersTable).where(eq(usersTable.id, project[0].userId)).limit(1);
         if (projectAuthor[0]?.slackId) {
           let adminSlackIds = [];
           if (action === "permanently_rejected") {
-            const admins = await db.select({ slackId: usersTable.slackId }).from(usersTable).where(eq(usersTable.role, "admin"));
+            const admins = await db.select({ slackId: usersTable.slackId }).from(usersTable).where(or(eq(usersTable.role, "admin"), eq(usersTable.role, "creator")));
             adminSlackIds = admins.map((a) => a.slackId).filter((id) => !!id);
           }
           const reviewerSlackId = user2.slackId ?? null;
@@ -34893,7 +35471,7 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
 });
 admin.get("/second-pass", async ({ headers, query }) => {
   try {
-    const user2 = await requireAdmin(headers);
+    const user2 = await requireCreator(headers);
     if (!user2)
       return { error: "Unauthorized" };
     const page = parseInt(query.page) || 1;
@@ -34965,7 +35543,7 @@ admin.get("/second-pass", async ({ headers, query }) => {
   }
 });
 admin.get("/second-pass/:id", async ({ params, headers }) => {
-  const user2 = await requireAdmin(headers);
+  const user2 = await requireCreator(headers);
   if (!user2)
     return { error: "Unauthorized" };
   try {
@@ -35038,7 +35616,7 @@ admin.get("/second-pass/:id", async ({ params, headers }) => {
 });
 admin.post("/second-pass/:id", async ({ params, body, headers }) => {
   try {
-    const user2 = await requireAdmin(headers);
+    const user2 = await requireCreator(headers);
     if (!user2)
       return { error: "Unauthorized" };
     const { action, feedbackForAuthor, hoursOverride } = body;
@@ -35109,6 +35687,7 @@ admin.post("/second-pass/:id", async ({ params, body, headers }) => {
           console.error("Failed to send Slack notification:", slackErr);
         }
       }
+      syncProjectsToAirtable().catch((err) => console.error("[ADMIN] Failed to trigger Airtable sync after second-pass ship:", err));
       return { success: true, scrapsAwarded };
     } else {
       await db.delete(reviewsTable).where(and(eq(reviewsTable.projectId, projectId), eq(reviewsTable.action, "approved")));
@@ -35595,12 +36174,28 @@ admin.get("/orders", async ({ headers, query, status: status2 }) => {
       itemImage: shopItemsTable.image,
       userId: usersTable.id,
       username: usersTable.username,
-      slackId: usersTable.slackId
+      slackId: usersTable.slackId,
+      userEmail: usersTable.email
     }).from(shopOrdersTable).innerJoin(shopItemsTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id)).innerJoin(usersTable, eq(shopOrdersTable.userId, usersTable.id)).orderBy(desc(shopOrdersTable.createdAt));
     if (orderStatus) {
       ordersQuery = ordersQuery.where(eq(shopOrdersTable.status, orderStatus));
     }
-    return await ordersQuery;
+    const rows = await ordersQuery;
+    const uniqueEmails = [...new Set(rows.map((r) => r.userEmail).filter(Boolean))];
+    const banMap = new Map;
+    await Promise.all(uniqueEmails.map(async (email) => {
+      try {
+        const htUser = await getHackatimeUser(email);
+        banMap.set(email, htUser?.banned ?? false);
+      } catch {
+        banMap.set(email, false);
+      }
+    }));
+    return rows.map(({ userEmail, ...row }) => ({
+      ...row,
+      email: userEmail,
+      hackatimeBanned: banMap.get(userEmail ?? "") ?? false
+    }));
   } catch (err) {
     console.error(err);
     return status2(500, { error: "Failed to fetch orders" });
@@ -35666,6 +36261,7 @@ admin.patch("/orders/:id", async ({ params, body, headers, status: status2 }) =>
       updateData.isFulfilled = isFulfilled;
     const updated = await db.update(shopOrdersTable).set(updateData).where(eq(shopOrdersTable.id, orderId)).returning({
       id: shopOrdersTable.id,
+      userId: shopOrdersTable.userId,
       quantity: shopOrdersTable.quantity,
       pricePerItem: shopOrdersTable.pricePerItem,
       totalPrice: shopOrdersTable.totalPrice,
@@ -35680,7 +36276,20 @@ admin.patch("/orders/:id", async ({ params, body, headers, status: status2 }) =>
     if (!updated[0]) {
       return status2(404, { error: "Not found" });
     }
-    return updated[0];
+    if (isFulfilled === true && config.slackBotToken) {
+      const [orderUser] = await db.select({ slackId: usersTable.slackId }).from(usersTable).where(eq(usersTable.id, updated[0].userId)).limit(1);
+      const [orderItem] = await db.select({ name: shopItemsTable.name }).from(shopItemsTable).innerJoin(shopOrdersTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id)).where(eq(shopOrdersTable.id, parseInt(params.id))).limit(1);
+      if (orderUser?.slackId && orderItem?.name) {
+        notifyOrderFulfilled({
+          userSlackId: orderUser.slackId,
+          itemName: orderItem.name,
+          trackingNumber: updated[0].trackingNumber,
+          token: config.slackBotToken
+        }).catch((err) => console.error("Failed to send fulfillment DM:", err));
+      }
+    }
+    const { userId: _userId, ...returnedOrder } = updated[0];
+    return returnedOrder;
   } catch (err) {
     console.error(err);
     return status2(500, { error: "Failed to update order" });
@@ -36102,7 +36711,9 @@ admin.post("/orders/:id/restore", async ({ params, headers, status: status2 }) =
 });
 admin.post("/projects/:id/unship", async ({ params, headers, body, status: status2 }) => {
   try {
-    const user2 = await requireAdmin(headers);
+    const admin2 = await requireAdmin(headers);
+    const creator = !admin2 ? await requireCreator(headers) : null;
+    const user2 = admin2 || creator;
     if (!user2)
       return status2(401, { error: "Unauthorized" });
     const projectId = parseInt(params.id);
@@ -36125,6 +36736,7 @@ admin.post("/projects/:id/unship", async ({ params, headers, body, status: statu
     await db.update(projectsTable).set({
       status: "in_progress",
       scrapsAwarded: 0,
+      scrapsPaidAmount: 0,
       scrapsPaidAt: null,
       updatedAt: new Date
     }).where(eq(projectsTable.id, projectId));
@@ -36329,6 +36941,48 @@ admin.post("/recalculate-shop-pricing", async ({ headers, status: status2 }) => 
     return status2(500, { error: "Failed to recalculate shop pricing" });
   }
 });
+admin.delete("/users/:id", async ({ params, headers, status: status2 }) => {
+  const user2 = await requireCreator(headers);
+  if (!user2) {
+    return status2(401, { error: "Unauthorized" });
+  }
+  const targetId = parseInt(params.id);
+  if (isNaN(targetId)) {
+    return status2(400, { error: "Invalid user ID" });
+  }
+  if (user2.id === targetId) {
+    return status2(400, { error: "Cannot delete yourself" });
+  }
+  try {
+    const userProjects = await db.select({ id: projectsTable.id }).from(projectsTable).where(eq(projectsTable.userId, targetId));
+    const projectIds = userProjects.map((p) => p.id);
+    await db.delete(sessionsTable).where(eq(sessionsTable.userId, targetId));
+    await db.delete(userActivityTable).where(eq(userActivityTable.userId, targetId));
+    await db.delete(shopHeartsTable).where(eq(shopHeartsTable.userId, targetId));
+    await db.delete(shopPenaltiesTable).where(eq(shopPenaltiesTable.userId, targetId));
+    await db.delete(shopRollsTable).where(eq(shopRollsTable.userId, targetId));
+    await db.delete(refinerySpendingHistoryTable).where(eq(refinerySpendingHistoryTable.userId, targetId));
+    await db.delete(refineryOrdersTable).where(eq(refineryOrdersTable.userId, targetId));
+    await db.delete(shopOrdersTable).where(eq(shopOrdersTable.userId, targetId));
+    await db.update(userBonusesTable).set({ givenBy: null }).where(eq(userBonusesTable.givenBy, targetId));
+    await db.delete(userBonusesTable).where(eq(userBonusesTable.userId, targetId));
+    await db.delete(reviewsTable).where(eq(reviewsTable.reviewerId, targetId));
+    if (projectIds.length > 0) {
+      await db.delete(projectActivityTable).where(inArray(projectActivityTable.projectId, projectIds));
+      await db.delete(reviewsTable).where(inArray(reviewsTable.projectId, projectIds));
+    }
+    await db.delete(projectActivityTable).where(eq(projectActivityTable.userId, targetId));
+    await db.delete(projectsTable).where(eq(projectsTable.userId, targetId));
+    const deleted = await db.delete(usersTable).where(eq(usersTable.id, targetId)).returning();
+    if (!deleted[0]) {
+      return status2(404, { error: "User not found" });
+    }
+    return { success: true };
+  } catch (err) {
+    console.error("[ADMIN] Delete user error:", err);
+    return status2(500, { error: "Failed to delete user" });
+  }
+});
 admin.get("/config", async () => {
   return {
     scrapsPerDollar: SCRAPS_PER_DOLLAR,
@@ -36375,10 +37029,6 @@ slack.post("/events", async ({ body, status: status2 }) => {
   return { ok: true };
 });
 var slack_default = slack;
-
-// src/lib/airtable-sync.ts
-var import_airtable = __toESM(require_airtable(), 1);
-var SYNC_INTERVAL_MS2 = 5 * 60 * 1000;
 
 // src/index.ts
 var api = new Elysia().use(auth_default).use(projects_default).use(news_default).use(user_default).use(shop_default).use(leaderboard_default).use(hackatime_default).use(upload_default).use(admin_default).use(slack_default).get("/", () => "if you dm @notaroomba abt finding this you may get cool stickers");

@@ -616,7 +616,7 @@
 						<span>{$t.project.tryItOut}</span>
 					</span>
 				{/if}
-				{#if user?.role === 'admin' && project.status !== 'shipped'}
+				{#if (user?.role === 'admin' || user?.role === 'creator') && project.status !== 'shipped'}
 					<button
 						onclick={syncHours}
 						disabled={syncing}

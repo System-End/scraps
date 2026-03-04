@@ -297,7 +297,7 @@
 			goto('/dashboard');
 			return;
 		}
-		isAdmin = user.role === 'admin';
+		isAdmin = user.role === 'admin' || user.role === 'creator';
 
 		try {
 			const response = await fetch(`${API_URL}/admin/stats`, {

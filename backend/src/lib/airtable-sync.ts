@@ -68,7 +68,7 @@ function buildJustification(project: {
 	return lines.join('\n')
 }
 
-async function syncProjectsToAirtable(): Promise<void> {
+export async function syncProjectsToAirtable(): Promise<void> {
 	const base = getBase()
 	if (!base) return
 
@@ -137,29 +137,61 @@ async function syncProjectsToAirtable(): Promise<void> {
 			}
 		}
 
+		// Fetch project activity events for timeline
+		let activityByProjectId = new Map<number, { action: string; createdAt: Date }[]>()
+		if (projectIds.length > 0) {
+			const allActivity = await db
+				.select({
+					projectId: projectActivityTable.projectId,
+					action: projectActivityTable.action,
+					createdAt: projectActivityTable.createdAt
+				})
+				.from(projectActivityTable)
+				.where(inArray(projectActivityTable.projectId, projectIds))
+
+			for (const activity of allActivity) {
+				if (!activity.projectId) continue
+				const existing = activityByProjectId.get(activity.projectId) || []
+				existing.push({ action: activity.action, createdAt: activity.createdAt })
+				activityByProjectId.set(activity.projectId, existing)
+			}
+		}
+
 		const table = base(config.airtableProjectsTableId)
 
 		// Fetch existing records from Airtable to find which ones to update vs create
 		const existingRecords: Map<string, string> = new Map() // github_url -> airtable record id
 		const approvedRecords: Set<string> = new Set() // github_urls that are already approved in Airtable
-		const airtableHoursMap: Map<string, number> = new Map() // github_url -> hours synced in Airtable
+		const pendingUpdateRecords: Set<string> = new Set() // github_urls that have a pending (non-approved) record alongside an approved one
+		const airtableHoursMap: Map<string, number> = new Map() // github_url -> hours from approved records
 		const airtableRecordsToDelete: string[] = [] // airtable record ids to delete (for rejected projects)
+		const urlRecordCounts: Map<string, number> = new Map() // track how many records exist per Code URL
+		const recordsToAutoApprove: string[] = [] // airtable record ids that have YSWS Record ID but aren't Approved yet
 		await new Promise<void>((resolve, reject) => {
 			table.select({
-				fields: ['Code URL', 'Review Status', 'Optional - Override Hours Spent']
+				fields: ['Code URL', 'Review Status', 'Optional - Override Hours Spent', 'Automation - YSWS Record ID']
 			}).eachPage(
 				(records, fetchNextPage) => {
 					for (const record of records) {
 						const githubUrl = record.get('Code URL')
 						if (githubUrl) {
-							existingRecords.set(String(githubUrl), record.id)
+							const url = String(githubUrl)
+							existingRecords.set(url, record.id)
 							const reviewStatus = record.get('Review Status')
+							const yswsRecordId = record.get('Automation - YSWS Record ID')
 							if (reviewStatus === 'Approved') {
-								approvedRecords.add(String(githubUrl))
-							}
-							const hours = record.get('Optional - Override Hours Spent')
-							if (hours !== undefined && hours !== null) {
-								airtableHoursMap.set(String(githubUrl), Number(hours))
+								approvedRecords.add(url)
+								const hours = record.get('Optional - Override Hours Spent')
+								if (hours !== undefined && hours !== null) {
+									airtableHoursMap.set(url, Number(hours))
+								}
+							} else {
+								// Non-approved record — if there's also an approved one, this is a pending update
+								urlRecordCounts.set(url, (urlRecordCounts.get(url) || 0) + 1)
+								// Auto-approve records that have a YSWS Record ID but aren't marked Approved
+								if (yswsRecordId) {
+									recordsToAutoApprove.push(record.id)
+								}
 							}
 						}
 					}
@@ -171,6 +203,21 @@ async function syncProjectsToAirtable(): Promise<void> {
 				}
 			)
 		})
+		// Mark URLs that have both an approved record and a non-approved record
+		for (const url of urlRecordCounts.keys()) {
+			if (approvedRecords.has(url)) {
+				pendingUpdateRecords.add(url)
+			}
+		}
+
+		// Auto-approve Airtable records that have a YSWS Record ID but aren't Approved yet
+		for (let i = 0; i < recordsToAutoApprove.length; i += 10) {
+			const batch = recordsToAutoApprove.slice(i, i + 10)
+			await table.update(batch.map(id => ({ id, fields: { 'Review Status': 'Approved' } })))
+		}
+		if (recordsToAutoApprove.length > 0) {
+			console.log(`[AIRTABLE-SYNC] Auto-approved ${recordsToAutoApprove.length} records with YSWS Record ID`)
+		}
 
 		// Find projects that were rejected in payout review (scraps_unawarded)
 		// Only remove their Airtable entries if they have NOT been later approved
@@ -218,6 +265,7 @@ async function syncProjectsToAirtable(): Promise<void> {
 		const toCreate: Airtable.FieldSet[] = []
 		const toUpdate: { id: string; fields: Airtable.FieldSet }[] = []
 		const duplicateProjectIds: number[] = [] // projects with duplicate Code URLs to revert
+		const updateCreates: Airtable.FieldSet[] = [] // new rows for updated approved projects
 
 		// Cache user identity per userId to avoid redundant API calls
 		const userInfoCache: Map<number, Awaited<ReturnType<typeof fetchUserIdentity>>> = new Map()
@@ -233,17 +281,18 @@ async function syncProjectsToAirtable(): Promise<void> {
 			if (!project.githubUrl) continue // skip projects without a GitHub URL
 			if (!project.image) continue // screenshot must exist
 
-			// Skip projects already approved in Airtable — don't overwrite them
-			// Unless scrapsPaidAt is null, which means the project was recently updated
-			// and needs to be re-synced with new hours and reset review status
-			// Also re-sync if the effective hours have increased since last sync
-			const isUnpaidUpdate = approvedRecords.has(project.githubUrl) && !project.scrapsPaidAt
+			// Check if this project is already approved in Airtable
+			const isApproved = approvedRecords.has(project.githubUrl)
 			const currentEffectiveHours = Math.round((project.hoursOverride ?? project.hours ?? 0) * 10) / 10
 			const airtableHours = airtableHoursMap.get(project.githubUrl)
 			const roundedAirtableHours = airtableHours !== undefined ? Math.round(airtableHours * 10) / 10 : undefined
-			const isHoursUpdate = approvedRecords.has(project.githubUrl) && roundedAirtableHours !== undefined && currentEffectiveHours > roundedAirtableHours
+
+			// For approved projects, check if this is an update that needs a new row
+			const isUnpaidUpdate = isApproved && !project.scrapsPaidAt
+			const isHoursUpdate = isApproved && roundedAirtableHours !== undefined && currentEffectiveHours > roundedAirtableHours
 			const isUpdate = isUnpaidUpdate || isHoursUpdate
-			if (approvedRecords.has(project.githubUrl) && !isUpdate) continue
+
+			if (isApproved && !isUpdate) continue
 
 			// Check for cross-user duplicate Code URL among shipped projects
 			const previousOwner = seenCodeUrls.get(project.githubUrl)
@@ -287,12 +336,93 @@ async function syncProjectsToAirtable(): Promise<void> {
 			const firstName = userIdentity?.first_name || (project.username || '').split(' ')[0] || ''
 			const lastName = userIdentity?.last_name || (project.username || '').split(' ').slice(1).join(' ') || ''
 
+			// Build activity timeline for this project
+			const activities = activityByProjectId.get(project.id) || []
+			const sortedActivities = [...activities].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+			let activityTimeline = ''
+			if (sortedActivities.length > 0) {
+				const timelineLines = sortedActivities.map(a => {
+					const date = a.createdAt.toISOString().split('T')[0]
+					const time = a.createdAt.toISOString().split('T')[1].split('.')[0]
+					return `- ${a.action} (${date} ${time} UTC)`
+				})
+				activityTimeline = `\nProject timeline:\n${timelineLines.join('\n')}`
+			}
+
 			const descriptionParts = [project.description || '']
 			if (project.updateDescription) {
 				descriptionParts.push(`\nThis project is an update. ${project.updateDescription}`)
 			}
 			if (project.aiDescription) {
 				descriptionParts.push(`\nAI was used in this project. ${project.aiDescription}`)
+			}
+			if (activityTimeline) {
+				descriptionParts.push(activityTimeline)
+			}
+
+			// For approved projects that have been updated, create a NEW row
+			// with only the delta hours and an update-specific description
+			// Skip if an update row already exists (pending record alongside the approved one)
+			if (isUpdate && isApproved && pendingUpdateRecords.has(project.githubUrl)) continue
+			if (isUpdate && isApproved) {
+				const previousHours = roundedAirtableHours ?? 0
+				const deltaHours = Math.max(0, effectiveHours - previousHours)
+
+				const updateDescParts: string[] = []
+				updateDescParts.push(`[UPDATE] This is an update to a previously approved project.`)
+				if (project.updateDescription) {
+					updateDescParts.push(`\nWhat was updated: ${project.updateDescription}`)
+				}
+				updateDescParts.push(`\nOriginal project had ${formatHoursMinutes(previousHours)} approved.`)
+				updateDescParts.push(`New hours from this update: ${formatHoursMinutes(deltaHours)}`)
+				if (project.description) {
+					updateDescParts.push(`\nOriginal description: ${project.description}`)
+				}
+				if (project.aiDescription) {
+					updateDescParts.push(`\nAI was used in this project. ${project.aiDescription}`)
+				}
+				if (activityTimeline) {
+					updateDescParts.push(activityTimeline)
+				}
+
+				const updateFields: Airtable.FieldSet = {
+					'Code URL': project.githubUrl,
+					'Description': updateDescParts.join('\n'),
+					'Email': project.email || '',
+					'First Name': firstName,
+					'Last Name': lastName,
+					'GitHub Username': project.username || '',
+					'How can we improve?': project.feedbackImprove || '',
+					'How did you hear about this?': project.feedbackSource || '',
+					'What are we doing well?': project.feedbackGood || '',
+					'Slack ID': project.slackId || '',
+					'Optional - Override Hours Spent': deltaHours,
+					'Optional - Override Hours Spent Justification': buildJustification(
+						project,
+						reviewsByProjectId.get(project.id) || [],
+						deltaHours
+					),
+					'Playable URL': project.playableUrl || '',
+					'Screenshot': [{ url: project.image }] as any,
+				}
+
+				if (userIdentity?.addresses) {
+					if (userIdentity.addresses[0]) {
+						if (userIdentity.addresses[0].line_1) updateFields['Address (Line 1)'] = userIdentity.addresses[0].line_1
+						if (userIdentity.addresses[0].line_2) updateFields['Address (Line 2)'] = userIdentity.addresses[0].line_2
+					}
+					if (userIdentity.addresses[0].city) updateFields['City'] = userIdentity.addresses[0].city
+					if (userIdentity.addresses[0].state) updateFields['State / Province'] = userIdentity.addresses[0].state
+					if (userIdentity.addresses[0].postal_code) updateFields['ZIP / Postal Code'] = userIdentity.addresses[0].postal_code
+					if (userIdentity.addresses[0].country) updateFields['Country'] = userIdentity.addresses[0].country
+				}
+
+				if (userIdentity?.birthday) {
+					updateFields['Birthday'] = userIdentity.birthday
+				}
+
+				updateCreates.push(updateFields)
+				continue
 			}
 
 			const fields: Airtable.FieldSet = {
@@ -314,11 +444,6 @@ async function syncProjectsToAirtable(): Promise<void> {
 				),
 				'Playable URL': project.playableUrl || '',
 				'Screenshot': [{ url: project.image }] as any,
-			}
-
-			// Reset Review Status to Pending for updated projects so they get re-reviewed in Airtable
-			if (isUpdate) {
-				fields['Review Status'] = 'Pending'
 			}
 
 			// Add address fields from userinfo
@@ -350,8 +475,9 @@ async function syncProjectsToAirtable(): Promise<void> {
 		}
 
 		// Airtable API allows max 10 records per request
-		for (let i = 0; i < toCreate.length; i += 10) {
-			const batch = toCreate.slice(i, i + 10)
+		const allCreates = [...toCreate, ...updateCreates]
+		for (let i = 0; i < allCreates.length; i += 10) {
+			const batch = allCreates.slice(i, i + 10)
 			await table.create(batch.map(fields => ({ fields })))
 		}
 
@@ -388,7 +514,7 @@ async function syncProjectsToAirtable(): Promise<void> {
 			console.log(`[AIRTABLE-SYNC] Deleted ${airtableRecordsToDelete.length} rejected payout projects from Airtable`)
 		}
 
-		console.log(`[AIRTABLE-SYNC] Projects: ${toCreate.length} created, ${uniqueUpdates.length} updated`)
+		console.log(`[AIRTABLE-SYNC] Projects: ${toCreate.length} created, ${updateCreates.length} update rows created, ${uniqueUpdates.length} updated`)
 	} catch (error) {
 		console.error('[AIRTABLE-SYNC] Error syncing projects:', error)
 	}
