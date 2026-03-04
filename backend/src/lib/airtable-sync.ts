@@ -238,9 +238,10 @@ async function syncProjectsToAirtable(): Promise<void> {
 			// and needs to be re-synced with new hours and reset review status
 			// Also re-sync if the effective hours have increased since last sync
 			const isUnpaidUpdate = approvedRecords.has(project.githubUrl) && !project.scrapsPaidAt
-			const currentEffectiveHours = project.hoursOverride ?? project.hours ?? 0
+			const currentEffectiveHours = Math.round((project.hoursOverride ?? project.hours ?? 0) * 10) / 10
 			const airtableHours = airtableHoursMap.get(project.githubUrl)
-			const isHoursUpdate = approvedRecords.has(project.githubUrl) && airtableHours !== undefined && currentEffectiveHours > airtableHours
+			const roundedAirtableHours = airtableHours !== undefined ? Math.round(airtableHours * 10) / 10 : undefined
+			const isHoursUpdate = approvedRecords.has(project.githubUrl) && roundedAirtableHours !== undefined && currentEffectiveHours > roundedAirtableHours
 			const isUpdate = isUnpaidUpdate || isHoursUpdate
 			if (approvedRecords.has(project.githubUrl) && !isUpdate) continue
 
