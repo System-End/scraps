@@ -748,7 +748,7 @@
 										{statusTag.label}
 									</span>
 								{/if}
-								{#if project.status === 'shipped' && currentUser?.role === 'admin'}
+								{#if project.status === 'shipped' && (currentUser?.role === 'admin' || currentUser?.role === 'creator')}
 									<button
 										onclick={(e) => {
 											e.preventDefault();

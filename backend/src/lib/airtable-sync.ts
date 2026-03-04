@@ -142,10 +142,11 @@ async function syncProjectsToAirtable(): Promise<void> {
 		// Fetch existing records from Airtable to find which ones to update vs create
 		const existingRecords: Map<string, string> = new Map() // github_url -> airtable record id
 		const approvedRecords: Set<string> = new Set() // github_urls that are already approved in Airtable
+		const airtableHoursMap: Map<string, number> = new Map() // github_url -> hours synced in Airtable
 		const airtableRecordsToDelete: string[] = [] // airtable record ids to delete (for rejected projects)
 		await new Promise<void>((resolve, reject) => {
 			table.select({
-				fields: ['Code URL', 'Review Status']
+				fields: ['Code URL', 'Review Status', 'Optional - Override Hours Spent']
 			}).eachPage(
 				(records, fetchNextPage) => {
 					for (const record of records) {
@@ -155,6 +156,10 @@ async function syncProjectsToAirtable(): Promise<void> {
 							const reviewStatus = record.get('Review Status')
 							if (reviewStatus === 'Approved') {
 								approvedRecords.add(String(githubUrl))
+							}
+							const hours = record.get('Optional - Override Hours Spent')
+							if (hours !== undefined && hours !== null) {
+								airtableHoursMap.set(String(githubUrl), Number(hours))
 							}
 						}
 					}
@@ -231,7 +236,12 @@ async function syncProjectsToAirtable(): Promise<void> {
 			// Skip projects already approved in Airtable — don't overwrite them
 			// Unless scrapsPaidAt is null, which means the project was recently updated
 			// and needs to be re-synced with new hours and reset review status
-			const isUpdate = approvedRecords.has(project.githubUrl) && !project.scrapsPaidAt
+			// Also re-sync if the effective hours have increased since last sync
+			const isUnpaidUpdate = approvedRecords.has(project.githubUrl) && !project.scrapsPaidAt
+			const currentEffectiveHours = project.hoursOverride ?? project.hours ?? 0
+			const airtableHours = airtableHoursMap.get(project.githubUrl)
+			const isHoursUpdate = approvedRecords.has(project.githubUrl) && airtableHours !== undefined && currentEffectiveHours > airtableHours
+			const isUpdate = isUnpaidUpdate || isHoursUpdate
 			if (approvedRecords.has(project.githubUrl) && !isUpdate) continue
 
 			// Check for cross-user duplicate Code URL among shipped projects
@@ -305,9 +315,9 @@ async function syncProjectsToAirtable(): Promise<void> {
 				'Screenshot': [{ url: project.image }] as any,
 			}
 
-			// Reset Review Status to pending for updated projects so they get re-reviewed in Airtable
+			// Reset Review Status to Pending for updated projects so they get re-reviewed in Airtable
 			if (isUpdate) {
-				fields['Review Status'] = ''
+				fields['Review Status'] = 'Pending'
 			}
 
 			// Add address fields from userinfo

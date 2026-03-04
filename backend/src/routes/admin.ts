@@ -1024,13 +1024,13 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
 
     // Update project status
     let newStatus = "in_progress";
-    const isAdmin = user.role === "admin";
+    const canShipDirectly = user.role === "admin" || user.role === "creator";
 
     switch (action) {
       case "approved":
-        // If reviewer (not admin) approves, send to second-pass review
-        // If admin approves, ship directly
-        newStatus = isAdmin ? "shipped" : "pending_admin_approval";
+        // If reviewer (not admin/creator) approves, send to second-pass review
+        // If admin or creator approves, ship directly
+        newStatus = canShipDirectly ? "shipped" : "pending_admin_approval";
         break;
       case "denied":
         newStatus = "in_progress";
@@ -1066,9 +1066,9 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
       });
       const newScrapsAwarded = calculateScrapsFromHours(effectiveHours, tier);
 
-      // Only set scrapsAwarded if admin is approving
+      // Only set scrapsAwarded if admin/creator is approving directly
       // Reviewer approvals just go to pending_admin_approval without awarding scraps yet
-      if (isAdmin) {
+      if (canShipDirectly) {
         const previouslyShipped = await hasProjectBeenShipped(projectId);
         // If this is an update to an already-shipped project, calculate ADDITIONAL scraps
         // (difference between new award and previous award)
@@ -1109,8 +1109,8 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
         });
       }
 
-      // Only log shipping activity if admin approved (not pending second-pass)
-      if (isAdmin) {
+      // Only log shipping activity if admin/creator approved (not pending second-pass)
+      if (canShipDirectly) {
         await db.insert(projectActivityTable).values({
           userId: project[0].userId,
           projectId,
@@ -1130,9 +1130,9 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
     }
 
     // Send Slack DM notification to the project author
-    // Skip notification when a non-admin reviewer approves (goes to pending_admin_approval)
-    // The second-pass flow sends its own notification when an admin accepts/rejects
-    const shouldNotify = isAdmin || action !== "approved";
+    // Skip notification when a reviewer approves (goes to pending_admin_approval)
+    // The second-pass flow sends its own notification when a creator accepts/rejects
+    const shouldNotify = canShipDirectly || action !== "approved";
     if (config.slackBotToken && shouldNotify) {
       try {
         // Get the project author's Slack ID
@@ -1185,11 +1185,11 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
   }
 });
 
-// Second-pass review endpoints (admin only)
-// Get projects pending admin approval (reviewer-approved projects)
+// Second-pass review endpoints (creator only)
+// Get projects pending creator approval (reviewer-approved projects)
 admin.get("/second-pass", async ({ headers, query }) => {
   try {
-    const user = await requireAdmin(headers as Record<string, string>);
+    const user = await requireCreator(headers as Record<string, string>);
     if (!user) return { error: "Unauthorized" };
 
     const page = parseInt(query.page as string) || 1;
@@ -1284,7 +1284,7 @@ admin.get("/second-pass", async ({ headers, query }) => {
 
 // Get single project for second-pass review
 admin.get("/second-pass/:id", async ({ params, headers }) => {
-  const user = await requireAdmin(headers as Record<string, string>);
+  const user = await requireCreator(headers as Record<string, string>);
   if (!user) return { error: "Unauthorized" };
 
   try {
@@ -1389,7 +1389,7 @@ admin.get("/second-pass/:id", async ({ params, headers }) => {
 // Accept or reject a second-pass review
 admin.post("/second-pass/:id", async ({ params, body, headers }) => {
   try {
-    const user = await requireAdmin(headers as Record<string, string>);
+    const user = await requireCreator(headers as Record<string, string>);
     if (!user) return { error: "Unauthorized" };
 
     const { action, feedbackForAuthor, hoursOverride } = body as {
@@ -3227,12 +3227,14 @@ admin.post("/orders/:id/restore", async ({ params, headers, status }) => {
   }
 });
 
-// Unship a shipped project (admin only) - sets it back to in_progress and zeros scraps
+// Unship a shipped project (admin/creator) - sets it back to in_progress and zeros scraps
 admin.post(
   "/projects/:id/unship",
   async ({ params, headers, body, status }) => {
     try {
-      const user = await requireAdmin(headers as Record<string, string>);
+      const admin = await requireAdmin(headers as Record<string, string>);
+      const creator = !admin ? await requireCreator(headers as Record<string, string>) : null;
+      const user = admin || creator;
       if (!user) return status(401, { error: "Unauthorized" });
 
       const projectId = parseInt(params.id);
