@@ -34429,10 +34429,10 @@ async function syncProjectsToAirtable() {
     const table = base(config.airtableProjectsTableId);
     const existingRecords = new Map;
     const approvedRecords = new Set;
-    const pendingUpdateRecords = new Set;
+    const pendingUpdateRecords = new Map;
     const airtableHoursMap = new Map;
     const airtableRecordsToDelete = [];
-    const urlRecordCounts = new Map;
+    const pendingRecordIds = new Map;
     const recordsToAutoApprove = [];
     await new Promise((resolve, reject) => {
       table.select({
@@ -34452,7 +34452,7 @@ async function syncProjectsToAirtable() {
                 airtableHoursMap.set(url, Number(hours));
               }
             } else {
-              urlRecordCounts.set(url, (urlRecordCounts.get(url) || 0) + 1);
+              pendingRecordIds.set(url, record.id);
               if (yswsRecordId) {
                 recordsToAutoApprove.push(record.id);
               }
@@ -34467,9 +34467,9 @@ async function syncProjectsToAirtable() {
           resolve();
       });
     });
-    for (const url of urlRecordCounts.keys()) {
+    for (const [url, recordId] of pendingRecordIds.entries()) {
       if (approvedRecords.has(url)) {
-        pendingUpdateRecords.add(url);
+        pendingUpdateRecords.set(url, recordId);
       }
     }
     for (let i = 0;i < recordsToAutoApprove.length; i += 10) {
@@ -34519,7 +34519,8 @@ async function syncProjectsToAirtable() {
       const roundedAirtableHours = airtableHours !== undefined ? Math.round(airtableHours * 10) / 10 : undefined;
       const isUnpaidUpdate = isApproved && !project.scrapsPaidAt;
       const isHoursUpdate = isApproved && roundedAirtableHours !== undefined && currentEffectiveHours > roundedAirtableHours;
-      const isUpdate = isUnpaidUpdate || isHoursUpdate;
+      const hasUpdateDescription = isApproved && !!project.updateDescription;
+      const isUpdate = isUnpaidUpdate || isHoursUpdate || hasUpdateDescription;
       if (isApproved && !isUpdate)
         continue;
       const previousOwner = seenCodeUrls.get(project.githubUrl);
@@ -34585,8 +34586,6 @@ AI was used in this project. ${project.aiDescription}`);
       if (activityTimeline) {
         descriptionParts.push(activityTimeline);
       }
-      if (isUpdate && isApproved && pendingUpdateRecords.has(project.githubUrl))
-        continue;
       if (isUpdate && isApproved) {
         const previousHours = roundedAirtableHours ?? 0;
         const deltaHours = Math.max(0, effectiveHours - previousHours);
@@ -34646,7 +34645,12 @@ AI was used in this project. ${project.aiDescription}`);
         if (userIdentity?.birthday) {
           updateFields["Birthday"] = userIdentity.birthday;
         }
-        updateCreates.push(updateFields);
+        const existingPendingId = pendingUpdateRecords.get(project.githubUrl);
+        if (existingPendingId) {
+          toUpdate.push({ id: existingPendingId, fields: updateFields });
+        } else {
+          updateCreates.push(updateFields);
+        }
         continue;
       }
       const fields = {

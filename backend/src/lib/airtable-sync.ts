@@ -162,10 +162,10 @@ export async function syncProjectsToAirtable(): Promise<void> {
 		// Fetch existing records from Airtable to find which ones to update vs create
 		const existingRecords: Map<string, string> = new Map() // github_url -> airtable record id
 		const approvedRecords: Set<string> = new Set() // github_urls that are already approved in Airtable
-		const pendingUpdateRecords: Set<string> = new Set() // github_urls that have a pending (non-approved) record alongside an approved one
+		const pendingUpdateRecords: Map<string, string> = new Map() // github_url -> pending airtable record id (for URLs that also have an approved record)
 		const airtableHoursMap: Map<string, number> = new Map() // github_url -> hours from approved records
 		const airtableRecordsToDelete: string[] = [] // airtable record ids to delete (for rejected projects)
-		const urlRecordCounts: Map<string, number> = new Map() // track how many records exist per Code URL
+		const pendingRecordIds: Map<string, string> = new Map() // github_url -> non-approved airtable record id
 		const recordsToAutoApprove: string[] = [] // airtable record ids that have YSWS Record ID but aren't Approved yet
 		await new Promise<void>((resolve, reject) => {
 			table.select({
@@ -186,8 +186,8 @@ export async function syncProjectsToAirtable(): Promise<void> {
 									airtableHoursMap.set(url, Number(hours))
 								}
 							} else {
-								// Non-approved record — if there's also an approved one, this is a pending update
-								urlRecordCounts.set(url, (urlRecordCounts.get(url) || 0) + 1)
+								// Track non-approved record id for this URL
+								pendingRecordIds.set(url, record.id)
 								// Auto-approve records that have a YSWS Record ID but aren't marked Approved
 								if (yswsRecordId) {
 									recordsToAutoApprove.push(record.id)
@@ -203,10 +203,10 @@ export async function syncProjectsToAirtable(): Promise<void> {
 				}
 			)
 		})
-		// Mark URLs that have both an approved record and a non-approved record
-		for (const url of urlRecordCounts.keys()) {
+		// Mark URLs that have both an approved record and a non-approved (pending) record
+		for (const [url, recordId] of pendingRecordIds.entries()) {
 			if (approvedRecords.has(url)) {
-				pendingUpdateRecords.add(url)
+				pendingUpdateRecords.set(url, recordId)
 			}
 		}
 
@@ -290,7 +290,8 @@ export async function syncProjectsToAirtable(): Promise<void> {
 			// For approved projects, check if this is an update that needs a new row
 			const isUnpaidUpdate = isApproved && !project.scrapsPaidAt
 			const isHoursUpdate = isApproved && roundedAirtableHours !== undefined && currentEffectiveHours > roundedAirtableHours
-			const isUpdate = isUnpaidUpdate || isHoursUpdate
+			const hasUpdateDescription = isApproved && !!project.updateDescription
+			const isUpdate = isUnpaidUpdate || isHoursUpdate || hasUpdateDescription
 
 			if (isApproved && !isUpdate) continue
 
@@ -360,10 +361,7 @@ export async function syncProjectsToAirtable(): Promise<void> {
 				descriptionParts.push(activityTimeline)
 			}
 
-			// For approved projects that have been updated, create a NEW row
-			// with only the delta hours and an update-specific description
-			// Skip if an update row already exists (pending record alongside the approved one)
-			if (isUpdate && isApproved && pendingUpdateRecords.has(project.githubUrl)) continue
+			// For approved projects that have been updated, create a NEW row or update existing pending row
 			if (isUpdate && isApproved) {
 				const previousHours = roundedAirtableHours ?? 0
 				const deltaHours = Math.max(0, effectiveHours - previousHours)
@@ -421,7 +419,13 @@ export async function syncProjectsToAirtable(): Promise<void> {
 					updateFields['Birthday'] = userIdentity.birthday
 				}
 
-				updateCreates.push(updateFields)
+				// If a pending update row already exists, update it; otherwise create a new one
+				const existingPendingId = pendingUpdateRecords.get(project.githubUrl)
+				if (existingPendingId) {
+					toUpdate.push({ id: existingPendingId, fields: updateFields })
+				} else {
+					updateCreates.push(updateFields)
+				}
 				continue
 			}
 
