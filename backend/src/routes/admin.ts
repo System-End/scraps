@@ -45,7 +45,12 @@ const admin = new Elysia({ prefix: "/admin" });
 async function requireReviewer(headers: Record<string, string>) {
   const user = await getUserFromSession(headers);
   if (!user) return null;
-  if (user.role !== "reviewer" && user.role !== "admin" && user.role !== "creator") return null;
+  if (
+    user.role !== "reviewer" &&
+    user.role !== "admin" &&
+    user.role !== "creator"
+  )
+    return null;
   return user;
 }
 
@@ -293,8 +298,9 @@ admin.get("/stats", async ({ headers, status }) => {
   const fulfilledConsolationDollarCost =
     Number(fulfilledConsolationCount[0]?.count || 0) * 2;
   const fulfilledUpgradeDollarCost =
-    Number((fulfilledUpgrades.rows[0] as { total_cost: string })?.total_cost || 0) /
-    SCRAPS_PER_DOLLAR;
+    Number(
+      (fulfilledUpgrades.rows[0] as { total_cost: string })?.total_cost || 0,
+    ) / SCRAPS_PER_DOLLAR;
   const totalActualCost =
     fulfilledLuckWinDollarCost +
     fulfilledConsolationDollarCost +
@@ -313,7 +319,9 @@ admin.get("/stats", async ({ headers, status }) => {
         { headers: { Accept: "application/json" } },
       );
       if (hcbRes.ok) {
-        const hcbData = await hcbRes.json() as { balances?: { balance_cents?: number } };
+        const hcbData = (await hcbRes.json()) as {
+          balances?: { balance_cents?: number };
+        };
         hcbBalanceCents = hcbData.balances?.balance_cents ?? 0;
       }
     } catch {
@@ -439,7 +447,10 @@ admin.get("/users", async ({ headers, query, status }) => {
         username: u.username,
         avatar: u.avatar,
         slackId: u.slackId,
-        email: (user.role === "admin" || user.role === "creator") ? u.email : undefined,
+        email:
+          user.role === "admin" || user.role === "creator"
+            ? u.email
+            : undefined,
         scraps: u.scraps,
         role: u.role,
         internalNotes: u.internalNotes,
@@ -514,7 +525,10 @@ admin.get("/users/:id", async ({ params, headers, status }) => {
     let hackatimeBanned = false;
     if (targetUser[0].email) {
       try {
-        const htUser = await getHackatimeUser(targetUser[0].email, targetUser[0].slackId);
+        const htUser = await getHackatimeUser(
+          targetUser[0].email,
+          targetUser[0].slackId,
+        );
         if (htUser) {
           hackatimeSuspected = htUser.suspected || false;
           hackatimeBanned = htUser.banned || false;
@@ -530,7 +544,10 @@ admin.get("/users/:id", async ({ params, headers, status }) => {
         username: targetUser[0].username,
         avatar: targetUser[0].avatar,
         slackId: targetUser[0].slackId,
-        email: (user.role === "admin" || user.role === "creator") ? targetUser[0].email : undefined,
+        email:
+          user.role === "admin" || user.role === "creator"
+            ? targetUser[0].email
+            : undefined,
         scraps: scrapsBalance.balance,
         role: targetUser[0].role,
         internalNotes: targetUser[0].internalNotes,
@@ -876,7 +893,10 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
     let hackatimeBanned = false;
     if (projectUser[0]?.email) {
       try {
-        const htUser = await getHackatimeUser(projectUser[0].email, projectUser[0].slackId);
+        const htUser = await getHackatimeUser(
+          projectUser[0].email,
+          projectUser[0].slackId,
+        );
         if (htUser) {
           hackatimeUserId = htUser.user_id;
           hackatimeSuspected = htUser.suspected || false;
@@ -944,6 +964,7 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
       hoursOverride,
       tierOverride,
       userInternalNotes,
+      rejectionReason,
     } = body as {
       action: "approved" | "denied" | "permanently_rejected";
       feedbackForAuthor: string;
@@ -951,6 +972,7 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
       hoursOverride?: number;
       tierOverride?: number;
       userInternalNotes?: string;
+      rejectionReason?: string;
     };
 
     if (!["approved", "denied", "permanently_rejected"].includes(action)) {
@@ -959,6 +981,12 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
 
     if (!feedbackForAuthor?.trim()) {
       return { error: "Feedback for author is required" };
+    }
+
+    if (action === "permanently_rejected" && !rejectionReason?.trim()) {
+      return {
+        error: "Reason shown to user is required for permanent rejection",
+      };
     }
 
     const projectId = parseInt(params.id);
@@ -1133,8 +1161,11 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
 
     // Trigger immediate Airtable sync when a project is shipped or updated
     if (canShipDirectly && action === "approved") {
-      syncProjectsToAirtable().catch(err =>
-        console.error("[ADMIN] Failed to trigger Airtable sync after ship:", err)
+      syncProjectsToAirtable().catch((err) =>
+        console.error(
+          "[ADMIN] Failed to trigger Airtable sync after ship:",
+          err,
+        ),
       );
     }
 
@@ -1158,7 +1189,12 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
             const admins = await db
               .select({ slackId: usersTable.slackId })
               .from(usersTable)
-              .where(or(eq(usersTable.role, "admin"), eq(usersTable.role, "creator")));
+              .where(
+                or(
+                  eq(usersTable.role, "admin"),
+                  eq(usersTable.role, "creator"),
+                ),
+              );
 
             adminSlackIds = admins
               .map((a) => a.slackId)
@@ -1174,6 +1210,7 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
             projectId,
             action,
             feedbackForAuthor,
+            rejectionReason: rejectionReason?.trim() || undefined,
             reviewerSlackId,
             adminSlackIds,
             scrapsAwarded,
@@ -1349,7 +1386,10 @@ admin.get("/second-pass/:id", async ({ params, headers }) => {
     let hackatimeBanned = false;
     if (projectUser[0]?.email) {
       try {
-        const htUser = await getHackatimeUser(projectUser[0].email, projectUser[0].slackId);
+        const htUser = await getHackatimeUser(
+          projectUser[0].email,
+          projectUser[0].slackId,
+        );
         if (htUser) {
           hackatimeUserId = htUser.user_id;
           hackatimeSuspected = htUser.suspected || false;
@@ -1524,8 +1564,11 @@ admin.post("/second-pass/:id", async ({ params, body, headers }) => {
       }
 
       // Trigger immediate Airtable sync after shipping
-      syncProjectsToAirtable().catch(err =>
-        console.error("[ADMIN] Failed to trigger Airtable sync after second-pass ship:", err)
+      syncProjectsToAirtable().catch((err) =>
+        console.error(
+          "[ADMIN] Failed to trigger Airtable sync after second-pass ship:",
+          err,
+        ),
       );
 
       return { success: true, scrapsAwarded };
@@ -2332,7 +2375,9 @@ admin.get("/orders", async ({ headers, query, status }) => {
     const rows = await ordersQuery;
 
     // Batch-check Hackatime ban status for unique user emails
-    const uniqueEmails = [...new Set(rows.map((r) => r.userEmail).filter(Boolean))] as string[];
+    const uniqueEmails = [
+      ...new Set(rows.map((r) => r.userEmail).filter(Boolean)),
+    ] as string[];
     const emailToSlackId = new Map<string, string | null>();
     for (const row of rows) {
       if (row.userEmail && !emailToSlackId.has(row.userEmail)) {
@@ -2343,7 +2388,10 @@ admin.get("/orders", async ({ headers, query, status }) => {
     await Promise.all(
       uniqueEmails.map(async (email) => {
         try {
-          const htUser = await getHackatimeUser(email, emailToSlackId.get(email));
+          const htUser = await getHackatimeUser(
+            email,
+            emailToSlackId.get(email),
+          );
           banMap.set(email, htUser?.banned ?? false);
         } catch {
           banMap.set(email, false);
@@ -2488,7 +2536,10 @@ admin.patch("/orders/:id", async ({ params, body, headers, status }) => {
       const [orderItem] = await db
         .select({ name: shopItemsTable.name })
         .from(shopItemsTable)
-        .innerJoin(shopOrdersTable, eq(shopOrdersTable.shopItemId, shopItemsTable.id))
+        .innerJoin(
+          shopOrdersTable,
+          eq(shopOrdersTable.shopItemId, shopItemsTable.id),
+        )
         .where(eq(shopOrdersTable.id, parseInt(params.id)))
         .limit(1);
 
@@ -2498,7 +2549,7 @@ admin.patch("/orders/:id", async ({ params, body, headers, status }) => {
           itemName: orderItem.name,
           trackingNumber: updated[0].trackingNumber,
           token: config.slackBotToken,
-        }).catch((err) => console.error('Failed to send fulfillment DM:', err));
+        }).catch((err) => console.error("Failed to send fulfillment DM:", err));
       }
     }
 
@@ -3254,7 +3305,9 @@ admin.post(
   async ({ params, headers, body, status }) => {
     try {
       const admin = await requireAdmin(headers as Record<string, string>);
-      const creator = !admin ? await requireCreator(headers as Record<string, string>) : null;
+      const creator = !admin
+        ? await requireCreator(headers as Record<string, string>)
+        : null;
       const user = admin || creator;
       if (!user) return status(401, { error: "Unauthorized" });
 
@@ -3642,25 +3695,37 @@ admin.delete("/users/:id", async ({ params, headers, status }) => {
     await db.delete(sessionsTable).where(eq(sessionsTable.userId, targetId));
 
     // 2. Delete user activity
-    await db.delete(userActivityTable).where(eq(userActivityTable.userId, targetId));
+    await db
+      .delete(userActivityTable)
+      .where(eq(userActivityTable.userId, targetId));
 
     // 3. Delete shop hearts
-    await db.delete(shopHeartsTable).where(eq(shopHeartsTable.userId, targetId));
+    await db
+      .delete(shopHeartsTable)
+      .where(eq(shopHeartsTable.userId, targetId));
 
     // 4. Delete shop penalties
-    await db.delete(shopPenaltiesTable).where(eq(shopPenaltiesTable.userId, targetId));
+    await db
+      .delete(shopPenaltiesTable)
+      .where(eq(shopPenaltiesTable.userId, targetId));
 
     // 5. Delete shop rolls
     await db.delete(shopRollsTable).where(eq(shopRollsTable.userId, targetId));
 
     // 6. Delete refinery spending history
-    await db.delete(refinerySpendingHistoryTable).where(eq(refinerySpendingHistoryTable.userId, targetId));
+    await db
+      .delete(refinerySpendingHistoryTable)
+      .where(eq(refinerySpendingHistoryTable.userId, targetId));
 
     // 7. Delete refinery orders
-    await db.delete(refineryOrdersTable).where(eq(refineryOrdersTable.userId, targetId));
+    await db
+      .delete(refineryOrdersTable)
+      .where(eq(refineryOrdersTable.userId, targetId));
 
     // 8. Delete shop orders
-    await db.delete(shopOrdersTable).where(eq(shopOrdersTable.userId, targetId));
+    await db
+      .delete(shopOrdersTable)
+      .where(eq(shopOrdersTable.userId, targetId));
 
     // 9. Null out givenBy on bonuses given by this user (so other users' bonuses remain)
     await db
@@ -3669,21 +3734,29 @@ admin.delete("/users/:id", async ({ params, headers, status }) => {
       .where(eq(userBonusesTable.givenBy, targetId));
 
     // 10. Delete user's own bonuses
-    await db.delete(userBonusesTable).where(eq(userBonusesTable.userId, targetId));
+    await db
+      .delete(userBonusesTable)
+      .where(eq(userBonusesTable.userId, targetId));
 
     // 11. Delete reviews done by this user as reviewer
     await db.delete(reviewsTable).where(eq(reviewsTable.reviewerId, targetId));
 
     if (projectIds.length > 0) {
       // 12. Delete project activity for user's projects (from any user)
-      await db.delete(projectActivityTable).where(inArray(projectActivityTable.projectId, projectIds));
+      await db
+        .delete(projectActivityTable)
+        .where(inArray(projectActivityTable.projectId, projectIds));
 
       // 13. Delete reviews on user's projects
-      await db.delete(reviewsTable).where(inArray(reviewsTable.projectId, projectIds));
+      await db
+        .delete(reviewsTable)
+        .where(inArray(reviewsTable.projectId, projectIds));
     }
 
     // 14. Delete project activity by this user (on any project)
-    await db.delete(projectActivityTable).where(eq(projectActivityTable.userId, targetId));
+    await db
+      .delete(projectActivityTable)
+      .where(eq(projectActivityTable.userId, targetId));
 
     // 15. Delete user's projects
     await db.delete(projectsTable).where(eq(projectsTable.userId, targetId));

@@ -457,6 +457,7 @@ export default {
 		noRefinements: 'no hay refinamientos para mostrar',
 		roles: {
 			admin: 'admin',
+			creator: 'creador',
 			reviewer: 'revisor',
 			member: 'miembro',
 			banned: 'baneado'

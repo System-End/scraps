@@ -134,6 +134,7 @@
 
 	let confirmAction = $state<'approved' | 'denied' | 'permanently_rejected' | null>(null);
 	let errorModal = $state<string | null>(null);
+	let rejectionReason = $state('');
 
 	let projectId = $derived(page.params.id);
 
@@ -227,6 +228,10 @@
 			error = 'Internal justification is required';
 			return;
 		}
+		if (action === 'permanently_rejected' && !rejectionReason.trim()) {
+			error = 'Reason shown to user is required for permanent rejection';
+			return;
+		}
 		confirmAction = action;
 	}
 
@@ -247,6 +252,10 @@
 			error = 'Internal justification is required';
 			return;
 		}
+		if (confirmAction === 'permanently_rejected' && !rejectionReason.trim()) {
+			error = 'Reason shown to user is required for permanent rejection';
+			return;
+		}
 
 		submitting = true;
 		error = null;
@@ -262,7 +271,11 @@
 					internalJustification: internalJustification || undefined,
 					hoursOverride: hoursOverride !== undefined ? hoursOverride : undefined,
 					tierOverride: tierOverride !== undefined ? tierOverride : undefined,
-					userInternalNotes: userInternalNotes || undefined
+					userInternalNotes: userInternalNotes || undefined,
+					rejectionReason:
+						confirmAction === 'permanently_rejected' && rejectionReason.trim()
+							? rejectionReason.trim()
+							: undefined
 				})
 			});
 
@@ -931,8 +944,23 @@
 							class="w-full resize-none rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
 						></textarea>
 						<p class="mt-1 text-xs text-gray-500">
-							⚠️ for permanent rejection: this is kept internal — the user will only be told their
-							project was unshipped by an admin
+							⚠️ for permanent rejection: the above field is kept internal only
+						</p>
+					</div>
+
+					<div>
+						<label class="mb-1 block text-sm font-bold">
+							reason shown to user <span class="text-red-500">*</span>
+							<span class="text-gray-400">(for permanent rejection)</span>
+						</label>
+						<textarea
+							bind:value={rejectionReason}
+							rows="3"
+							placeholder="This reason will be included in the Slack DM to the user when permanently rejecting."
+							class="w-full resize-none rounded-lg border-2 border-black px-4 py-2 focus:border-dashed focus:outline-none"
+						></textarea>
+						<p class="mt-1 text-xs text-gray-500">
+							required for permanent rejection — sent to the user via Slack DM
 						</p>
 					</div>
 

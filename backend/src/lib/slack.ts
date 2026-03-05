@@ -216,6 +216,7 @@ export async function notifyProjectReview({
   projectId,
   action,
   feedbackForAuthor,
+  rejectionReason,
   reviewerSlackId,
   adminSlackIds,
   scrapsAwarded,
@@ -227,6 +228,7 @@ export async function notifyProjectReview({
   projectId: number;
   action: "approved" | "denied" | "permanently_rejected";
   feedbackForAuthor: string;
+  rejectionReason?: string;
   reviewerSlackId?: string | null;
   adminSlackIds: string[];
   scrapsAwarded?: number;
@@ -301,14 +303,19 @@ export async function notifyProjectReview({
       },
     ];
   } else if (action === "permanently_rejected") {
-    fallbackText = `:scraps: hey <@${userSlackId}>! your scraps project ${projectName} has been unshipped by an admin.`;
+    const reasonSuffix = rejectionReason ? ` reason: ${rejectionReason}` : "";
+    const reasonBlock = rejectionReason
+      ? `\n\n*reason:* ${rejectionReason}`
+      : "";
+
+    fallbackText = `:scraps: hey <@${userSlackId}>! your scraps project ${projectName} has been unshipped by an admin.${reasonSuffix}`;
 
     blocks = [
       {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `:scraps: hey <@${userSlackId}>!\n\nyour scraps project *<${projectUrl}|${projectName}>* has been unshipped by an admin.`,
+          text: `:scraps: hey <@${userSlackId}>!\n\nyour scraps project *<${projectUrl}|${projectName}>* has been unshipped by an admin.${reasonBlock}`,
         },
       },
     ];
