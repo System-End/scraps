@@ -145,10 +145,8 @@
 		codeUrl: string;
 	}
 	interface UnifiedDuplicatesResult {
-		totalRecords: number;
+		totalChecked: number;
 		nonScrapsMatches: (DuplicateRecord & { matchType: string })[];
-		duplicateCodeUrls: { url: string; records: DuplicateRecord[] }[];
-		duplicatePlayableUrls: { url: string; records: DuplicateRecord[] }[];
 	}
 	let dupChecking = $state(false);
 	let dupResult = $state<UnifiedDuplicatesResult | null>(null);
@@ -1024,7 +1022,7 @@
 			{#if dupResult}
 				<div class="mt-4 space-y-4">
 					<p class="text-sm text-gray-500">
-						scanned {dupResult.totalRecords.toLocaleString()} unified airtable records
+						checked {dupResult.totalChecked.toLocaleString()} scraps URLs against unified airtable
 					</p>
 
 					{#if dupResult.nonScrapsMatches.length > 0}
@@ -1071,64 +1069,6 @@
 							<p class="font-bold text-green-700">
 								no scraps URLs found in other YSWS programs
 							</p>
-						</div>
-					{/if}
-
-					{#if dupResult.duplicateCodeUrls.length > 0}
-						<div>
-							<h4 class="mb-2 text-sm font-bold text-yellow-600 uppercase">
-								duplicate code URLs across YSWS ({dupResult.duplicateCodeUrls.length})
-							</h4>
-							<div class="max-h-64 space-y-2 overflow-y-auto">
-								{#each dupResult.duplicateCodeUrls as dup}
-									<div class="rounded-xl border-2 border-yellow-200 bg-yellow-50 p-3">
-										<p class="truncate text-sm font-bold">
-											<a
-												href={dup.url}
-												target="_blank"
-												class="text-blue-600 hover:underline">{dup.url}</a
-											>
-										</p>
-										<div class="mt-1 flex flex-wrap gap-1">
-											{#each dup.records as r}
-												<span
-													class="rounded-full border border-yellow-400 px-2 py-0.5 text-xs font-bold"
-													>{r.ysws || 'unknown'}</span
-												>
-											{/each}
-										</div>
-									</div>
-								{/each}
-							</div>
-						</div>
-					{/if}
-
-					{#if dupResult.duplicatePlayableUrls.length > 0}
-						<div>
-							<h4 class="mb-2 text-sm font-bold text-yellow-600 uppercase">
-								duplicate playable URLs across YSWS ({dupResult.duplicatePlayableUrls.length})
-							</h4>
-							<div class="max-h-64 space-y-2 overflow-y-auto">
-								{#each dupResult.duplicatePlayableUrls as dup}
-									<div class="rounded-xl border-2 border-yellow-200 bg-yellow-50 p-3">
-										<p class="truncate text-sm font-bold">
-											<a
-												href={dup.url}
-												target="_blank"
-												class="text-blue-600 hover:underline">{dup.url}</a
-											>
-										</p>
-										<div class="mt-1 flex flex-wrap gap-1">
-											{#each dup.records as r}
-												<span
-													class="rounded-full border border-yellow-400 px-2 py-0.5 text-xs font-bold"
-													>{r.ysws || 'unknown'}</span
-												>
-											{/each}
-										</div>
-									</div>
-								{/each}
-							</div>
 						</div>
 					{/if}
 				</div>

@@ -3663,36 +3663,7 @@ admin.get("/unified-duplicates", async ({ headers, status }) => {
   }
 
   try {
-    const Airtable = (await import('airtable')).default;
-    const airtable = new Airtable({ apiKey: config.unifiedAirtableToken });
-    const base = airtable.base(config.unifiedAirtableBaseId);
-    const table = base(config.unifiedAirtableTableId);
-
-    // Fetch all records from the unified airtable
-    const allRecords: { id: string; ysws: string; playableUrl: string; codeUrl: string }[] = [];
-    await new Promise<void>((resolve, reject) => {
-      table.select({
-        fields: ['YSWS', 'Playable URL', 'Code URL']
-      }).eachPage(
-        (records, fetchNextPage) => {
-          for (const record of records) {
-            allRecords.push({
-              id: record.id,
-              ysws: String(record.get('YSWS') || ''),
-              playableUrl: String(record.get('Playable URL') || ''),
-              codeUrl: String(record.get('Code URL') || '')
-            });
-          }
-          fetchNextPage();
-        },
-        (err) => {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
-
-    // Get scraps projects' URLs from our DB for comparison
+    // Get scraps projects' URLs from our DB first
     const scrapsProjects = await db
       .select({
         id: projectsTable.id,
@@ -3715,67 +3686,85 @@ admin.get("/unified-duplicates", async ({ headers, status }) => {
         ),
       );
 
-    const scrapsCodeUrls = new Set(scrapsProjects.map(p => p.githubUrl).filter(Boolean));
-    const scrapsPlayableUrls = new Set(scrapsProjects.map(p => p.playableUrl).filter(Boolean));
+    const scrapsCodeUrls = new Set(scrapsProjects.map(p => p.githubUrl).filter((u): u is string => !!u));
+    const scrapsPlayableUrls = new Set(scrapsProjects.map(p => p.playableUrl).filter((u): u is string => !!u));
 
-    // Find records in the unified airtable that match scraps URLs but YSWS != "Scraps"
-    const nonScrapsMatches: { id: string; ysws: string; playableUrl: string; codeUrl: string; matchType: string }[] = [];
+    const baseUrl = `https://api.airtable.com/v0/${config.unifiedAirtableBaseId}/${config.unifiedAirtableTableId}`;
+    type UnifiedRecord = { id: string; ysws: string; playableUrl: string; codeUrl: string };
 
-    for (const record of allRecords) {
-      if (record.ysws.toLowerCase() === 'scraps') continue;
-
-      const matchTypes: string[] = [];
-      if (record.codeUrl && scrapsCodeUrls.has(record.codeUrl)) {
-        matchTypes.push('code_url');
-      }
-      if (record.playableUrl && scrapsPlayableUrls.has(record.playableUrl)) {
-        matchTypes.push('playable_url');
-      }
-
-      if (matchTypes.length > 0) {
-        nonScrapsMatches.push({
-          ...record,
-          matchType: matchTypes.join(', ')
+    async function searchByFormula(formula: string): Promise<UnifiedRecord[]> {
+      const results: UnifiedRecord[] = [];
+      let offset: string | undefined;
+      do {
+        const params = new URLSearchParams({
+          filterByFormula: formula,
+          pageSize: '100',
         });
+        params.append('fields[]', 'YSWS');
+        params.append('fields[]', 'Playable URL');
+        params.append('fields[]', 'Code URL');
+        if (offset) params.set('offset', offset);
+
+        const res = await fetch(`${baseUrl}?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${config.unifiedAirtableToken}` },
+        });
+        if (!res.ok) continue;
+
+        const data = await res.json() as { records: { id: string; fields: Record<string, string> }[]; offset?: string };
+        for (const record of data.records) {
+          results.push({
+            id: record.id,
+            ysws: record.fields['YSWS'] || '',
+            playableUrl: record.fields['Playable URL'] || '',
+            codeUrl: record.fields['Code URL'] || '',
+          });
+        }
+        offset = data.offset;
+      } while (offset);
+      return results;
+    }
+
+    // Search for each scraps URL in the unified table (YSWS != Scraps)
+    const seen = new Set<string>();
+    const nonScrapsMatches: (UnifiedRecord & { matchType: string })[] = [];
+
+    // Batch code URL lookups in groups of 15 to keep formula size manageable
+    const codeUrlArr = [...scrapsCodeUrls];
+    for (let i = 0; i < codeUrlArr.length; i += 15) {
+      const batch = codeUrlArr.slice(i, i + 15);
+      const orParts = batch.map(u => `{Code URL}='${u.replace(/'/g, "\\'")}'`);
+      const formula = `AND(YSWS!='scraps',OR(${orParts.join(',')}))`;
+      const results = await searchByFormula(formula);
+      for (const r of results) {
+        if (!seen.has(r.id)) {
+          seen.add(r.id);
+          nonScrapsMatches.push({ ...r, matchType: 'code_url' });
+        }
       }
     }
 
-    // Also find duplicate URLs within the unified table itself
-    const codeUrlCounts = new Map<string, { id: string; ysws: string; codeUrl: string; playableUrl: string }[]>();
-    const playableUrlCounts = new Map<string, { id: string; ysws: string; codeUrl: string; playableUrl: string }[]>();
-
-    for (const record of allRecords) {
-      if (record.codeUrl) {
-        const existing = codeUrlCounts.get(record.codeUrl) || [];
-        existing.push(record);
-        codeUrlCounts.set(record.codeUrl, existing);
-      }
-      if (record.playableUrl) {
-        const existing = playableUrlCounts.get(record.playableUrl) || [];
-        existing.push(record);
-        playableUrlCounts.set(record.playableUrl, existing);
-      }
-    }
-
-    const duplicateCodeUrls: { url: string; records: typeof allRecords }[] = [];
-    for (const [url, records] of codeUrlCounts) {
-      if (records.length > 1) {
-        duplicateCodeUrls.push({ url, records });
-      }
-    }
-
-    const duplicatePlayableUrls: { url: string; records: typeof allRecords }[] = [];
-    for (const [url, records] of playableUrlCounts) {
-      if (records.length > 1) {
-        duplicatePlayableUrls.push({ url, records });
+    // Batch playable URL lookups
+    const playableUrlArr = [...scrapsPlayableUrls];
+    for (let i = 0; i < playableUrlArr.length; i += 15) {
+      const batch = playableUrlArr.slice(i, i + 15);
+      const orParts = batch.map(u => `{Playable URL}='${u.replace(/'/g, "\\'")}'`);
+      const formula = `AND(YSWS!='scraps',OR(${orParts.join(',')}))`;
+      const results = await searchByFormula(formula);
+      for (const r of results) {
+        if (seen.has(r.id)) {
+          // Already matched by code_url, upgrade matchType
+          const existing = nonScrapsMatches.find(m => m.id === r.id);
+          if (existing) existing.matchType = 'code_url, playable_url';
+        } else {
+          seen.add(r.id);
+          nonScrapsMatches.push({ ...r, matchType: 'playable_url' });
+        }
       }
     }
 
     return {
-      totalRecords: allRecords.length,
+      totalChecked: scrapsCodeUrls.size + scrapsPlayableUrls.size,
       nonScrapsMatches,
-      duplicateCodeUrls,
-      duplicatePlayableUrls
     };
   } catch (err) {
     console.error("[ADMIN] Unified duplicates check error:", err);
