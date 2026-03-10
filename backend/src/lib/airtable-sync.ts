@@ -14,6 +14,90 @@ const SYNC_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
 
 let syncInterval: ReturnType<typeof setInterval> | null = null
 
+// Fetch hours already awarded in other YSWS programs from the unified airtable
+async function fetchOtherYswsHours(codeUrls: Set<string>, playableUrls: Set<string>): Promise<Map<string, number>> {
+	// Map of URL -> total hours awarded in other YSWS programs
+	const urlHoursMap = new Map<string, number>()
+
+	if (!config.unifiedAirtableToken || !config.unifiedAirtableBaseId || !config.unifiedAirtableTableId) {
+		return urlHoursMap
+	}
+
+	const baseUrl = `https://api.airtable.com/v0/${config.unifiedAirtableBaseId}/${config.unifiedAirtableTableId}`
+
+	async function fetchByFormula(formula: string): Promise<{ codeUrl: string; playableUrl: string; hours: number }[]> {
+		const results: { codeUrl: string; playableUrl: string; hours: number }[] = []
+		let offset: string | undefined
+		do {
+			const params = new URLSearchParams({
+				filterByFormula: formula,
+				pageSize: '100',
+			})
+			params.append('fields[]', 'YSWS')
+			params.append('fields[]', 'Code URL')
+			params.append('fields[]', 'Playable URL')
+			params.append('fields[]', 'Override Hours Spent')
+			params.append('fields[]', 'Hours Spent')
+			if (offset) params.set('offset', offset)
+
+			const res = await fetch(`${baseUrl}?${params.toString()}`, {
+				headers: { Authorization: `Bearer ${config.unifiedAirtableToken}` },
+			})
+			if (!res.ok) break
+
+			const data = await res.json() as { records: { id: string; fields: Record<string, any> }[]; offset?: string }
+			for (const record of data.records) {
+				const overrideHours = record.fields['Override Hours Spent']
+				const hoursSpent = record.fields['Hours Spent']
+				const hours = Number(overrideHours ?? hoursSpent ?? 0)
+				if (hours > 0) {
+					results.push({
+						codeUrl: record.fields['Code URL'] || '',
+						playableUrl: record.fields['Playable URL'] || '',
+						hours,
+					})
+				}
+			}
+			offset = data.offset
+		} while (offset)
+		return results
+	}
+
+	try {
+		// Batch code URL lookups
+		const codeUrlArr = [...codeUrls]
+		for (let i = 0; i < codeUrlArr.length; i += 15) {
+			const batch = codeUrlArr.slice(i, i + 15)
+			const orParts = batch.map(u => `{Code URL}='${u.replace(/'/g, "\\'")}'`)
+			const formula = `AND(YSWS!='scraps',OR(${orParts.join(',')}))`
+			const results = await fetchByFormula(formula)
+			for (const r of results) {
+				if (r.codeUrl) {
+					urlHoursMap.set(r.codeUrl, (urlHoursMap.get(r.codeUrl) || 0) + r.hours)
+				}
+			}
+		}
+
+		// Batch playable URL lookups
+		const playableUrlArr = [...playableUrls]
+		for (let i = 0; i < playableUrlArr.length; i += 15) {
+			const batch = playableUrlArr.slice(i, i + 15)
+			const orParts = batch.map(u => `{Playable URL}='${u.replace(/'/g, "\\'")}'`)
+			const formula = `AND(YSWS!='scraps',OR(${orParts.join(',')}))`
+			const results = await fetchByFormula(formula)
+			for (const r of results) {
+				if (r.playableUrl) {
+					urlHoursMap.set(r.playableUrl, (urlHoursMap.get(r.playableUrl) || 0) + r.hours)
+				}
+			}
+		}
+	} catch (err) {
+		console.error('[AIRTABLE-SYNC] Error fetching other YSWS hours:', err)
+	}
+
+	return urlHoursMap
+}
+
 function getBase(): Airtable.Base | null {
 	if (!config.airtableToken || !config.airtableBaseId) {
 		console.log('[AIRTABLE-SYNC] Missing AIRTABLE_TOKEN or AIRTABLE_BASE_ID, skipping sync')
@@ -285,6 +369,14 @@ export async function syncProjectsToAirtable(): Promise<void> {
 		// Batch-fetch first shipped dates from project_activity for all projects
 		const shippedDates = await getProjectShippedDates(projects.map(p => p.id))
 
+		// Fetch hours awarded in other YSWS programs for deduction
+		const allCodeUrls = new Set(projects.map(p => p.githubUrl).filter((u): u is string => !!u))
+		const allPlayableUrls = new Set(projects.map(p => p.playableUrl).filter((u): u is string => !!u))
+		const otherYswsHours = await fetchOtherYswsHours(allCodeUrls, allPlayableUrls)
+		if (otherYswsHours.size > 0) {
+			console.log(`[AIRTABLE-SYNC] Found ${otherYswsHours.size} URLs with hours in other YSWS programs`)
+		}
+
 		// Track which Code URLs we've already seen to detect cross-user duplicates
 		// Same-user duplicates are project updates and should be allowed
 		const seenCodeUrls = new Map<string, number>() // url -> userId
@@ -344,6 +436,19 @@ export async function syncProjectsToAirtable(): Promise<void> {
 					}
 					effectiveHours = Math.max(0, effectiveHours)
 				}
+			}
+
+			// Deduct hours already awarded in other YSWS programs
+			let otherYswsDeduction = 0
+			if (project.githubUrl && otherYswsHours.has(project.githubUrl)) {
+				otherYswsDeduction += otherYswsHours.get(project.githubUrl)!
+			}
+			if (project.playableUrl && otherYswsHours.has(project.playableUrl)) {
+				otherYswsDeduction += otherYswsHours.get(project.playableUrl)!
+			}
+			if (otherYswsDeduction > 0) {
+				console.log(`[AIRTABLE-SYNC] Deducting ${otherYswsDeduction}h from project ${project.id} (awarded in other YSWS programs)`)
+				effectiveHours = Math.max(0, effectiveHours - otherYswsDeduction)
 			}
 
 			const firstName = userIdentity?.first_name || (project.username || '').split(' ')[0] || ''
