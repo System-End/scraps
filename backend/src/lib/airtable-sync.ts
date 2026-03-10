@@ -15,7 +15,7 @@ const SYNC_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
 let syncInterval: ReturnType<typeof setInterval> | null = null
 
 // Fetch hours already awarded in other YSWS programs from the unified airtable
-async function fetchOtherYswsHours(codeUrls: Set<string>, playableUrls: Set<string>): Promise<Map<string, number>> {
+export async function fetchOtherYswsHours(codeUrls: Set<string>, playableUrls: Set<string>): Promise<Map<string, number>> {
 	// Map of URL -> total hours awarded in other YSWS programs
 	const urlHoursMap = new Map<string, number>()
 

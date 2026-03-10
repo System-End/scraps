@@ -218,6 +218,12 @@
 			} else if (data.updated && project) {
 				project = { ...project, hours: data.hours };
 			}
+			if (data.yswsDuplicates) {
+				yswsDuplicates = data.yswsDuplicates;
+			}
+			if (data.otherYswsDeduction > 0) {
+				error = `Note: ${data.otherYswsDeduction}h deducted from other YSWS programs. Effective hours: ${data.effectiveHours}h`;
+			}
 		} catch (e) {
 			console.error('Failed to sync hours:', e);
 			error = 'Failed to sync hours';

@@ -28,6 +28,7 @@ import {
 } from "../lib/scraps";
 import { payoutPendingScraps, getNextPayoutDate } from "../lib/scraps-payout";
 import { syncSingleProject, getHackatimeUser } from "../lib/hackatime-sync";
+import { fetchOtherYswsHours } from "../lib/airtable-sync";
 import { computeItemPricing, updateShopItemPricing } from "../lib/shop-pricing";
 import { submitProjectToYSWS } from "../lib/ysws";
 import { notifyProjectReview, notifyOrderFulfilled } from "../lib/slack";
@@ -2727,7 +2728,11 @@ admin.post("/projects/:id/sync-hours", async ({ headers, params, status }) => {
   try {
     // Don't allow syncing shipped projects — their hours are frozen at approval time
     const [proj] = await db
-      .select({ status: projectsTable.status })
+      .select({
+        status: projectsTable.status,
+        githubUrl: projectsTable.githubUrl,
+        playableUrl: projectsTable.playableUrl,
+      })
       .from(projectsTable)
       .where(eq(projectsTable.id, parseInt(params.id)))
       .limit(1);
@@ -2744,14 +2749,54 @@ admin.post("/projects/:id/sync-hours", async ({ headers, params, status }) => {
     }
 
     const result = await syncSingleProject(parseInt(params.id));
+
+    // Check unified airtable for hours already awarded in other YSWS programs
+    let otherYswsDeduction = 0;
+    let yswsDuplicates: (UnifiedRecord & { matchType: string })[] = [];
+    try {
+      const codeUrls = new Set<string>();
+      const playableUrls = new Set<string>();
+      if (proj.githubUrl) codeUrls.add(proj.githubUrl);
+      if (proj.playableUrl) playableUrls.add(proj.playableUrl);
+
+      if (codeUrls.size > 0 || playableUrls.size > 0) {
+        const [otherYswsHours, duplicates] = await Promise.all([
+          fetchOtherYswsHours(codeUrls, playableUrls),
+          searchUnifiedAirtable(proj.githubUrl, proj.playableUrl),
+        ]);
+
+        yswsDuplicates = duplicates;
+
+        if (proj.githubUrl && otherYswsHours.has(proj.githubUrl)) {
+          otherYswsDeduction += otherYswsHours.get(proj.githubUrl)!;
+        }
+        if (proj.playableUrl && otherYswsHours.has(proj.playableUrl)) {
+          otherYswsDeduction += otherYswsHours.get(proj.playableUrl)!;
+        }
+      }
+    } catch (e) {
+      console.error("[SYNC-HOURS] Failed to check unified airtable:", e);
+    }
+
+    const effectiveHours = Math.max(0, result.hours - otherYswsDeduction);
+
     if (result.error) {
       return {
         hours: result.hours,
+        effectiveHours,
+        otherYswsDeduction,
+        yswsDuplicates,
         updated: result.updated,
         error: result.error,
       };
     }
-    return { hours: result.hours, updated: result.updated };
+    return {
+      hours: result.hours,
+      effectiveHours,
+      otherYswsDeduction,
+      yswsDuplicates,
+      updated: result.updated,
+    };
   } catch (err) {
     console.error(err);
     return status(500, { error: "Failed to sync hours" });

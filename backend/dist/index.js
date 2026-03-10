@@ -25766,6 +25766,9 @@ var config = {
   airtableBaseId: process.env.AIRTABLE_BASE_ID,
   airtableProjectsTableId: process.env.AIRTABLE_PROJECTS_TABLE_ID,
   airtableUsersTableId: process.env.AIRTABLE_USERS_TABLE_ID,
+  unifiedAirtableToken: process.env.UNIFIED_AIRTABLE_TOKEN,
+  unifiedAirtableBaseId: process.env.UNIFIED_AIRTABLE_BASE_ID,
+  unifiedAirtableTableId: process.env.UNIFIED_AIRTABLE_TABLE_ID,
   fraudToken: process.env.FRAUD_TOKEN,
   hcbOrgSlug: "ysws-scraps"
 };
@@ -31300,6 +31303,7 @@ async function notifyProjectReview({
   projectId,
   action,
   feedbackForAuthor,
+  rejectionReason,
   reviewerSlackId,
   adminSlackIds,
   scrapsAwarded,
@@ -31385,7 +31389,11 @@ don't worry \u2014 make the requested changes and resubmit! :scraps:`
       }
     ];
   } else if (action === "permanently_rejected") {
-    fallbackText = `:scraps: hey <@${userSlackId}>! your scraps project ${projectName} has been unshipped by an admin.`;
+    const reasonSuffix = rejectionReason ? ` reason: ${rejectionReason}` : "";
+    const reasonBlock = rejectionReason ? `
+
+*reason:* ${rejectionReason}` : "";
+    fallbackText = `:scraps: hey <@${userSlackId}>! your scraps project ${projectName} has been unshipped by an admin.${reasonSuffix}`;
     blocks = [
       {
         type: "section",
@@ -31393,7 +31401,7 @@ don't worry \u2014 make the requested changes and resubmit! :scraps:`
           type: "mrkdwn",
           text: `:scraps: hey <@${userSlackId}>!
 
-your scraps project *<${projectUrl}|${projectName}>* has been unshipped by an admin.`
+your scraps project *<${projectUrl}|${projectName}>* has been unshipped by an admin.${reasonBlock}`
         }
       }
     ];
@@ -34313,60 +34321,82 @@ upload.post("/image", async ({ body, headers }) => {
 });
 var upload_default = upload;
 
-// src/lib/shop-pricing.ts
-function computeItemPricing(dollarCost, baseProbability, stockCount = 1) {
-  const pricing = calculateShopItemPricing(dollarCost, stockCount);
-  const price = pricing.price;
-  const prob = baseProbability !== undefined && baseProbability >= 1 && baseProbability <= 100 ? Math.round(baseProbability) : pricing.baseProbability;
-  const rollCost = calculateRollCost(price, prob, undefined, prob);
-  const threshold = computeRollThreshold(prob);
-  const expectedRollsAtBase = threshold > 0 ? Math.round(100 / threshold * 10) / 10 : Infinity;
-  const expectedSpendAtBase = Math.round(rollCost * expectedRollsAtBase);
-  return {
-    price,
-    baseProbability: prob,
-    baseUpgradeCost: pricing.baseUpgradeCost,
-    costMultiplier: pricing.costMultiplier,
-    boostAmount: pricing.boostAmount,
-    rollCost,
-    expectedRollsAtBase,
-    expectedSpendAtBase,
-    dollarCost,
-    scrapsPerDollar: SCRAPS_PER_DOLLAR
-  };
-}
-async function updateShopItemPricing() {
-  try {
-    const items = await db.select({
-      id: shopItemsTable.id,
-      name: shopItemsTable.name,
-      price: shopItemsTable.price,
-      count: shopItemsTable.count
-    }).from(shopItemsTable);
-    let updated = 0;
-    for (const item of items) {
-      const monetaryValue = item.price / SCRAPS_PER_DOLLAR;
-      const pricing = calculateShopItemPricing(monetaryValue, item.count);
-      await db.update(shopItemsTable).set({
-        baseProbability: pricing.baseProbability,
-        baseUpgradeCost: pricing.baseUpgradeCost,
-        costMultiplier: pricing.costMultiplier,
-        boostAmount: pricing.boostAmount,
-        updatedAt: new Date
-      }).where(eq(shopItemsTable.id, item.id));
-      updated++;
-    }
-    console.log(`[SHOP-PRICING] Updated pricing for ${updated} shop items`);
-    return updated;
-  } catch (err) {
-    console.error("[SHOP-PRICING] Failed to update shop item pricing:", err);
-    return 0;
-  }
-}
-
 // src/lib/airtable-sync.ts
 var import_airtable = __toESM(require_airtable(), 1);
 var SYNC_INTERVAL_MS2 = 5 * 60 * 1000;
+async function fetchOtherYswsHours(codeUrls, playableUrls) {
+  const urlHoursMap = new Map;
+  if (!config.unifiedAirtableToken || !config.unifiedAirtableBaseId || !config.unifiedAirtableTableId) {
+    return urlHoursMap;
+  }
+  const baseUrl = `https://api.airtable.com/v0/${config.unifiedAirtableBaseId}/${config.unifiedAirtableTableId}`;
+  async function fetchByFormula(formula) {
+    const results = [];
+    let offset;
+    do {
+      const params = new URLSearchParams({
+        filterByFormula: formula,
+        pageSize: "100"
+      });
+      params.append("fields[]", "YSWS");
+      params.append("fields[]", "Code URL");
+      params.append("fields[]", "Playable URL");
+      params.append("fields[]", "Override Hours Spent");
+      params.append("fields[]", "Hours Spent");
+      if (offset)
+        params.set("offset", offset);
+      const res = await fetch(`${baseUrl}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${config.unifiedAirtableToken}` }
+      });
+      if (!res.ok)
+        break;
+      const data = await res.json();
+      for (const record of data.records) {
+        const overrideHours = record.fields["Override Hours Spent"];
+        const hoursSpent = record.fields["Hours Spent"];
+        const hours = Number(overrideHours ?? hoursSpent ?? 0);
+        if (hours > 0) {
+          results.push({
+            codeUrl: record.fields["Code URL"] || "",
+            playableUrl: record.fields["Playable URL"] || "",
+            hours
+          });
+        }
+      }
+      offset = data.offset;
+    } while (offset);
+    return results;
+  }
+  try {
+    const codeUrlArr = [...codeUrls];
+    for (let i = 0;i < codeUrlArr.length; i += 15) {
+      const batch = codeUrlArr.slice(i, i + 15);
+      const orParts = batch.map((u) => `{Code URL}='${u.replace(/'/g, "\\'")}'`);
+      const formula = `AND(YSWS!='scraps',OR(${orParts.join(",")}))`;
+      const results = await fetchByFormula(formula);
+      for (const r of results) {
+        if (r.codeUrl) {
+          urlHoursMap.set(r.codeUrl, (urlHoursMap.get(r.codeUrl) || 0) + r.hours);
+        }
+      }
+    }
+    const playableUrlArr = [...playableUrls];
+    for (let i = 0;i < playableUrlArr.length; i += 15) {
+      const batch = playableUrlArr.slice(i, i + 15);
+      const orParts = batch.map((u) => `{Playable URL}='${u.replace(/'/g, "\\'")}'`);
+      const formula = `AND(YSWS!='scraps',OR(${orParts.join(",")}))`;
+      const results = await fetchByFormula(formula);
+      for (const r of results) {
+        if (r.playableUrl) {
+          urlHoursMap.set(r.playableUrl, (urlHoursMap.get(r.playableUrl) || 0) + r.hours);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[AIRTABLE-SYNC] Error fetching other YSWS hours:", err);
+  }
+  return urlHoursMap;
+}
 function getBase() {
   if (!config.airtableToken || !config.airtableBaseId) {
     console.log("[AIRTABLE-SYNC] Missing AIRTABLE_TOKEN or AIRTABLE_BASE_ID, skipping sync");
@@ -34567,6 +34597,12 @@ async function syncProjectsToAirtable() {
     const updateCreates = [];
     const userInfoCache = new Map;
     const shippedDates = await getProjectShippedDates(projects2.map((p) => p.id));
+    const allCodeUrls = new Set(projects2.map((p) => p.githubUrl).filter((u) => !!u));
+    const allPlayableUrls = new Set(projects2.map((p) => p.playableUrl).filter((u) => !!u));
+    const otherYswsHours = await fetchOtherYswsHours(allCodeUrls, allPlayableUrls);
+    if (otherYswsHours.size > 0) {
+      console.log(`[AIRTABLE-SYNC] Found ${otherYswsHours.size} URLs with hours in other YSWS programs`);
+    }
     const seenCodeUrls = new Map;
     for (const project of projects2) {
       if (!project.githubUrl)
@@ -34617,6 +34653,17 @@ async function syncProjectsToAirtable() {
           }
           effectiveHours = Math.max(0, effectiveHours);
         }
+      }
+      let otherYswsDeduction = 0;
+      if (project.githubUrl && otherYswsHours.has(project.githubUrl)) {
+        otherYswsDeduction += otherYswsHours.get(project.githubUrl);
+      }
+      if (project.playableUrl && otherYswsHours.has(project.playableUrl)) {
+        otherYswsDeduction += otherYswsHours.get(project.playableUrl);
+      }
+      if (otherYswsDeduction > 0) {
+        console.log(`[AIRTABLE-SYNC] Deducting ${otherYswsDeduction}h from project ${project.id} (awarded in other YSWS programs)`);
+        effectiveHours = Math.max(0, effectiveHours - otherYswsDeduction);
       }
       const firstName = userIdentity?.first_name || (project.username || "").split(" ")[0] || "";
       const lastName = userIdentity?.last_name || (project.username || "").split(" ").slice(1).join(" ") || "";
@@ -34789,8 +34836,191 @@ AI was used in this project. ${project.aiDescription}`);
   }
 }
 
+// src/lib/shop-pricing.ts
+function computeItemPricing(dollarCost, baseProbability, stockCount = 1) {
+  const pricing = calculateShopItemPricing(dollarCost, stockCount);
+  const price = pricing.price;
+  const prob = baseProbability !== undefined && baseProbability >= 1 && baseProbability <= 100 ? Math.round(baseProbability) : pricing.baseProbability;
+  const rollCost = calculateRollCost(price, prob, undefined, prob);
+  const threshold = computeRollThreshold(prob);
+  const expectedRollsAtBase = threshold > 0 ? Math.round(100 / threshold * 10) / 10 : Infinity;
+  const expectedSpendAtBase = Math.round(rollCost * expectedRollsAtBase);
+  return {
+    price,
+    baseProbability: prob,
+    baseUpgradeCost: pricing.baseUpgradeCost,
+    costMultiplier: pricing.costMultiplier,
+    boostAmount: pricing.boostAmount,
+    rollCost,
+    expectedRollsAtBase,
+    expectedSpendAtBase,
+    dollarCost,
+    scrapsPerDollar: SCRAPS_PER_DOLLAR
+  };
+}
+async function updateShopItemPricing() {
+  try {
+    const items = await db.select({
+      id: shopItemsTable.id,
+      name: shopItemsTable.name,
+      price: shopItemsTable.price,
+      count: shopItemsTable.count
+    }).from(shopItemsTable);
+    let updated = 0;
+    for (const item of items) {
+      const monetaryValue = item.price / SCRAPS_PER_DOLLAR;
+      const pricing = calculateShopItemPricing(monetaryValue, item.count);
+      await db.update(shopItemsTable).set({
+        baseProbability: pricing.baseProbability,
+        baseUpgradeCost: pricing.baseUpgradeCost,
+        costMultiplier: pricing.costMultiplier,
+        boostAmount: pricing.boostAmount,
+        updatedAt: new Date
+      }).where(eq(shopItemsTable.id, item.id));
+      updated++;
+    }
+    console.log(`[SHOP-PRICING] Updated pricing for ${updated} shop items`);
+    return updated;
+  } catch (err) {
+    console.error("[SHOP-PRICING] Failed to update shop item pricing:", err);
+    return 0;
+  }
+}
+
 // src/routes/admin.ts
 var admin = new Elysia({ prefix: "/admin" });
+async function searchUnifiedAirtable(codeUrl, playableUrl) {
+  if (!config.unifiedAirtableToken || !config.unifiedAirtableBaseId || !config.unifiedAirtableTableId) {
+    return [];
+  }
+  const baseUrl = `https://api.airtable.com/v0/${config.unifiedAirtableBaseId}/${config.unifiedAirtableTableId}`;
+  async function fetchByFormula(formula) {
+    const results = [];
+    let offset;
+    do {
+      const params = new URLSearchParams({
+        filterByFormula: formula,
+        pageSize: "100"
+      });
+      params.append("fields[]", "YSWS");
+      params.append("fields[]", "Playable URL");
+      params.append("fields[]", "Code URL");
+      if (offset)
+        params.set("offset", offset);
+      const res = await fetch(`${baseUrl}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${config.unifiedAirtableToken}` }
+      });
+      if (!res.ok)
+        break;
+      const data = await res.json();
+      for (const record of data.records) {
+        results.push({
+          id: record.id,
+          ysws: record.fields["YSWS"] || "",
+          playableUrl: record.fields["Playable URL"] || "",
+          codeUrl: record.fields["Code URL"] || ""
+        });
+      }
+      offset = data.offset;
+    } while (offset);
+    return results;
+  }
+  const seen = new Set;
+  const matches = [];
+  if (codeUrl) {
+    const escaped = codeUrl.replace(/'/g, "\\'");
+    const formula = `AND(YSWS!='scraps',{Code URL}='${escaped}')`;
+    for (const r of await fetchByFormula(formula)) {
+      if (!seen.has(r.id)) {
+        seen.add(r.id);
+        matches.push({ ...r, matchType: "code_url" });
+      }
+    }
+  }
+  if (playableUrl) {
+    const escaped = playableUrl.replace(/'/g, "\\'");
+    const formula = `AND(YSWS!='scraps',{Playable URL}='${escaped}')`;
+    for (const r of await fetchByFormula(formula)) {
+      if (seen.has(r.id)) {
+        const existing = matches.find((m) => m.id === r.id);
+        if (existing)
+          existing.matchType = "code_url, playable_url";
+      } else {
+        seen.add(r.id);
+        matches.push({ ...r, matchType: "playable_url" });
+      }
+    }
+  }
+  return matches;
+}
+async function searchUnifiedAirtableBatch(codeUrls, playableUrls) {
+  if (!config.unifiedAirtableToken || !config.unifiedAirtableBaseId || !config.unifiedAirtableTableId) {
+    return [];
+  }
+  const baseUrl = `https://api.airtable.com/v0/${config.unifiedAirtableBaseId}/${config.unifiedAirtableTableId}`;
+  async function fetchByFormula(formula) {
+    const results = [];
+    let offset;
+    do {
+      const params = new URLSearchParams({
+        filterByFormula: formula,
+        pageSize: "100"
+      });
+      params.append("fields[]", "YSWS");
+      params.append("fields[]", "Playable URL");
+      params.append("fields[]", "Code URL");
+      if (offset)
+        params.set("offset", offset);
+      const res = await fetch(`${baseUrl}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${config.unifiedAirtableToken}` }
+      });
+      if (!res.ok)
+        break;
+      const data = await res.json();
+      for (const record of data.records) {
+        results.push({
+          id: record.id,
+          ysws: record.fields["YSWS"] || "",
+          playableUrl: record.fields["Playable URL"] || "",
+          codeUrl: record.fields["Code URL"] || ""
+        });
+      }
+      offset = data.offset;
+    } while (offset);
+    return results;
+  }
+  const seen = new Set;
+  const matches = [];
+  const codeUrlArr = [...codeUrls];
+  for (let i = 0;i < codeUrlArr.length; i += 15) {
+    const batch = codeUrlArr.slice(i, i + 15);
+    const orParts = batch.map((u) => `{Code URL}='${u.replace(/'/g, "\\'")}'`);
+    const formula = `AND(YSWS!='scraps',OR(${orParts.join(",")}))`;
+    for (const r of await fetchByFormula(formula)) {
+      if (!seen.has(r.id)) {
+        seen.add(r.id);
+        matches.push({ ...r, matchType: "code_url" });
+      }
+    }
+  }
+  const playableUrlArr = [...playableUrls];
+  for (let i = 0;i < playableUrlArr.length; i += 15) {
+    const batch = playableUrlArr.slice(i, i + 15);
+    const orParts = batch.map((u) => `{Playable URL}='${u.replace(/'/g, "\\'")}'`);
+    const formula = `AND(YSWS!='scraps',OR(${orParts.join(",")}))`;
+    for (const r of await fetchByFormula(formula)) {
+      if (seen.has(r.id)) {
+        const existing = matches.find((m) => m.id === r.id);
+        if (existing)
+          existing.matchType = "code_url, playable_url";
+      } else {
+        seen.add(r.id);
+        matches.push({ ...r, matchType: "playable_url" });
+      }
+    }
+  }
+  return matches;
+}
 async function requireReviewer(headers) {
   const user2 = await getUserFromSession(headers);
   if (!user2)
@@ -35347,6 +35577,12 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
         console.error("[ADMIN] Failed to look up hackatime user:", e);
       }
     }
+    let yswsDuplicates = [];
+    try {
+      yswsDuplicates = await searchUnifiedAirtable(project[0].githubUrl, project[0].playableUrl);
+    } catch (e) {
+      console.error("[ADMIN] Failed to check YSWS duplicates:", e);
+    }
     const isAdmin = user2.role === "admin" || user2.role === "creator";
     const maskedProject = !isAdmin && project[0].status === "pending_admin_approval" ? { ...project[0], status: "waiting_for_review" } : project[0];
     const visibleReviews = !isAdmin && project[0].status === "pending_admin_approval" ? reviews.filter((r) => r.action !== "approved") : reviews;
@@ -35355,6 +35591,7 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
       hackatimeUserId,
       hackatimeSuspected,
       hackatimeBanned,
+      yswsDuplicates,
       user: projectUser[0] ? {
         id: projectUser[0].id,
         username: projectUser[0].username,
@@ -35389,13 +35626,19 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
       internalJustification,
       hoursOverride,
       tierOverride,
-      userInternalNotes
+      userInternalNotes,
+      rejectionReason
     } = body;
     if (!["approved", "denied", "permanently_rejected"].includes(action)) {
       return { error: "Invalid action" };
     }
     if (!feedbackForAuthor?.trim()) {
       return { error: "Feedback for author is required" };
+    }
+    if (action === "permanently_rejected" && !rejectionReason?.trim()) {
+      return {
+        error: "Reason shown to user is required for permanent rejection"
+      };
     }
     const projectId = parseInt(params.id);
     const project = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1);
@@ -35517,6 +35760,7 @@ admin.post("/reviews/:id", async ({ params, body, headers }) => {
             projectId,
             action,
             feedbackForAuthor,
+            rejectionReason: rejectionReason?.trim() || undefined,
             reviewerSlackId,
             adminSlackIds,
             scrapsAwarded,
@@ -36247,7 +36491,9 @@ admin.get("/orders", async ({ headers, query, status: status2 }) => {
       ordersQuery = ordersQuery.where(eq(shopOrdersTable.status, orderStatus));
     }
     const rows = await ordersQuery;
-    const uniqueEmails = [...new Set(rows.map((r) => r.userEmail).filter(Boolean))];
+    const uniqueEmails = [
+      ...new Set(rows.map((r) => r.userEmail).filter(Boolean))
+    ];
     const emailToSlackId = new Map;
     for (const row of rows) {
       if (row.userEmail && !emailToSlackId.has(row.userEmail)) {
@@ -36373,7 +36619,11 @@ admin.post("/projects/:id/sync-hours", async ({ headers, params, status: status2
     return status2(401, { error: "Unauthorized" });
   }
   try {
-    const [proj] = await db.select({ status: projectsTable.status }).from(projectsTable).where(eq(projectsTable.id, parseInt(params.id))).limit(1);
+    const [proj] = await db.select({
+      status: projectsTable.status,
+      githubUrl: projectsTable.githubUrl,
+      playableUrl: projectsTable.playableUrl
+    }).from(projectsTable).where(eq(projectsTable.id, parseInt(params.id))).limit(1);
     if (!proj) {
       return status2(404, { error: "Project not found" });
     }
@@ -36383,14 +36633,49 @@ admin.post("/projects/:id/sync-hours", async ({ headers, params, status: status2
       });
     }
     const result = await syncSingleProject(parseInt(params.id));
+    let otherYswsDeduction = 0;
+    let yswsDuplicates = [];
+    try {
+      const codeUrls = new Set;
+      const playableUrls = new Set;
+      if (proj.githubUrl)
+        codeUrls.add(proj.githubUrl);
+      if (proj.playableUrl)
+        playableUrls.add(proj.playableUrl);
+      if (codeUrls.size > 0 || playableUrls.size > 0) {
+        const [otherYswsHours, duplicates] = await Promise.all([
+          fetchOtherYswsHours(codeUrls, playableUrls),
+          searchUnifiedAirtable(proj.githubUrl, proj.playableUrl)
+        ]);
+        yswsDuplicates = duplicates;
+        if (proj.githubUrl && otherYswsHours.has(proj.githubUrl)) {
+          otherYswsDeduction += otherYswsHours.get(proj.githubUrl);
+        }
+        if (proj.playableUrl && otherYswsHours.has(proj.playableUrl)) {
+          otherYswsDeduction += otherYswsHours.get(proj.playableUrl);
+        }
+      }
+    } catch (e) {
+      console.error("[SYNC-HOURS] Failed to check unified airtable:", e);
+    }
+    const effectiveHours = Math.max(0, result.hours - otherYswsDeduction);
     if (result.error) {
       return {
         hours: result.hours,
+        effectiveHours,
+        otherYswsDeduction,
+        yswsDuplicates,
         updated: result.updated,
         error: result.error
       };
     }
-    return { hours: result.hours, updated: result.updated };
+    return {
+      hours: result.hours,
+      effectiveHours,
+      otherYswsDeduction,
+      yswsDuplicates,
+      updated: result.updated
+    };
   } catch (err) {
     console.error(err);
     return status2(500, { error: "Failed to sync hours" });
@@ -36998,6 +37283,32 @@ admin.post("/sync-ysws", async ({ headers }) => {
   } catch (err) {
     console.error("[ADMIN] YSWS sync error:", err);
     return { error: "Failed to sync projects to YSWS" };
+  }
+});
+admin.get("/unified-duplicates", async ({ headers, status: status2 }) => {
+  const user2 = await requireAdmin(headers);
+  if (!user2) {
+    return status2(401, { error: "Unauthorized" });
+  }
+  if (!config.unifiedAirtableToken || !config.unifiedAirtableBaseId || !config.unifiedAirtableTableId) {
+    return status2(500, { error: "Unified Airtable not configured" });
+  }
+  try {
+    const scrapsProjects = await db.select({
+      id: projectsTable.id,
+      githubUrl: projectsTable.githubUrl,
+      playableUrl: projectsTable.playableUrl
+    }).from(projectsTable).where(and(or(eq(projectsTable.status, "waiting_for_review"), eq(projectsTable.status, "pending_admin_approval"), eq(projectsTable.status, "shipped")), or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted))));
+    const scrapsCodeUrls = new Set(scrapsProjects.map((p) => p.githubUrl).filter((u) => !!u));
+    const scrapsPlayableUrls = new Set(scrapsProjects.map((p) => p.playableUrl).filter((u) => !!u));
+    const nonScrapsMatches = await searchUnifiedAirtableBatch(scrapsCodeUrls, scrapsPlayableUrls);
+    return {
+      totalChecked: scrapsCodeUrls.size + scrapsPlayableUrls.size,
+      nonScrapsMatches
+    };
+  } catch (err) {
+    console.error("[ADMIN] Unified duplicates check error:", err);
+    return status2(500, { error: "Failed to check unified airtable" });
   }
 });
 admin.post("/recalculate-shop-pricing", async ({ headers, status: status2 }) => {
