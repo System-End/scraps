@@ -90,9 +90,18 @@
 	let projectUser = $state<ProjectUser | null>(null);
 	let reviews = $state<Review[]>([]);
 	let overlappingProjects = $state<OverlappingProject[]>([]);
+	interface YswsDuplicate {
+		id: string;
+		ysws: string;
+		playableUrl: string;
+		codeUrl: string;
+		matchType: string;
+	}
+
 	let hackatimeUserId = $state<number | null>(null);
 	let hackatimeSuspected = $state(false);
 	let hackatimeBanned = $state(false);
+	let yswsDuplicates = $state<YswsDuplicate[]>([]);
 	let loading = $state(true);
 	let submitting = $state(false);
 	let savingNotes = $state(false);
@@ -163,6 +172,7 @@
 				hackatimeUserId = data.hackatimeUserId ?? null;
 				hackatimeSuspected = data.hackatimeSuspected || false;
 				hackatimeBanned = data.hackatimeBanned || false;
+				yswsDuplicates = data.yswsDuplicates || [];
 				userInternalNotes = data.user?.internalNotes || '';
 
 				// Check if project is deleted
@@ -436,6 +446,57 @@
 							carefully.
 						</p>
 					</div>
+				</div>
+			</div>
+		{/if}
+
+		<!-- YSWS Duplicate Banner -->
+		{#if yswsDuplicates.length > 0}
+			<div class="mb-6 rounded-2xl border-4 border-red-600 bg-red-50 p-4">
+				<div class="flex items-center gap-3">
+					<AlertTriangle size={20} class="text-red-600" />
+					<div class="flex-1">
+						<p class="font-bold text-red-800">
+							submitted to {yswsDuplicates.length} other YSWS program{yswsDuplicates.length !== 1
+								? 's'
+								: ''}
+						</p>
+						<p class="text-sm text-red-700">
+							this project's URLs were found in the unified airtable under other YSWS programs
+						</p>
+					</div>
+				</div>
+				<div class="mt-3 space-y-2">
+					{#each yswsDuplicates as dup}
+						<div class="rounded-lg border-2 border-red-200 bg-white p-3">
+							<div class="flex flex-wrap items-center gap-2">
+								<span class="rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white"
+									>{dup.ysws}</span
+								>
+								<span class="text-xs text-gray-500">matched by: {dup.matchType}</span>
+							</div>
+							{#if dup.codeUrl}
+								<p class="mt-1 truncate text-sm">
+									<span class="font-bold">code:</span>
+									<a
+										href={dup.codeUrl}
+										target="_blank"
+										class="text-blue-600 hover:underline">{dup.codeUrl}</a
+									>
+								</p>
+							{/if}
+							{#if dup.playableUrl}
+								<p class="truncate text-sm">
+									<span class="font-bold">playable:</span>
+									<a
+										href={dup.playableUrl}
+										target="_blank"
+										class="text-blue-600 hover:underline">{dup.playableUrl}</a
+									>
+								</p>
+							{/if}
+						</div>
+					{/each}
 				</div>
 			</div>
 		{/if}

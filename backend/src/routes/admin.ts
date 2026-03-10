@@ -42,6 +42,153 @@ import {
 
 const admin = new Elysia({ prefix: "/admin" });
 
+// Shared helper: search unified airtable for non-scraps records matching given URLs
+type UnifiedRecord = { id: string; ysws: string; playableUrl: string; codeUrl: string };
+
+async function searchUnifiedAirtable(codeUrl: string | null, playableUrl: string | null): Promise<(UnifiedRecord & { matchType: string })[]> {
+  if (!config.unifiedAirtableToken || !config.unifiedAirtableBaseId || !config.unifiedAirtableTableId) {
+    return [];
+  }
+
+  const baseUrl = `https://api.airtable.com/v0/${config.unifiedAirtableBaseId}/${config.unifiedAirtableTableId}`;
+
+  async function fetchByFormula(formula: string): Promise<UnifiedRecord[]> {
+    const results: UnifiedRecord[] = [];
+    let offset: string | undefined;
+    do {
+      const params = new URLSearchParams({
+        filterByFormula: formula,
+        pageSize: '100',
+      });
+      params.append('fields[]', 'YSWS');
+      params.append('fields[]', 'Playable URL');
+      params.append('fields[]', 'Code URL');
+      if (offset) params.set('offset', offset);
+
+      const res = await fetch(`${baseUrl}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${config.unifiedAirtableToken}` },
+      });
+      if (!res.ok) break;
+
+      const data = await res.json() as { records: { id: string; fields: Record<string, string> }[]; offset?: string };
+      for (const record of data.records) {
+        results.push({
+          id: record.id,
+          ysws: record.fields['YSWS'] || '',
+          playableUrl: record.fields['Playable URL'] || '',
+          codeUrl: record.fields['Code URL'] || '',
+        });
+      }
+      offset = data.offset;
+    } while (offset);
+    return results;
+  }
+
+  const seen = new Set<string>();
+  const matches: (UnifiedRecord & { matchType: string })[] = [];
+
+  if (codeUrl) {
+    const escaped = codeUrl.replace(/'/g, "\\'");
+    const formula = `AND(YSWS!='scraps',{Code URL}='${escaped}')`;
+    for (const r of await fetchByFormula(formula)) {
+      if (!seen.has(r.id)) {
+        seen.add(r.id);
+        matches.push({ ...r, matchType: 'code_url' });
+      }
+    }
+  }
+
+  if (playableUrl) {
+    const escaped = playableUrl.replace(/'/g, "\\'");
+    const formula = `AND(YSWS!='scraps',{Playable URL}='${escaped}')`;
+    for (const r of await fetchByFormula(formula)) {
+      if (seen.has(r.id)) {
+        const existing = matches.find(m => m.id === r.id);
+        if (existing) existing.matchType = 'code_url, playable_url';
+      } else {
+        seen.add(r.id);
+        matches.push({ ...r, matchType: 'playable_url' });
+      }
+    }
+  }
+
+  return matches;
+}
+
+async function searchUnifiedAirtableBatch(codeUrls: Set<string>, playableUrls: Set<string>): Promise<(UnifiedRecord & { matchType: string })[]> {
+  if (!config.unifiedAirtableToken || !config.unifiedAirtableBaseId || !config.unifiedAirtableTableId) {
+    return [];
+  }
+
+  const baseUrl = `https://api.airtable.com/v0/${config.unifiedAirtableBaseId}/${config.unifiedAirtableTableId}`;
+
+  async function fetchByFormula(formula: string): Promise<UnifiedRecord[]> {
+    const results: UnifiedRecord[] = [];
+    let offset: string | undefined;
+    do {
+      const params = new URLSearchParams({
+        filterByFormula: formula,
+        pageSize: '100',
+      });
+      params.append('fields[]', 'YSWS');
+      params.append('fields[]', 'Playable URL');
+      params.append('fields[]', 'Code URL');
+      if (offset) params.set('offset', offset);
+
+      const res = await fetch(`${baseUrl}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${config.unifiedAirtableToken}` },
+      });
+      if (!res.ok) break;
+
+      const data = await res.json() as { records: { id: string; fields: Record<string, string> }[]; offset?: string };
+      for (const record of data.records) {
+        results.push({
+          id: record.id,
+          ysws: record.fields['YSWS'] || '',
+          playableUrl: record.fields['Playable URL'] || '',
+          codeUrl: record.fields['Code URL'] || '',
+        });
+      }
+      offset = data.offset;
+    } while (offset);
+    return results;
+  }
+
+  const seen = new Set<string>();
+  const matches: (UnifiedRecord & { matchType: string })[] = [];
+
+  const codeUrlArr = [...codeUrls];
+  for (let i = 0; i < codeUrlArr.length; i += 15) {
+    const batch = codeUrlArr.slice(i, i + 15);
+    const orParts = batch.map(u => `{Code URL}='${u.replace(/'/g, "\\'")}'`);
+    const formula = `AND(YSWS!='scraps',OR(${orParts.join(',')}))`;
+    for (const r of await fetchByFormula(formula)) {
+      if (!seen.has(r.id)) {
+        seen.add(r.id);
+        matches.push({ ...r, matchType: 'code_url' });
+      }
+    }
+  }
+
+  const playableUrlArr = [...playableUrls];
+  for (let i = 0; i < playableUrlArr.length; i += 15) {
+    const batch = playableUrlArr.slice(i, i + 15);
+    const orParts = batch.map(u => `{Playable URL}='${u.replace(/'/g, "\\'")}'`);
+    const formula = `AND(YSWS!='scraps',OR(${orParts.join(',')}))`;
+    for (const r of await fetchByFormula(formula)) {
+      if (seen.has(r.id)) {
+        const existing = matches.find(m => m.id === r.id);
+        if (existing) existing.matchType = 'code_url, playable_url';
+      } else {
+        seen.add(r.id);
+        matches.push({ ...r, matchType: 'playable_url' });
+      }
+    }
+  }
+
+  return matches;
+}
+
 async function requireReviewer(headers: Record<string, string>) {
   const user = await getUserFromSession(headers);
   if (!user) return null;
@@ -907,6 +1054,14 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
       }
     }
 
+    // Check unified airtable for YSWS duplicates
+    let yswsDuplicates: (UnifiedRecord & { matchType: string })[] = [];
+    try {
+      yswsDuplicates = await searchUnifiedAirtable(project[0].githubUrl, project[0].playableUrl);
+    } catch (e) {
+      console.error("[ADMIN] Failed to check YSWS duplicates:", e);
+    }
+
     const isAdmin = user.role === "admin" || user.role === "creator";
     // Hide pending_admin_approval from non-admin reviewers
     const maskedProject =
@@ -925,6 +1080,7 @@ admin.get("/reviews/:id", async ({ params, headers }) => {
       hackatimeUserId,
       hackatimeSuspected,
       hackatimeBanned,
+      yswsDuplicates,
       user: projectUser[0]
         ? {
             id: projectUser[0].id,
@@ -3663,15 +3819,12 @@ admin.get("/unified-duplicates", async ({ headers, status }) => {
   }
 
   try {
-    // Get scraps projects' URLs from our DB first
+    // Get submitted/pending/shipped projects' URLs from our DB
     const scrapsProjects = await db
       .select({
         id: projectsTable.id,
-        name: projectsTable.name,
         githubUrl: projectsTable.githubUrl,
         playableUrl: projectsTable.playableUrl,
-        status: projectsTable.status,
-        userId: projectsTable.userId,
       })
       .from(projectsTable)
       .where(
@@ -3680,7 +3833,6 @@ admin.get("/unified-duplicates", async ({ headers, status }) => {
             eq(projectsTable.status, "waiting_for_review"),
             eq(projectsTable.status, "pending_admin_approval"),
             eq(projectsTable.status, "shipped"),
-            eq(projectsTable.status, "in_progress"),
           ),
           or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
         ),
@@ -3689,78 +3841,7 @@ admin.get("/unified-duplicates", async ({ headers, status }) => {
     const scrapsCodeUrls = new Set(scrapsProjects.map(p => p.githubUrl).filter((u): u is string => !!u));
     const scrapsPlayableUrls = new Set(scrapsProjects.map(p => p.playableUrl).filter((u): u is string => !!u));
 
-    const baseUrl = `https://api.airtable.com/v0/${config.unifiedAirtableBaseId}/${config.unifiedAirtableTableId}`;
-    type UnifiedRecord = { id: string; ysws: string; playableUrl: string; codeUrl: string };
-
-    async function searchByFormula(formula: string): Promise<UnifiedRecord[]> {
-      const results: UnifiedRecord[] = [];
-      let offset: string | undefined;
-      do {
-        const params = new URLSearchParams({
-          filterByFormula: formula,
-          pageSize: '100',
-        });
-        params.append('fields[]', 'YSWS');
-        params.append('fields[]', 'Playable URL');
-        params.append('fields[]', 'Code URL');
-        if (offset) params.set('offset', offset);
-
-        const res = await fetch(`${baseUrl}?${params.toString()}`, {
-          headers: { Authorization: `Bearer ${config.unifiedAirtableToken}` },
-        });
-        if (!res.ok) continue;
-
-        const data = await res.json() as { records: { id: string; fields: Record<string, string> }[]; offset?: string };
-        for (const record of data.records) {
-          results.push({
-            id: record.id,
-            ysws: record.fields['YSWS'] || '',
-            playableUrl: record.fields['Playable URL'] || '',
-            codeUrl: record.fields['Code URL'] || '',
-          });
-        }
-        offset = data.offset;
-      } while (offset);
-      return results;
-    }
-
-    // Search for each scraps URL in the unified table (YSWS != Scraps)
-    const seen = new Set<string>();
-    const nonScrapsMatches: (UnifiedRecord & { matchType: string })[] = [];
-
-    // Batch code URL lookups in groups of 15 to keep formula size manageable
-    const codeUrlArr = [...scrapsCodeUrls];
-    for (let i = 0; i < codeUrlArr.length; i += 15) {
-      const batch = codeUrlArr.slice(i, i + 15);
-      const orParts = batch.map(u => `{Code URL}='${u.replace(/'/g, "\\'")}'`);
-      const formula = `AND(YSWS!='scraps',OR(${orParts.join(',')}))`;
-      const results = await searchByFormula(formula);
-      for (const r of results) {
-        if (!seen.has(r.id)) {
-          seen.add(r.id);
-          nonScrapsMatches.push({ ...r, matchType: 'code_url' });
-        }
-      }
-    }
-
-    // Batch playable URL lookups
-    const playableUrlArr = [...scrapsPlayableUrls];
-    for (let i = 0; i < playableUrlArr.length; i += 15) {
-      const batch = playableUrlArr.slice(i, i + 15);
-      const orParts = batch.map(u => `{Playable URL}='${u.replace(/'/g, "\\'")}'`);
-      const formula = `AND(YSWS!='scraps',OR(${orParts.join(',')}))`;
-      const results = await searchByFormula(formula);
-      for (const r of results) {
-        if (seen.has(r.id)) {
-          // Already matched by code_url, upgrade matchType
-          const existing = nonScrapsMatches.find(m => m.id === r.id);
-          if (existing) existing.matchType = 'code_url, playable_url';
-        } else {
-          seen.add(r.id);
-          nonScrapsMatches.push({ ...r, matchType: 'playable_url' });
-        }
-      }
-    }
+    const nonScrapsMatches = await searchUnifiedAirtableBatch(scrapsCodeUrls, scrapsPlayableUrls);
 
     return {
       totalChecked: scrapsCodeUrls.size + scrapsPlayableUrls.size,
