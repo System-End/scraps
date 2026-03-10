@@ -3651,6 +3651,138 @@ admin.post("/sync-ysws", async ({ headers }) => {
   }
 });
 
+// Check unified airtable for duplicates by Code URL / Playable URL and non-scraps YSWS
+admin.get("/unified-duplicates", async ({ headers, status }) => {
+  const user = await requireAdmin(headers as Record<string, string>);
+  if (!user) {
+    return status(401, { error: "Unauthorized" });
+  }
+
+  if (!config.unifiedAirtableToken || !config.unifiedAirtableBaseId || !config.unifiedAirtableTableId) {
+    return status(500, { error: "Unified Airtable not configured" });
+  }
+
+  try {
+    const Airtable = (await import('airtable')).default;
+    const airtable = new Airtable({ apiKey: config.unifiedAirtableToken });
+    const base = airtable.base(config.unifiedAirtableBaseId);
+    const table = base(config.unifiedAirtableTableId);
+
+    // Fetch all records from the unified airtable
+    const allRecords: { id: string; ysws: string; playableUrl: string; codeUrl: string }[] = [];
+    await new Promise<void>((resolve, reject) => {
+      table.select({
+        fields: ['YSWS', 'Playable URL', 'Code URL']
+      }).eachPage(
+        (records, fetchNextPage) => {
+          for (const record of records) {
+            allRecords.push({
+              id: record.id,
+              ysws: String(record.get('YSWS') || ''),
+              playableUrl: String(record.get('Playable URL') || ''),
+              codeUrl: String(record.get('Code URL') || '')
+            });
+          }
+          fetchNextPage();
+        },
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Get scraps projects' URLs from our DB for comparison
+    const scrapsProjects = await db
+      .select({
+        id: projectsTable.id,
+        name: projectsTable.name,
+        githubUrl: projectsTable.githubUrl,
+        playableUrl: projectsTable.playableUrl,
+        status: projectsTable.status,
+        userId: projectsTable.userId,
+      })
+      .from(projectsTable)
+      .where(
+        and(
+          or(
+            eq(projectsTable.status, "waiting_for_review"),
+            eq(projectsTable.status, "pending_admin_approval"),
+            eq(projectsTable.status, "shipped"),
+            eq(projectsTable.status, "in_progress"),
+          ),
+          or(eq(projectsTable.deleted, 0), isNull(projectsTable.deleted)),
+        ),
+      );
+
+    const scrapsCodeUrls = new Set(scrapsProjects.map(p => p.githubUrl).filter(Boolean));
+    const scrapsPlayableUrls = new Set(scrapsProjects.map(p => p.playableUrl).filter(Boolean));
+
+    // Find records in the unified airtable that match scraps URLs but YSWS != "Scraps"
+    const nonScrapsMatches: { id: string; ysws: string; playableUrl: string; codeUrl: string; matchType: string }[] = [];
+
+    for (const record of allRecords) {
+      if (record.ysws.toLowerCase() === 'scraps') continue;
+
+      const matchTypes: string[] = [];
+      if (record.codeUrl && scrapsCodeUrls.has(record.codeUrl)) {
+        matchTypes.push('code_url');
+      }
+      if (record.playableUrl && scrapsPlayableUrls.has(record.playableUrl)) {
+        matchTypes.push('playable_url');
+      }
+
+      if (matchTypes.length > 0) {
+        nonScrapsMatches.push({
+          ...record,
+          matchType: matchTypes.join(', ')
+        });
+      }
+    }
+
+    // Also find duplicate URLs within the unified table itself
+    const codeUrlCounts = new Map<string, { id: string; ysws: string; codeUrl: string; playableUrl: string }[]>();
+    const playableUrlCounts = new Map<string, { id: string; ysws: string; codeUrl: string; playableUrl: string }[]>();
+
+    for (const record of allRecords) {
+      if (record.codeUrl) {
+        const existing = codeUrlCounts.get(record.codeUrl) || [];
+        existing.push(record);
+        codeUrlCounts.set(record.codeUrl, existing);
+      }
+      if (record.playableUrl) {
+        const existing = playableUrlCounts.get(record.playableUrl) || [];
+        existing.push(record);
+        playableUrlCounts.set(record.playableUrl, existing);
+      }
+    }
+
+    const duplicateCodeUrls: { url: string; records: typeof allRecords }[] = [];
+    for (const [url, records] of codeUrlCounts) {
+      if (records.length > 1) {
+        duplicateCodeUrls.push({ url, records });
+      }
+    }
+
+    const duplicatePlayableUrls: { url: string; records: typeof allRecords }[] = [];
+    for (const [url, records] of playableUrlCounts) {
+      if (records.length > 1) {
+        duplicatePlayableUrls.push({ url, records });
+      }
+    }
+
+    return {
+      totalRecords: allRecords.length,
+      nonScrapsMatches,
+      duplicateCodeUrls,
+      duplicatePlayableUrls
+    };
+  } catch (err) {
+    console.error("[ADMIN] Unified duplicates check error:", err);
+    return status(500, { error: "Failed to check unified airtable" });
+  }
+});
+
 // Recalculate shop item pricing from current price/stock values (admin only)
 admin.post("/recalculate-shop-pricing", async ({ headers, status }) => {
   const user = await requireAdmin(headers as Record<string, string>);

@@ -38,6 +38,11 @@ export const config = {
 	airtableProjectsTableId: process.env.AIRTABLE_PROJECTS_TABLE_ID!,
 	airtableUsersTableId: process.env.AIRTABLE_USERS_TABLE_ID!,
 
+	// Unified Airtable
+	unifiedAirtableToken: process.env.UNIFIED_AIRTABLE_TOKEN,
+	unifiedAirtableBaseId: process.env.UNIFIED_AIRTABLE_BASE_ID,
+	unifiedAirtableTableId: process.env.UNIFIED_AIRTABLE_TABLE_ID,
+
 	// YSWS
 	fraudToken: process.env.FRAUD_TOKEN,
 

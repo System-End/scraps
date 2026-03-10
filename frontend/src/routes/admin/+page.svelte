@@ -14,7 +14,8 @@
 		RefreshCw,
 		ShoppingCart,
 		DollarSign,
-		Calculator
+		Calculator,
+		SearchCheck
 	} from '@lucide/svelte';
 	import { getUser } from '$lib/auth-client';
 	import { API_URL } from '$lib/config';
@@ -135,6 +136,23 @@
 	let pricingRecalcing = $state(false);
 	let pricingResult = $state<{ updatedCount: number } | null>(null);
 	let pricingError = $state<string | null>(null);
+
+	// Unified duplicates state
+	interface DuplicateRecord {
+		id: string;
+		ysws: string;
+		playableUrl: string;
+		codeUrl: string;
+	}
+	interface UnifiedDuplicatesResult {
+		totalRecords: number;
+		nonScrapsMatches: (DuplicateRecord & { matchType: string })[];
+		duplicateCodeUrls: { url: string; records: DuplicateRecord[] }[];
+		duplicatePlayableUrls: { url: string; records: DuplicateRecord[] }[];
+	}
+	let dupChecking = $state(false);
+	let dupResult = $state<UnifiedDuplicatesResult | null>(null);
+	let dupError = $state<string | null>(null);
 
 	async function fetchPayoutInfo() {
 		payoutLoading = true;
@@ -270,6 +288,27 @@
 			yswsError = 'Failed to sync projects to YSWS';
 		} finally {
 			yswsSyncing = false;
+		}
+	}
+
+	async function checkUnifiedDuplicates() {
+		dupChecking = true;
+		dupResult = null;
+		dupError = null;
+		try {
+			const res = await fetch(`${API_URL}/admin/unified-duplicates`, {
+				credentials: 'include'
+			});
+			const data = await res.json();
+			if (data.error) {
+				dupError = data.error;
+			} else {
+				dupResult = data;
+			}
+		} catch {
+			dupError = 'Failed to check unified airtable';
+		} finally {
+			dupChecking = false;
 		}
 	}
 
@@ -953,6 +992,145 @@
 							? 's'
 							: ''}
 					</p>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Check Unified Airtable Duplicates -->
+		<div class="mb-6 rounded-2xl border-4 border-black p-6">
+			<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<h3 class="flex items-center gap-2 text-lg font-bold">
+						<SearchCheck size={20} />
+						check unified airtable duplicates
+					</h3>
+					<p class="text-sm text-gray-500">
+						find projects submitted to other YSWS programs with the same code or playable URL
+					</p>
+				</div>
+				<button
+					onclick={checkUnifiedDuplicates}
+					disabled={dupChecking}
+					class="cursor-pointer rounded-full bg-black px-6 py-2 font-bold text-white transition-all hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{dupChecking ? 'checking...' : 'check now'}
+				</button>
+			</div>
+
+			{#if dupError}
+				<div class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">{dupError}</div>
+			{/if}
+
+			{#if dupResult}
+				<div class="mt-4 space-y-4">
+					<p class="text-sm text-gray-500">
+						scanned {dupResult.totalRecords.toLocaleString()} unified airtable records
+					</p>
+
+					{#if dupResult.nonScrapsMatches.length > 0}
+						<div>
+							<h4 class="mb-2 text-sm font-bold text-red-600 uppercase">
+								scraps URLs found in other YSWS programs ({dupResult.nonScrapsMatches.length})
+							</h4>
+							<div class="max-h-96 space-y-2 overflow-y-auto">
+								{#each dupResult.nonScrapsMatches as match}
+									<div class="rounded-xl border-2 border-red-200 bg-red-50 p-3">
+										<div class="flex flex-wrap items-center gap-2">
+											<span
+												class="rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white"
+												>{match.ysws}</span
+											>
+											<span class="text-xs text-gray-500">matched by: {match.matchType}</span>
+										</div>
+										{#if match.codeUrl}
+											<p class="mt-1 truncate text-sm">
+												<span class="font-bold">code:</span>
+												<a
+													href={match.codeUrl}
+													target="_blank"
+													class="text-blue-600 hover:underline">{match.codeUrl}</a
+												>
+											</p>
+										{/if}
+										{#if match.playableUrl}
+											<p class="truncate text-sm">
+												<span class="font-bold">playable:</span>
+												<a
+													href={match.playableUrl}
+													target="_blank"
+													class="text-blue-600 hover:underline">{match.playableUrl}</a
+												>
+											</p>
+										{/if}
+									</div>
+								{/each}
+							</div>
+						</div>
+					{:else}
+						<div class="rounded-lg bg-green-50 p-4">
+							<p class="font-bold text-green-700">
+								no scraps URLs found in other YSWS programs
+							</p>
+						</div>
+					{/if}
+
+					{#if dupResult.duplicateCodeUrls.length > 0}
+						<div>
+							<h4 class="mb-2 text-sm font-bold text-yellow-600 uppercase">
+								duplicate code URLs across YSWS ({dupResult.duplicateCodeUrls.length})
+							</h4>
+							<div class="max-h-64 space-y-2 overflow-y-auto">
+								{#each dupResult.duplicateCodeUrls as dup}
+									<div class="rounded-xl border-2 border-yellow-200 bg-yellow-50 p-3">
+										<p class="truncate text-sm font-bold">
+											<a
+												href={dup.url}
+												target="_blank"
+												class="text-blue-600 hover:underline">{dup.url}</a
+											>
+										</p>
+										<div class="mt-1 flex flex-wrap gap-1">
+											{#each dup.records as r}
+												<span
+													class="rounded-full border border-yellow-400 px-2 py-0.5 text-xs font-bold"
+													>{r.ysws || 'unknown'}</span
+												>
+											{/each}
+										</div>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
+					{#if dupResult.duplicatePlayableUrls.length > 0}
+						<div>
+							<h4 class="mb-2 text-sm font-bold text-yellow-600 uppercase">
+								duplicate playable URLs across YSWS ({dupResult.duplicatePlayableUrls.length})
+							</h4>
+							<div class="max-h-64 space-y-2 overflow-y-auto">
+								{#each dupResult.duplicatePlayableUrls as dup}
+									<div class="rounded-xl border-2 border-yellow-200 bg-yellow-50 p-3">
+										<p class="truncate text-sm font-bold">
+											<a
+												href={dup.url}
+												target="_blank"
+												class="text-blue-600 hover:underline">{dup.url}</a
+											>
+										</p>
+										<div class="mt-1 flex flex-wrap gap-1">
+											{#each dup.records as r}
+												<span
+													class="rounded-full border border-yellow-400 px-2 py-0.5 text-xs font-bold"
+													>{r.ysws || 'unknown'}</span
+												>
+											{/each}
+										</div>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/if}
 				</div>
 			{/if}
 		</div>
