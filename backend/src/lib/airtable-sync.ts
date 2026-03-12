@@ -444,16 +444,19 @@ export async function syncProjectsToAirtable(): Promise<void> {
 			}
 
 			// Deduct hours already awarded in other YSWS programs
-			let otherYswsDeduction = 0
-			if (project.githubUrl && otherYswsHours.has(project.githubUrl)) {
-				otherYswsDeduction += otherYswsHours.get(project.githubUrl)!
-			}
-			if (project.playableUrl && otherYswsHours.has(project.playableUrl)) {
-				otherYswsDeduction += otherYswsHours.get(project.playableUrl)!
-			}
-			if (otherYswsDeduction > 0) {
-				console.log(`[AIRTABLE-SYNC] Deducting ${otherYswsDeduction}h from project ${project.id} (awarded in other YSWS programs)`)
-				effectiveHours = Math.max(0, effectiveHours - otherYswsDeduction)
+			// Skip deduction if project has an override — the reviewer already set the intended hours
+			if (project.hoursOverride === null) {
+				let otherYswsDeduction = 0
+				if (project.githubUrl && otherYswsHours.has(project.githubUrl)) {
+					otherYswsDeduction += otherYswsHours.get(project.githubUrl)!
+				}
+				if (project.playableUrl && otherYswsHours.has(project.playableUrl)) {
+					otherYswsDeduction += otherYswsHours.get(project.playableUrl)!
+				}
+				if (otherYswsDeduction > 0) {
+					console.log(`[AIRTABLE-SYNC] Deducting ${otherYswsDeduction}h from project ${project.id} (awarded in other YSWS programs)`)
+					effectiveHours = Math.max(0, effectiveHours - otherYswsDeduction)
+				}
 			}
 
 			const firstName = userIdentity?.first_name || (project.username || '').split(' ')[0] || ''

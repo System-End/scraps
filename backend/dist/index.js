@@ -34659,16 +34659,18 @@ async function syncProjectsToAirtable() {
           effectiveHours = Math.max(0, effectiveHours);
         }
       }
-      let otherYswsDeduction = 0;
-      if (project.githubUrl && otherYswsHours.has(project.githubUrl)) {
-        otherYswsDeduction += otherYswsHours.get(project.githubUrl);
-      }
-      if (project.playableUrl && otherYswsHours.has(project.playableUrl)) {
-        otherYswsDeduction += otherYswsHours.get(project.playableUrl);
-      }
-      if (otherYswsDeduction > 0) {
-        console.log(`[AIRTABLE-SYNC] Deducting ${otherYswsDeduction}h from project ${project.id} (awarded in other YSWS programs)`);
-        effectiveHours = Math.max(0, effectiveHours - otherYswsDeduction);
+      if (project.hoursOverride === null) {
+        let otherYswsDeduction = 0;
+        if (project.githubUrl && otherYswsHours.has(project.githubUrl)) {
+          otherYswsDeduction += otherYswsHours.get(project.githubUrl);
+        }
+        if (project.playableUrl && otherYswsHours.has(project.playableUrl)) {
+          otherYswsDeduction += otherYswsHours.get(project.playableUrl);
+        }
+        if (otherYswsDeduction > 0) {
+          console.log(`[AIRTABLE-SYNC] Deducting ${otherYswsDeduction}h from project ${project.id} (awarded in other YSWS programs)`);
+          effectiveHours = Math.max(0, effectiveHours - otherYswsDeduction);
+        }
       }
       const firstName = userIdentity?.first_name || (project.username || "").split(" ")[0] || "";
       const lastName = userIdentity?.last_name || (project.username || "").split(" ").slice(1).join(" ") || "";
