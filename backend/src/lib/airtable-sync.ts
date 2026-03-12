@@ -25,8 +25,10 @@ export async function fetchOtherYswsHours(codeUrls: Set<string>, playableUrls: S
 
 	const baseUrl = `https://api.airtable.com/v0/${config.unifiedAirtableBaseId}/${config.unifiedAirtableTableId}`
 
-	async function fetchByFormula(formula: string): Promise<{ codeUrl: string; playableUrl: string; hours: number }[]> {
-		const results: { codeUrl: string; playableUrl: string; hours: number }[] = []
+	const seenRecordIds = new Set<string>()
+
+	async function fetchByFormula(formula: string): Promise<{ recordId: string; codeUrl: string; playableUrl: string; hours: number }[]> {
+		const results: { recordId: string; codeUrl: string; playableUrl: string; hours: number }[] = []
 		let offset: string | undefined
 		do {
 			const params = new URLSearchParams({
@@ -47,11 +49,14 @@ export async function fetchOtherYswsHours(codeUrls: Set<string>, playableUrls: S
 
 			const data = await res.json() as { records: { id: string; fields: Record<string, any> }[]; offset?: string }
 			for (const record of data.records) {
+				if (seenRecordIds.has(record.id)) continue
+				seenRecordIds.add(record.id)
 				const overrideHours = record.fields['Override Hours Spent']
 				const hoursSpent = record.fields['Hours Spent']
 				const hours = Number(overrideHours ?? hoursSpent ?? 0)
 				if (hours > 0) {
 					results.push({
+						recordId: record.id,
 						codeUrl: record.fields['Code URL'] || '',
 						playableUrl: record.fields['Playable URL'] || '',
 						hours,

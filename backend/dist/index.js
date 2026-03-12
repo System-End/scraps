@@ -34330,6 +34330,7 @@ async function fetchOtherYswsHours(codeUrls, playableUrls) {
     return urlHoursMap;
   }
   const baseUrl = `https://api.airtable.com/v0/${config.unifiedAirtableBaseId}/${config.unifiedAirtableTableId}`;
+  const seenRecordIds = new Set;
   async function fetchByFormula(formula) {
     const results = [];
     let offset;
@@ -34352,11 +34353,15 @@ async function fetchOtherYswsHours(codeUrls, playableUrls) {
         break;
       const data = await res.json();
       for (const record of data.records) {
+        if (seenRecordIds.has(record.id))
+          continue;
+        seenRecordIds.add(record.id);
         const overrideHours = record.fields["Override Hours Spent"];
         const hoursSpent = record.fields["Hours Spent"];
         const hours = Number(overrideHours ?? hoursSpent ?? 0);
         if (hours > 0) {
           results.push({
+            recordId: record.id,
             codeUrl: record.fields["Code URL"] || "",
             playableUrl: record.fields["Playable URL"] || "",
             hours
