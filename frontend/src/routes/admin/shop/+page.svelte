@@ -289,7 +289,7 @@
 				formBoostAmount !== optimalPricing?.boostAmount)
 	);
 
-	async function recalculatePricing() {
+	async function recalculatePricing(applyToForm = true) {
 		// Call server-side compute endpoint so admin previews exactly match backend
 		try {
 			const body = {
@@ -311,6 +311,22 @@
 					formCount,
 					formPriceOverride ? formPrice : undefined
 				);
+				optimalPricing = pricing;
+				if (applyToForm) {
+					if (!formPriceOverride) {
+						formPrice = pricing.price;
+					}
+					formBaseProbability = pricing.baseProbability;
+					formBaseUpgradeCost = pricing.baseUpgradeCost;
+					formCostMultiplier = pricing.costMultiplier;
+					formBoostAmount = pricing.boostAmount;
+				}
+				return;
+			}
+			const pricing = await res.json();
+			optimalPricing = pricing;
+			if (applyToForm) {
+				// Server returns canonical pricing object
 				if (!formPriceOverride) {
 					formPrice = pricing.price;
 				}
@@ -318,19 +334,7 @@
 				formBaseUpgradeCost = pricing.baseUpgradeCost;
 				formCostMultiplier = pricing.costMultiplier;
 				formBoostAmount = pricing.boostAmount;
-				optimalPricing = pricing;
-				return;
 			}
-			const pricing = await res.json();
-			// Server returns canonical pricing object
-			if (!formPriceOverride) {
-				formPrice = pricing.price;
-			}
-			formBaseProbability = pricing.baseProbability;
-			formBaseUpgradeCost = pricing.baseUpgradeCost;
-			formCostMultiplier = pricing.costMultiplier;
-			formBoostAmount = pricing.boostAmount;
-			optimalPricing = pricing;
 		} catch (err) {
 			console.error('[ADMIN] recalculatePricing error', err);
 			// Fallback to local computation on network/other errors
@@ -339,14 +343,16 @@
 				formCount,
 				formPriceOverride ? formPrice : undefined
 			);
-			if (!formPriceOverride) {
-				formPrice = pricing.price;
-			}
-			formBaseProbability = pricing.baseProbability;
-			formBaseUpgradeCost = pricing.baseUpgradeCost;
-			formCostMultiplier = pricing.costMultiplier;
-			formBoostAmount = pricing.boostAmount;
 			optimalPricing = pricing;
+			if (applyToForm) {
+				if (!formPriceOverride) {
+					formPrice = pricing.price;
+				}
+				formBaseProbability = pricing.baseProbability;
+				formBaseUpgradeCost = pricing.baseUpgradeCost;
+				formCostMultiplier = pricing.costMultiplier;
+				formBoostAmount = pricing.boostAmount;
+			}
 		}
 	}
 
@@ -443,8 +449,8 @@
 		formRollCostOverride = item.rollCostOverride ?? null;
 		formError = null;
 		showDetailedEV = false;
-		// Prefetch canonical pricing so modal EV/optimal UI matches backend
-		await recalculatePricing();
+		// Fetch optimal pricing for comparison, but don't overwrite the item's saved values
+		await recalculatePricing(false);
 		showModal = true;
 	}
 
