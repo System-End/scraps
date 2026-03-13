@@ -32637,12 +32637,13 @@ function calculateRollCost(basePrice, effectiveProbability, rollCostOverride, ba
 var UPGRADE_START_PERCENT = 0.25;
 var UPGRADE_DECAY = 1.05;
 var UPGRADE_MAX_BUDGET_MULTIPLIER = 3;
-function getUpgradeCost(price, upgradeCount, actualSpent) {
+function getUpgradeCost(price, upgradeCount, actualSpent, baseUpgradeCost) {
   const maxBudget = price * UPGRADE_MAX_BUDGET_MULTIPLIER;
   const cumulative = actualSpent ?? 0;
   if (cumulative >= maxBudget)
     return null;
-  const nextCost = Math.max(1, Math.floor(price * UPGRADE_START_PERCENT / Math.pow(UPGRADE_DECAY, upgradeCount)));
+  const base = baseUpgradeCost ?? Math.max(1, Math.floor(price * UPGRADE_START_PERCENT));
+  const nextCost = Math.max(1, Math.floor(base / Math.pow(UPGRADE_DECAY, upgradeCount)));
   if (cumulative + nextCost > maxBudget) {
     const remaining = Math.floor(maxBudget - cumulative);
     return remaining > 0 ? remaining : null;
@@ -33187,7 +33188,7 @@ shop.get("/items", async ({ headers }) => {
       const adjustedBaseProbability = Math.floor(item.baseProbability * penaltyMultiplier / 100);
       const maxBoost = 100 - adjustedBaseProbability;
       const actualSpent = refinerySpentMap.get(item.id) ?? 0;
-      const nextUpgradeCost = boostData.boostPercent >= maxBoost ? null : getUpgradeCost(item.price, boostData.upgradeCount, actualSpent);
+      const nextUpgradeCost = boostData.boostPercent >= maxBoost ? null : getUpgradeCost(item.price, boostData.upgradeCount, actualSpent, item.baseUpgradeCost);
       const effectiveProbability = Math.min(adjustedBaseProbability + boostData.boostPercent, 100);
       const baseRollCost = calculateRollCost(item.price, effectiveProbability, item.rollCostOverride, item.baseProbability);
       const previousRolls = rollCountMap.get(item.id) ?? 0;
@@ -33648,7 +33649,7 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
         total: sql`COALESCE(SUM(${refinerySpendingHistoryTable.cost}), 0)`
       }).from(refinerySpendingHistoryTable).where(and(eq(refinerySpendingHistoryTable.userId, user2.id), eq(refinerySpendingHistoryTable.shopItemId, itemId)));
       const actualSpent = Number(actualSpentResult[0]?.total) || 0;
-      const upgradeCost = getUpgradeCost(item.price, upgradeCount, actualSpent);
+      const upgradeCost = getUpgradeCost(item.price, upgradeCount, actualSpent, item.baseUpgradeCost);
       if (upgradeCost === null) {
         throw { type: "max_upgrades" };
       }
@@ -33672,7 +33673,7 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
         cost
       });
       const newUpgradeCount = upgradeCount + 1;
-      const nextCost = newBoost >= maxBoost ? null : getUpgradeCost(item.price, newUpgradeCount, actualSpent + cost);
+      const nextCost = newBoost >= maxBoost ? null : getUpgradeCost(item.price, newUpgradeCount, actualSpent + cost, item.baseUpgradeCost);
       return {
         boostPercent: newBoost,
         boostAmount,
@@ -33918,7 +33919,7 @@ shop.post("/items/:id/refinery/undo", async ({ params, headers }) => {
         total: sql`COALESCE(SUM(${refinerySpendingHistoryTable.cost}), 0)`
       }).from(refinerySpendingHistoryTable).where(and(eq(refinerySpendingHistoryTable.userId, user2.id), eq(refinerySpendingHistoryTable.shopItemId, itemId)));
       const actualSpent = Number(spentAfterUndo[0]?.total) || 0;
-      const nextCost = newBoostPercent >= maxBoost ? null : getUpgradeCost(item[0].price, newUpgradeCount, actualSpent);
+      const nextCost = newBoostPercent >= maxBoost ? null : getUpgradeCost(item[0].price, newUpgradeCount, actualSpent, item[0].baseUpgradeCost);
       return {
         boostPercent: newBoostPercent,
         upgradeCount: newUpgradeCount,
@@ -33991,7 +33992,7 @@ shop.post("/items/:id/refinery/undo-all", async ({ params, headers }) => {
         total: sql`COALESCE(SUM(${refinerySpendingHistoryTable.cost}), 0)`
       }).from(refinerySpendingHistoryTable).where(and(eq(refinerySpendingHistoryTable.userId, user2.id), eq(refinerySpendingHistoryTable.shopItemId, itemId)));
       const actualSpent = Number(spentAfterUndo[0]?.total) || 0;
-      const nextCost = newBoostPercent >= maxBoost ? null : getUpgradeCost(item[0].price, newUpgradeCount, actualSpent);
+      const nextCost = newBoostPercent >= maxBoost ? null : getUpgradeCost(item[0].price, newUpgradeCount, actualSpent, item[0].baseUpgradeCost);
       return {
         boostPercent: newBoostPercent,
         upgradeCount: newUpgradeCount,
@@ -37427,7 +37428,6 @@ var app = new Elysia().use(cors({
   credentials: true
 })).use(api).listen(config.port);
 console.log(`\uD83E\uDD8A Elysia is running at ${app.server?.hostname}:${app.server?.port}`);
-updateShopItemPricing();
 if (false) {} else {
   console.log("[STARTUP] Skipping background syncs in development mode");
 }

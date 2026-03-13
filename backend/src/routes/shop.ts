@@ -128,7 +128,7 @@ shop.get("/items", async ({ headers }) => {
       const nextUpgradeCost =
         boostData.boostPercent >= maxBoost
           ? null
-          : getUpgradeCost(item.price, boostData.upgradeCount, actualSpent);
+          : getUpgradeCost(item.price, boostData.upgradeCount, actualSpent, item.baseUpgradeCost);
 
       const effectiveProbability = Math.min(
         adjustedBaseProbability + boostData.boostPercent,
@@ -954,7 +954,7 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
         );
       const actualSpent = Number(actualSpentResult[0]?.total) || 0;
 
-      const upgradeCost = getUpgradeCost(item.price, upgradeCount, actualSpent);
+      const upgradeCost = getUpgradeCost(item.price, upgradeCount, actualSpent, item.baseUpgradeCost);
       if (upgradeCost === null) {
         throw { type: "max_upgrades" };
       }
@@ -988,7 +988,7 @@ shop.post("/items/:id/upgrade-probability", async ({ params, headers }) => {
       const nextCost =
         newBoost >= maxBoost
           ? null
-          : getUpgradeCost(item.price, newUpgradeCount, actualSpent + cost);
+          : getUpgradeCost(item.price, newUpgradeCount, actualSpent + cost, item.baseUpgradeCost);
 
       return {
         boostPercent: newBoost,
@@ -1470,7 +1470,7 @@ shop.post("/items/:id/refinery/undo", async ({ params, headers }) => {
       const nextCost =
         newBoostPercent >= maxBoost
           ? null
-          : getUpgradeCost(item[0].price, newUpgradeCount, actualSpent);
+          : getUpgradeCost(item[0].price, newUpgradeCount, actualSpent, item[0].baseUpgradeCost);
 
       return {
         boostPercent: newBoostPercent,
@@ -1645,7 +1645,7 @@ shop.post("/items/:id/refinery/undo-all", async ({ params, headers }) => {
       const nextCost =
         newBoostPercent >= maxBoost
           ? null
-          : getUpgradeCost(item[0].price, newUpgradeCount, actualSpent);
+          : getUpgradeCost(item[0].price, newUpgradeCount, actualSpent, item[0].baseUpgradeCost);
 
       return {
         boostPercent: newBoostPercent,

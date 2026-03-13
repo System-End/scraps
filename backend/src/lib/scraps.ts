@@ -112,15 +112,15 @@ export function getUpgradeCost(
   price: number,
   upgradeCount: number,
   actualSpent?: number,
+  baseUpgradeCost?: number,
 ): number | null {
   const maxBudget = price * UPGRADE_MAX_BUDGET_MULTIPLIER;
   const cumulative = actualSpent ?? 0;
   if (cumulative >= maxBudget) return null;
+  const base = baseUpgradeCost ?? Math.max(1, Math.floor(price * UPGRADE_START_PERCENT));
   const nextCost = Math.max(
     1,
-    Math.floor(
-      (price * UPGRADE_START_PERCENT) / Math.pow(UPGRADE_DECAY, upgradeCount),
-    ),
+    Math.floor(base / Math.pow(UPGRADE_DECAY, upgradeCount)),
   );
   if (cumulative + nextCost > maxBudget) {
     const remaining = Math.floor(maxBudget - cumulative);
