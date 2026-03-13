@@ -361,24 +361,24 @@
 		if (!formPriceOverride) {
 			formPrice = Math.round(value * SCRAPS_PER_DOLLAR);
 		}
-		await recalculatePricing();
+		await recalculatePricing(!editingItem);
 	}
 
 	async function updateFromStock(value: number) {
 		formCount = value;
-		await recalculatePricing();
+		await recalculatePricing(!editingItem);
 	}
 
 	async function updatePriceOverride(value: number) {
 		formPrice = value;
 		formPriceOverride = true;
-		await recalculatePricing();
+		await recalculatePricing(!editingItem);
 	}
 
 	async function clearPriceOverride() {
 		formPriceOverride = false;
 		formPrice = Math.round(formMonetaryValue * SCRAPS_PER_DOLLAR);
-		await recalculatePricing();
+		await recalculatePricing(!editingItem);
 	}
 
 	let deleteConfirmId = $state<number | null>(null);
