@@ -1,18 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { FilePlus2 } from '@lucide/svelte';
-	import CreateProjectModal from '$lib/components/CreateProjectModal.svelte';
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
 	import NewsCarousel from '$lib/components/NewsCarousel.svelte';
 	import { getUser } from '$lib/auth-client';
-	import {
-		projectsStore,
-		fetchProjects,
-		addProject,
-		tutorialActiveStore,
-		type Project
-	} from '$lib/stores';
+	import { projectsStore, fetchProjects } from '$lib/stores';
 	import { formatHours } from '$lib/utils';
 	import { t } from '$lib/i18n';
 
@@ -31,8 +23,6 @@
 	let randomPhrase = $derived(greetingPhrases[phraseIndex]);
 
 	let user = $state<Awaited<ReturnType<typeof getUser>>>(null);
-	let showCreateModal = $state(false);
-
 	onMount(async () => {
 		const userData = await getUser();
 		if (!userData) {
@@ -42,15 +32,6 @@
 		user = userData;
 		fetchProjects();
 	});
-
-	function createNewProject() {
-		showCreateModal = true;
-	}
-
-	function handleProjectCreated(newProject: Project) {
-		addProject(newProject);
-		showCreateModal = false;
-	}
 </script>
 
 <svelte:head>
@@ -107,15 +88,6 @@
 				</a>
 			{/each}
 
-			<!-- New Draft Card -->
-			<button
-				onclick={createNewProject}
-				data-tutorial="new-project"
-				class="flex h-64 w-80 shrink-0 cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-4 border-dashed border-black bg-white transition-all hover:border-solid"
-			>
-				<FilePlus2 size={64} strokeWidth={1.5} />
-				<span class="text-2xl font-bold">{$t.dashboard.newProject}</span>
-			</button>
 		</div>
 	</div>
 
@@ -187,12 +159,6 @@
 	</div>
 </div>
 
-<CreateProjectModal
-	open={showCreateModal}
-	onClose={() => (showCreateModal = false)}
-	onCreated={handleProjectCreated}
-	tutorialMode={$tutorialActiveStore}
-/>
 
 <style>
 	.scrollbar-black {

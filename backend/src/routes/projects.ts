@@ -538,6 +538,8 @@ projects.get("/:id", async ({ params, headers }) => {
 });
 
 projects.post("/", async ({ body, headers }) => {
+  return { error: "Scraps has ended. Project creation is disabled." };
+
   const user = await getUserFromSession(headers as Record<string, string>);
   if (!user) return { error: "Unauthorized" };
 
