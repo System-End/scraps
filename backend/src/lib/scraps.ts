@@ -163,7 +163,7 @@ export async function getUserScrapsBalance(
     })
     .from(projectsTable)
     .where(
-      sql`${projectsTable.userId} = ${userId} AND ${projectsTable.scrapsPaidAt} IS NOT NULL AND ${projectsTable.scrapsAwarded} > 0`,
+      sql`${projectsTable.userId} = ${userId} AND (${projectsTable.scrapsPaidAt} IS NOT NULL OR ${projectsTable.scrapsPaidAmount} > 0) AND ${projectsTable.scrapsAwarded} > 0`,
     );
 
   // Pending scraps: scrapsAwarded for shipped unpaid projects
