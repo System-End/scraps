@@ -537,11 +537,15 @@ projects.get("/:id", async ({ params, headers }) => {
   };
 });
 
-projects.post("/", async ({ body, headers }) => {
-  return { error: "Scraps has ended. Project creation is disabled." };
+const ALLOWED_SLACK_ID = "U0A0T0DFVKR";
 
+projects.post("/", async ({ body, headers }) => {
   const user = await getUserFromSession(headers as Record<string, string>);
   if (!user) return { error: "Unauthorized" };
+
+  if (user.slackId !== ALLOWED_SLACK_ID) {
+    return { error: "Scraps has ended. Project creation is disabled." };
+  }
 
   const data = body as {
     name: string;
