@@ -3,10 +3,12 @@
 	import { goto } from '$app/navigation';
 	import ProjectPlaceholder from '$lib/components/ProjectPlaceholder.svelte';
 	import NewsCarousel from '$lib/components/NewsCarousel.svelte';
+	import CreateProjectModal from '$lib/components/CreateProjectModal.svelte';
 	import { getUser } from '$lib/auth-client';
-	import { projectsStore, fetchProjects } from '$lib/stores';
+	import { projectsStore, fetchProjects, addProject } from '$lib/stores';
 	import { formatHours } from '$lib/utils';
 	import { t } from '$lib/i18n';
+	import { Plus } from '@lucide/svelte';
 
 	const greetingPhrases = $derived([
 		$t.dashboard.greetings.readyToScrap,
@@ -21,6 +23,10 @@
 
 	let phraseIndex = Math.floor(Math.random() * 8);
 	let randomPhrase = $derived(greetingPhrases[phraseIndex]);
+
+	const ALLOWED_SLACK_ID = 'U0A0T0DFVKR';
+	let showCreateModal = $state(false);
+	let canCreateProject = $derived(user?.slackId === ALLOWED_SLACK_ID);
 
 	let user = $state<Awaited<ReturnType<typeof getUser>>>(null);
 	onMount(async () => {
@@ -50,6 +56,16 @@
 	<!-- Projects Section -->
 	<div class="mb-12">
 		<div class="scrollbar-black flex gap-6 overflow-x-auto pb-4">
+			{#if canCreateProject}
+				<button
+					onclick={() => (showCreateModal = true)}
+					data-tutorial="new-project"
+					class="flex h-64 w-80 shrink-0 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-4 border-black bg-white transition-all hover:border-dashed"
+				>
+					<Plus size={48} class="text-gray-400" />
+					<span class="text-lg font-bold text-gray-400">{$t.dashboard.newProject}</span>
+				</button>
+			{/if}
 			{#each $projectsStore as project (project.id)}
 				<a
 					href="/projects/{project.id}"
@@ -159,6 +175,17 @@
 	</div>
 </div>
 
+{#if canCreateProject}
+	<CreateProjectModal
+		open={showCreateModal}
+		onClose={() => (showCreateModal = false)}
+		onCreated={(project) => {
+			addProject(project);
+			showCreateModal = false;
+			goto(`/projects/${project.id}`);
+		}}
+	/>
+{/if}
 
 <style>
 	.scrollbar-black {
