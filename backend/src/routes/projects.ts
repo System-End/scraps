@@ -491,6 +491,30 @@ projects.get("/:id", async ({ params, headers }) => {
     hasSubmittedFeedback = feedbackCheck.length > 0;
   }
 
+  // Check if project can be resubmitted (first submission must be on or before March 17th, 2026)
+  let canResubmit = true;
+  if (isOwner) {
+    const firstSubmission = await db
+      .select({ createdAt: projectActivityTable.createdAt })
+      .from(projectActivityTable)
+      .where(
+        and(
+          eq(projectActivityTable.projectId, parseInt(params.id)),
+          eq(projectActivityTable.action, "project_submitted"),
+        ),
+      )
+      .orderBy(projectActivityTable.createdAt)
+      .limit(1);
+
+    if (firstSubmission.length > 0) {
+      const cutoffDate = new Date("2026-03-18T00:00:00Z");
+      canResubmit = firstSubmission[0].createdAt < cutoffDate;
+    } else {
+      // Never submitted before - cannot submit new projects
+      canResubmit = false;
+    }
+  }
+
   // Calculate effective hours (subtract overlapping shipped project hours)
   // Uses activity-derived shipped dates for ordering (consistent with Airtable sync and admin review)
   const projectHours = project[0].hoursOverride ?? project[0].hours ?? 0;
@@ -533,6 +557,7 @@ projects.get("/:id", async ({ params, headers }) => {
     owner: projectOwner[0] || null,
     isOwner,
     hasSubmittedFeedback: isOwner ? hasSubmittedFeedback : undefined,
+    canResubmit: isOwner ? canResubmit : undefined,
     activity,
   };
 });
@@ -838,6 +863,27 @@ projects.post("/:id/submit", async ({ params, headers, body }) => {
 
   if (project[0].status !== "in_progress" && project[0].status !== "shipped") {
     return { error: "Project cannot be submitted in current status" };
+  }
+
+  // Check if this is a resubmission - if so, verify first submission was on or before March 17th
+  const firstSubmission = await db
+    .select({ createdAt: projectActivityTable.createdAt })
+    .from(projectActivityTable)
+    .where(
+      and(
+        eq(projectActivityTable.projectId, parseInt(params.id)),
+        eq(projectActivityTable.action, "project_submitted"),
+      ),
+    )
+    .orderBy(projectActivityTable.createdAt)
+    .limit(1);
+
+  if (firstSubmission.length > 0) {
+    // This is a resubmission - check if first submission was on or before March 17th, 2026
+    const cutoffDate = new Date("2026-03-18T00:00:00Z"); // Midnight March 18th = end of March 17th
+    if (firstSubmission[0].createdAt >= cutoffDate) {
+      return { error: "Resubmissions are only allowed for projects first submitted on or before March 17th" };
+    }
   }
 
   // Sync hours from Hackatime before submitting
