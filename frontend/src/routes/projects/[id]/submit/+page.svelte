@@ -128,10 +128,6 @@
 			if (!responseData.isOwner) {
 				throw new Error('You can only submit your own projects');
 			}
-			// Check if resubmission is allowed
-			if (responseData.canResubmit === false) {
-				throw new Error('Resubmissions are only allowed for projects first submitted on or before March 17th');
-			}
 			project = responseData.project;
 			imagePreview = project?.image || null;
 			hasSubmittedFeedbackBefore = responseData.hasSubmittedFeedback ?? false;

@@ -74,7 +74,6 @@
 	let owner = $state<Owner | null>(null);
 	let isOwner = $state(false);
 	let isAdmin = $state(false);
-	let canResubmit = $state(true);
 	let activity = $state<ActivityEntry[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -105,7 +104,6 @@
 			project = result.project;
 			owner = result.owner;
 			isOwner = result.isOwner;
-			canResubmit = result.canResubmit ?? true;
 			activity = result.activity || [];
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load project';
@@ -456,7 +454,7 @@
 							<Send size={18} />
 							{$t.project.awaitingReview}
 						</span>
-					{:else if project.status === 'shipped' && canResubmit}
+					{:else if project.status === 'shipped'}
 						<a
 							href="/projects/{project.id}/submit"
 							class="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border-4 border-black bg-black px-4 py-3 text-sm font-bold text-white transition-all duration-200 hover:bg-gray-800 sm:px-6 sm:text-base"
@@ -464,26 +462,12 @@
 							<RefreshCw size={18} />
 							ship update
 						</a>
-					{:else if project.status === 'shipped' && !canResubmit}
-						<span
-							class="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
-						>
-							<CheckCircle size={18} />
-							shipped
-						</span>
 					{:else if project.status === 'permanently_rejected'}
 						<span
 							class="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full border-4 border-black bg-red-100 px-4 py-3 text-center text-sm font-bold text-red-600 sm:px-6 sm:text-base"
 						>
 							<XCircle size={18} />
 							{$t.project.permanentlyRejected}
-						</span>
-					{:else if !canResubmit}
-						<span
-							class="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-full border-4 border-black bg-gray-200 px-4 py-3 text-center text-sm font-bold text-gray-600 sm:px-6 sm:text-base"
-						>
-							<XCircle size={18} />
-							submissions closed
 						</span>
 					{:else if $tutorialActiveStore}
 						<span
