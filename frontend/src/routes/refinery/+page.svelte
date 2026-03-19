@@ -4,6 +4,7 @@
 	import { getUser, refreshUserScraps, userScrapsStore } from '$lib/auth-client';
 	import { shopItemsStore, shopLoading, fetchShopItems, type ShopItem } from '$lib/stores';
 	import { t } from '$lib/i18n';
+	import { API_URL } from '$lib/config';
 
 	let probabilityItems = $derived($shopItemsStore.filter((item) => item.baseProbability > 0));
 	let upgrading = $state<number | null>(null);
@@ -20,7 +21,7 @@
 		upgrading = item.id;
 		try {
 			const res = await fetch(
-				`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/shop/items/${item.id}/upgrade-probability`,
+				`${API_URL}/shop/items/${item.id}/upgrade-probability`,
 				{
 					method: 'POST',
 					credentials: 'include'
@@ -55,7 +56,7 @@
 		undoing = item.id;
 		try {
 			const res = await fetch(
-				`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/shop/items/${item.id}/refinery/undo`,
+				`${API_URL}/shop/items/${item.id}/refinery/undo`,
 				{
 					method: 'POST',
 					credentials: 'include'
@@ -92,7 +93,7 @@
 		undoing = item.id;
 		try {
 			const res = await fetch(
-				`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/shop/items/${item.id}/refinery/undo-all`,
+				`${API_URL}/shop/items/${item.id}/refinery/undo-all`,
 				{
 					method: 'POST',
 					credentials: 'include'
