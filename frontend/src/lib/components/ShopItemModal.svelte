@@ -31,12 +31,14 @@
 		item,
 		onClose,
 		onTryLuck,
-		onConsolation
+		onConsolation,
+		onPurchase
 	}: {
 		item: ShopItem;
 		onClose: () => void;
 		onTryLuck: (orderId: number) => void;
 		onConsolation: (orderId: number, rolled: number, needed: number) => void;
+		onPurchase: (orderId: number) => void;
 	} = $props();
 
 	let activeTab = $state<'leaderboard' | 'wishlist' | 'buyers'>('leaderboard');
@@ -47,7 +49,9 @@
 	let loadingBuyers = $state(false);
 	let loadingHearts = $state(false);
 	let tryingLuck = $state(false);
+	let purchasing = $state(false);
 	let showConfirmation = $state(false);
+	let showBuyConfirmation = $state(false);
 	let localHearted = $state(item.userHearted);
 	let localHeartCount = $state(item.heartCount);
 	let rollCost = $derived(
@@ -69,6 +73,7 @@
 		})()
 	);
 	let canAfford = $derived($userScrapsStore >= rollCost);
+	let canAffordFull = $derived($userScrapsStore >= item.price);
 	let alertMessage = $state<string | null>(null);
 	let alertType = $state<'error' | 'info'>('info');
 
@@ -188,10 +193,44 @@
 		}
 	}
 
+	async function handleBuyNow() {
+		purchasing = true;
+		try {
+			const response = await fetch(`${API_URL}/shop/items/${item.id}/purchase`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ quantity: 1 })
+			});
+			const data = await response.json();
+
+			if (!response.ok || data.error) {
+				alertType = 'error';
+				const parts = [data.error || $t.shop.somethingWentWrong];
+				if (data.required !== undefined) parts.push(`need: ${data.required} scraps`);
+				if (data.available !== undefined) parts.push(`have: ${data.available} scraps`);
+				alertMessage = parts.join(' — ');
+				return;
+			}
+
+			await refreshUserScraps();
+			onPurchase(data.order.id);
+		} catch (e) {
+			console.error('Failed to purchase:', e);
+			alertType = 'error';
+			alertMessage = $t.shop.somethingWentWrong;
+		} finally {
+			purchasing = false;
+			showBuyConfirmation = false;
+		}
+	}
+
 	function handleBackdropClick(e: MouseEvent) {
 		if (e.target === e.currentTarget) {
 			if (showConfirmation) {
 				showConfirmation = false;
+			} else if (showBuyConfirmation) {
+				showBuyConfirmation = false;
 			} else {
 				onClose();
 			}
@@ -220,7 +259,12 @@
 	class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
 	onclick={handleBackdropClick}
 	onkeydown={(e) =>
-		e.key === 'Escape' && (showConfirmation ? (showConfirmation = false) : onClose())}
+		e.key === 'Escape' &&
+		(showConfirmation
+			? (showConfirmation = false)
+			: showBuyConfirmation
+				? (showBuyConfirmation = false)
+				: onClose())}
 	role="dialog"
 	tabindex="-1"
 >
@@ -397,17 +441,27 @@
 				{$t.shop.soldOut}
 			</span>
 		{:else}
-			<button
-				onclick={() => (showConfirmation = true)}
-				disabled={tryingLuck || !canAfford}
-				class="w-full cursor-pointer rounded-full bg-black px-4 py-3 text-lg font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-			>
-				{#if !canAfford}
-					{$t.shop.notEnoughScraps}
-				{:else}
-					{$t.shop.tryYourLuck}
-				{/if}
-			</button>
+			<div class="flex gap-2">
+				<button
+					onclick={() => (showConfirmation = true)}
+					disabled={tryingLuck || purchasing || !canAfford}
+					class="flex-1 cursor-pointer rounded-full bg-black px-4 py-3 text-lg font-bold text-white transition-all duration-200 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{#if !canAfford}
+						{$t.shop.notEnoughScraps}
+					{:else}
+						{$t.shop.tryYourLuck}
+					{/if}
+				</button>
+				<button
+					onclick={() => (showBuyConfirmation = true)}
+					disabled={tryingLuck || purchasing || !canAffordFull}
+					class="cursor-pointer rounded-full border-4 border-black px-4 py-3 font-bold transition-all duration-200 hover:border-dashed disabled:cursor-not-allowed disabled:opacity-50"
+					title="{$t.shop.buyNowTooltip}"
+				>
+					<ShoppingBag size={20} />
+				</button>
+			</div>
 		{/if}
 	</div>
 
@@ -444,6 +498,39 @@
 						class="flex-1 cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed disabled:opacity-50"
 					>
 						{tryingLuck ? $t.common.trying : $t.common.tryLuck}
+					</button>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if showBuyConfirmation}
+		<div
+			class="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4"
+			onclick={(e) => e.target === e.currentTarget && (showBuyConfirmation = false)}
+			onkeydown={(e) => e.key === 'Escape' && (showBuyConfirmation = false)}
+			role="dialog"
+			tabindex="-1"
+		>
+			<div class="w-full max-w-md rounded-2xl border-4 border-black bg-white p-6">
+				<h2 class="mb-4 text-2xl font-bold">{$t.shop.confirmBuyNow}</h2>
+				<p class="mb-6 text-gray-600">
+					{$t.shop.confirmBuyNowMessage} <strong>{item.price} {$t.common.scraps}</strong>.
+				</p>
+				<div class="flex gap-3">
+					<button
+						onclick={() => (showBuyConfirmation = false)}
+						disabled={purchasing}
+						class="flex-1 cursor-pointer rounded-full border-4 border-black px-4 py-2 font-bold transition-all duration-200 hover:border-dashed disabled:opacity-50"
+					>
+						{$t.common.cancel}
+					</button>
+					<button
+						onclick={handleBuyNow}
+						disabled={purchasing}
+						class="flex-1 cursor-pointer rounded-full border-4 border-black bg-black px-4 py-2 font-bold text-white transition-all duration-200 hover:border-dashed disabled:opacity-50"
+					>
+						{purchasing ? $t.shop.buying : $t.shop.buyNow}
 					</button>
 				</div>
 			</div>

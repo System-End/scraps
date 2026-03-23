@@ -138,7 +138,12 @@ export default {
 		confirmTryLuckMessage: 'are you sure you want to try your luck? this will cost',
 		yourChanceLabel: 'your chance:',
 		somethingWentWrong: 'something went wrong',
-		failedToTryLuck: 'Failed to try luck'
+		failedToTryLuck: 'Failed to try luck',
+		buyNow: 'buy now',
+		buying: 'buying...',
+		confirmBuyNow: 'confirm purchase',
+		confirmBuyNowMessage: 'buy this item outright for the full price of',
+		buyNowTooltip: 'buy at full price, no gambling'
 	},
 	common: {
 		cancel: 'cancel',

@@ -153,6 +153,14 @@
 		selectedItem = null;
 	}
 
+	function handlePurchase(orderId: number) {
+		if (selectedItem) {
+			winningItemName = selectedItem.name;
+		}
+		winningOrderId = orderId;
+		selectedItem = null;
+	}
+
 	function handleConsolation(orderId: number, rolled: number, needed: number) {
 		consolationOrderId = orderId;
 		consolationRolled = rolled;
@@ -406,6 +414,7 @@
 		onClose={() => (selectedItem = null)}
 		onTryLuck={handleTryLuck}
 		onConsolation={handleConsolation}
+		onPurchase={handlePurchase}
 	/>
 {/if}
 

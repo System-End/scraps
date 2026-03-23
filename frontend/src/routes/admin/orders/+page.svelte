@@ -100,6 +100,7 @@
 	let filterItem = $state('');
 	let filterUser = $state('');
 	let filterRegion = $state<'' | 'us' | 'intl'>('');
+	let hideConsolations = $state(false);
 	let theseusLoading = $state<Record<number, boolean>>({});
 
 	let uniqueItems = $derived(
@@ -150,6 +151,10 @@
 				}
 				return false;
 			});
+		}
+
+		if (hideConsolations) {
+			result = result.filter((o) => o.orderType !== 'consolation');
 		}
 
 		if (dateFrom) {
@@ -539,7 +544,15 @@
 						class="rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 focus:border-dashed focus:outline-none"
 					/>
 				</div>
-				{#if dateFrom || dateTo || filterItem || filterUser || filterRegion}
+				<button
+				onclick={() => (hideConsolations = !hideConsolations)}
+				class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 {hideConsolations
+					? 'bg-black text-white'
+					: 'hover:border-dashed'}"
+			>
+				hide consolations
+			</button>
+			{#if dateFrom || dateTo || filterItem || filterUser || filterRegion || hideConsolations}
 					<button
 						onclick={() => {
 							dateFrom = '';
@@ -547,6 +560,7 @@
 							filterItem = '';
 							filterUser = '';
 							filterRegion = '';
+							hideConsolations = false;
 						}}
 						class="cursor-pointer rounded-xl border-4 border-black px-3 py-2 font-bold transition-all duration-200 hover:border-dashed"
 						title="clear filters"

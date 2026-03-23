@@ -138,7 +138,12 @@ export default {
 		confirmTryLuckMessage: '¿estás seguro de que quieres probar suerte? esto costará',
 		yourChanceLabel: 'tu probabilidad:',
 		somethingWentWrong: 'algo salió mal',
-		failedToTryLuck: 'Error al probar suerte'
+		failedToTryLuck: 'Error al probar suerte',
+		buyNow: 'comprar ahora',
+		buying: 'comprando...',
+		confirmBuyNow: 'confirmar compra',
+		confirmBuyNowMessage: 'comprar este artículo directamente por el precio completo de',
+		buyNowTooltip: 'comprar al precio completo, sin azar'
 	},
 	common: {
 		cancel: 'cancelar',
